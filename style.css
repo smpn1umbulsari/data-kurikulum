@@ -430,15 +430,47 @@ body.dark .student-side-label {
 
 /* INPUT */
 body.dark input,
-body.dark select {
+body.dark select,
+body.dark textarea {
+  background-color: #020617;
   border: 1px solid #334155;
-  color: #e2e8f0;
+  color: #f8fafc;
+  caret-color: #93c5fd;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #94a3b8;
+  opacity: 1;
+}
+
+body.dark select option {
+  background: #020617;
+  color: #f8fafc;
 }
 
 body.dark input:focus,
-body.dark select:focus {
+body.dark select:focus,
+body.dark textarea:focus {
   border-color: #3b82f6;
   background: #020617;
+  color: #ffffff;
+}
+
+body.dark input[readonly],
+body.dark select:disabled,
+body.dark textarea[readonly] {
+  background: #0f172a;
+  color: #cbd5e1;
+  -webkit-text-fill-color: #cbd5e1;
+}
+
+body.dark input:-webkit-autofill,
+body.dark input:-webkit-autofill:hover,
+body.dark input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px #020617 inset;
+  -webkit-text-fill-color: #f8fafc;
+  caret-color: #93c5fd;
 }
 
 body.dark .form-group label {
