@@ -11,6 +11,7 @@ let nilaiPreviewPage = 1;
 let nilaiPreviewRowsPerPage = 10;
 let nilaiLastImportInput = null;
 let isNilaiUploading = false;
+let isNilaiSaving = false;
 let currentNilaiAccessMode = "guru";
 
 function escapeNilaiHtml(value) {
@@ -197,6 +198,14 @@ function renderInputNilaiPage() {
 
       <div id="nilaiTableContainer" class="table-container mapel-table-container"></div>
 
+      <div id="nilaiSavingOverlay" class="nilai-saving-overlay" style="display:none;" aria-hidden="true">
+        <div class="nilai-saving-card">
+          <div class="nilai-saving-spinner" aria-hidden="true"></div>
+          <strong>Menyimpan nilai...</strong>
+          <span>Mohon tunggu sebentar, data sedang dikirim.</span>
+        </div>
+      </div>
+
       <div id="nilaiPreviewModal" class="preview-modal" style="display:none;" onclick="handleNilaiPreviewBackdrop(event)">
         <div class="preview-modal-content">
           <div id="nilaiPreviewContainer"></div>
@@ -204,6 +213,21 @@ function renderInputNilaiPage() {
       </div>
     </div>
   `;
+}
+
+function setNilaiSavingState(isSaving, message = "Menyimpan nilai...") {
+  isNilaiSaving = Boolean(isSaving);
+  const overlay = document.getElementById("nilaiSavingOverlay");
+  if (!overlay) return;
+  const title = overlay.querySelector("strong");
+  const subtitle = overlay.querySelector("span");
+  if (title) title.textContent = message || "Menyimpan nilai...";
+  if (subtitle) subtitle.textContent = isNilaiSaving
+    ? "Mohon tunggu sebentar, data sedang dikirim."
+    : "";
+  overlay.style.display = isNilaiSaving ? "flex" : "none";
+  overlay.setAttribute("aria-hidden", isNilaiSaving ? "false" : "true");
+  document.body.classList.toggle("nilai-saving-active", isNilaiSaving);
 }
 
 function loadRealtimeInputNilai() {
@@ -803,6 +827,7 @@ function batalImportNilai(closeModal = true) {
 }
 
 async function saveNilaiAssignment() {
+  if (isNilaiSaving) return;
   const select = document.getElementById("nilaiAssignmentSelect");
   const assignment = parseNilaiAssignmentId(select?.value || "");
   if (!assignment.mapel_kode) {
@@ -817,31 +842,39 @@ async function saveNilaiAssignment() {
     return;
   }
 
-  const students = getNilaiStudentsForAssignment(assignment);
-  const batch = db.batch();
-  students.forEach(siswa => {
-    const uh1 = document.getElementById(`nilai-uh1-${siswa.nipd}`)?.value ?? "";
-    const uh2 = document.getElementById(`nilai-uh2-${siswa.nipd}`)?.value ?? "";
-    const uh3 = document.getElementById(`nilai-uh3-${siswa.nipd}`)?.value ?? "";
-    const pts = document.getElementById(`nilai-pts-${siswa.nipd}`)?.value ?? "";
-    const docId = makeNilaiDocId(assignment, siswa.nipd);
-    batch.set(db.collection("nilai").doc(docId), {
-      ...getNilaiActiveTermPayload(),
-      nipd: siswa.nipd || "",
-      nama_siswa: siswa.nama || "",
-      kelas: siswa.kelasNilaiParts.kelas || "",
-      tingkat: assignment.tingkat,
-      rombel: assignment.rombel,
-      mapel_kode: assignment.mapel_kode,
-      guru_kode: assignment.guru_kode,
-      uh_1: uh1 === "" ? "" : Number(uh1),
-      uh_2: uh2 === "" ? "" : Number(uh2),
-      uh_3: uh3 === "" ? "" : Number(uh3),
-      pts: pts === "" ? "" : Number(pts),
-      updated_by: user.username || "",
-      updated_at: new Date()
-    }, { merge: true });
-  });
-  await batch.commit();
-  Swal.fire("Tersimpan", "Nilai sudah disimpan.", "success");
+  try {
+    setNilaiSavingState(true);
+    const students = getNilaiStudentsForAssignment(assignment);
+    const batch = db.batch();
+    students.forEach(siswa => {
+      const uh1 = document.getElementById(`nilai-uh1-${siswa.nipd}`)?.value ?? "";
+      const uh2 = document.getElementById(`nilai-uh2-${siswa.nipd}`)?.value ?? "";
+      const uh3 = document.getElementById(`nilai-uh3-${siswa.nipd}`)?.value ?? "";
+      const pts = document.getElementById(`nilai-pts-${siswa.nipd}`)?.value ?? "";
+      const docId = makeNilaiDocId(assignment, siswa.nipd);
+      batch.set(db.collection("nilai").doc(docId), {
+        ...getNilaiActiveTermPayload(),
+        nipd: siswa.nipd || "",
+        nama_siswa: siswa.nama || "",
+        kelas: siswa.kelasNilaiParts.kelas || "",
+        tingkat: assignment.tingkat,
+        rombel: assignment.rombel,
+        mapel_kode: assignment.mapel_kode,
+        guru_kode: assignment.guru_kode,
+        uh_1: uh1 === "" ? "" : Number(uh1),
+        uh_2: uh2 === "" ? "" : Number(uh2),
+        uh_3: uh3 === "" ? "" : Number(uh3),
+        pts: pts === "" ? "" : Number(pts),
+        updated_by: user.username || "",
+        updated_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    setNilaiSavingState(false);
+    Swal.fire("Tersimpan", "Nilai sudah disimpan.", "success");
+  } catch (error) {
+    console.error(error);
+    setNilaiSavingState(false);
+    Swal.fire("Gagal menyimpan", "Nilai belum berhasil disimpan.", "error");
+  }
 }
