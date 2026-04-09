@@ -2966,6 +2966,94 @@ body.dark .rekap-task-list span {
   object-fit: contain;
 }
 
+.ks-ttd-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(260px, 420px);
+  gap: 16px;
+  align-items: start;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fafc, #eef6ff);
+}
+
+.ks-ttd-panel h3 {
+  margin: 4px 0 6px;
+  color: #0f172a;
+}
+
+.ks-ttd-panel p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.45;
+}
+
+.ks-ttd-form {
+  display: grid;
+  gap: 10px;
+}
+
+.ks-ttd-preview {
+  display: grid;
+  place-items: center;
+  min-height: 108px;
+  padding: 12px;
+  border: 1px dashed rgba(37, 99, 235, 0.35);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.ks-ttd-preview img {
+  max-width: 260px;
+  max-height: 86px;
+  object-fit: contain;
+}
+
+.rekap-signature-block {
+  position: relative;
+}
+
+.rekap-signature-mark {
+  position: relative;
+  height: 60px;
+}
+
+.rekap-signature-img {
+  position: absolute;
+  left: 0;
+  bottom: -15px;
+  width: 180px;
+  height: 87px;
+  object-fit: contain;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.rekap-signature-name,
+.rekap-signature-block div:not(.rekap-signature-mark) {
+  position: relative;
+  z-index: 1;
+}
+
+body.dark .ks-ttd-panel {
+  border-color: rgba(148, 163, 184, 0.2);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.94));
+}
+
+body.dark .ks-ttd-panel h3 {
+  color: #f8fafc;
+}
+
+body.dark .ks-ttd-panel p {
+  color: #cbd5e1;
+}
+
+body.dark .ks-ttd-preview {
+  background: rgba(15, 23, 42, 0.78);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
 .wali-control-panel {
   grid-template-columns: minmax(260px, 360px) auto;
 }
@@ -3129,6 +3217,10 @@ body.dark .rekap-task-list span {
   .rapor-control-panel,
   .rapor-control-fields,
   .admin-rapor-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ks-ttd-panel {
     grid-template-columns: 1fr;
   }
 

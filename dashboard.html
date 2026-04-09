@@ -5,7 +5,7 @@
   <title>Dashboard Aplikasi Siswa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="style.css?v=20260409r">
+  <link rel="stylesheet" href="style.css?v=20260409s">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
@@ -58,31 +58,32 @@
         <button onclick="loadPage('admin-user')">User</button>
         <button onclick="loadPage('admin-hierarki')">Pengguna Hierarki</button>
         <button onclick="loadPage('admin-semester')">Semester</button>
-        <button onclick="loadPage('admin-rapor')">Rapor</button>
         <button onclick="loadPage('admin-backup')">Backup & Restore</button>
       </div>
     </div>
 
-    <div class="menu-group role-menu role-admin role-urusan" id="menuGuru">
-      <button class="menu menu-parent" onclick="toggleMenu('submenuGuru', this)">
-        <span>Data Guru</span>
+    <div class="menu-group role-menu role-admin" id="menuDataSekolah">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuDataSekolah', this)">
+        <span>Data Sekolah</span>
         <span class="menu-caret">+</span>
       </button>
-      <div class="submenu" id="submenuGuru">
-        <button onclick="loadPage('guru-input')">Input Guru</button>
-        <button onclick="loadPage('guru-lihat')">Lihat Guru</button>
-      </div>
-    </div>
+      <div class="submenu submenu-sectioned" id="submenuDataSekolah">
+        <div class="submenu-section-label">Kepala Sekolah</div>
+        <button onclick="loadPage('admin-rapor')">Data KS</button>
 
-    <div class="menu-group role-menu role-admin" id="menuSiswaAdmin">
-      <button class="menu menu-parent" onclick="toggleMenu('submenuSiswa', this)">
-        <span>Data Siswa</span>
-        <span class="menu-caret">+</span>
-      </button>
-      <div class="submenu" id="submenuSiswa">
-        <button onclick="loadPage('input')">Input Data</button>
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Guru</div>
+        <button onclick="loadPage('guru-input')">Input Guru</button>
+        <button onclick="loadPage('guru-lihat')">Lihat Data</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Siswa</div>
+        <button onclick="loadPage('input')">Input Siswa</button>
         <button onclick="loadPage('lihat')">Lihat Data</button>
-        <button onclick="loadPage('siswa-lulus')">Siswa Lulus</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Kelulusan</div>
+        <button onclick="loadPage('siswa-lulus')">Lihat Data</button>
       </div>
     </div>
 
@@ -195,14 +196,15 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="inline-notification.js?v=20260409a"></script>
-<script src="Semester/semester.js?v=20260408n"></script>
+<script src="ttd-ks.js?v=20260409b"></script>
+<script src="Semester/semester.js?v=20260409a"></script>
 <script src="Siswa/validation.js"></script>
 <script src="Siswa/crud.js?v=20260408b"></script>
 <script src="Siswa/excel.js?v=20260409b"></script>
 <script src="Siswa/murid.js?v=20260409e"></script>
 <script src="Siswa/ui.js?v=20260409b"></script>
 <script src="Siswa/kelas-bayangan.js?v=20260409b"></script>
-<script src="Siswa/siswa-lulus.js?v=20260408a"></script>
+<script src="Siswa/siswa-lulus.js?v=20260409a"></script>
 <script src="Guru/validation.js"></script>
 <script src="Guru/crud.js"></script>
 <script src="Guru/guru.js?v=20260409a"></script>
@@ -219,10 +221,10 @@
 <script src="Mengajar/mengajar.js?v=20260409a"></script>
 <script src="Mengajar/ui.js?v=20260409a"></script>
 <script src="TugasTambahan/tugas-tambahan.js?v=20260409i"></script>
-<script src="Rekap/rekap-v2.js?v=20260409i"></script>
-<script src="Asesmen/pembagian-ruang-v2.js?v=20260407o"></script>
+<script src="Rekap/rekap-v2.js?v=20260409j"></script>
+<script src="Asesmen/pembagian-ruang-v2.js?v=20260409a"></script>
 <script src="Nilai/nilai.js?v=20260409c"></script>
-<script src="Nilai/rapor.js?v=20260409a"></script>
+<script src="Nilai/rapor.js?v=20260409b"></script>
 <script src="WaliKelas/wali-kelas.js?v=20260409d"></script>
 
 <script>
@@ -1169,7 +1171,7 @@
     }
 
     if (page === "admin-rapor") {
-      if (pageTitle) pageTitle.innerText = "Administrasi Rapor";
+      if (pageTitle) pageTitle.innerText = "Data Kepala Sekolah";
       content.innerHTML = renderAdminRaporPage();
       loadRealtimeAdminRapor();
     }

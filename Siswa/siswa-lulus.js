@@ -3,6 +3,38 @@ let unsubscribeSiswaLulus = null;
 let siswaLulusSearch = "";
 let siswaLulusTahun = "";
 
+function normalizeSiswaLulusTahun(value) {
+  return String(value || "").trim().replace(/\s+/g, "");
+}
+
+function getSiswaLulusActiveTahun() {
+  if (typeof getActiveSemesterContext === "function") {
+    return normalizeSiswaLulusTahun(getActiveSemesterContext().tahun || "");
+  }
+  try {
+    const stored = JSON.parse(localStorage.getItem("appSemester") || "null");
+    return normalizeSiswaLulusTahun(stored?.tahun || "");
+  } catch {
+    return "";
+  }
+}
+
+function getSiswaLulusTahunStart(value) {
+  const match = normalizeSiswaLulusTahun(value).match(/^(\d{4})\/(\d{4})$/);
+  return match ? Number(match[1]) : 0;
+}
+
+function isSiswaLulusTahunAllowed(tahun) {
+  const activeStart = getSiswaLulusTahunStart(getSiswaLulusActiveTahun());
+  const lulusStart = getSiswaLulusTahunStart(tahun);
+  if (!activeStart || !lulusStart) return false;
+  return lulusStart < activeStart;
+}
+
+function getVisibleSiswaLulusData() {
+  return semuaDataSiswaLulus.filter(item => isSiswaLulusTahunAllowed(item.tahun_pelajaran_lulus));
+}
+
 function escapeSiswaLulusHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -13,15 +45,17 @@ function escapeSiswaLulusHtml(value) {
 }
 
 function renderSiswaLulusPage() {
-  const tahunOptions = [...new Set(semuaDataSiswaLulus.map(item => item.tahun_pelajaran_lulus).filter(Boolean))]
+  const activeTahun = getSiswaLulusActiveTahun();
+  const tahunOptions = [...new Set(getVisibleSiswaLulusData().map(item => item.tahun_pelajaran_lulus).filter(Boolean))]
     .sort((a, b) => String(b).localeCompare(String(a), undefined, { numeric: true }));
+  if (siswaLulusTahun && !tahunOptions.includes(siswaLulusTahun)) siswaLulusTahun = "";
   return `
     <div class="card">
       <div class="kelas-bayangan-head nilai-page-head">
         <div>
           <span class="dashboard-eyebrow">Data Siswa</span>
           <h2>Siswa Lulus</h2>
-          <p>Daftar siswa kelas 9 yang otomatis dikeluarkan saat pergantian tahun pelajaran.</p>
+          <p>Menampilkan data kelulusan sebelum tahun pelajaran yang sedang dibuka${activeTahun ? ` (${escapeSiswaLulusHtml(activeTahun)})` : ""}.</p>
         </div>
       </div>
 
@@ -31,7 +65,7 @@ function renderSiswaLulusPage() {
         </div>
         <div class="toolbar-right">
           <select id="siswaLulusTahun" onchange="setSiswaLulusTahun(this.value)">
-            <option value="">Semua Tahun Pelajaran</option>
+            <option value="">Semua Tahun Sebelumnya</option>
             ${tahunOptions.map(tahun => `<option value="${escapeSiswaLulusHtml(tahun)}" ${tahun === siswaLulusTahun ? "selected" : ""}>${escapeSiswaLulusHtml(tahun)}</option>`).join("")}
           </select>
         </div>
@@ -61,7 +95,7 @@ function renderSiswaLulusPage() {
 
 function getFilteredSiswaLulus() {
   const keyword = String(siswaLulusSearch || "").trim().toLowerCase();
-  return semuaDataSiswaLulus
+  return getVisibleSiswaLulusData()
     .filter(item => {
       const matchSearch = !keyword ||
         String(item.nama || "").toLowerCase().includes(keyword) ||
@@ -79,7 +113,7 @@ function getFilteredSiswaLulus() {
 
 function renderSiswaLulusRows() {
   const rows = getFilteredSiswaLulus();
-  if (rows.length === 0) return `<tr><td colspan="7">Belum ada siswa lulus.</td></tr>`;
+  if (rows.length === 0) return `<tr><td colspan="7">Belum ada data kelulusan dari tahun pelajaran sebelumnya.</td></tr>`;
   return rows.map((item, index) => `
     <tr>
       <td>${index + 1}</td>

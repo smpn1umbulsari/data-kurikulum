@@ -12,6 +12,16 @@ let unsubscribeWaliMengajar = null;
 let unsubscribeWaliNilai = null;
 let unsubscribeWaliKehadiran = null;
 let unsubscribeWaliKehadiranRekap = null;
+let currentWaliKelasPage = "";
+let waliInitialReady = {
+  siswa: false,
+  kelas: false,
+  mapel: false,
+  mengajar: false,
+  nilai: false,
+  kehadiran: false,
+  rekap: false
+};
 
 function escapeWaliHtml(value) {
   return String(value ?? "")
@@ -48,17 +58,39 @@ function getWaliSiswaKelasBayanganParts(siswa) {
   return { tingkat: asli.tingkat, rombel: "", kelas: "" };
 }
 
+function getWaliExcludedKelasRealSourceSet() {
+  try {
+    const sourceByLevel = JSON.parse(localStorage.getItem("kelasBayanganSourceByLevel") || "{}");
+    return new Set(
+      Object.values(sourceByLevel)
+        .map(value => getWaliKelasParts(value).kelas)
+        .filter(Boolean)
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+function filterWaliSelectableClasses(rows) {
+  const excluded = getWaliExcludedKelasRealSourceSet();
+  if (excluded.size === 0) return rows;
+  return rows.filter(item => {
+    const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
+    return !excluded.has(parts.kelas);
+  });
+}
+
 function getAccessibleWaliClasses() {
   const user = getCurrentWaliUser();
-  if ((user.role || "admin") === "admin") return sortWaliClasses(semuaDataWaliKelas);
+  if ((user.role || "admin") === "admin") return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
   if ((user.role || "") === "koordinator" || ((user.role || "") === "guru" && typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess())) {
     const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
-    return sortWaliClasses(semuaDataWaliKelas.filter(item => {
+    return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => {
       const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
       return levels.includes(parts.tingkat);
-    }));
+    })));
   }
-  return sortWaliClasses(semuaDataWaliKelas.filter(item => String(item.kode_guru || "") === String(user.kode_guru || "")));
+  return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => String(item.kode_guru || "") === String(user.kode_guru || ""))));
 }
 
 function sortWaliClasses(rows) {
@@ -144,13 +176,9 @@ function renderWaliKelasHeader(title, description, extraActions = "") {
 function renderWaliKehadiranPage() {
   return `
     <div class="card">
-      ${renderWaliKelasHeader("Rekap Kehadiran Siswa", "Rekap jumlah S, I, dan A berdasarkan anggota kelas.", `
-        <button type="button" class="btn-secondary" onclick="downloadWaliKehadiranTemplate()">Download Template</button>
-        <button type="button" class="btn-secondary" onclick="triggerWaliKehadiranImport()">Import Rekap</button>
-        <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
-        <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
-      `)}
-      <div id="waliKehadiranTable" class="table-container mapel-table-container"></div>
+      <div id="waliKelasPageShell">
+        <div class="empty-panel">Memuat data wali kelas...</div>
+      </div>
     </div>
   `;
 }
@@ -158,49 +186,68 @@ function renderWaliKehadiranPage() {
 function renderWaliKelengkapanPage() {
   return `
     <div class="card">
-      ${renderWaliKelasHeader("Cek Kelengkapan Nilai Siswa", "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.", "")}
-      <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
+      <div id="waliKelasPageShell">
+        <div class="empty-panel">Memuat data wali kelas...</div>
+      </div>
     </div>
   `;
 }
 
 function loadRealtimeWaliKelas(page) {
   clearWaliKelasListeners();
+  currentWaliKelasPage = page || "";
+  waliInitialReady = {
+    siswa: false,
+    kelas: false,
+    mapel: false,
+    mengajar: false,
+    nilai: false,
+    kehadiran: false,
+    rekap: false
+  };
+  renderWaliKelasLoadingState();
   const render = () => renderWaliKelasActivePage(page);
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : db.collection("siswa").orderBy("nama");
   const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : db.collection("kelas");
   unsubscribeWaliSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataWaliSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliInitialReady.siswa = true;
     render();
   });
   unsubscribeWaliKelas = kelasQuery.onSnapshot(snapshot => {
     semuaDataWaliKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliInitialReady.kelas = true;
     render();
   });
   unsubscribeWaliMapel = db.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataWaliMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliInitialReady.mapel = true;
     render();
   });
   unsubscribeWaliMengajar = db.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataWaliMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliInitialReady.mengajar = true;
     render();
   });
   unsubscribeWaliNilai = db.collection("nilai").onSnapshot(snapshot => {
     semuaDataWaliNilai = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    waliInitialReady.nilai = true;
     render();
   });
   unsubscribeWaliKehadiran = db.collection("kehadiran_siswa").onSnapshot(snapshot => {
     semuaDataWaliKehadiran = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    waliInitialReady.kehadiran = true;
     render();
   });
   unsubscribeWaliKehadiranRekap = db.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
     semuaDataWaliKehadiranRekap = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    waliInitialReady.rekap = true;
     render();
   });
 }
@@ -218,13 +265,63 @@ function clearWaliKelasListeners() {
   unsubscribeWaliKehadiranRekap = null;
 }
 
-function renderWaliKelasActivePage(page) {
-  refreshWaliKelasSelectOptions();
+function isWaliInitialDataReady(page = currentWaliKelasPage) {
   if (page === "kehadiran") {
+    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.kehadiran && waliInitialReady.rekap;
+  }
+  if (page === "kelengkapan") {
+    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.mapel && waliInitialReady.mengajar && waliInitialReady.nilai;
+  }
+  return waliInitialReady.siswa && waliInitialReady.kelas;
+}
+
+function renderWaliKelasLoadingState(message = "Memuat data wali kelas...") {
+  const shell = document.getElementById("waliKelasPageShell");
+  if (shell) {
+    shell.innerHTML = `<div class="empty-panel">${escapeWaliHtml(message)}</div>`;
+  }
+}
+
+function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
+  const shell = document.getElementById("waliKelasPageShell");
+  if (!shell) return false;
+  const targetId = page === "kehadiran" ? "waliKehadiranTable" : "waliKelengkapanTable";
+  if (document.getElementById(targetId)) return true;
+
+  if (page === "kehadiran") {
+    shell.innerHTML = `
+      ${renderWaliKelasHeader("Rekap Kehadiran Siswa", "Rekap jumlah S, I, dan A berdasarkan anggota kelas.", `
+        <button type="button" class="btn-secondary" onclick="downloadWaliKehadiranTemplate()">Download Template</button>
+        <button type="button" class="btn-secondary" onclick="triggerWaliKehadiranImport()">Import Rekap</button>
+        <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
+        <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
+      `)}
+      <div id="waliKehadiranTable" class="table-container mapel-table-container"></div>
+    `;
+    return true;
+  }
+
+  shell.innerHTML = `
+    ${renderWaliKelasHeader("Cek Kelengkapan Nilai Siswa", "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.", "")}
+    <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
+  `;
+  return true;
+}
+
+function renderWaliKelasActivePage(page) {
+  if (page) currentWaliKelasPage = page;
+  const activePage = currentWaliKelasPage;
+  if (!isWaliInitialDataReady(activePage)) {
+    renderWaliKelasLoadingState();
+    return;
+  }
+  ensureWaliKelasPageShell(activePage);
+  refreshWaliKelasSelectOptions();
+  if (activePage === "kehadiran") {
     renderWaliKehadiranTable();
     return;
   }
-  if (page === "kelengkapan") {
+  if (activePage === "kelengkapan") {
     renderWaliKelengkapanTable();
     return;
   }

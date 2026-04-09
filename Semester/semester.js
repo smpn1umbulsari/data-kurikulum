@@ -416,7 +416,7 @@ async function deleteSemester(id) {
   const label = target.label || makeSemesterLabel(target.semester, target.tahun);
   const confirm = await Swal.fire({
     title: `Hapus ${label}?`,
-    html: "Masukkan password admin untuk menghapus semester dari daftar. Data nilai/kehadiran tidak ikut dihapus.",
+    html: "Masukkan password admin untuk menghapus semester dari daftar. Data kelulusan yang dibuat untuk semester ini ikut dibersihkan.",
     input: "password",
     inputPlaceholder: "Password admin",
     icon: "warning",
@@ -434,11 +434,45 @@ async function deleteSemester(id) {
   }
 
   const nextList = getSemesterSettingsList().filter(item => item.id !== target.id);
+  const cleanupCount = await cleanupGraduatedStudentsForDeletedSemester(target);
   await db.collection("settings").doc("semester").set({
     list: nextList,
     updated_at: new Date()
   }, { merge: true });
-  Swal.fire("Dihapus", `${label} dihapus dari daftar semester.`, "success");
+  Swal.fire("Dihapus", `${label} dihapus dari daftar semester. ${cleanupCount} data kelulusan ikut dibersihkan.`, "success");
+}
+
+async function cleanupGraduatedStudentsForDeletedSemester(term) {
+  if (!term?.id) return 0;
+  const snapshots = [];
+  snapshots.push(await db.collection("siswa_lulus").where("term_id", "==", term.id).get());
+
+  if (normalizeSemesterText(term.semester) === "GANJIL") {
+    const previous = getSemesterSettingsList().find(item => item.id === term.previous_id);
+    const tahunLulus = normalizeTahunPelajaran(previous?.tahun || getPreviousTahunPelajaran(term.tahun));
+    if (tahunLulus) {
+      snapshots.push(await db.collection("siswa_lulus")
+        .where("tahun_pelajaran_lulus", "==", tahunLulus)
+        .get());
+    }
+  }
+
+  const docs = new Map();
+  snapshots.forEach(snapshot => {
+    snapshot.docs.forEach(doc => docs.set(doc.ref.path, doc));
+  });
+
+  const allDocs = [...docs.values()];
+  let count = 0;
+  for (let index = 0; index < allDocs.length; index += 450) {
+    const batch = db.batch();
+    allDocs.slice(index, index + 450).forEach(doc => {
+      count++;
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+  }
+  return count;
 }
 
 function promoteKelasValue(kelasValue) {

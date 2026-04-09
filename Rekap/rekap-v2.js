@@ -32,7 +32,8 @@ function getRekapSettings() {
     tempatTtd: localStorage.getItem("rekapTempatTtd") || "Umbulsari",
     semester: String(activeSemester?.semester || "").trim() || "GENAP",
     tahunPelajaran: String(activeSemester?.tahun || "").trim() || "2025/2026",
-    tanggalTtd: localStorage.getItem("rekapTanggalTtd") || ""
+    tanggalTtd: localStorage.getItem("rekapTanggalTtd") || "",
+    useKepalaTtd: localStorage.getItem("rekapUseKepalaTtd") === "true"
   };
 }
 
@@ -112,6 +113,13 @@ function renderRekapSettingsPanel(settings) {
           <label for="rekapTanggalTtd">Tanggal TTD</label>
           <input id="rekapTanggalTtd" type="date" value="${escapeRekapHtml(settings.tanggalTtd || "")}" oninput="saveRekapSettings()">
         </div>
+        <div class="form-group">
+          <label for="rekapUseKepalaTtd">Gunakan TTD KS</label>
+          <select id="rekapUseKepalaTtd" onchange="saveRekapSettings(); renderRekapActivePreview()">
+            <option value="false" ${settings.useKepalaTtd ? "" : "selected"}>Tidak</option>
+            <option value="true" ${settings.useKepalaTtd ? "selected" : ""}>Ya</option>
+          </select>
+        </div>
       </div>
       <div class="rekap-term-panel">
         <span class="rekap-term-eyebrow">Semester Aktif</span>
@@ -137,11 +145,16 @@ function formatRekapTanggalTtd(value = "") {
 function renderRekapSignatureBlock(settings = getRekapSettings()) {
   const kepalaSekolah = getRekapKepalaSekolahInfo();
   const tempatTtd = String(settings.tempatTtd || "Umbulsari").trim() || "Umbulsari";
+  const ttdImage = typeof getKepalaSekolahTtdImage === "function" ? getKepalaSekolahTtdImage() : "";
   return `
     <div class="rekap-signature-block">
       <div>${escapeRekapHtml(tempatTtd)}, ${escapeRekapHtml(formatRekapTanggalTtd(settings.tanggalTtd))}</div>
       <div>Kepala Satuan Pendidikan</div>
-      <div class="rekap-signature-space"></div>
+      <div class="rekap-signature-mark">
+        ${settings.useKepalaTtd && ttdImage
+          ? `<img class="rekap-signature-img" src="${escapeRekapHtml(ttdImage)}" alt="TTD Kepala Satuan Pendidikan">`
+          : ""}
+      </div>
       <div class="rekap-signature-name">${escapeRekapHtml(kepalaSekolah.nama)}</div>
       <div>NIP ${escapeRekapHtml(kepalaSekolah.nip)}</div>
     </div>
@@ -206,6 +219,16 @@ function saveRekapSettings() {
   localStorage.setItem("rekapNomorSurat", document.getElementById("rekapNomorSurat")?.value || "");
   localStorage.setItem("rekapTempatTtd", document.getElementById("rekapTempatTtd")?.value || "Umbulsari");
   localStorage.setItem("rekapTanggalTtd", document.getElementById("rekapTanggalTtd")?.value || "");
+  localStorage.setItem("rekapUseKepalaTtd", document.getElementById("rekapUseKepalaTtd")?.value === "true" ? "true" : "false");
+}
+
+function renderRekapActivePreview() {
+  if (document.getElementById("rekapTugasMengajarContainer")) {
+    renderRekapTugasMengajarTable();
+  }
+  if (document.getElementById("rekapTugasMengajarBayanganContainer")) {
+    renderRekapTugasMengajarBayanganTable();
+  }
 }
 
 function loadRealtimeRekapTugasMengajar() {
@@ -214,6 +237,9 @@ function loadRealtimeRekapTugasMengajar() {
   if (unsubscribeRekapMapel) unsubscribeRekapMapel();
   if (unsubscribeRekapTugasTambahan) unsubscribeRekapTugasTambahan();
   if (unsubscribeRekapGuruTugasTambahan) unsubscribeRekapGuruTugasTambahan();
+  if (typeof loadKepalaSekolahTtdSettings === "function") {
+    loadKepalaSekolahTtdSettings().then(renderRekapTugasMengajarTable);
+  }
 
   unsubscribeRekapGuru = listenGuru(data => {
     semuaDataRekapGuru = data;
@@ -246,6 +272,9 @@ function loadRealtimeRekapTugasMengajarBayangan() {
   if (unsubscribeRekapBayanganMengajar) unsubscribeRekapBayanganMengajar();
   if (unsubscribeRekapBayanganMengajarAsli) unsubscribeRekapBayanganMengajarAsli();
   if (unsubscribeRekapBayanganMapel) unsubscribeRekapBayanganMapel();
+  if (typeof loadKepalaSekolahTtdSettings === "function") {
+    loadKepalaSekolahTtdSettings().then(renderRekapTugasMengajarBayanganTable);
+  }
 
   unsubscribeRekapBayanganGuru = listenGuru(data => {
     semuaDataRekapGuru = data;
@@ -931,8 +960,10 @@ function exportRekapTugasMengajarPdf() {
           .rekap-name-cell strong, .rekap-name-cell small { display: block; }
           .rekap-name-cell small { margin-top: 3px; font-size: 11px; }
           .rekap-task-list { display: grid; gap: 3px; }
-          .rekap-signature-block { width: 280px; margin: 26px 0 0 auto; text-align: left; line-height: 1.6; font-size: 13px; }
-          .rekap-signature-space { height: 60px; }
+          .rekap-signature-block { width: 280px; margin: 26px 0 0 auto; text-align: left; line-height: 1.6; font-size: 13px; position: relative; }
+          .rekap-signature-mark { position: relative; height: 60px; }
+          .rekap-signature-img { position: absolute; left: 0; bottom: -15px; width: 180px; height: 87px; object-fit: contain; z-index: 0; pointer-events: none; }
+          .rekap-signature-name, .rekap-signature-block div:not(.rekap-signature-mark) { position: relative; z-index: 1; }
           .rekap-signature-name { font-weight: 700; }
           .muted-text { color: #111827; }
         </style>
@@ -981,8 +1012,10 @@ function exportRekapTugasMengajarBayanganPdf() {
           .rekap-mapel-cell { white-space: normal; word-break: break-word; min-width: 150px; }
           .rekap-name-cell strong, .rekap-name-cell small { display: block; }
           .rekap-name-cell small { margin-top: 3px; font-size: 11px; }
-          .rekap-signature-block { width: 280px; margin: 26px 0 0 auto; text-align: left; line-height: 1.6; font-size: 13px; }
-          .rekap-signature-space { height: 60px; }
+          .rekap-signature-block { width: 280px; margin: 26px 0 0 auto; text-align: left; line-height: 1.6; font-size: 13px; position: relative; }
+          .rekap-signature-mark { position: relative; height: 60px; }
+          .rekap-signature-img { position: absolute; left: 0; bottom: -15px; width: 180px; height: 87px; object-fit: contain; z-index: 0; pointer-events: none; }
+          .rekap-signature-name, .rekap-signature-block div:not(.rekap-signature-mark) { position: relative; z-index: 1; }
           .rekap-signature-name { font-weight: 700; }
         </style>
       </head>

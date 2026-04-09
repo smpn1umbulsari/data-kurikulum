@@ -353,6 +353,9 @@ function loadRealtimePembagianRuang() {
 
 function loadRealtimeAdministrasiAsesmen() {
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
+  if (typeof loadKepalaSekolahTtdSettings === "function") {
+    loadKepalaSekolahTtdSettings().then(renderAdministrasiAsesmenState);
+  }
   unsubscribeAsesmenSiswa = listenSiswa(data => {
     semuaDataAsesmenSiswa = data;
     renderAdministrasiAsesmenState();
@@ -427,6 +430,8 @@ function renderAdministrasiAsesmenPage() {
           <input value="${escapeAsesmenHtml(getAdministrasiAsesmenSetting("TahunPelajaran", ""))}" placeholder="2025/2026" oninput="setAdministrasiAsesmenSetting('TahunPelajaran', this.value)">
         </label>
       </div>
+
+      ${typeof renderKepalaSekolahTtdPanelHtml === "function" ? renderKepalaSekolahTtdPanelHtml() : ""}
 
       <div class="table-container mapel-table-container">
         <table class="mapel-table">

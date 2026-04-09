@@ -149,7 +149,7 @@ function getRaporMapelForClass(kelasValue, siswa = null) {
     .filter(item => isRaporMapelVisibleForSiswa(item, siswa))
     .filter(item => {
       const kode = String(item.kode_mapel || item.id || "").trim().toUpperCase();
-      const seenKey = getRaporMapelIndukKode(item) === "PABP" ? `PABP:${normalizeRaporAgama(item.agama) || kode}` : kode;
+      const seenKey = kode;
       if (!kode || seen.has(seenKey)) return false;
       seen.add(seenKey);
       return true;
@@ -212,10 +212,11 @@ function getRaporSettings() {
     semester: activeTerm?.semester || raporAdminSettings.semester || "GENAP",
     tahun: activeTerm?.tahun || raporAdminSettings.tahun || "2025/2026",
     paper: localStorage.getItem("raporPaperSize") || "A4",
+    useKepalaTtd: localStorage.getItem("raporUseKepalaTtd") === "true",
     tanggal: raporAdminSettings.tanggal || new Date().toISOString().slice(0, 10),
     kepala_nama: raporAdminSettings.kepala_nama || "Dra. MAMIK SASMIATI, M.Pd",
     kepala_nip: raporAdminSettings.kepala_nip || "19660601 199003 2 010",
-    kepala_ttd: raporAdminSettings.kepala_ttd || ""
+    kepala_ttd: (typeof getKepalaSekolahTtdImage === "function" ? getKepalaSekolahTtdImage() : "") || raporAdminSettings.kepala_ttd || ""
   };
 }
 
@@ -231,15 +232,20 @@ function setRaporPaperSize() {
   Swal.fire("Diset", `Ukuran kertas rapor: ${value === "F4" ? "F4 / FLSA" : "A4"}`, "success");
 }
 
+function setRaporUseKepalaTtd(value) {
+  localStorage.setItem("raporUseKepalaTtd", value === "true" ? "true" : "false");
+  renderRaporPreview();
+}
+
 function renderAdminRaporPage() {
   const settings = raporAdminSettings;
   return `
     <div class="card">
       <div class="kelas-bayangan-head nilai-page-head">
         <div>
-          <span class="dashboard-eyebrow">Admin</span>
-          <h2>Administrasi Rapor</h2>
-          <p>Atur tanggal cetak, kepala sekolah, NIP, dan tanda tangan yang dipakai wali kelas saat cetak rapor.</p>
+          <span class="dashboard-eyebrow">Data Sekolah</span>
+          <h2>Data Kepala Sekolah</h2>
+          <p>Atur tanggal cetak rapor, nama kepala sekolah, NIP, dan tanda tangan yang dipakai pada dokumen sekolah.</p>
         </div>
       </div>
 
@@ -401,6 +407,13 @@ function renderCetakRaporPage() {
               <option value="F4" ${settings.paper === "F4" ? "selected" : ""}>F4 / FLSA</option>
             </select>
           </label>
+          <label class="form-group">
+            <span>Gunakan TTD KS</span>
+            <select id="raporUseKepalaTtd" onchange="setRaporUseKepalaTtd(this.value)">
+              <option value="false" ${settings.useKepalaTtd ? "" : "selected"}>Tidak</option>
+              <option value="true" ${settings.useKepalaTtd ? "selected" : ""}>Ya</option>
+            </select>
+          </label>
         </div>
         <div class="nilai-control-actions rapor-print-actions">
           <button type="button" class="btn-secondary" onclick="setRaporPaperSize()">Set</button>
@@ -416,6 +429,9 @@ function renderCetakRaporPage() {
 
 function loadRealtimeCetakRapor() {
   clearCetakRaporListeners();
+  if (typeof loadKepalaSekolahTtdSettings === "function") {
+    loadKepalaSekolahTtdSettings().then(renderCetakRaporState);
+  }
   const render = () => renderCetakRaporState();
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : db.collection("siswa").orderBy("nama");
   const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : db.collection("kelas");
@@ -525,6 +541,7 @@ function renderRaporPreview() {
     <span><strong>Mapel</strong>${mapel.length}</span>
     <span><strong>Semester</strong>${escapeRaporHtml(getRaporSettings().semester || "-")}</span>
     <span><strong>Tahun</strong>${escapeRaporHtml(getRaporSettings().tahun || "-")}</span>
+    <span><strong>TTD KS</strong>${getRaporSettings().useKepalaTtd && getRaporSettings().kepala_ttd ? "Dipakai" : "Tidak dipakai"}</span>
   `;
 }
 
@@ -670,7 +687,9 @@ function renderRaporPage(siswa) {
         <div>
           <span class="rapor-date-line">Jember, ${escapeRaporHtml(formatRaporDate(settings.tanggal))}</span>
           <span>Kepala Sekolah,</span>
-          ${settings.kepala_ttd ? `<img class="rapor-signature-img" src="${escapeRaporHtml(settings.kepala_ttd)}" alt="TTD Kepala Sekolah">` : `<span class="rapor-signature-space"></span>`}
+          <span class="rapor-signature-mark">
+            ${settings.useKepalaTtd && settings.kepala_ttd ? `<img class="rapor-signature-img" src="${escapeRaporHtml(settings.kepala_ttd)}" alt="TTD Kepala Sekolah">` : ""}
+          </span>
           <strong>${escapeRaporHtml(settings.kepala_nama)}</strong>
           <small>NIP. ${escapeRaporHtml(settings.kepala_nip)}</small>
         </div>
@@ -729,7 +748,9 @@ function getRaporPrintHtml(students) {
           .rapor-signatures div { display: grid; align-content: start; min-height: 70px; gap: 1px; }
           .rapor-signatures strong { margin-top: 0; text-decoration: underline; font-size: 8.8pt; min-height: 12px; }
           .rapor-signatures small { font-size: 8pt; min-height: 10px; }
-          .rapor-signature-img { width: 84px; height: 38px; object-fit: contain; justify-self: center; }
+          .rapor-signature-mark { display: block; position: relative; height: 38px; }
+          .rapor-signature-img { position: absolute; left: 50%; bottom: -11px; transform: translateX(-50%); width: 126px; height: 57px; object-fit: contain; z-index: 0; pointer-events: none; }
+          .rapor-signatures strong, .rapor-signatures small, .rapor-signatures span:not(.rapor-signature-mark) { position: relative; z-index: 1; }
           .rapor-signature-space { display: block; height: 38px; }
           @page { size: ${pageSize} portrait; margin: 0; }
           @media print {
