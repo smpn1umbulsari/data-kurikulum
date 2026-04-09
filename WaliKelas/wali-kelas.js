@@ -97,11 +97,29 @@ function renderWaliKelasSelect() {
   const classes = getAccessibleWaliClasses();
   if (classes.length === 0) return `<option value="">Tidak ada kelas wali</option>`;
   const currentValue = document.getElementById("waliKelasSelect")?.value || "";
-  const preferred = currentValue || getPreferredWaliClass();
+  const classValues = classes.map(item => getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas);
+  const preferred = classValues.includes(currentValue) ? currentValue : getPreferredWaliClass();
   return classes.map(item => {
     const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
     return `<option value="${escapeWaliHtml(parts.kelas)}" ${parts.kelas === preferred ? "selected" : ""}>${escapeWaliHtml(parts.kelas)}</option>`;
   }).join("");
+}
+
+function refreshWaliKelasSelectOptions() {
+  const select = document.getElementById("waliKelasSelect");
+  if (!select) return;
+  const beforeValue = select.value || "";
+  const nextOptions = renderWaliKelasSelect();
+  if (select.innerHTML !== nextOptions) {
+    select.innerHTML = nextOptions;
+  }
+
+  const values = Array.from(select.options).map(option => option.value);
+  if (beforeValue && values.includes(beforeValue)) {
+    select.value = beforeValue;
+  } else if (!select.value && values.length > 0) {
+    select.value = values[0];
+  }
 }
 
 function renderWaliKelasHeader(title, description, extraActions = "") {
@@ -201,6 +219,7 @@ function clearWaliKelasListeners() {
 }
 
 function renderWaliKelasActivePage(page) {
+  refreshWaliKelasSelectOptions();
   if (page === "kehadiran") {
     renderWaliKehadiranTable();
     return;
