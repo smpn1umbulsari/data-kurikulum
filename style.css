@@ -3101,8 +3101,21 @@ body.dark .ks-ttd-preview {
 }
 
 .wali-kehadiran-table {
-  min-width: 560px;
+  width: 100%;
+  min-width: 0;
   table-layout: fixed;
+}
+
+.wali-kehadiran-table .wali-col-no {
+  width: 52px;
+}
+
+.wali-kehadiran-table .wali-col-name {
+  width: auto;
+}
+
+.wali-kehadiran-table .wali-col-input {
+  width: 76px;
 }
 
 .wali-kehadiran-table th,
@@ -3110,12 +3123,13 @@ body.dark .ks-ttd-preview {
 .wali-completeness-table th,
 .wali-completeness-table td {
   padding: 8px 10px;
+  min-width: 0 !important;
   vertical-align: middle;
 }
 
 .wali-kehadiran-table th:first-child,
 .wali-kehadiran-table td:first-child {
-  width: 60px;
+  width: 52px;
   text-align: center;
 }
 
@@ -3131,7 +3145,7 @@ body.dark .ks-ttd-preview {
 .wali-kehadiran-table td:nth-child(4),
 .wali-kehadiran-table th:nth-child(5),
 .wali-kehadiran-table td:nth-child(5) {
-  width: 86px;
+  width: 76px;
   text-align: center;
   font-weight: 800;
 }
@@ -3143,8 +3157,11 @@ body.dark .ks-ttd-preview {
 }
 
 .wali-rekap-input {
-  width: 58px;
+  display: block;
+  width: 100%;
+  max-width: 56px;
   min-height: 28px;
+  margin: 0 auto;
   padding: 4px 6px;
   border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 8px;
@@ -3205,26 +3222,42 @@ body.dark .ks-ttd-preview {
 }
 
 .wali-completeness-table {
-  min-width: 560px;
+  width: 100%;
+  min-width: 0;
   table-layout: fixed;
+}
+
+.wali-completeness-table .wali-col-mapel {
+  width: 32%;
+}
+
+.wali-completeness-table .wali-col-teacher {
+  width: 30%;
+}
+
+.wali-completeness-table .wali-col-score {
+  width: 9.5%;
 }
 
 .wali-completeness-table th:first-child,
 .wali-completeness-table td:first-child {
-  width: auto;
   text-align: left;
 }
 
-.wali-completeness-table th:not(:first-child),
-.wali-completeness-table td:not(:first-child) {
-  width: 96px;
+.wali-completeness-table th:nth-child(2),
+.wali-completeness-table td:nth-child(2) {
+  text-align: left;
+  font-weight: 700;
+}
+
+.wali-completeness-table th:nth-child(n+3),
+.wali-completeness-table td:nth-child(n+3) {
   text-align: center;
   font-weight: 800;
 }
 
 .wali-completeness-table th:last-child,
 .wali-completeness-table td:last-child {
-  width: 96px;
   text-align: center;
 }
 
@@ -4540,6 +4573,625 @@ body.dark .backup-file-picker {
 body.dark .backup-chip-list span {
   background: rgba(49, 46, 129, 0.44);
   color: #c7d2fe;
+}
+
+/* =====================================================
+   BEACH WAVE THEME OVERRIDE
+===================================================== */
+:root {
+  --beach-bg: #eef8fb;
+  --beach-surface: #ffffff;
+  --beach-surface-soft: #f6fcfd;
+  --beach-border: #c9e3ea;
+  --beach-text: #12323a;
+  --beach-muted: #55727a;
+  --beach-primary: #0e7490;
+  --beach-primary-strong: #155e75;
+  --beach-primary-soft: rgba(14, 116, 144, 0.12);
+  --beach-accent: #0f766e;
+  --beach-warn: #b45309;
+  --beach-danger: #b42318;
+  --beach-shadow: rgba(15, 92, 110, 0.10);
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+body {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.18), transparent 28%),
+    linear-gradient(180deg, #f7fdff 0%, var(--beach-bg) 48%, #e7f4f7 100%);
+  color: var(--beach-text);
+}
+
+.card,
+.table-container,
+.dashboard-stat,
+.dashboard-card-lite,
+.menu-group,
+.sidebar-footer {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--beach-border);
+  color: var(--beach-text);
+  box-shadow: 0 14px 32px var(--beach-shadow);
+}
+
+.student-form-shell,
+.kelas-form-panel,
+.admin-koordinator-card,
+.rekap-card,
+.rekap-term-panel,
+.backup-panel,
+.asesmen-level-panel,
+.asesmen-room-card,
+.mengajar-summary-panel {
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.18), transparent 30%),
+    linear-gradient(145deg, #ffffff 0%, #f3fbfd 58%, #e8f6f8 100%);
+  border-color: var(--beach-border);
+  color: var(--beach-text);
+}
+
+.dashboard-hero,
+.sidebar,
+.topbar {
+  background:
+    radial-gradient(circle at top right, rgba(125, 211, 252, 0.24), transparent 28%),
+    linear-gradient(135deg, #f9feff 0%, #eaf8fb 58%, #dff1f4 100%);
+  border-color: var(--beach-border);
+  color: var(--beach-text);
+}
+
+.dashboard-eyebrow,
+.dashboard-card-label,
+.student-form-eyebrow,
+.teacher-form-eyebrow,
+#sidebarSemesterInfo,
+.kelas-bayangan-summary span,
+.asesmen-level-summary span,
+.admin-koordinator-badge,
+.rekap-term-badge {
+  background: var(--beach-primary-soft);
+  color: var(--beach-primary-strong);
+}
+
+.sidebar-brand-title,
+.menu,
+.topbar-title h1,
+h1,
+h2,
+h3,
+h4,
+th,
+td,
+label,
+.form-group label {
+  color: var(--beach-text);
+}
+
+.sidebar-brand small,
+.sidebar-section-label,
+.sidebar-footer span,
+.submenu button,
+.dashboard-hero p,
+.dashboard-card-lite p,
+.dashboard-stat span,
+.muted-text,
+.mapel-row-hint,
+.student-form-hero p,
+.student-form-helper {
+  color: var(--beach-muted);
+}
+
+input,
+select,
+textarea,
+.mapel-inline-input,
+.kelas-inline-select,
+.admin-user-input,
+.admin-user-select,
+.nilai-input-cell,
+.wali-date-input,
+.wali-rekap-input {
+  background: #fbfeff;
+  border-color: var(--beach-border);
+  color: var(--beach-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #76949c;
+  opacity: 1;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.mapel-inline-input:focus,
+.kelas-inline-select:focus {
+  border-color: var(--beach-primary);
+  box-shadow: 0 0 0 4px rgba(14, 116, 144, 0.14);
+}
+
+.btn-primary,
+.topbar-btn-strong {
+  background: var(--beach-primary);
+  border-color: var(--beach-primary);
+  color: #ffffff;
+}
+
+.btn-primary:hover,
+.topbar-btn-strong:hover {
+  background: var(--beach-primary-strong);
+  border-color: var(--beach-primary-strong);
+}
+
+.btn-secondary,
+.topbar-btn,
+.icon-btn {
+  background: #f3fbfd;
+  border-color: var(--beach-border);
+  color: var(--beach-primary-strong);
+}
+
+.btn-danger,
+.btn-danger-lite {
+  color: #ffffff;
+  border-color: var(--beach-danger);
+}
+
+tr:hover,
+tbody tr:nth-child(even) {
+  background: rgba(14, 116, 144, 0.06);
+}
+
+html.dark body,
+body.dark {
+  background:
+    radial-gradient(circle at 8% 0%, rgba(34, 211, 238, 0.13), transparent 30%),
+    linear-gradient(180deg, #071c24 0%, #09252c 48%, #06181f 100%);
+  color: #e7f8fb;
+}
+
+body.dark .app-shell {
+  background:
+    radial-gradient(circle at top left, rgba(45, 212, 191, 0.12), transparent 20%),
+    linear-gradient(180deg, #071c24 0%, #09232b 100%);
+}
+
+body.dark .card,
+body.dark .table-container,
+body.dark .dashboard-stat,
+body.dark .dashboard-card-lite,
+body.dark .menu-group,
+body.dark .sidebar-footer,
+body.dark .student-form-shell,
+body.dark .teacher-form-shell,
+body.dark .kelas-form-panel,
+body.dark .admin-koordinator-card,
+body.dark .rekap-card,
+body.dark .rekap-print-sheet,
+body.dark .rekap-term-panel,
+body.dark .backup-panel,
+body.dark .asesmen-level-panel,
+body.dark .asesmen-room-card,
+body.dark .asesmen-combined-room-card,
+body.dark .mengajar-summary-panel {
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.10), transparent 30%),
+    linear-gradient(145deg, rgba(8, 47, 57, 0.98), rgba(7, 31, 39, 0.98));
+  border-color: rgba(125, 211, 252, 0.22);
+  color: #e7f8fb;
+  box-shadow: 0 16px 38px rgba(2, 19, 26, 0.34);
+}
+
+body.dark .dashboard-hero,
+body.dark .sidebar,
+body.dark .topbar {
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.14), transparent 30%),
+    linear-gradient(135deg, #082a35 0%, #071f28 58%, #061820 100%);
+  border-color: rgba(125, 211, 252, 0.22);
+  color: #e7f8fb;
+}
+
+body.dark h1,
+body.dark h2,
+body.dark h3,
+body.dark h4,
+body.dark th,
+body.dark td,
+body.dark label,
+body.dark .form-group label,
+body.dark .menu,
+body.dark .sidebar-brand-title,
+body.dark .sidebar-brand strong,
+body.dark .sidebar-footer strong,
+body.dark .topbar-title h1 {
+  color: #e7f8fb;
+}
+
+body.dark .sidebar-brand small,
+body.dark .sidebar-section-label,
+body.dark .sidebar-footer span,
+body.dark .submenu button,
+body.dark .topbar-title span,
+body.dark .dashboard-hero p,
+body.dark .dashboard-card-lite p,
+body.dark .dashboard-stat span,
+body.dark .student-form-hero p,
+body.dark .student-form-helper,
+body.dark .student-side-card ul,
+body.dark .student-side-card p,
+body.dark .kelas-bayangan-head p,
+body.dark .muted-text,
+body.dark .mapel-row-hint,
+body.dark .backup-panel p,
+body.dark .backup-status {
+  color: #a9cfd7;
+}
+
+body.dark .dashboard-eyebrow,
+body.dark .dashboard-card-label,
+body.dark .student-form-eyebrow,
+body.dark .teacher-form-eyebrow,
+body.dark #sidebarSemesterInfo,
+body.dark .sidebar-role-line,
+body.dark .kelas-bayangan-summary span,
+body.dark .asesmen-level-summary span,
+body.dark .admin-koordinator-badge,
+body.dark .rekap-term-badge {
+  background: rgba(45, 212, 191, 0.14);
+  color: #99f6e4;
+}
+
+body.dark input,
+body.dark select,
+body.dark textarea,
+body.dark .mapel-inline-input,
+body.dark .kelas-inline-select,
+body.dark .admin-user-input,
+body.dark .admin-user-select,
+body.dark .nilai-input-cell,
+body.dark .wali-date-input,
+body.dark .wali-rekap-input {
+  background: #06202a;
+  border-color: rgba(125, 211, 252, 0.28);
+  color: #f4fdff;
+  caret-color: #67e8f9;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder {
+  color: #8ab8c2;
+  opacity: 1;
+}
+
+body.dark select option {
+  background: #06202a;
+  color: #f4fdff;
+}
+
+body.dark input:focus,
+body.dark select:focus,
+body.dark textarea:focus,
+body.dark .mapel-inline-input:focus,
+body.dark .kelas-inline-select:focus {
+  border-color: #67e8f9;
+  background: #071f28;
+  color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.14);
+}
+
+body.dark input[readonly],
+body.dark select:disabled,
+body.dark textarea[readonly] {
+  background: #0a2a35;
+  color: #b9dbe2;
+  -webkit-text-fill-color: #b9dbe2;
+}
+
+body.dark input:-webkit-autofill,
+body.dark input:-webkit-autofill:hover,
+body.dark input:-webkit-autofill:focus {
+  box-shadow: 0 0 0 1000px #06202a inset;
+  -webkit-text-fill-color: #f4fdff;
+  caret-color: #67e8f9;
+}
+
+body.dark .btn-primary,
+body.dark .topbar-btn-strong {
+  background: #0891b2;
+  border-color: #0891b2;
+  color: #ffffff;
+}
+
+body.dark .btn-secondary,
+body.dark .topbar-btn,
+body.dark .icon-btn {
+  background: rgba(8, 47, 57, 0.92);
+  border-color: rgba(125, 211, 252, 0.24);
+  color: #bff6ff;
+}
+
+body.dark .menu:hover,
+body.dark .menu.active,
+body.dark .submenu button:hover,
+body.dark tbody tr:hover {
+  background: rgba(45, 212, 191, 0.10);
+}
+
+body.dark tbody tr:nth-child(even) {
+  background: rgba(6, 32, 42, 0.68);
+}
+
+body.dark th {
+  background: #061820;
+}
+
+/* Dark mode safety net: keep every surface soft-dark, not bright white. */
+body.dark .card,
+body.dark .table-container,
+body.dark .preview-modal-content,
+body.dark .student-form-shell,
+body.dark .student-side-card,
+body.dark .teacher-form-shell,
+body.dark .teacher-side-card,
+body.dark .kelas-form-panel,
+body.dark .anggota-panel,
+body.dark .admin-koordinator-card,
+body.dark .admin-role-summary-card,
+body.dark .dashboard-hero,
+body.dark .dashboard-card-lite,
+body.dark .dashboard-stat,
+body.dark .semester-admin-panel,
+body.dark .acak-wali-panel,
+body.dark .acak-wali-excluded,
+body.dark .acak-wali-card,
+body.dark .ks-ttd-panel,
+body.dark .wali-summary-card,
+body.dark .empty-panel,
+body.dark .nilai-control-panel,
+body.dark .rapor-control-panel,
+body.dark .rekap-card,
+body.dark .rekap-print-sheet,
+body.dark .rekap-term-panel,
+body.dark .backup-panel,
+body.dark .backup-file-picker,
+body.dark .kelas-bayangan-head,
+body.dark .kelas-bayangan-active-info,
+body.dark .kelas-bayangan-member-row,
+body.dark .asesmen-level-panel,
+body.dark .asesmen-room-card,
+body.dark .asesmen-combined-room-card,
+body.dark .asesmen-room-column,
+body.dark .asesmen-room-total,
+body.dark .asesmen-room-input,
+body.dark .asesmen-range-group,
+body.dark .mengajar-summary-panel,
+body.dark .matrix-toolbar-note,
+body.dark .swal2-popup {
+  background:
+    radial-gradient(circle at top right, rgba(45, 212, 191, 0.08), transparent 32%),
+    linear-gradient(145deg, #0b3540 0%, #082832 56%, #071f28 100%) !important;
+  border-color: rgba(125, 211, 252, 0.24) !important;
+  color: #e8fbff !important;
+  box-shadow: 0 16px 34px rgba(2, 18, 24, 0.28);
+}
+
+body.dark table,
+body.dark thead,
+body.dark tbody,
+body.dark tr,
+body.dark td,
+body.dark .mapel-input-row td,
+body.dark .mapel-edit-row td,
+body.dark .kelas-input-row td,
+body.dark .table-edit-row td,
+body.dark .guru-inline-edit-row td,
+body.dark .matrix-table th,
+body.dark .matrix-table td,
+body.dark .matrix-table th:first-child,
+body.dark .matrix-table td:first-child,
+body.dark .rekap-table th,
+body.dark .rekap-table td,
+body.dark .nilai-table th,
+body.dark .nilai-table td,
+body.dark .wali-kehadiran-table th,
+body.dark .wali-kehadiran-table td,
+body.dark .wali-completeness-table th,
+body.dark .wali-completeness-table td,
+body.dark .semester-admin-table th,
+body.dark .semester-admin-table td,
+body.dark .mapel-table th,
+body.dark .mapel-table td,
+body.dark .admin-user-table th,
+body.dark .admin-user-table td,
+body.dark .kelas-bayangan-member-table th,
+body.dark .kelas-bayangan-member-table td {
+  background-color: #082832 !important;
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  color: #e8fbff !important;
+}
+
+body.dark th,
+body.dark .matrix-table th,
+body.dark .rekap-table th,
+body.dark .nilai-table th,
+body.dark .wali-kehadiran-table th,
+body.dark .wali-completeness-table th,
+body.dark .semester-admin-table th,
+body.dark .mapel-table th,
+body.dark .admin-user-table th {
+  background-color: #06202a !important;
+  color: #bff6ff !important;
+}
+
+body.dark tbody tr:nth-child(even),
+body.dark tbody tr:hover,
+body.dark .table-edit-row,
+body.dark .mapel-edit-row,
+body.dark .kelas-bayangan-row-active td,
+body.dark .mengajar-grid-search-match {
+  background: rgba(45, 212, 191, 0.10) !important;
+}
+
+body.dark input,
+body.dark select,
+body.dark textarea,
+body.dark .toolbar-left input,
+body.dark .toolbar-right input,
+body.dark .toolbar-right select,
+body.dark .toolbar select,
+body.dark .page-size-control select,
+body.dark .admin-koordinator-select-wrap select,
+body.dark .admin-hierarchy-form-group input,
+body.dark .admin-hierarchy-form-group select,
+body.dark .mapel-inline-input,
+body.dark .kelas-inline-select,
+body.dark .kelas-inline-readonly,
+body.dark .admin-user-input,
+body.dark .admin-user-select,
+body.dark .nilai-input-cell,
+body.dark .matrix-search-input,
+body.dark .mengajar-cell-dropdown,
+body.dark .asesmen-room-total input,
+body.dark .asesmen-room-input input,
+body.dark .asesmen-range-group input,
+body.dark .wali-date-input,
+body.dark .wali-rekap-input,
+body.dark .guru-inline-edit-row input,
+body.dark .guru-inline-edit-row select,
+body.dark .table-edit-row input,
+body.dark .table-edit-row select,
+body.dark .mapel-edit-row input,
+body.dark .mapel-edit-row select,
+body.dark .swal2-input,
+body.dark .swal2-select,
+body.dark .swal2-textarea {
+  background: #06202a !important;
+  border-color: rgba(125, 211, 252, 0.34) !important;
+  color: #f4fdff !important;
+  -webkit-text-fill-color: #f4fdff;
+  caret-color: #67e8f9;
+}
+
+body.dark input::placeholder,
+body.dark textarea::placeholder,
+body.dark .swal2-input::placeholder,
+body.dark .swal2-textarea::placeholder {
+  color: #95c5cf !important;
+  opacity: 1;
+}
+
+body.dark select option,
+body.dark .swal2-select option {
+  background: #06202a !important;
+  color: #f4fdff !important;
+}
+
+body.dark input:focus,
+body.dark select:focus,
+body.dark textarea:focus,
+body.dark .mapel-inline-input:focus,
+body.dark .kelas-inline-select:focus,
+body.dark .mengajar-cell-dropdown:focus,
+body.dark .swal2-input:focus,
+body.dark .swal2-select:focus,
+body.dark .swal2-textarea:focus {
+  background: #082832 !important;
+  border-color: #67e8f9 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 4px rgba(103, 232, 249, 0.14) !important;
+}
+
+body.dark input[readonly],
+body.dark select:disabled,
+body.dark textarea[readonly],
+body.dark .kelas-inline-readonly,
+body.dark .mengajar-cell-dropdown-disabled {
+  background: #0a303a !important;
+  color: #b8dbe2 !important;
+  -webkit-text-fill-color: #b8dbe2;
+  border-color: rgba(125, 211, 252, 0.22) !important;
+}
+
+body.dark .student-side-card-accent,
+body.dark .teacher-side-card-accent,
+body.dark .nilai-input-uh,
+body.dark .nilai-input-pts,
+body.dark .tugas-matrix-head.is-ttu,
+body.dark .tugas-matrix-select.is-filled.is-ttu,
+body.dark .tugas-matrix-head.is-tte,
+body.dark .tugas-matrix-select.is-filled.is-tte,
+body.dark .tugas-matrix-head.is-tts,
+body.dark .tugas-matrix-select.is-filled.is-tts,
+body.dark .mengajar-grid-warning,
+body.dark .mengajar-grid-danger,
+body.dark .mengajar-grid-green,
+body.dark .asesmen-warning,
+body.dark .backup-panel-danger,
+body.dark .kelas-bayangan-chip.warn,
+body.dark .kelas-bayangan-chip.ok {
+  background: rgba(14, 116, 144, 0.18) !important;
+  border-color: rgba(125, 211, 252, 0.28) !important;
+  color: #dffbff !important;
+}
+
+body.dark .btn-secondary,
+body.dark .topbar-btn,
+body.dark .icon-btn,
+body.dark .btn-table-compact {
+  background: #0a303a !important;
+  border-color: rgba(125, 211, 252, 0.26) !important;
+  color: #c8f7ff !important;
+}
+
+body.dark .btn-primary,
+body.dark .topbar-btn-strong {
+  background: #0e7490 !important;
+  border-color: #22d3ee !important;
+  color: #ffffff !important;
+}
+
+body.dark .btn-danger,
+body.dark .btn-danger-lite {
+  background: rgba(190, 18, 60, 0.28) !important;
+  border-color: rgba(251, 113, 133, 0.42) !important;
+  color: #ffe4e6 !important;
+}
+
+body.dark .dashboard-eyebrow,
+body.dark .dashboard-card-label,
+body.dark .student-form-eyebrow,
+body.dark .teacher-form-eyebrow,
+body.dark #sidebarSemesterInfo,
+body.dark .sidebar-role-line,
+body.dark .status-pill,
+body.dark .kelas-bayangan-summary span,
+body.dark .asesmen-level-summary span,
+body.dark .admin-koordinator-badge,
+body.dark .rekap-term-badge,
+body.dark .dashboard-mini-list span,
+body.dark .backup-chip-list span {
+  background: rgba(45, 212, 191, 0.14) !important;
+  border-color: rgba(125, 211, 252, 0.22) !important;
+  color: #a7f3d0 !important;
+}
+
+body.dark p,
+body.dark small,
+body.dark li,
+body.dark .mapel-row-hint,
+body.dark .matrix-search-info,
+body.dark .asesmen-room-card-head span,
+body.dark .asesmen-room-column-head span,
+body.dark .anggota-panel-head span,
+body.dark .kelas-bayangan-member-row small,
+body.dark .rekap-name-cell small,
+body.dark .swal2-html-container {
+  color: #afd5dc;
 }
 
 @media (max-width: 900px) {

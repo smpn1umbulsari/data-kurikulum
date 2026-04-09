@@ -2,6 +2,7 @@ let semuaDataWaliSiswa = [];
 let semuaDataWaliKelas = [];
 let semuaDataWaliMapel = [];
 let semuaDataWaliMengajar = [];
+let semuaDataWaliGuru = [];
 let semuaDataWaliNilai = [];
 let semuaDataWaliKehadiran = [];
 let semuaDataWaliKehadiranRekap = [];
@@ -9,6 +10,7 @@ let unsubscribeWaliSiswa = null;
 let unsubscribeWaliKelas = null;
 let unsubscribeWaliMapel = null;
 let unsubscribeWaliMengajar = null;
+let unsubscribeWaliGuru = null;
 let unsubscribeWaliNilai = null;
 let unsubscribeWaliKehadiran = null;
 let unsubscribeWaliKehadiranRekap = null;
@@ -18,6 +20,7 @@ let waliInitialReady = {
   kelas: false,
   mapel: false,
   mengajar: false,
+  guru: false,
   nilai: false,
   kehadiran: false,
   rekap: false
@@ -201,6 +204,7 @@ function loadRealtimeWaliKelas(page) {
     kelas: false,
     mapel: false,
     mengajar: false,
+    guru: false,
     nilai: false,
     kehadiran: false,
     rekap: false
@@ -229,6 +233,11 @@ function loadRealtimeWaliKelas(page) {
     waliInitialReady.mengajar = true;
     render();
   });
+  unsubscribeWaliGuru = db.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+    semuaDataWaliGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliInitialReady.guru = true;
+    render();
+  });
   unsubscribeWaliNilai = db.collection("nilai").onSnapshot(snapshot => {
     semuaDataWaliNilai = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -253,13 +262,14 @@ function loadRealtimeWaliKelas(page) {
 }
 
 function clearWaliKelasListeners() {
-  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliNilai, unsubscribeWaliKehadiran, unsubscribeWaliKehadiranRekap].forEach(unsub => {
+  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliGuru, unsubscribeWaliNilai, unsubscribeWaliKehadiran, unsubscribeWaliKehadiranRekap].forEach(unsub => {
     if (unsub) unsub();
   });
   unsubscribeWaliSiswa = null;
   unsubscribeWaliKelas = null;
   unsubscribeWaliMapel = null;
   unsubscribeWaliMengajar = null;
+  unsubscribeWaliGuru = null;
   unsubscribeWaliNilai = null;
   unsubscribeWaliKehadiran = null;
   unsubscribeWaliKehadiranRekap = null;
@@ -270,7 +280,7 @@ function isWaliInitialDataReady(page = currentWaliKelasPage) {
     return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.kehadiran && waliInitialReady.rekap;
   }
   if (page === "kelengkapan") {
-    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.mapel && waliInitialReady.mengajar && waliInitialReady.nilai;
+    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.mapel && waliInitialReady.mengajar && waliInitialReady.guru && waliInitialReady.nilai;
   }
   return waliInitialReady.siswa && waliInitialReady.kelas;
 }
@@ -406,6 +416,13 @@ function renderWaliKehadiranTable() {
   }
   container.innerHTML = `
     <table class="mapel-table wali-kehadiran-table">
+      <colgroup>
+        <col class="wali-col-no">
+        <col class="wali-col-name">
+        <col class="wali-col-input">
+        <col class="wali-col-input">
+        <col class="wali-col-input">
+      </colgroup>
       <thead>
         <tr>
           <th>No</th>
@@ -605,6 +622,16 @@ function getWaliMapelName(mapelKode) {
   return mapel?.nama_mapel || mapelKode || "-";
 }
 
+function getWaliGuruPengajarName(assignment = {}) {
+  const directName = String(assignment.guru_nama || assignment.nama_guru || assignment.guru || "").trim();
+  if (directName) return directName;
+  const kodeGuru = String(assignment.guru_kode || assignment.kode_guru || "").trim();
+  const guru = semuaDataWaliGuru.find(item => String(item.kode_guru || item.id || "").trim() === kodeGuru);
+  if (guru && typeof formatNamaGuru === "function") return formatNamaGuru(guru) || kodeGuru || "-";
+  if (guru) return [guru.gelar_depan, guru.nama, guru.gelar_belakang].filter(Boolean).join(" ") || kodeGuru || "-";
+  return kodeGuru || "-";
+}
+
 function getWaliNilaiCount(kelas, mapelKode, field) {
   const students = getWaliStudentsByClass(kelas);
   const studentIds = new Set(students.map(item => String(item.nipd || "")));
@@ -651,9 +678,18 @@ function renderWaliKelengkapanTable() {
   }
   container.innerHTML = `
     <table class="mapel-table wali-completeness-table">
+      <colgroup>
+        <col class="wali-col-mapel">
+        <col class="wali-col-teacher">
+        <col class="wali-col-score">
+        <col class="wali-col-score">
+        <col class="wali-col-score">
+        <col class="wali-col-score">
+      </colgroup>
       <thead>
         <tr>
           <th>Nama Mapel</th>
+          <th>Nama Guru</th>
           <th>UH 1</th>
           <th>UH 2</th>
           <th>UH 3</th>
@@ -666,6 +702,7 @@ function renderWaliKelengkapanTable() {
           return `
             <tr>
               <td>${escapeWaliHtml(getWaliMapelName(item.mapel_kode))}</td>
+              <td>${escapeWaliHtml(getWaliGuruPengajarName(item))}</td>
               ${fields.map(([field]) => {
                 const result = getWaliNilaiCount(kelas, item.mapel_kode, field);
                 return `<td class="${getWaliCompletenessClass(result.count, result.total)}">${formatWaliCompletenessText(result.count, result.total)}</td>`;

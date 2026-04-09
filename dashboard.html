@@ -5,21 +5,31 @@
   <title>Dashboard Aplikasi Siswa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="style.css?v=20260409t">
+  <link rel="stylesheet" href="style.css?v=20260409w">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
   <script src="supabase-firestore-compat.js?v=20260408a"></script>
 
   <script>
+    function applyDarkModePreference(isDark) {
+      document.documentElement.classList.toggle("dark", isDark);
+      if (document.body) document.body.classList.toggle("dark", isDark);
+    }
+
     function toggleDark() {
-      document.body.classList.toggle("dark");
-      localStorage.setItem("darkMode", document.body.classList.contains("dark"));
+      const nextMode = !document.documentElement.classList.contains("dark");
+      localStorage.setItem("darkMode", nextMode ? "true" : "false");
+      applyDarkModePreference(nextMode);
     }
 
     if (localStorage.getItem("darkMode") === "true") {
-      document.body.classList.add("dark");
+      document.documentElement.classList.add("dark");
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      applyDarkModePreference(localStorage.getItem("darkMode") === "true");
+    });
   </script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
@@ -225,7 +235,7 @@
 <script src="Asesmen/pembagian-ruang-v2.js?v=20260409a"></script>
 <script src="Nilai/nilai.js?v=20260409c"></script>
 <script src="Nilai/rapor.js?v=20260409b"></script>
-<script src="WaliKelas/wali-kelas.js?v=20260409d"></script>
+<script src="WaliKelas/wali-kelas.js?v=20260409e"></script>
 
 <script>
   if (localStorage.getItem("login") !== "true") {
