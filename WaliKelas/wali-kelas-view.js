@@ -39,9 +39,7 @@
       <table class="mapel-table wali-kehadiran-table">
         <colgroup>
           <col class="wali-col-no">
-          <col class="wali-col-nipd">
           <col class="wali-col-name">
-          <col class="wali-col-class">
           <col class="wali-col-input">
           <col class="wali-col-input">
           <col class="wali-col-input">
@@ -49,9 +47,7 @@
         <thead>
           <tr>
             <th>No</th>
-            <th>NIPD</th>
             <th>Nama Siswa</th>
-            <th>Kelas</th>
             <th>S</th>
             <th>I</th>
             <th>A</th>
@@ -63,9 +59,7 @@
             return `
               <tr>
                 <td>${index + 1}</td>
-                <td>${context.escape(siswa.nipd || "-")}</td>
                 <td class="wali-student-name">${context.escape(siswa.nama || "-")}</td>
-                <td>${context.escape(siswa.kelas || "-")}</td>
                 <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.S}"></td>
                 <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.I}"></td>
                 <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.A}"></td>

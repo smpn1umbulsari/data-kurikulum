@@ -483,40 +483,34 @@ function renderWaliKehadiranTable() {
     return;
   }
   container.innerHTML = `
-    <table class="mapel-table wali-kehadiran-table">
-      <colgroup>
-        <col class="wali-col-no">
-        <col class="wali-col-nipd">
-        <col class="wali-col-name">
-        <col class="wali-col-class">
-        <col class="wali-col-input">
-        <col class="wali-col-input">
-        <col class="wali-col-input">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>No</th>
-          <th>NIPD</th>
-          <th>Nama Siswa</th>
-          <th>Kelas</th>
-          <th>S</th>
-          <th>I</th>
-          <th>A</th>
-        </tr>
-      </thead>
+        <table class="mapel-table wali-kehadiran-table">
+          <colgroup>
+            <col class="wali-col-no">
+            <col class="wali-col-name">
+            <col class="wali-col-input">
+            <col class="wali-col-input">
+            <col class="wali-col-input">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Siswa</th>
+              <th>S</th>
+              <th>I</th>
+              <th>A</th>
+            </tr>
+          </thead>
       <tbody>
         ${students.map((siswa, index) => {
           const counts = getWaliKehadiranCounts(kelas, siswa.nipd);
           return `
-            <tr>
-              <td>${index + 1}</td>
-              <td>${escapeWaliHtml(siswa.nipd || "-")}</td>
-              <td class="wali-student-name">${escapeWaliHtml(siswa.nama || "-")}</td>
-              <td>${escapeWaliHtml(siswa.kelas || "-")}</td>
-              <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.S}"></td>
-              <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.I}"></td>
-              <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.A}"></td>
-            </tr>
+              <tr>
+                <td>${index + 1}</td>
+                <td class="wali-student-name">${escapeWaliHtml(siswa.nama || "-")}</td>
+                <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.S}"></td>
+                <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.I}"></td>
+                <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.A}"></td>
+              </tr>
           `;
         }).join("")}
       </tbody>

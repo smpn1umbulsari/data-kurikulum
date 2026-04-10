@@ -540,6 +540,15 @@ td {
   word-break: break-word;
 }
 
+.wali-kehadiran-table th,
+.wali-kehadiran-table td,
+.wali-completeness-table th,
+.wali-completeness-table td {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
 .siswa-compact-table th,
 .siswa-compact-table td {
   padding: 6px 8px;
@@ -2909,6 +2918,12 @@ body.dark .rekap-task-list span {
   text-overflow: ellipsis;
 }
 
+.wali-completeness-table td:first-child,
+.wali-completeness-table td:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .nilai-input-cell {
   width: 64px;
   min-height: 30px;
@@ -3369,7 +3384,7 @@ body.dark .ks-ttd-preview {
 
 .wali-kehadiran-table {
   width: auto;
-  min-width: 0;
+  min-width: 540px;
   table-layout: fixed;
 }
 
@@ -3377,20 +3392,30 @@ body.dark .ks-ttd-preview {
   width: 52px;
 }
 
-.wali-kehadiran-table .wali-col-nipd {
-  width: 96px;
-}
-
 .wali-kehadiran-table .wali-col-name {
-  width: 240px;
-}
-
-.wali-kehadiran-table .wali-col-class {
-  width: 84px;
+  width: 260px;
 }
 
 .wali-kehadiran-table .wali-col-input {
   width: 76px;
+}
+
+.wali-completeness-table {
+  width: auto;
+  min-width: 900px;
+  table-layout: auto;
+}
+
+.wali-completeness-table .wali-col-mapel {
+  width: 240px;
+}
+
+.wali-completeness-table .wali-col-teacher {
+  width: 220px;
+}
+
+.wali-completeness-table .wali-col-score {
+  width: 84px;
 }
 
 .wali-kehadiran-table th,
@@ -3410,28 +3435,16 @@ body.dark .ks-ttd-preview {
 
 .wali-kehadiran-table th:nth-child(2),
 .wali-kehadiran-table td:nth-child(2) {
-  width: 96px;
-  text-align: center;
-}
-
-.wali-kehadiran-table th:nth-child(3),
-.wali-kehadiran-table td:nth-child(3) {
-  width: 240px;
+  width: 260px;
   text-align: left;
 }
 
+.wali-kehadiran-table th:nth-child(3),
+.wali-kehadiran-table td:nth-child(3),
 .wali-kehadiran-table th:nth-child(4),
-.wali-kehadiran-table td:nth-child(4) {
-  width: 84px;
-  text-align: center;
-}
-
+.wali-kehadiran-table td:nth-child(4),
 .wali-kehadiran-table th:nth-child(5),
-.wali-kehadiran-table td:nth-child(5),
-.wali-kehadiran-table th:nth-child(6),
-.wali-kehadiran-table td:nth-child(6),
-.wali-kehadiran-table th:nth-child(7),
-.wali-kehadiran-table td:nth-child(7) {
+.wali-kehadiran-table td:nth-child(5) {
   width: 76px;
   text-align: center;
   font-weight: 800;
@@ -3456,32 +3469,19 @@ body.dark .ks-ttd-preview {
     width: 68px;
   }
 
-  .wali-kehadiran-table .wali-col-nipd,
   .wali-kehadiran-table th:nth-child(2),
   .wali-kehadiran-table td:nth-child(2) {
-    width: 96px;
-  }
-
-  .wali-kehadiran-table .wali-col-name,
-  .wali-kehadiran-table th:nth-child(3),
-  .wali-kehadiran-table td:nth-child(3) {
-    width: 240px;
-  }
-
-  .wali-kehadiran-table .wali-col-class,
-  .wali-kehadiran-table th:nth-child(4),
-  .wali-kehadiran-table td:nth-child(4) {
-    width: 88px;
+    width: auto;
   }
 
   .wali-kehadiran-table .wali-col-input,
+  .wali-kehadiran-table th:nth-child(3),
+  .wali-kehadiran-table td:nth-child(3),
+  .wali-kehadiran-table th:nth-child(4),
+  .wali-kehadiran-table td:nth-child(4),
   .wali-kehadiran-table th:nth-child(5),
-  .wali-kehadiran-table td:nth-child(5),
-  .wali-kehadiran-table th:nth-child(6),
-  .wali-kehadiran-table td:nth-child(6),
-  .wali-kehadiran-table th:nth-child(7),
-  .wali-kehadiran-table td:nth-child(7) {
-    width: 72px;
+  .wali-kehadiran-table td:nth-child(5) {
+    width: 78px;
   }
 }
 
@@ -3494,15 +3494,17 @@ body.dark .ks-ttd-preview {
 .wali-rekap-input {
   display: block;
   width: 100%;
-  max-width: 56px;
-  min-height: 28px;
+  max-width: 64px;
+  min-width: 58px;
+  min-height: 32px;
   margin: 0 auto;
-  padding: 4px 6px;
+  padding: 5px 6px;
   border: 1px solid rgba(148, 163, 184, 0.45);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.82);
   text-align: center;
   font-weight: 800;
+  font-size: 14px;
 }
 
 .wali-rekap-s {
