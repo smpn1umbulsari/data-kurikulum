@@ -36,7 +36,7 @@ function renderKelasPage() {
       </div>
 
       <div class="table-container">
-        <table>
+        <table class="kelas-data-table">
           <thead>
             <tr>
               ${renderSortableHeader("Tingkat", "tingkat", kelasSortField, kelasSortDirection, "setKelasSort")}

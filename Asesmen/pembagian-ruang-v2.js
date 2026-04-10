@@ -3,12 +3,19 @@ let semuaDataAsesmenSiswa = [];
 let unsubscribeAsesmenSiswa = null;
 let jumlahRuangUjian = Number(localStorage.getItem("asesmenJumlahRuangUjian") || 1);
 let draftJumlahRuangUjian = jumlahRuangUjian;
-let pembagianKelasAsesmen = localStorage.getItem("asesmenPembagianKelas") === "manual" ? "manual" : "setengah";
+let pembagianKelasAsesmen = ["manual", "20siswa"].includes(localStorage.getItem("asesmenPembagianKelas")) ? localStorage.getItem("asesmenPembagianKelas") : "setengah";
 let draftPembagianKelasAsesmen = pembagianKelasAsesmen;
+const asesmenRuangStore = window.AsesmenRuangStore || null;
+const createAsesmenLevelSettings = asesmenRuangStore?.createLevelSettings || ((mode = "setengah") => ({
+  mode,
+  order: "az",
+  roomRanges: [{ start: "", end: "" }, { start: "", end: "" }],
+  manualCounts: []
+}));
 const asesmenLevelSettings = {
-  7: { mode: pembagianKelasAsesmen, order: "az", roomRanges: [{ start: "", end: "" }, { start: "", end: "" }], manualCounts: [] },
-  8: { mode: pembagianKelasAsesmen, order: "az", roomRanges: [{ start: "", end: "" }, { start: "", end: "" }], manualCounts: [] },
-  9: { mode: pembagianKelasAsesmen, order: "az", roomRanges: [{ start: "", end: "" }, { start: "", end: "" }], manualCounts: [] }
+  7: createAsesmenLevelSettings(pembagianKelasAsesmen),
+  8: createAsesmenLevelSettings(pembagianKelasAsesmen),
+  9: createAsesmenLevelSettings(pembagianKelasAsesmen)
 };
 const draftAsesmenLevelSettings = {
   7: cloneAsesmenLevelSettings(asesmenLevelSettings[7]),
@@ -16,8 +23,12 @@ const draftAsesmenLevelSettings = {
   9: cloneAsesmenLevelSettings(asesmenLevelSettings[9])
 };
 const appliedAsesmenLevels = new Set();
+const ASESMEN_STORAGE_KEY = "asesmenPembagianRuangV2";
 
 function cloneAsesmenLevelSettings(settings) {
+  if (asesmenRuangStore?.cloneLevelSettings) {
+    return asesmenRuangStore.cloneLevelSettings(settings);
+  }
   return {
     mode: settings.mode,
     order: settings.order,
@@ -27,15 +38,140 @@ function cloneAsesmenLevelSettings(settings) {
 }
 
 function syncAsesmenManualCountLength(settings) {
+  if (asesmenRuangStore?.syncManualCountLength) {
+    asesmenRuangStore.syncManualCountLength(settings, jumlahRuangUjian);
+    return;
+  }
   while (settings.manualCounts.length < jumlahRuangUjian) settings.manualCounts.push("");
   if (settings.manualCounts.length > jumlahRuangUjian) settings.manualCounts.length = jumlahRuangUjian;
 }
+
+function sanitizeAsesmenLevelSettings(settings = {}, fallbackMode = pembagianKelasAsesmen) {
+  if (asesmenRuangStore?.sanitizeLevelSettings) {
+    return asesmenRuangStore.sanitizeLevelSettings(settings, {
+      fallbackMode,
+      jumlahRuangUjian
+    });
+  }
+  const roomRanges = Array.isArray(settings.roomRanges) ? settings.roomRanges : [];
+  const sanitizedRanges = [0, 1].map(index => {
+    const range = roomRanges[index] || {};
+    return {
+      start: String(range.start ?? "").trim(),
+      end: String(range.end ?? "").trim()
+    };
+  });
+  const manualCounts = Array.isArray(settings.manualCounts)
+    ? settings.manualCounts.map(value => String(value ?? "").trim())
+    : [];
+  const sanitized = {
+    mode: ["manual", "20siswa", "setengah"].includes(settings.mode) ? settings.mode : fallbackMode,
+    order: settings.order === "za" ? "za" : "az",
+    roomRanges: sanitizedRanges,
+    manualCounts
+  };
+  syncAsesmenManualCountLength(sanitized);
+  return sanitized;
+}
+
+function saveAsesmenPembagianRuangState() {
+  if (asesmenRuangStore?.save) {
+    asesmenRuangStore.save(ASESMEN_STORAGE_KEY, {
+      jumlahRuangUjian,
+      draftJumlahRuangUjian,
+      pembagianKelasAsesmen,
+      draftPembagianKelasAsesmen,
+      appliedLevels: Array.from(appliedAsesmenLevels),
+      asesmenLevelSettings,
+      draftAsesmenLevelSettings
+    });
+    return;
+  }
+  const payload = {
+    jumlahRuangUjian,
+    draftJumlahRuangUjian,
+    pembagianKelasAsesmen,
+    draftPembagianKelasAsesmen,
+    appliedLevels: Array.from(appliedAsesmenLevels),
+    asesmenLevelSettings: {
+      7: sanitizeAsesmenLevelSettings(asesmenLevelSettings[7]),
+      8: sanitizeAsesmenLevelSettings(asesmenLevelSettings[8]),
+      9: sanitizeAsesmenLevelSettings(asesmenLevelSettings[9])
+    },
+    draftAsesmenLevelSettings: {
+      7: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[7]),
+      8: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[8]),
+      9: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[9])
+    }
+  };
+  localStorage.setItem(ASESMEN_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function loadAsesmenPembagianRuangState() {
+  if (asesmenRuangStore?.load) {
+    const saved = asesmenRuangStore.load(ASESMEN_STORAGE_KEY, {
+      jumlahRuangUjian,
+      pembagianKelasAsesmen,
+      asesmenLevelSettings
+    });
+    if (!saved) return;
+    jumlahRuangUjian = saved.jumlahRuangUjian;
+    draftJumlahRuangUjian = saved.draftJumlahRuangUjian;
+    pembagianKelasAsesmen = saved.pembagianKelasAsesmen;
+    draftPembagianKelasAsesmen = saved.draftPembagianKelasAsesmen;
+    [7, 8, 9].forEach(level => {
+      asesmenLevelSettings[level] = saved.asesmenLevelSettings[level];
+      draftAsesmenLevelSettings[level] = saved.draftAsesmenLevelSettings[level];
+    });
+    appliedAsesmenLevels.clear();
+    saved.appliedLevels.forEach(level => appliedAsesmenLevels.add(String(level)));
+    localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
+    localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
+    return;
+  }
+  try {
+    const raw = localStorage.getItem(ASESMEN_STORAGE_KEY);
+    if (!raw) return;
+    const saved = JSON.parse(raw);
+    const savedJumlah = Math.min(Math.max(Number(saved?.jumlahRuangUjian) || jumlahRuangUjian, 1), 99);
+    jumlahRuangUjian = savedJumlah;
+    draftJumlahRuangUjian = Math.min(Math.max(Number(saved?.draftJumlahRuangUjian) || savedJumlah, 1), 99);
+    pembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(saved?.pembagianKelasAsesmen) ? saved.pembagianKelasAsesmen : "setengah";
+    draftPembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(saved?.draftPembagianKelasAsesmen) ? saved.draftPembagianKelasAsesmen : pembagianKelasAsesmen;
+
+    [7, 8, 9].forEach(level => {
+      asesmenLevelSettings[level] = sanitizeAsesmenLevelSettings(
+        saved?.asesmenLevelSettings?.[level] || saved?.asesmenLevelSettings?.[String(level)] || asesmenLevelSettings[level],
+        pembagianKelasAsesmen
+      );
+      draftAsesmenLevelSettings[level] = sanitizeAsesmenLevelSettings(
+        saved?.draftAsesmenLevelSettings?.[level] || saved?.draftAsesmenLevelSettings?.[String(level)] || asesmenLevelSettings[level],
+        draftPembagianKelasAsesmen
+      );
+    });
+
+    appliedAsesmenLevels.clear();
+    const appliedLevels = Array.isArray(saved?.appliedLevels) ? saved.appliedLevels : [];
+    appliedLevels.forEach(level => {
+      const normalized = String(level || "").trim();
+      if (["7", "8", "9"].includes(normalized)) appliedAsesmenLevels.add(normalized);
+    });
+
+    localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
+    localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
+  } catch (error) {
+    console.error("Gagal memuat pengaturan pembagian ruang asesmen", error);
+  }
+}
+
+loadAsesmenPembagianRuangState();
 
 function isAsesmenLevelApplied(level) {
   return appliedAsesmenLevels.has(String(level));
 }
 
 function escapeAsesmenHtml(value) {
+  if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -53,6 +189,7 @@ function asesmenCompare(left, right, direction = "asc") {
 }
 
 function getAsesmenKelasParts(kelasValue = "") {
+  if (window.AppUtils?.parseKelas) return window.AppUtils.parseKelas(kelasValue);
   const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
   const match = normalized.match(/([7-9])([A-Z]+)$/);
   return {
@@ -80,6 +217,7 @@ function compareAsesmenSiswaDalamKelas(a, b) {
 }
 
 function getAsesmenKelasBayanganParts(siswa) {
+  if (window.AppUtils?.getPrimaryKelasParts) return window.AppUtils.getPrimaryKelasParts(siswa);
   const asliParts = getAsesmenKelasParts(siswa.kelas);
   const bayanganParts = getAsesmenKelasParts(siswa.kelas_bayangan);
 
@@ -258,8 +396,12 @@ function buildSetengahAsesmenRooms(level) {
   return kelasList.flatMap(kelas => {
     const siswaKelas = grouped.get(kelas).sort(compareAsesmenSiswaDalamKelas);
     const halfSize = Math.max(1, Math.ceil(siswaKelas.length / 2));
-    return chunkAsesmenStudents(siswaKelas, Math.min(halfSize, 20));
+    return chunkAsesmenStudents(siswaKelas, halfSize);
   });
+}
+
+function buildTwentyStudentsAsesmenRooms(level) {
+  return chunkAsesmenStudents(getOrderedAsesmenStudents(level), 20);
 }
 
 function buildManualAsesmenRooms(level) {
@@ -282,7 +424,9 @@ function getAsesmenRooms(level) {
   if (!isAsesmenLevelApplied(level)) return [];
 
   const settings = asesmenLevelSettings[level];
-  return settings.mode === "manual" ? buildManualAsesmenRooms(level) : buildSetengahAsesmenRooms(level);
+  if (settings.mode === "manual") return buildManualAsesmenRooms(level);
+  if (settings.mode === "20siswa") return buildTwentyStudentsAsesmenRooms(level);
+  return buildSetengahAsesmenRooms(level);
 }
 
 function getDecoratedAsesmenRoomsByLevel(level) {
@@ -302,15 +446,17 @@ function getCombinedAsesmenRoomMap() {
 
 function setJumlahRuangUjian(value) {
   draftJumlahRuangUjian = Math.min(Math.max(Number(value) || 1, 1), 99);
+  saveAsesmenPembagianRuangState();
 }
 
 function setPembagianKelasAsesmen(value) {
-  draftPembagianKelasAsesmen = value === "manual" ? "manual" : "setengah";
+  draftPembagianKelasAsesmen = ["manual", "20siswa"].includes(value) ? value : "setengah";
+  saveAsesmenPembagianRuangState();
 }
 
 function applyJumlahRuangUjian() {
   jumlahRuangUjian = Math.min(Math.max(Number(draftJumlahRuangUjian) || 1, 1), 99);
-  pembagianKelasAsesmen = draftPembagianKelasAsesmen === "manual" ? "manual" : "setengah";
+  pembagianKelasAsesmen = ["manual", "20siswa"].includes(draftPembagianKelasAsesmen) ? draftPembagianKelasAsesmen : "setengah";
   localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
   localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
   appliedAsesmenLevels.clear();
@@ -320,19 +466,72 @@ function applyJumlahRuangUjian() {
     syncAsesmenManualCountLength(asesmenLevelSettings[level]);
     syncAsesmenManualCountLength(draftAsesmenLevelSettings[level]);
   });
+  saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
 }
 
 function setAsesmenOrder(level, value) {
   draftAsesmenLevelSettings[level].order = value === "za" ? "za" : "az";
+  saveAsesmenPembagianRuangState();
 }
 
 function setAsesmenRoomRange(level, rangeIndex, key, value) {
   draftAsesmenLevelSettings[level].roomRanges[rangeIndex][key] = value;
+  saveAsesmenPembagianRuangState();
 }
 
 function setAsesmenManualCount(level, roomIndex, value) {
   draftAsesmenLevelSettings[level].manualCounts[roomIndex] = value;
+  saveAsesmenPembagianRuangState();
+}
+
+function openAsesmenManualCountDialog(level) {
+  const levelKey = String(level);
+  const settings = draftAsesmenLevelSettings[levelKey];
+  syncAsesmenManualCountLength(settings);
+  const inputs = Array.from({ length: jumlahRuangUjian }, (_, index) => {
+    const value = settings.manualCounts[index] || "";
+    return `
+      <label class="asesmen-manual-popup-field">
+        <span>Ruang ${index + 1}</span>
+        <input
+          id="asesmenManualCount-${levelKey}-${index}"
+          type="number"
+          min="0"
+          max="20"
+          value="${escapeAsesmenHtml(value)}"
+          placeholder="0-20"
+        >
+      </label>
+    `;
+  }).join("");
+
+  Swal.fire({
+    title: `Manual Kelas ${levelKey}`,
+    html: `
+      <div class="asesmen-manual-popup">
+        <p>Isi jumlah siswa untuk tiap ruang. Batas maksimal 20 siswa per ruang.</p>
+        <div class="asesmen-manual-popup-grid">${inputs}</div>
+      </div>
+    `,
+    width: 720,
+    showCancelButton: true,
+    confirmButtonText: "Gunakan",
+    cancelButtonText: "Batal",
+    focusConfirm: false,
+    preConfirm: () => {
+      const values = Array.from({ length: jumlahRuangUjian }, (_, index) => {
+        const input = document.getElementById(`asesmenManualCount-${levelKey}-${index}`);
+        return Math.min(Math.max(Number(input?.value) || 0, 0), 20);
+      });
+      return values.map(value => (value > 0 ? String(value) : ""));
+    }
+  }).then(result => {
+    if (!result.isConfirmed || !Array.isArray(result.value)) return;
+    draftAsesmenLevelSettings[levelKey].manualCounts = result.value;
+    saveAsesmenPembagianRuangState();
+    renderPembagianRuangState();
+  });
 }
 
 function applyAsesmenLevelSettings(level) {
@@ -340,10 +539,20 @@ function applyAsesmenLevelSettings(level) {
   draftAsesmenLevelSettings[level].mode = pembagianKelasAsesmen;
   asesmenLevelSettings[level] = cloneAsesmenLevelSettings(draftAsesmenLevelSettings[level]);
   appliedAsesmenLevels.add(String(level));
+  saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
 }
 
 function loadRealtimePembagianRuang() {
+  if (window.AsesmenRuangService?.loadPembagianRuang) {
+    unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadPembagianRuang(unsubscribeAsesmenSiswa, {
+      onData: data => {
+        semuaDataAsesmenSiswa = data;
+      },
+      onRender: () => renderPembagianRuangState()
+    });
+    return;
+  }
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
   unsubscribeAsesmenSiswa = listenSiswa(data => {
     semuaDataAsesmenSiswa = data;
@@ -352,6 +561,15 @@ function loadRealtimePembagianRuang() {
 }
 
 function loadRealtimeAdministrasiAsesmen() {
+  if (window.AsesmenRuangService?.loadAdministrasi) {
+    unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadAdministrasi(unsubscribeAsesmenSiswa, {
+      onData: data => {
+        semuaDataAsesmenSiswa = data;
+      },
+      onRender: () => renderAdministrasiAsesmenState()
+    });
+    return;
+  }
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
   if (typeof loadKepalaSekolahTtdSettings === "function") {
     loadKepalaSekolahTtdSettings().then(renderAdministrasiAsesmenState);
@@ -376,22 +594,46 @@ function renderAdministrasiAsesmenState() {
 }
 
 function setAdministrasiAsesmenSetting(key, value) {
+  if (window.AsesmenAdministrasiSettings?.set) {
+    window.AsesmenAdministrasiSettings.set(key, value);
+    return;
+  }
   localStorage.setItem(`asesmenAdministrasi${key}`, value);
 }
 
 function getAdministrasiAsesmenSetting(key, fallback = "") {
+  if (window.AsesmenAdministrasiSettings?.get) {
+    return window.AsesmenAdministrasiSettings.get(key, fallback);
+  }
   return localStorage.getItem(`asesmenAdministrasi${key}`) || fallback;
 }
 
 function renderAdministrasiAsesmenKeteranganSelect() {
+  if (window.AsesmenRuangView?.renderAdministrasiKeteranganSelect) {
+    return window.AsesmenRuangView.renderAdministrasiKeteranganSelect({
+      getSetting: getAdministrasiAsesmenSetting,
+      keteranganOptions: window.AsesmenAdministrasiSettings?.getKeteranganOptions
+        ? window.AsesmenAdministrasiSettings.getKeteranganOptions()
+        : [
+          "Tengah Semester Ganjil",
+          "Akhir Semester Ganjil",
+          "Tengah Semester Genap",
+          "Akhir Tahun",
+          "Akhir Jenjang"
+        ],
+      escape: escapeAsesmenHtml
+    });
+  }
   const value = getAdministrasiAsesmenSetting("Keterangan", "Akhir Tahun");
-  const options = [
-    "Tengah Semester Ganjil",
-    "Akhir Semester Ganjil",
-    "Tengah Semester Genap",
-    "Akhir Tahun",
-    "Akhir Jenjang"
-  ];
+  const options = window.AsesmenAdministrasiSettings?.getKeteranganOptions
+    ? window.AsesmenAdministrasiSettings.getKeteranganOptions()
+    : [
+      "Tengah Semester Ganjil",
+      "Akhir Semester Ganjil",
+      "Tengah Semester Genap",
+      "Akhir Tahun",
+      "Akhir Jenjang"
+    ];
   const hasStoredValue = options.includes(value);
   const extraOption = value && !hasStoredValue
     ? `<option value="${escapeAsesmenHtml(value)}" selected>${escapeAsesmenHtml(value)}</option>`
@@ -406,6 +648,22 @@ function renderAdministrasiAsesmenKeteranganSelect() {
 }
 
 function renderAdministrasiAsesmenPage() {
+  if (window.AsesmenRuangView?.renderAdministrasiPage) {
+    return window.AsesmenRuangView.renderAdministrasiPage({
+      getSetting: getAdministrasiAsesmenSetting,
+      escape: escapeAsesmenHtml,
+      ttdPanelHtml: typeof renderKepalaSekolahTtdPanelHtml === "function" ? renderKepalaSekolahTtdPanelHtml() : "",
+      keteranganOptions: window.AsesmenAdministrasiSettings?.getKeteranganOptions
+        ? window.AsesmenAdministrasiSettings.getKeteranganOptions()
+        : [
+          "Tengah Semester Ganjil",
+          "Akhir Semester Ganjil",
+          "Tengah Semester Genap",
+          "Akhir Tahun",
+          "Akhir Jenjang"
+        ]
+    });
+  }
   return `
     <div class="card">
       <div class="asesmen-page-head">
@@ -459,30 +717,40 @@ function renderAllAsesmenPreviews() {
 }
 
 function renderAsesmenManualInputs(level) {
+  if (window.AsesmenRuangView?.renderManualInputs) {
+    return window.AsesmenRuangView.renderManualInputs({
+      draftSettings: draftAsesmenLevelSettings,
+      jumlahRuangUjian,
+      escape: escapeAsesmenHtml
+    }, level);
+  }
   const settings = draftAsesmenLevelSettings[level];
   if (settings.mode !== "manual") return "";
 
-  const inputs = Array.from({ length: jumlahRuangUjian }, (_, index) => {
-    const value = settings.manualCounts[index] || "";
-    return `
-      <label class="asesmen-room-input">
-        <span>Isi ruang ${index + 1}</span>
-        <input
-          type="number"
-          min="1"
-          max="20"
-          value="${escapeAsesmenHtml(value)}"
-          placeholder="1-20"
-          oninput="setAsesmenManualCount('${level}', ${index}, this.value)"
-        >
-      </label>
-    `;
-  }).join("");
+  const filledCounts = settings.manualCounts
+    .slice(0, jumlahRuangUjian)
+    .map(value => Math.min(Math.max(Number(value) || 0, 0), 20));
 
-  return `<div class="asesmen-manual-grid">${inputs}</div>`;
+  return `
+    <div class="asesmen-manual-summary">
+      <div class="asesmen-manual-summary-head">
+        <span>Manual per ruang</span>
+        <button type="button" class="btn-secondary btn-table-compact" onclick="openAsesmenManualCountDialog('${level}')">Atur Manual</button>
+      </div>
+      <div class="asesmen-level-summary">
+        ${Array.from({ length: jumlahRuangUjian }, (_, index) => `<span>Ruang ${index + 1}: ${filledCounts[index] || 0}</span>`).join("")}
+      </div>
+    </div>
+  `;
 }
 
 function renderAsesmenRoomRangeInputs(level) {
+  if (window.AsesmenRuangView?.renderRoomRangeInputs) {
+    return window.AsesmenRuangView.renderRoomRangeInputs({
+      draftSettings: draftAsesmenLevelSettings,
+      escape: escapeAsesmenHtml
+    }, level);
+  }
   const ranges = draftAsesmenLevelSettings[level].roomRanges;
   return `
     <div class="asesmen-range-grid">
@@ -510,6 +778,14 @@ function renderAsesmenRoomRangeInputs(level) {
 }
 
 function renderAsesmenLevelPanel(level) {
+  if (window.AsesmenRuangView?.renderLevelPanel) {
+    return window.AsesmenRuangView.renderLevelPanel({
+      draftSettings: draftAsesmenLevelSettings,
+      escape: escapeAsesmenHtml,
+      jumlahRuangUjian,
+      getStudentCount: currentLevel => getAsesmenStudentsByLevel(currentLevel).length
+    }, level);
+  }
   const settings = draftAsesmenLevelSettings[level];
   const totalSiswa = getAsesmenStudentsByLevel(level).length;
 
@@ -547,6 +823,16 @@ function renderAsesmenLevelPanel(level) {
 }
 
 function renderPembagianRuangPage() {
+  if (window.AsesmenRuangView?.renderPembagianPage) {
+    return window.AsesmenRuangView.renderPembagianPage({
+      draftJumlahRuangUjian,
+      draftPembagianKelasAsesmen,
+      draftSettings: draftAsesmenLevelSettings,
+      jumlahRuangUjian,
+      escape: escapeAsesmenHtml,
+      getStudentCount: level => getAsesmenStudentsByLevel(level).length
+    });
+  }
   return `
     <div class="card">
       <div class="asesmen-page-head">
@@ -557,12 +843,24 @@ function renderPembagianRuangPage() {
         </div>
         <label class="asesmen-room-total">
           <span>Pengaturan global</span>
+          <div class="asesmen-room-total-note">
+            <span>Jumlah ruang -> isi banyak ruang yang dipakai.</span>
+            <span>Mode pembagian -> pilih setengah, 20 siswa, atau manual.</span>
+            <span>Jika pilih Manual, isi jumlah siswa per ruang lewat pop-up pada panel kelas.</span>
+          </div>
           <div class="asesmen-room-total-control">
-            <input type="number" min="1" max="99" value="${draftJumlahRuangUjian}" oninput="setJumlahRuangUjian(this.value)" title="Jumlah ruang ujian">
-            <select class="kelas-inline-select" onchange="setPembagianKelasAsesmen(this.value)" title="Pembagian kelas">
-              <option value="setengah" ${draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>2 setengah</option>
-              <option value="manual" ${draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
-            </select>
+            <label class="asesmen-room-total-field">
+              <span>Jumlah ruang</span>
+              <input type="number" min="1" max="99" value="${draftJumlahRuangUjian}" oninput="setJumlahRuangUjian(this.value)" title="Jumlah ruang ujian">
+            </label>
+            <label class="asesmen-room-total-field">
+              <span>Mode pembagian</span>
+              <select class="kelas-inline-select" onchange="setPembagianKelasAsesmen(this.value)" title="Pembagian kelas">
+                <option value="setengah" ${draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
+                <option value="20siswa" ${draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
+                <option value="manual" ${draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
+              </select>
+            </label>
             <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()">Set</button>
           </div>
         </label>
@@ -650,13 +948,15 @@ function renderAsesmenStudentColumn(entry) {
 }
 
 function renderTempelKacaRows(students = []) {
-  return Array.from({ length: 20 }, (_, index) => students[index] || null).map(siswa => siswa ? `
+  return Array.from({ length: 20 }, (_, index) => students[index] || null).map((siswa, index) => siswa ? `
     <tr>
+      <td class="tempel-no">${index + 1}</td>
       <td class="tempel-kelas">${escapeAsesmenHtml(siswa.kelasParts?.kelas || "-")}</td>
       <td class="tempel-nama">${escapeAsesmenHtml(siswa.nama || "-")}</td>
     </tr>
   ` : `
     <tr>
+      <td class="tempel-no">&nbsp;</td>
       <td class="tempel-kelas">&nbsp;</td>
       <td class="tempel-nama">&nbsp;</td>
     </tr>
@@ -668,10 +968,10 @@ function renderTempelKacaStudentTable(entry, label) {
 
   return `
     <section class="tempel-student-panel">
-      <div class="tempel-panel-title">${escapeAsesmenHtml(label)}</div>
       <table>
         <thead>
           <tr>
+            <th class="tempel-no">No</th>
             <th class="tempel-kelas">Kelas</th>
             <th class="tempel-nama">Nama</th>
           </tr>
@@ -682,25 +982,566 @@ function renderTempelKacaStudentTable(entry, label) {
   `;
 }
 
+function renderDataMapRows(students = [], totalRows = 20) {
+  return Array.from({ length: totalRows }, (_, index) => students[index] || null).map((siswa, index) => siswa ? `
+    <tr>
+      <td class="data-map-no">${index + 1}</td>
+      <td class="data-map-number">${escapeAsesmenHtml(getAsesmenNomorUjian(siswa) || "-")}</td>
+      <td class="data-map-name">${escapeAsesmenHtml(siswa.nama || "-")}</td>
+      <td class="data-map-class">${escapeAsesmenHtml(siswa.kelasParts?.kelas || "-")}</td>
+    </tr>
+  ` : `
+    <tr>
+      <td class="data-map-no">&nbsp;</td>
+      <td class="data-map-number">&nbsp;</td>
+      <td class="data-map-name">&nbsp;</td>
+      <td class="data-map-class">&nbsp;</td>
+    </tr>
+  `).join("");
+}
+
+function renderDataMapTable(entry) {
+  if (!entry) return `<section class="data-map-panel data-map-panel-empty"></section>`;
+
+  return `
+    <section class="data-map-panel">
+      <table class="data-map-table">
+        <thead>
+          <tr>
+            <th class="data-map-no">No</th>
+            <th class="data-map-number">Nomor Peserta</th>
+            <th class="data-map-name">Nama</th>
+            <th class="data-map-class">Kelas</th>
+          </tr>
+        </thead>
+        <tbody>${renderDataMapRows(entry.students || [], 20)}</tbody>
+      </table>
+    </section>
+  `;
+}
+
+function renderDataMapPage(roomNumber, entries) {
+  const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
+  const leftEntry = sortedEntries[0] || null;
+  const rightEntry = sortedEntries[1] || null;
+
+  return `
+    <section class="data-map-page">
+      <div class="data-map-sheet">
+        <header class="data-map-header">
+          <h1>DAFTAR NAMA PESERTA ASESMEN</h1>
+          <div>Ruang : ${escapeAsesmenHtml(roomNumber)}</div>
+        </header>
+        <div class="data-map-grid">
+          ${renderDataMapTable(leftEntry)}
+          ${renderDataMapTable(rightEntry)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function getDenahSeatNumbers() {
+  return [
+    [20, 19, 18, 17],
+    [13, 14, 15, 16],
+    [12, 11, 10, 9],
+    [5, 6, 7, 8],
+    [4, 3, 2, 1]
+  ];
+}
+
+function getDenahSeatDirections() {
+  return [
+    ["left", "left", "left", "left"],
+    ["right", "right", "right", "up"],
+    ["up", "left", "left", "left"],
+    ["right", "right", "right", "up"],
+    ["up", "left", "left", "start"]
+  ];
+}
+
+function getDenahSeatData(entries = [], seatNumber) {
+  const sortedEntries = [...entries].sort((a, b) => Number(a.level) - Number(b.level));
+  return sortedEntries.map(entry => ({
+    level: String(entry.level || ""),
+    student: entry.students?.[seatNumber - 1] || null
+  }));
+}
+
+function renderDenahSeat(entryData, seatNumber, direction) {
+  const topEntry = entryData[0] || { level: "", student: null };
+  const bottomEntry = entryData[1] || { level: "", student: null };
+  const topName = topEntry.student?.nama || "";
+  const bottomName = bottomEntry.student?.nama || "";
+  const topLabel = topName ? topName : "&nbsp;";
+  const bottomLabel = bottomName ? bottomName : "&nbsp;";
+  const seatModifier = !topName && !bottomName ? " denah-seat-empty" : "";
+  const arrowMap = {
+    left: "←",
+    right: "→",
+    up: "↑",
+    start: "AWAL"
+  };
+  const arrowText = arrowMap[direction] || "";
+  const arrowClass = direction === "start" ? " denah-arrow-start" : "";
+
+  return `
+    <div class="denah-seat-wrap">
+      <div class="denah-seat${seatModifier}">
+        <div class="denah-seat-number">${seatNumber}</div>
+        <div class="denah-seat-body">
+          <div class="denah-seat-half denah-seat-top">
+            <span>${topName ? escapeAsesmenHtml(topLabel) : topLabel}</span>
+          </div>
+          <div class="denah-seat-half denah-seat-bottom">
+            <span>${bottomName ? escapeAsesmenHtml(bottomLabel) : bottomLabel}</span>
+          </div>
+        </div>
+      </div>
+      ${arrowText ? `<div class="denah-arrow denah-arrow-${escapeAsesmenHtml(direction)}${arrowClass}">${escapeAsesmenHtml(arrowText)}</div>` : ""}
+    </div>
+  `;
+}
+
+function renderDenahGrid(entries = []) {
+  const seatRows = getDenahSeatNumbers();
+  const directionRows = getDenahSeatDirections();
+  return `
+    <div class="denah-grid">
+      ${seatRows.map((row, rowIndex) => `
+        <div class="denah-grid-row">
+          ${row.map((seatNumber, colIndex) => renderDenahSeat(getDenahSeatData(entries, seatNumber), seatNumber, directionRows[rowIndex][colIndex])).join("")}
+        </div>
+      `).join("")}
+      <div class="denah-board">PAPAN TULIS</div>
+    </div>
+  `;
+}
+
+function renderDenahLegend(entries = []) {
+  const sortedLevels = [...new Set(entries.map(entry => String(entry.level || "")).filter(Boolean))].sort();
+  const firstLevel = sortedLevels[0] || "7";
+  const secondLevel = sortedLevels[1] || "8";
+  return `
+    <div class="denah-legend">
+      <strong>Ket:</strong>
+      <div class="denah-legend-row">
+        <span class="denah-legend-box denah-legend-top"></span>
+        <span>: KELAS ${escapeAsesmenHtml(firstLevel)}</span>
+      </div>
+      <div class="denah-legend-row">
+        <span class="denah-legend-box denah-legend-bottom"></span>
+        <span>: KELAS ${escapeAsesmenHtml(secondLevel)}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderDenahPesertaPage(roomNumber, entries) {
+  const judul = getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "Asesmen Sumatif";
+  const keterangan = getAdministrasiAsesmenSetting("Keterangan", "Akhir Semester") || "Akhir Semester";
+  const tahunPelajaran = getAdministrasiAsesmenSetting("TahunPelajaran", "2024/2025") || "2024/2025";
+  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
+
+  return `
+    <section class="denah-page">
+      <div class="denah-sheet">
+        <aside class="denah-side">
+          <div class="denah-side-head">
+            <img src="${escapeAsesmenHtml(logoSekolahUrl)}" alt="Logo Sekolah">
+            <div class="denah-side-title">
+              <strong>DENAH DUDUK PESERTA</strong>
+              <strong>${escapeAsesmenHtml(judul)}</strong>
+              <strong>${escapeAsesmenHtml(keterangan)}</strong>
+              <strong>${escapeAsesmenHtml(tahunPelajaran)}</strong>
+            </div>
+          </div>
+          <div class="denah-room-panel">
+            <div class="denah-room-label">Ruang :</div>
+            <div class="denah-room-value">${escapeAsesmenHtml(roomNumber)}</div>
+          </div>
+          ${renderDenahLegend(entries)}
+        </aside>
+        <div class="denah-main">
+          ${renderDenahGrid(entries)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function getDenahPesertaPrintHtml() {
+  const roomMap = getCombinedAsesmenRoomMap();
+  const pages = Array.from(roomMap.entries()).map(([roomNumber, entries]) => renderDenahPesertaPage(roomNumber, entries)).join("");
+
+  return `
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Denah Peserta</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, Helvetica, sans-serif; }
+        .denah-page {
+          width: 100%;
+          height: 210mm;
+          padding: 6mm;
+          page-break-after: always;
+          break-after: page;
+          overflow: hidden;
+        }
+        .denah-page:last-child { page-break-after: auto; break-after: auto; }
+        .denah-sheet {
+          height: calc(210mm - 12mm);
+          border: 1.2px solid #3f3f46;
+          display: grid;
+          grid-template-columns: 30% 70%;
+          overflow: hidden;
+        }
+        .denah-side {
+          border-right: 1.2px solid #3f3f46;
+          padding: 5mm 4mm 4mm;
+          display: grid;
+          grid-template-rows: auto 1fr auto;
+          gap: 4mm;
+        }
+        .denah-side-head {
+          display: grid;
+          grid-template-columns: 54px minmax(0, 1fr);
+          gap: 10px;
+          align-items: start;
+        }
+        .denah-side-head img {
+          width: 48px;
+          height: 48px;
+          object-fit: contain;
+        }
+        .denah-side-title {
+          display: grid;
+          gap: 2px;
+          padding-left: 10px;
+          border-left: 2px solid #111827;
+          font-size: 9.8px;
+          line-height: 1.25;
+        }
+        .denah-room-panel {
+          width: 100%;
+          border: 1.2px solid #3f3f46;
+          display: grid;
+          grid-template-rows: auto 1fr;
+          align-self: center;
+          overflow: hidden;
+        }
+        .denah-room-label {
+          padding: 5mm 3mm 4mm;
+          border-bottom: 1.2px solid #3f3f46;
+          text-align: center;
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .denah-room-value {
+          min-height: 65mm;
+          display: grid;
+          place-items: center;
+          font-size: 148px;
+          font-weight: 900;
+          line-height: 0.82;
+          letter-spacing: -6px;
+          padding: 0 1mm 2mm;
+          overflow: hidden;
+        }
+        .denah-legend {
+          display: grid;
+          gap: 3mm;
+          font-size: 9px;
+          font-weight: 700;
+        }
+        .denah-legend-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .denah-legend-box {
+          width: 58px;
+          height: 18px;
+          border: 1px solid #3f3f46;
+          display: inline-block;
+        }
+        .denah-legend-top { background: #ffffff; }
+        .denah-legend-bottom { background: #e7e7e7; }
+        .denah-main {
+          padding: 4mm 4mm 3mm;
+          display: grid;
+        }
+        .denah-grid {
+          display: grid;
+          grid-template-rows: repeat(5, 1fr) auto;
+          gap: 2.6mm;
+          height: 100%;
+        }
+        .denah-grid-row {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 2.5mm;
+          align-items: center;
+        }
+        .denah-seat-wrap {
+          display: grid;
+          gap: 0.8mm;
+          justify-items: center;
+        }
+        .denah-seat {
+          width: 100%;
+          min-width: 0;
+          border: 1.1px solid #3f3f46;
+          display: grid;
+          grid-template-columns: 30px minmax(0, 1fr);
+          background: #ffffff;
+          overflow: hidden;
+          height: 31mm;
+        }
+        .denah-seat-empty {
+          opacity: 0.45;
+        }
+        .denah-seat-number {
+          border-right: 1.1px solid #3f3f46;
+          display: grid;
+          place-items: center;
+          font-size: 11.5px;
+          font-weight: 800;
+        }
+        .denah-seat-body {
+          display: grid;
+          grid-template-rows: 1fr 1fr;
+          height: 100%;
+        }
+        .denah-seat-half {
+          display: grid;
+          grid-template-rows: 1fr;
+          align-content: center;
+          align-items: center;
+          justify-items: center;
+          padding: 3px 5px;
+          text-align: center;
+          line-height: 1.1;
+          min-height: 0;
+          overflow: hidden;
+        }
+        .denah-seat-half span {
+          display: -webkit-box;
+          width: 100%;
+          max-height: 100%;
+          overflow: hidden;
+          align-self: center;
+          font-size: 13.2px;
+          font-weight: 800;
+          text-transform: uppercase;
+          line-height: 0.98;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 4;
+        }
+        .denah-seat-top {
+          background: #ffffff;
+          border-bottom: 1px solid #3f3f46;
+        }
+        .denah-seat-bottom {
+          background: #e7e7e7;
+        }
+        .denah-arrow {
+          min-height: 14px;
+          color: #f97316;
+          font-size: 18px;
+          font-weight: 900;
+          line-height: 1;
+          text-align: center;
+        }
+        .denah-arrow-start {
+          min-width: 48px;
+          padding: 2px 8px;
+          border: 1px solid #c2410c;
+          background: #fb923c;
+          color: #ffffff;
+          font-size: 9px;
+          border-radius: 999px;
+          letter-spacing: 0.3px;
+        }
+        .denah-board {
+          width: 62%;
+          margin: 0 auto;
+          border: 1.1px solid #3f3f46;
+          background: #d4d4d4;
+          text-align: center;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 0;
+        }
+        @page {
+          size: A4 landscape;
+          margin: 0;
+        }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      </style>
+    </head>
+    <body>${pages}</body>
+    </html>
+  `;
+}
+
+function getDataMapPrintHtml() {
+  const roomMap = getCombinedAsesmenRoomMap();
+  const pages = Array.from(roomMap.entries()).map(([roomNumber, entries]) => renderDataMapPage(roomNumber, entries)).join("");
+
+  return `
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Data Map</title>
+      <style>
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, Helvetica, sans-serif; }
+        .data-map-page {
+          width: 100%;
+          height: 210mm;
+          padding: 8mm 10mm;
+          page-break-after: always;
+          break-after: page;
+          background: #ffffff;
+          overflow: hidden;
+        }
+        .data-map-page:last-child { page-break-after: auto; break-after: auto; }
+        .data-map-sheet {
+          width: 100%;
+          height: calc(210mm - 16mm);
+          border: 1.3px solid #4b5563;
+          padding: 6mm 6mm 5mm;
+          overflow: hidden;
+        }
+        .data-map-header {
+          margin-bottom: 5mm;
+          text-align: center;
+          line-height: 1.25;
+        }
+        .data-map-header h1 {
+          margin: 0 0 1.5mm;
+          font-size: 17px;
+          font-weight: 800;
+          letter-spacing: 0.2px;
+        }
+        .data-map-header div {
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .data-map-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 5mm;
+          align-items: start;
+        }
+        .data-map-panel {
+          min-width: 0;
+        }
+        .data-map-panel-empty {
+          visibility: hidden;
+        }
+        .data-map-table {
+          width: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          font-size: 10.5px;
+        }
+        .data-map-table th,
+        .data-map-table td {
+          border: 1px solid #52525b;
+          padding: 3px 6px;
+          vertical-align: middle;
+        }
+        .data-map-table thead th {
+          height: 10mm;
+          font-size: 9.6px;
+          font-weight: 800;
+          text-transform: uppercase;
+          background: #ffffff;
+          color: #111827;
+          white-space: nowrap;
+        }
+        .data-map-table tbody tr {
+          height: 7.4mm;
+        }
+        .data-map-no {
+          width: 28px;
+          text-align: center;
+        }
+        .data-map-number {
+          width: 98px;
+          text-align: center;
+          white-space: nowrap;
+        }
+        .data-map-name {
+          text-align: left;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: clip;
+        }
+        .data-map-class {
+          width: 48px;
+          text-align: center;
+          white-space: nowrap;
+        }
+        @page {
+          size: A4 landscape;
+          margin: 0;
+        }
+        @media print {
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+      </style>
+    </head>
+    <body>${pages}</body>
+    </html>
+  `;
+}
+
 function renderTempelKacaPage(roomNumber, entries) {
   const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
   const highEntry = sortedEntries[0] || null;
   const lowEntry = sortedEntries[1] || null;
   const singleEntryClass = lowEntry ? "" : " tempel-kaca-page-single";
   const judul = getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "Asesmen Sumatif";
-  const keterangan = getAdministrasiAsesmenSetting("Keterangan", "xxxxxxxxx") || "xxxxxxxxx";
-  const tahunPelajaran = getAdministrasiAsesmenSetting("TahunPelajaran", "xxxxx") || "xxxxx";
+  const keterangan = getAdministrasiAsesmenSetting("Keterangan", "Akhir Semester") || "Akhir Semester";
+  const tahunPelajaran = getAdministrasiAsesmenSetting("TahunPelajaran", "2024/2025") || "2024/2025";
+  const logoPemdaUrl = new URL("img/logo_pemda.png", window.location.href).href;
+  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
   return `
     <section class="tempel-kaca-page${singleEntryClass}">
       <div class="tempel-room-id-panel">
         <div class="tempel-kop">
-          <strong>${escapeAsesmenHtml(judul)}</strong>
-          <span>${escapeAsesmenHtml(keterangan)}</span>
-          <span>Tahun Pelajaran ${escapeAsesmenHtml(tahunPelajaran)}</span>
+          <div class="tempel-kop-head">
+            <img src="${escapeAsesmenHtml(logoPemdaUrl)}" alt="Logo Pemda">
+            <div class="tempel-kop-text">
+              <span class="tempel-kop-top">PEMERINTAH KABUPATEN JEMBER</span>
+              <strong>SMP NEGERI 1 UMBULSARI</strong>
+              <small>Jl. Pb. Sudirman 12 - (0336) 321441 Gunungsari - Umbulsari - Jember</small>
+            </div>
+            <img src="${escapeAsesmenHtml(logoSekolahUrl)}" alt="Logo Sekolah">
+          </div>
+          <div class="tempel-kop-divider"></div>
+          <div class="tempel-kop-title">
+            <span>DAFTAR PESERTA</span>
+            <span>${escapeAsesmenHtml(judul)}</span>
+            <span>${escapeAsesmenHtml(keterangan)}</span>
+            <span>TAHUN PELAJARAN ${escapeAsesmenHtml(tahunPelajaran)}</span>
+          </div>
         </div>
+        <div class="tempel-room-label">RUANG :</div>
         <div class="tempel-room-box">
-          <span>Nomor Ruang</span>
           <strong>${escapeAsesmenHtml(roomNumber)}</strong>
         </div>
       </div>
@@ -713,101 +1554,164 @@ function renderTempelKacaPage(roomNumber, entries) {
 function getTempelKacaPrintHtml() {
   const roomMap = getCombinedAsesmenRoomMap();
   const pages = Array.from(roomMap.entries()).map(([roomNumber, entries]) => renderTempelKacaPage(roomNumber, entries)).join("");
+  const baseHref = window.location.href;
+  const logoPemdaUrl = new URL("img/logo_pemda.png", window.location.href).href;
+  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
   return `
     <!doctype html>
     <html>
     <head>
       <meta charset="utf-8">
+      <base href="${escapeAsesmenHtml(baseHref)}">
       <title>Tempel Kaca</title>
       <style>
         * { box-sizing: border-box; }
         body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, Helvetica, sans-serif; }
+        .tempel-print-toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          display: flex;
+          justify-content: flex-end;
+          padding: 10px 12px 0;
+          background: #ffffff;
+        }
+        .tempel-print-toolbar button {
+          min-height: 38px;
+          padding: 8px 14px;
+          border: 1px solid #0e7490;
+          border-radius: 999px;
+          background: #0e7490;
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
         .tempel-kaca-page {
           width: 100%;
-          min-height: 100vh;
+          min-height: calc(210mm - 10mm);
           display: grid;
-          grid-template-columns: 30% 35% 35%;
+          grid-template-columns: 42% 29% 29%;
           gap: 8px;
-          border: 2px solid #111827;
-          border-radius: 14px;
-          padding: 8px;
+          border: 1.5px solid #4b5563;
+          padding: 10px;
           page-break-after: always;
           break-after: page;
           overflow: hidden;
         }
         .tempel-kaca-page-single {
-          grid-template-columns: 30% 70%;
+          grid-template-columns: 42% 58%;
         }
         .tempel-kaca-page:last-child { page-break-after: auto; break-after: auto; }
         .tempel-room-id-panel,
         .tempel-student-panel {
           min-width: 0;
-          border: 2px solid #111827;
-          border-radius: 10px;
+          border: 1.5px solid #4b5563;
           overflow: hidden;
           background: #ffffff;
         }
         .tempel-room-id-panel {
           display: grid;
-          grid-template-rows: auto 1fr;
-          padding: 12px;
+          grid-template-rows: auto auto 1fr;
+          padding: 10px;
         }
         .tempel-kop {
           display: grid;
-          gap: 4px;
+          gap: 10px;
+          text-align: center;
+        }
+        .tempel-kop-head {
+          display: grid;
+          grid-template-columns: 72px minmax(0, 1fr) 72px;
+          gap: 8px;
+          align-items: center;
+        }
+        .tempel-kop-head img {
+          width: 64px;
+          height: 64px;
+          object-fit: contain;
+          justify-self: center;
+        }
+        .tempel-kop-text {
+          display: grid;
+          gap: 5px;
+          text-align: center;
+          line-height: 1.18;
+        }
+        .tempel-kop-top {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.4px;
+        }
+        .tempel-kop-text strong {
+          font-size: 13px;
+          font-weight: 800;
+        }
+        .tempel-kop-text small {
+          font-size: 9px;
+          font-weight: 500;
+        }
+        .tempel-kop-divider {
+          height: 2px;
+          background: #6b7280;
+        }
+        .tempel-kop-title {
+          display: grid;
+          gap: 8px;
+          justify-items: center;
+          padding: 12px 8px 4px;
+          text-align: center;
+          line-height: 1.24;
+        }
+        .tempel-kop-title span {
+          font-size: 12px;
+          font-weight: 800;
+        }
+        .tempel-room-label {
+          padding: 8px 0 12px;
           text-align: center;
           font-size: 16px;
-          line-height: 1.15;
-        }
-        .tempel-kop strong {
-          font-size: 20px;
+          font-weight: 800;
         }
         .tempel-room-box {
           align-self: center;
-          display: grid;
-          gap: 8px;
-          margin: 14px auto 0;
+          margin: 0 auto;
           width: 100%;
-          min-height: 190px;
+          min-height: 330px;
           place-items: center;
-          border: 3px solid #111827;
-          border-radius: 10px;
+          border: 1.5px solid #111827;
           text-align: center;
           padding: 12px;
         }
-        .tempel-room-box span {
-          font-weight: 800;
-          font-size: 18px;
-        }
         .tempel-room-box strong {
           display: block;
-          font-size: 92px;
-          line-height: 1;
+          font-size: 130px;
+          line-height: 0.9;
           font-weight: 900;
         }
-        .tempel-panel-title {
-          padding: 6px 10px;
-          border-bottom: 1px solid #111827;
-          text-align: center;
-          font-weight: 800;
-          font-size: 16px;
-        }
-        table { width: 100%; height: calc(100% - 31px); border-collapse: collapse; table-layout: fixed; font-size: 14px; }
-        th, td { border-bottom: 1px solid #d1d5db; padding: 3px 7px; vertical-align: middle; }
-        th { font-size: 11px; background: #f8fafc; color: #374151; }
-        tbody tr { height: 4.65%; }
-        .tempel-kelas { width: 72px; text-align: center; font-weight: 800; white-space: nowrap; }
+        table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
+        th, td { border: 1px solid #6b7280; padding: 2px 6px; vertical-align: middle; }
+        th { font-size: 10px; background: #ffffff; color: #111827; font-weight: 800; text-transform: uppercase; }
+        tbody tr { height: 5%; }
+        .tempel-no { width: 34px; text-align: center; }
+        .tempel-kelas { width: 58px; text-align: center; font-weight: 400; white-space: nowrap; }
         .tempel-nama { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: clip; }
         .tempel-empty { text-align: center; color: #6b7280; }
         .tempel-student-panel-empty { background: #ffffff; border-color: transparent; }
         @page { size: A4 landscape; margin: 5mm; }
         @media print {
+          .tempel-print-toolbar { display: none; }
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       </style>
     </head>
-    <body>${pages}</body>
+    <body data-logo-pemda="${escapeAsesmenHtml(logoPemdaUrl)}" data-logo-sekolah="${escapeAsesmenHtml(logoSekolahUrl)}">
+      <div class="tempel-print-toolbar">
+        <button type="button" onclick="window.print()">Print / Simpan PDF</button>
+      </div>
+      ${pages}
+    </body>
     </html>
   `;
 }
@@ -819,17 +1723,93 @@ function exportTempelKacaPDF() {
     return;
   }
 
+  const html = getTempelKacaPrintHtml();
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: "Tempel Kaca",
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 450,
+      fallbackDelayMs: 1000
+    });
+    return;
+  }
+
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
-
   printWindow.document.open();
-  printWindow.document.write(getTempelKacaPrintHtml());
+  printWindow.document.write(html);
   printWindow.document.close();
   printWindow.focus();
-  setTimeout(() => printWindow.print(), 300);
+  setTimeout(() => printWindow.print(), 450);
+}
+
+function exportDataMapPDF() {
+  const roomMap = getCombinedAsesmenRoomMap();
+  if (roomMap.size === 0) {
+    Swal.fire("Belum ada ruang", "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.", "warning");
+    return;
+  }
+
+  const html = getDataMapPrintHtml();
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: "Data Map",
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 450,
+      fallbackDelayMs: 1000
+    });
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 450);
+}
+
+function exportDenahPesertaPDF() {
+  const roomMap = getCombinedAsesmenRoomMap();
+  if (roomMap.size === 0) {
+    Swal.fire("Belum ada ruang", "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.", "warning");
+    return;
+  }
+
+  const html = getDenahPesertaPrintHtml();
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: "Denah Peserta",
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 450,
+      fallbackDelayMs: 1000
+    });
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 450);
 }
 
 function renderAsesmenRoomArrangement() {

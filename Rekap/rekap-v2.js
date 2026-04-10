@@ -933,13 +933,7 @@ function exportRekapTugasMengajarBayanganExcel() {
 function exportRekapTugasMengajarPdf() {
   saveRekapSettings();
   const rows = buildRekapTugasMengajarRows();
-  const printWindow = window.open("", "_blank");
-  if (!printWindow) {
-    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
-    return;
-  }
-
-  printWindow.document.write(`
+  const html = `
     <!doctype html>
     <html>
       <head>
@@ -972,27 +966,37 @@ function exportRekapTugasMengajarPdf() {
         ${renderRekapLetterHeader()}
         ${renderRekapTableHtml(rows)}
         ${renderRekapSignatureBlock()}
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        <\/script>
       </body>
     </html>
-  `);
-  printWindow.document.close();
-}
+  `;
 
-function exportRekapTugasMengajarBayanganPdf() {
-  saveRekapSettings();
-  const rows = buildRekapTugasMengajarBayanganRows();
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: "Rekap Tugas dan Mengajar",
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 400,
+      fallbackDelayMs: 900
+    });
+    return;
+  }
+
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  setTimeout(() => printWindow.print(), 400);
+}
 
-  printWindow.document.write(`
+function exportRekapTugasMengajarBayanganPdf() {
+  saveRekapSettings();
+  const rows = buildRekapTugasMengajarBayanganRows();
+  const html = `
     <!doctype html>
     <html>
       <head>
@@ -1023,13 +1027,29 @@ function exportRekapTugasMengajarBayanganPdf() {
         ${renderRekapLetterHeader("Pembagian Tugas Mengajar Kelas Real", "Daftar Nama Guru dan Tugas Mengajar Kelas Real")}
         ${renderRekapMengajarOnlyTableHtml(rows)}
         ${renderRekapSignatureBlock()}
-        <script>
-          window.onload = function() {
-            window.print();
-          };
-        <\/script>
       </body>
     </html>
-  `);
+  `;
+
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: "Rekap Tugas Mengajar Kelas Real",
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 400,
+      fallbackDelayMs: 900
+    });
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
   printWindow.document.close();
+  setTimeout(() => printWindow.print(), 400);
 }

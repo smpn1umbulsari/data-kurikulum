@@ -21,7 +21,40 @@ const KOORDINATOR_LEVELS = [
   { key: "kelas_9", label: "Kelas 9" }
 ];
 
+function ensureAdminUserLoadingOverlay() {
+  let overlay = document.getElementById("adminUserLoadingOverlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "adminUserLoadingOverlay";
+  overlay.className = "admin-user-loading-overlay";
+  overlay.innerHTML = `
+    <div class="admin-user-loading-card">
+      <div class="admin-user-loading-spinner" aria-hidden="true"></div>
+      <strong>Memproses data user</strong>
+      <span>Mohon tunggu sebentar. Password sedang diperbarui.</span>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function setAdminUserLoading(isActive, title = "Memproses data user", message = "Mohon tunggu sebentar. Password sedang diperbarui.") {
+  if (window.AppLoading?.set) {
+    window.AppLoading.set("admin-user", isActive, { title, message });
+    return;
+  }
+  const overlay = ensureAdminUserLoadingOverlay();
+  const titleEl = overlay.querySelector("strong");
+  const messageEl = overlay.querySelector("span");
+  if (titleEl) titleEl.textContent = title;
+  if (messageEl) messageEl.textContent = message;
+  overlay.style.display = isActive ? "flex" : "none";
+  document.body.classList.toggle("admin-user-loading-active", Boolean(isActive));
+}
+
 function escapeAdminHtml(value) {
+  if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -31,6 +64,9 @@ function escapeAdminHtml(value) {
 }
 
 function makeUsernameFromName(value = "") {
+  if (window.AdminUsersIdentity?.makeUsernameFromName) {
+    return window.AdminUsersIdentity.makeUsernameFromName(value);
+  }
   return String(value || "")
     .trim()
     .toLowerCase()
@@ -39,11 +75,17 @@ function makeUsernameFromName(value = "") {
 }
 
 function getAdminGuruName(guru) {
+  if (window.AdminUsersIdentity?.getGuruName) {
+    return window.AdminUsersIdentity.getGuruName(guru);
+  }
   if (typeof formatNamaGuru === "function") return formatNamaGuru(guru);
   return [guru?.gelar_depan, guru?.nama, guru?.gelar_belakang].filter(Boolean).join(" ") || guru?.nama || "";
 }
 
 function stripAdminGuruTitles(value = "") {
+  if (window.AdminUsersIdentity?.stripGuruTitles) {
+    return window.AdminUsersIdentity.stripGuruTitles(value);
+  }
   if (typeof stripGuruTitlesFromName === "function") return stripGuruTitlesFromName(value);
   return String(value || "")
     .replace(/\b(Drs?|Dra|Prof|Hj?|Ir)\.?(?=\s|,|$)/gi, " ")
@@ -54,23 +96,155 @@ function stripAdminGuruTitles(value = "") {
 }
 
 function getAdminGuruUsernameName(guru = {}) {
-  const nama = String(guru?.nama || "").trim();
+  if (window.AdminUsersIdentity?.getGuruUsernameName) {
+    return window.AdminUsersIdentity.getGuruUsernameName(guru);
+  }
+  const nama = stripAdminGuruTitles(String(guru?.nama || "").trim());
   if (nama) return nama;
   return stripAdminGuruTitles(guru?.nama_lengkap || getAdminGuruName(guru));
 }
 
 function makeGuruUsername(guru) {
+  if (window.AdminUsersIdentity?.makeGuruUsername) {
+    return window.AdminUsersIdentity.makeGuruUsername(guru);
+  }
   const nip = String(guru?.nip || "").trim();
   return nip || makeUsernameFromName(getAdminGuruUsernameName(guru));
 }
 
 function makeUserDocId(username) {
+  if (window.AdminUsersIdentity?.makeUserDocId) {
+    return window.AdminUsersIdentity.makeUserDocId(username);
+  }
   return makeUsernameFromName(username);
 }
 
 function getUserByUsername(username) {
   const target = makeUserDocId(username);
   return semuaDataAdminUser.find(item => makeUserDocId(item.username || item.id) === target) || null;
+}
+
+function getUserByGuru(guru = {}) {
+  if (window.AdminUsersIdentity?.getUserByGuru) {
+    return window.AdminUsersIdentity.getUserByGuru(guru, semuaDataAdminUser);
+  }
+  const kodeGuru = String(guru?.kode_guru || "").trim();
+  if (kodeGuru) {
+    const byKode = semuaDataAdminUser.find(item =>
+      String(item.kode_guru || "").trim() === kodeGuru
+    );
+    if (byKode) return byKode;
+  }
+
+  const aliases = [
+    makeGuruUsername(guru),
+    makeUsernameFromName(getAdminGuruName(guru)),
+    makeUsernameFromName(getAdminGuruUsernameName(guru))
+  ]
+    .map(value => makeUserDocId(value))
+    .filter(Boolean);
+
+  return semuaDataAdminUser.find(item => aliases.includes(makeUserDocId(item.username || item.id))) || null;
+}
+
+function getAllUsersForGuru(guru = {}, fallbackUser = null) {
+  if (window.AdminUsersIdentity?.getAllUsersForGuru) {
+    return window.AdminUsersIdentity.getAllUsersForGuru(guru, semuaDataAdminUser, fallbackUser);
+  }
+  const kodeGuru = String(guru?.kode_guru || fallbackUser?.kode_guru || "").trim();
+  const aliasIds = new Set();
+  const primaryUsername = makeGuruUsername(guru);
+  if (primaryUsername) aliasIds.add(makeUserDocId(primaryUsername));
+
+  const titledUsername = makeUsernameFromName(getAdminGuruName(guru));
+  if (titledUsername) aliasIds.add(makeUserDocId(titledUsername));
+
+  const fallbackId = makeUserDocId(fallbackUser?.username || fallbackUser?.id || "");
+  if (fallbackId) aliasIds.add(fallbackId);
+
+  return semuaDataAdminUser.filter(item => {
+    const itemId = String(item.id || makeUserDocId(item.username)).trim();
+    if (kodeGuru && String(item.kode_guru || "").trim() === kodeGuru) return true;
+    return aliasIds.has(itemId);
+  });
+}
+
+function getGuruForAdminUser(user = {}) {
+  if (window.AdminUsersIdentity?.getGuruForAdminUser) {
+    return window.AdminUsersIdentity.getGuruForAdminUser(user, semuaDataAdminGuru, getGuruByKode);
+  }
+  const kodeGuru = String(user?.kode_guru || "").trim();
+  if (kodeGuru) {
+    const byKode = getGuruByKode(kodeGuru);
+    if (byKode) return byKode;
+  }
+
+  const currentId = makeUserDocId(user?.username || user?.id || "");
+  const namaUser = stripAdminGuruTitles(String(user?.nama || "").trim());
+  const normalizedNamaUser = makeUsernameFromName(namaUser);
+  if (!currentId && !normalizedNamaUser) return null;
+
+  return semuaDataAdminGuru.find(guru => {
+    const primaryId = makeUserDocId(makeGuruUsername(guru));
+    const titledId = makeUsernameFromName(getAdminGuruName(guru));
+    const plainNameId = makeUsernameFromName(getAdminGuruUsernameName(guru));
+    return [primaryId, titledId, plainNameId].filter(Boolean).includes(currentId) ||
+      (normalizedNamaUser && [primaryId, plainNameId].filter(Boolean).includes(normalizedNamaUser));
+  }) || null;
+}
+
+async function ensureAdminGuruUserIdentity(userOrId) {
+  const user = typeof userOrId === "string"
+    ? semuaDataAdminUser.find(item => String(item.id || makeUserDocId(item.username)).trim() === String(userOrId).trim())
+    : userOrId;
+  if (!user) return { userId: String(userOrId || "").trim(), user: null };
+
+  const guru = getGuruForAdminUser(user);
+  if (!guru) {
+    return { userId: String(user.id || makeUserDocId(user.username)).trim(), user };
+  }
+
+  const currentId = String(user.id || makeUserDocId(user.username)).trim();
+  const matchedUsers = getAllUsersForGuru(guru, user);
+  const nextUsername = makeGuruUsername(guru);
+  const nextId = makeUserDocId(nextUsername);
+  const nextNama = getAdminGuruName(guru);
+  if (!nextId) return { userId: currentId, user };
+
+  const canonicalSource = matchedUsers.find(item =>
+    String(item.id || makeUserDocId(item.username)).trim() === nextId
+  ) || user;
+
+  const nextUser = {
+    ...prepareGuruUser(guru, getAdminResolvedGuruRole(canonicalSource, ...matchedUsers, user)),
+    aktif: canonicalSource.aktif !== false,
+    created_at: canonicalSource.created_at || user.created_at || new Date(),
+    updated_at: new Date()
+  };
+
+  const staleUsers = matchedUsers.filter(item =>
+    String(item.id || makeUserDocId(item.username)).trim() !== nextId
+  );
+  const needsPayloadUpdate =
+    String(canonicalSource.username || "").trim() !== nextUsername ||
+    String(canonicalSource.nama || "").trim() !== String(nextUser.nama || "").trim() ||
+    String(canonicalSource.nip || "").trim() !== String(guru.nip || "").trim() ||
+    String(canonicalSource.role || "").trim().toLowerCase() !== String(nextUser.role || "").trim().toLowerCase() ||
+    staleUsers.length > 0;
+
+  if (!needsPayloadUpdate && currentId === nextId) {
+    return { userId: currentId, user: { ...canonicalSource, ...nextUser } };
+  }
+
+  const batch = db.batch();
+  batch.set(db.collection("users").doc(nextId), nextUser, { merge: true });
+  staleUsers.forEach(item => {
+    const staleId = String(item.id || makeUserDocId(item.username)).trim();
+    if (staleId && staleId !== nextId) batch.delete(db.collection("users").doc(staleId));
+  });
+  await batch.commit();
+
+  return { userId: nextId, user: { ...nextUser, id: nextId } };
 }
 
 function getGuruByKode(kodeGuru) {
@@ -242,6 +416,15 @@ function prepareGuruUser(guru, role = "guru") {
   };
 }
 
+function getAdminResolvedGuruRole(...users) {
+  const allowedRoles = ["koordinator", "urusan", "guru"];
+  for (const user of users) {
+    const role = String(user?.role || "").trim().toLowerCase();
+    if (allowedRoles.includes(role)) return role;
+  }
+  return "guru";
+}
+
 function prepareSiswaUser(siswa) {
   const username = makeUsernameFromName(siswa.nisn || siswa.nipd || siswa.nama);
   return {
@@ -258,13 +441,19 @@ function prepareSiswaUser(siswa) {
 }
 
 function renderAdminUserPage() {
+  if (window.AdminUsersView?.renderUserPage) {
+    return window.AdminUsersView.renderUserPage({
+      defaultPassword: DEFAULT_USER_PASSWORD,
+      roles: USER_ROLES
+    });
+  }
   return `
     <div class="card">
       <div class="kelas-bayangan-head">
         <div>
           <span class="dashboard-eyebrow">Admin</span>
           <h2>Daftar User</h2>
-          <p>Username dibuat otomatis dari NIP guru atau nama lengkap tanpa spasi.</p>
+          <p>Username dibuat otomatis dari NIP guru atau nama guru tanpa gelar, lalu dihapus spasinya.</p>
         </div>
         <div class="kelas-bayangan-actions">
           <button class="btn-secondary" onclick="syncGuruUsers()">Tambah dari Data Guru</button>
@@ -338,6 +527,46 @@ function renderAdminHierarchyPage() {
 }
 
 function loadRealtimeAdminUsers(includeSiswa = false) {
+  if (window.AdminUsersService?.loadRealtimeUsers) {
+    if (unsubscribeAdminGuru) unsubscribeAdminGuru();
+    if (unsubscribeAdminUser) unsubscribeAdminUser();
+    if (unsubscribeAdminSiswa) unsubscribeAdminSiswa();
+    if (unsubscribeAdminKoordinator) unsubscribeAdminKoordinator();
+
+    const unsubs = window.AdminUsersService.loadRealtimeUsers({
+      includeSiswa,
+      getKoordinatorDocRef,
+      onGuruData: rows => {
+        semuaDataAdminGuru = rows;
+      },
+      onUserData: rows => {
+        semuaDataAdminUser = rows;
+      },
+      onSiswaData: rows => {
+        semuaDataAdminSiswa = rows;
+      },
+      onKoordinatorData: data => {
+        semuaDataAdminKoordinator = data;
+        if (!isInteractingAdminHierarchyUi || !hasAdminKoordinatorDraftSelection()) {
+          adminKoordinatorDraft = null;
+          requestRenderAdminUsersState();
+        }
+      },
+      onGuruUpdated: () => {
+        hasSyncedGuruDerivedUsernames = false;
+        ensureGuruDerivedUsernames();
+      },
+      onUserUpdated: () => {
+        ensureGuruDerivedUsernames();
+      },
+      onRender: () => requestRenderAdminUsersState()
+    });
+    unsubscribeAdminGuru = unsubs.guru || null;
+    unsubscribeAdminUser = unsubs.user || null;
+    unsubscribeAdminSiswa = unsubs.siswa || null;
+    unsubscribeAdminKoordinator = unsubs.koordinator || null;
+    return;
+  }
   if (unsubscribeAdminGuru) unsubscribeAdminGuru();
   if (unsubscribeAdminUser) unsubscribeAdminUser();
   if (unsubscribeAdminSiswa) unsubscribeAdminSiswa();
@@ -391,6 +620,16 @@ function renderAdminUsersState() {
 }
 
 function renderAdminUserRows() {
+  if (window.AdminUsersView?.renderUserRows) {
+    return window.AdminUsersView.renderUserRows({
+      users: semuaDataAdminUser,
+      currentEditId: currentEditAdminUser,
+      roles: USER_ROLES,
+      defaultPassword: DEFAULT_USER_PASSWORD,
+      escape: escapeAdminHtml,
+      makeUserDocId
+    });
+  }
   const rows = [...semuaDataAdminUser].sort((a, b) =>
     String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" })
   );
@@ -590,9 +829,24 @@ function fillAdminUserFromSource() {
 }
 
 async function syncGuruUsers() {
+  if (window.AdminUsersService?.syncGuruUsers) {
+    const result = await window.AdminUsersService.syncGuruUsers({
+      guruList: semuaDataAdminGuru,
+      getUserByGuru,
+      prepareGuruUser,
+      makeUserDocId
+    });
+    if (!result.added) {
+      Swal.fire("Sudah lengkap", "Semua guru sudah memiliki user.", "info");
+      return;
+    }
+    Swal.fire("Selesai", `${result.added} user guru ditambahkan.`, "success");
+    return;
+  }
   const candidates = semuaDataAdminGuru
+    .filter(guru => !getUserByGuru(guru))
     .map(guru => prepareGuruUser(guru))
-    .filter(user => user.username && !getUserByUsername(user.username));
+    .filter(user => user.username);
 
   if (candidates.length === 0) {
     Swal.fire("Sudah lengkap", "Semua guru sudah memiliki user.", "info");
@@ -618,27 +872,62 @@ async function resetAllUserPasswords() {
   });
   if (!value) return;
 
-  const batch = db.batch();
-  semuaDataAdminUser.forEach(user => {
-    batch.update(db.collection("users").doc(user.id), { password: value, updated_at: new Date() });
-  });
-  await batch.commit();
+  if (window.AdminUsersService?.resetAllPasswords) {
+    await window.AdminUsersService.resetAllPasswords(semuaDataAdminUser, value);
+  } else {
+    const batch = db.batch();
+    semuaDataAdminUser.forEach(user => {
+      batch.update(db.collection("users").doc(user.id), { password: value, updated_at: new Date() });
+    });
+    await batch.commit();
+  }
   Swal.fire("Selesai", "Semua password pengguna sudah diganti.", "success");
 }
 
 async function resetSingleUserPassword(userId) {
-  await db.collection("users").doc(userId).update({ password: DEFAULT_USER_PASSWORD, updated_at: new Date() });
-  Swal.fire("Selesai", "Password pengguna sudah direset.", "success");
+  setAdminUserLoading(true, "Reset password user", "Mohon tunggu sebentar. Password default sedang diterapkan.");
+  try {
+    const resolved = await ensureAdminGuruUserIdentity(userId);
+    if (!resolved.user) {
+      Swal.fire("User tidak ditemukan", "Silakan refresh halaman lalu coba lagi.", "warning");
+      return;
+    }
+    const targetId = resolved.userId || userId;
+    await db.collection("users").doc(targetId).set({
+      ...(resolved.user || {}),
+      password: DEFAULT_USER_PASSWORD,
+      updated_at: new Date()
+    }, { merge: true });
+    Swal.fire("Selesai", "Password pengguna sudah direset.", "success");
+  } finally {
+    setAdminUserLoading(false);
+  }
 }
 
 async function saveUser(userId) {
-  const password = document.getElementById(`userPassword-${userId}`)?.value || DEFAULT_USER_PASSWORD;
-  const role = document.getElementById(`userRole-${userId}`)?.value || "guru";
-  await db.collection("users").doc(userId).update({ password, role, updated_at: new Date() });
-  currentEditAdminUser = null;
-  renderAdminUsersState();
-  if (typeof showInlineSaveNotificationForData === "function") {
-    showInlineSaveNotificationForData("data-admin-user-id", userId, "Tersimpan");
+  setAdminUserLoading(true, "Menyimpan perubahan user", "Mohon tunggu sebentar. Perubahan password dan role sedang disimpan.");
+  try {
+    const password = document.getElementById(`userPassword-${userId}`)?.value || DEFAULT_USER_PASSWORD;
+    const role = document.getElementById(`userRole-${userId}`)?.value || "guru";
+    const resolved = await ensureAdminGuruUserIdentity(userId);
+    if (!resolved.user) {
+      Swal.fire("User tidak ditemukan", "Silakan refresh halaman lalu coba lagi.", "warning");
+      return;
+    }
+    const targetId = resolved.userId || userId;
+    await db.collection("users").doc(targetId).set({
+      ...(resolved.user || {}),
+      password,
+      role,
+      updated_at: new Date()
+    }, { merge: true });
+    currentEditAdminUser = null;
+    renderAdminUsersState();
+    if (typeof showInlineSaveNotificationForData === "function") {
+      showInlineSaveNotificationForData("data-admin-user-id", userId, "Tersimpan");
+    }
+  } finally {
+    setAdminUserLoading(false);
   }
 }
 
@@ -651,7 +940,11 @@ async function deleteUser(userId) {
     confirmButtonText: "Hapus"
   });
   if (!result.isConfirmed) return;
-  await db.collection("users").doc(userId).delete();
+  if (window.AdminUsersService?.deleteUser) {
+    await window.AdminUsersService.deleteUser(userId);
+  } else {
+    await db.collection("users").doc(userId).delete();
+  }
   Swal.fire("Terhapus", "User sudah dihapus.", "success");
 }
 

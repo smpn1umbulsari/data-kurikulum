@@ -630,9 +630,9 @@ function renderKelasRow(item, nomor) {
         </td>
         <td>${jumlahAnggota} siswa</td>
         <td>
-          <div class="table-actions">
-            <button class="btn-primary btn-table-compact" onclick="saveEditKelas('${kelasJs}')">Simpan</button>
-            <button class="btn-secondary btn-table-compact" onclick="cancelEditKelas()">Batal</button>
+          <div class="table-action-stack">
+            <button class="btn-primary btn-table-compact btn-action-save" onclick="saveEditKelas('${kelasJs}')">Simpan</button>
+            <button class="btn-secondary btn-table-compact btn-action-cancel" onclick="cancelEditKelas()">Batal</button>
           </div>
         </td>
       </tr>
@@ -646,10 +646,10 @@ function renderKelasRow(item, nomor) {
       <td>${renderWaliKelasDisplay(item)}</td>
       <td>${jumlahAnggota} siswa</td>
       <td>
-        <div class="table-actions">
-          <button class="btn-secondary btn-table-compact" onclick="editKelas('${kelasJs}')">Edit</button>
-          <button class="btn-secondary btn-table-compact" onclick="showAnggotaKelas('${kelasJs}')">Anggota</button>
-          <button class="btn-secondary btn-danger-lite btn-table-compact" onclick="hapusKelas('${kelasJs}')">Hapus</button>
+        <div class="table-action-stack">
+          <button class="btn-secondary btn-table-compact btn-action-edit" onclick="editKelas('${kelasJs}')">Edit</button>
+          <button class="btn-secondary btn-table-compact btn-action-members" onclick="showAnggotaKelas('${kelasJs}')">Anggota</button>
+          <button class="btn-secondary btn-table-compact btn-action-delete" onclick="hapusKelas('${kelasJs}')">Hapus</button>
         </div>
       </td>
     </tr>

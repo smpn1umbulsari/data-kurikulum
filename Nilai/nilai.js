@@ -319,16 +319,87 @@ function renderNilaiTableState() {
             <tr>
               <td>${index + 1}</td>
               <td class="nilai-student-name">${escapeNilaiHtml(siswa.nama || "-")}<small>${escapeNilaiHtml(siswa.nipd || "-")} | ${escapeNilaiHtml(siswa.kelas || "-")}</small></td>
-              <td><input class="nilai-input-cell nilai-input-uh" id="nilai-uh1-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiUh1)}"></td>
-              <td><input class="nilai-input-cell nilai-input-uh" id="nilai-uh2-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiUh2)}"></td>
-              <td><input class="nilai-input-cell nilai-input-uh" id="nilai-uh3-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiUh3)}"></td>
-              <td><input class="nilai-input-cell nilai-input-pts" id="nilai-pts-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiPts)}"></td>
+              <td><input class="nilai-input-cell nilai-input-uh" data-row="${index}" data-field="uh1" id="nilai-uh1-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiUh1)}"></td>
+              <td><input class="nilai-input-cell nilai-input-uh" data-row="${index}" data-field="uh2" id="nilai-uh2-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiUh2)}"></td>
+              <td><input class="nilai-input-cell nilai-input-uh" data-row="${index}" data-field="uh3" id="nilai-uh3-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiUh3)}"></td>
+              <td><input class="nilai-input-cell nilai-input-pts" data-row="${index}" data-field="pts" id="nilai-pts-${escapeNilaiHtml(siswa.nipd)}" type="number" min="0" max="100" value="${escapeNilaiHtml(nilaiPts)}"></td>
             </tr>
           `;
         }).join("")}
       </tbody>
     </table>
   `;
+  setupNilaiTableInputs();
+}
+
+function normalizeNilaiManualInputValue(value) {
+  const raw = String(value ?? "").trim();
+  if (!raw) return "";
+  const numberValue = Number(raw);
+  if (!Number.isFinite(numberValue)) return "";
+  return String(Math.max(0, Math.min(100, numberValue)));
+}
+
+function getNilaiTableInput(rowIndex, field) {
+  return document.querySelector(`.nilai-input-cell[data-row="${rowIndex}"][data-field="${field}"]`);
+}
+
+function updateNilaiInputDependencies(rowIndex) {
+  const uh1 = getNilaiTableInput(rowIndex, "uh1");
+  const uh2 = getNilaiTableInput(rowIndex, "uh2");
+  const uh3 = getNilaiTableInput(rowIndex, "uh3");
+  if (!uh1 || !uh2 || !uh3) return;
+
+  const hasUh1 = String(uh1.value || "").trim() !== "";
+  uh2.disabled = !hasUh1;
+  uh2.classList.toggle("is-disabled", !hasUh1);
+  if (!hasUh1) uh2.value = "";
+
+  const hasUh2 = String(uh2.value || "").trim() !== "";
+  uh3.disabled = !hasUh2;
+  uh3.classList.toggle("is-disabled", !hasUh2);
+  if (!hasUh2) uh3.value = "";
+}
+
+function handleNilaiTableInput(event) {
+  const input = event.target;
+  if (!input?.classList?.contains("nilai-input-cell")) return;
+  input.value = normalizeNilaiManualInputValue(input.value);
+  const rowIndex = Number(input.dataset.row);
+  if (!Number.isNaN(rowIndex)) updateNilaiInputDependencies(rowIndex);
+}
+
+function handleNilaiTableKeydown(event) {
+  const input = event.target;
+  if (!input?.classList?.contains("nilai-input-cell")) return;
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const rowIndex = Number(input.dataset.row);
+  const field = String(input.dataset.field || "");
+  if (Number.isNaN(rowIndex) || !field) return;
+  const nextInput = getNilaiTableInput(rowIndex + 1, field);
+  if (nextInput && !nextInput.disabled) {
+    nextInput.focus();
+    nextInput.select?.();
+  }
+}
+
+function setupNilaiTableInputs() {
+  const container = document.getElementById("nilaiTableContainer");
+  if (!container) return;
+  container.removeEventListener("input", handleNilaiTableInput);
+  container.removeEventListener("keydown", handleNilaiTableKeydown);
+  container.addEventListener("input", handleNilaiTableInput);
+  container.addEventListener("keydown", handleNilaiTableKeydown);
+  container.querySelectorAll(".nilai-input-cell").forEach(input => {
+    input.value = normalizeNilaiManualInputValue(input.value);
+  });
+  const rowIndexes = [...new Set(
+    [...container.querySelectorAll(".nilai-input-cell")]
+      .map(input => Number(input.dataset.row))
+      .filter(value => !Number.isNaN(value))
+  )];
+  rowIndexes.forEach(updateNilaiInputDependencies);
 }
 
 function renderNilaiAssignmentInfo(assignment) {

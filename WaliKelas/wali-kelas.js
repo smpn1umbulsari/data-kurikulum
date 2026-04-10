@@ -27,6 +27,7 @@ let waliInitialReady = {
 };
 
 function escapeWaliHtml(value) {
+  if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -44,6 +45,7 @@ function getCurrentWaliUser() {
 }
 
 function getWaliKelasParts(kelasValue = "") {
+  if (window.AppUtils?.parseKelas) return window.AppUtils.parseKelas(kelasValue);
   const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
   const match = normalized.match(/([7-9])([A-Z]+)$/);
   return {
@@ -54,6 +56,7 @@ function getWaliKelasParts(kelasValue = "") {
 }
 
 function getWaliSiswaKelasBayanganParts(siswa) {
+  if (window.AppUtils?.getPrimaryKelasParts) return window.AppUtils.getPrimaryKelasParts(siswa);
   const asli = getWaliKelasParts(siswa.kelas);
   const bayangan = getWaliKelasParts(siswa.kelas_bayangan);
   if (bayangan.tingkat === asli.tingkat && /^[A-H]$/.test(bayangan.rombel)) return bayangan;
@@ -158,6 +161,15 @@ function refreshWaliKelasSelectOptions() {
 }
 
 function renderWaliKelasHeader(title, description, extraActions = "") {
+  if (window.WaliKelasView?.renderHeader) {
+    return window.WaliKelasView.renderHeader({
+      title,
+      description,
+      extraActions,
+      selectOptionsHtml: renderWaliKelasSelect(),
+      escape: escapeWaliHtml
+    });
+  }
   return `
     <div class="kelas-bayangan-head nilai-page-head">
       <div>
@@ -177,6 +189,7 @@ function renderWaliKelasHeader(title, description, extraActions = "") {
 }
 
 function renderWaliKehadiranPage() {
+  if (window.WaliKelasView?.renderPageShell) return window.WaliKelasView.renderPageShell();
   return `
     <div class="card">
       <div id="waliKelasPageShell">
@@ -187,6 +200,7 @@ function renderWaliKehadiranPage() {
 }
 
 function renderWaliKelengkapanPage() {
+  if (window.WaliKelasView?.renderPageShell) return window.WaliKelasView.renderPageShell();
   return `
     <div class="card">
       <div id="waliKelasPageShell">
@@ -197,6 +211,55 @@ function renderWaliKelengkapanPage() {
 }
 
 function loadRealtimeWaliKelas(page) {
+  if (window.WaliKelasService?.loadRealtime) {
+    const unsubs = window.WaliKelasService.loadRealtime(page, {
+      clearListeners: clearWaliKelasListeners,
+      setCurrentPage: value => {
+        currentWaliKelasPage = value;
+      },
+      setReadyState: value => {
+        waliInitialReady = value;
+      },
+      renderLoading: renderWaliKelasLoadingState,
+      renderActivePage: nextPage => renderWaliKelasActivePage(nextPage),
+      onSiswa: rows => {
+        semuaDataWaliSiswa = rows;
+      },
+      onKelas: rows => {
+        semuaDataWaliKelas = rows;
+      },
+      onMapel: rows => {
+        semuaDataWaliMapel = rows;
+      },
+      onMengajar: rows => {
+        semuaDataWaliMengajar = rows;
+      },
+      onGuru: rows => {
+        semuaDataWaliGuru = rows;
+      },
+      onNilai: rows => {
+        semuaDataWaliNilai = rows;
+      },
+      onKehadiran: rows => {
+        semuaDataWaliKehadiran = rows;
+      },
+      onRekap: rows => {
+        semuaDataWaliKehadiranRekap = rows;
+      },
+      markReady: key => {
+        waliInitialReady[key] = true;
+      }
+    });
+    unsubscribeWaliSiswa = unsubs.siswa || null;
+    unsubscribeWaliKelas = unsubs.kelas || null;
+    unsubscribeWaliMapel = unsubs.mapel || null;
+    unsubscribeWaliMengajar = unsubs.mengajar || null;
+    unsubscribeWaliGuru = unsubs.guru || null;
+    unsubscribeWaliNilai = unsubs.nilai || null;
+    unsubscribeWaliKehadiran = unsubs.kehadiran || null;
+    unsubscribeWaliKehadiranRekap = unsubs.rekap || null;
+    return;
+  }
   clearWaliKelasListeners();
   currentWaliKelasPage = page || "";
   waliInitialReady = {
@@ -306,7 +369,7 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
         <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
         <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
       `)}
-      <div id="waliKehadiranTable" class="table-container mapel-table-container"></div>
+      <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
     `;
     return true;
   }
@@ -410,15 +473,22 @@ function renderWaliKehadiranTable() {
   if (!container) return;
   const kelas = getSelectedWaliClass().kelas;
   const students = getWaliStudentsByClass(kelas);
-  if (!kelas) {
-    container.innerHTML = `<div class="empty-panel">Tidak ada kelas wali yang bisa ditampilkan.</div>`;
+  if (window.WaliKelasView?.renderKehadiranTable) {
+    container.innerHTML = window.WaliKelasView.renderKehadiranTable({
+      kelas,
+      students,
+      getCounts: getWaliKehadiranCounts,
+      escape: escapeWaliHtml
+    });
     return;
   }
   container.innerHTML = `
     <table class="mapel-table wali-kehadiran-table">
       <colgroup>
         <col class="wali-col-no">
+        <col class="wali-col-nipd">
         <col class="wali-col-name">
+        <col class="wali-col-class">
         <col class="wali-col-input">
         <col class="wali-col-input">
         <col class="wali-col-input">
@@ -426,7 +496,9 @@ function renderWaliKehadiranTable() {
       <thead>
         <tr>
           <th>No</th>
+          <th>NIPD</th>
           <th>Nama Siswa</th>
+          <th>Kelas</th>
           <th>S</th>
           <th>I</th>
           <th>A</th>
@@ -438,7 +510,9 @@ function renderWaliKehadiranTable() {
           return `
             <tr>
               <td>${index + 1}</td>
-              <td class="nilai-student-name">${escapeWaliHtml(siswa.nama || "-")}<small>${escapeWaliHtml(siswa.nipd || "-")} | ${escapeWaliHtml(siswa.kelas || "-")}</small></td>
+              <td>${escapeWaliHtml(siswa.nipd || "-")}</td>
+              <td class="wali-student-name">${escapeWaliHtml(siswa.nama || "-")}</td>
+              <td>${escapeWaliHtml(siswa.kelas || "-")}</td>
               <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.S}"></td>
               <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.I}"></td>
               <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.A}"></td>
@@ -668,12 +742,17 @@ function renderWaliKelengkapanTable() {
   if (!container) return;
   const kelas = getSelectedWaliClass().kelas;
   const assignments = getWaliClassAssignments(kelas);
-  if (!kelas) {
-    container.innerHTML = `<div class="empty-panel">Tidak ada kelas wali yang bisa ditampilkan.</div>`;
-    return;
-  }
-  if (assignments.length === 0) {
-    container.innerHTML = `<div class="empty-panel">Belum ada pembagian mengajar untuk ${escapeWaliHtml(kelas)}.</div>`;
+  if (window.WaliKelasView?.renderKelengkapanTable) {
+    container.innerHTML = window.WaliKelasView.renderKelengkapanTable({
+      kelas,
+      assignments,
+      escape: escapeWaliHtml,
+      getMapelName: getWaliMapelName,
+      getGuruName: getWaliGuruPengajarName,
+      getNilaiCount: getWaliNilaiCount,
+      getCompletenessClass: getWaliCompletenessClass,
+      formatCompletenessText: formatWaliCompletenessText
+    });
     return;
   }
   container.innerHTML = `

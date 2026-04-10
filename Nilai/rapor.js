@@ -769,13 +769,26 @@ function openRaporPrint(students) {
     Swal.fire("Tidak ada siswa", "Pilih siswa yang akan dicetak.", "warning");
     return;
   }
+  const html = getRaporPrintHtml(students);
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: "Cetak Rapor",
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk mencetak rapor.",
+      autoPrint: true,
+      printDelayMs: 400,
+      fallbackDelayMs: 900
+    });
+    return;
+  }
+
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     Swal.fire("Popup diblokir", "Izinkan popup browser untuk mencetak rapor.", "warning");
     return;
   }
   printWindow.document.open();
-  printWindow.document.write(getRaporPrintHtml(students));
+  printWindow.document.write(html);
   printWindow.document.close();
   printWindow.focus();
   setTimeout(() => printWindow.print(), 400);
