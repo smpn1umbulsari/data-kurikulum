@@ -3402,20 +3402,20 @@ body.dark .ks-ttd-preview {
 
 .wali-completeness-table {
   width: auto;
-  min-width: 900px;
-  table-layout: auto;
+  min-width: 1120px;
+  table-layout: fixed;
 }
 
 .wali-completeness-table .wali-col-mapel {
-  width: 240px;
+  width: 300px;
 }
 
 .wali-completeness-table .wali-col-teacher {
-  width: 220px;
+  width: 280px;
 }
 
 .wali-completeness-table .wali-col-score {
-  width: 84px;
+  width: 120px;
 }
 
 .wali-kehadiran-table th,
@@ -3431,6 +3431,19 @@ body.dark .ks-ttd-preview {
 .wali-kehadiran-table td:first-child {
   width: 52px;
   text-align: center;
+}
+
+.wali-completeness-table th:first-child,
+.wali-completeness-table td:first-child,
+.wali-completeness-table th:nth-child(2),
+.wali-completeness-table td:nth-child(2) {
+  text-align: left;
+}
+
+.wali-completeness-table th:nth-child(n+3),
+.wali-completeness-table td:nth-child(n+3) {
+  text-align: center;
+  font-weight: 800;
 }
 
 .wali-kehadiran-table th:nth-child(2),
