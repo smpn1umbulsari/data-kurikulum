@@ -10,25 +10,207 @@
 
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
-      background: #f4f6f9;
+      background:
+        radial-gradient(circle at top, rgba(17, 24, 39, 0.08), transparent 42%),
+        linear-gradient(160deg, #f8fafc 0%, #dbeafe 55%, #e2e8f0 100%);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .login-page {
+      position: relative;
+      min-height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .login-intro {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.3), transparent 22%),
+        radial-gradient(circle at 15% 25%, rgba(250, 204, 21, 0.22), transparent 24%),
+        radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.2), transparent 26%),
+        linear-gradient(145deg, #0f172a 0%, #1d4ed8 48%, #0f766e 100%);
+      z-index: 2;
+      overflow: hidden;
+      transition: opacity 0.9s ease, visibility 0.9s ease;
+    }
+
+    body.login-ready .login-intro,
+    .login-intro.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .login-intro-panel {
+      position: relative;
+      text-align: center;
+      color: #fff;
+      width: min(720px, calc(100vw - 40px));
+      padding: 40px 28px;
+      animation: loginIntroFloat 1s ease both;
+      z-index: 2;
+    }
+
+    .login-intro-orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(2px);
+      opacity: 0.75;
+      animation: introOrbFloat 6s ease-in-out infinite;
+    }
+
+    .login-intro-orb-a {
+      width: 280px;
+      height: 280px;
+      top: -80px;
+      left: -50px;
+      background: radial-gradient(circle, rgba(250, 204, 21, 0.75), rgba(250, 204, 21, 0.05));
+    }
+
+    .login-intro-orb-b {
+      width: 360px;
+      height: 360px;
+      right: -110px;
+      bottom: -140px;
+      background: radial-gradient(circle, rgba(96, 165, 250, 0.7), rgba(96, 165, 250, 0.05));
+      animation-delay: -2s;
+    }
+
+    .login-intro-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent 92%);
+      opacity: 0.45;
+    }
+
+    .login-intro-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 22px;
+      margin-bottom: 28px;
+    }
+
+    .login-intro-logo-wrap {
+      width: 116px;
+      height: 116px;
+      border-radius: 32px;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: loginIntroPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    .login-intro-logo-wrap.secondary {
+      width: 92px;
+      height: 92px;
+      border-radius: 28px;
+      animation-delay: -0.4s;
+    }
+
+    .login-intro-logo {
+      width: 78%;
+      height: 78%;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.18));
+    }
+
+    .login-intro-kicker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 16px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+
+    .login-intro-title {
+      margin: 0;
+      font-size: clamp(34px, 4vw, 52px);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      line-height: 1.05;
+      text-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+    }
+
+    .login-intro-subtitle {
+      margin: 14px auto 0;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 16px;
+      font-weight: 600;
+      max-width: 620px;
+      line-height: 1.6;
+    }
+
+    .login-intro-shine {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0));
+      opacity: 0.8;
+      animation: introShine 3s ease-in-out infinite;
     }
 
     .login-box {
       background: white;
       padding: 30px;
-      border-radius: 10px;
-      width: 300px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+      border-radius: 22px;
+      width: min(360px, calc(100vw - 32px));
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      opacity: 0;
+      transform: translateY(28px) scale(0.98);
+      transition: opacity 0.65s ease, transform 0.65s ease;
+    }
+
+    body.login-ready .login-box,
+    .login-box.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
     }
 
     h2 {
       text-align: center;
-      margin-bottom: 20px;
+      margin: 0 0 8px;
+      color: #0f172a;
+    }
+
+    .login-subtitle {
+      text-align: center;
+      margin: 0 0 20px;
+      color: #64748b;
+      font-size: 14px;
     }
 
     input,
@@ -92,24 +274,246 @@
       text-align: center;
       display: none;
     }
+
+    @keyframes loginIntroFloat {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes loginIntroPulse {
+      from {
+        transform: translateY(0) scale(1);
+      }
+      to {
+        transform: translateY(-4px) scale(1.03);
+      }
+    }
+
+    @keyframes introOrbFloat {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      50% {
+        transform: translate3d(12px, -14px, 0) scale(1.05);
+      }
+    }
+
+    @keyframes introShine {
+      0%,
+      100% {
+        transform: translateX(-50%) scale(0.92);
+        opacity: 0.55;
+      }
+      50% {
+        transform: translateX(-50%) scale(1.14);
+        opacity: 0.92;
+      }
+    }
+
+    @keyframes introSweep {
+      from {
+        transform: translateX(-120%) skewX(-18deg);
+      }
+      to {
+        transform: translateX(220%) skewX(-18deg);
+      }
+    }
+
+    .login-intro::after {
+      content: "";
+      position: absolute;
+      top: -10%;
+      left: -15%;
+      width: 34%;
+      height: 120%;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+      animation: introSweep 2.6s ease-in-out infinite;
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      .login-intro-logos {
+        gap: 14px;
+      }
+
+      .login-intro-logo-wrap {
+        width: 96px;
+        height: 96px;
+      }
+
+      .login-intro-logo-wrap.secondary {
+        width: 78px;
+        height: 78px;
+      }
+
+      .login-intro-panel {
+        padding: 32px 18px;
+      }
+
+      .login-intro-subtitle {
+        font-size: 14px;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background:
+          radial-gradient(circle at top, rgba(59, 130, 246, 0.16), transparent 42%),
+          linear-gradient(160deg, #020617 0%, #0f172a 52%, #111827 100%);
+      }
+
+      .login-intro {
+        background:
+          radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.12), transparent 22%),
+          radial-gradient(circle at 15% 25%, rgba(250, 204, 21, 0.14), transparent 24%),
+          radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.16), transparent 26%),
+          linear-gradient(145deg, #020617 0%, #0f172a 42%, #1d4ed8 100%);
+      }
+
+      .login-intro-grid {
+        opacity: 0.28;
+      }
+
+      .login-intro-logo-wrap {
+        background: rgba(15, 23, 42, 0.34);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        box-shadow: 0 24px 60px rgba(2, 6, 23, 0.44);
+      }
+
+      .login-intro-kicker {
+        background: rgba(15, 23, 42, 0.3);
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .login-box {
+        background: rgba(15, 23, 42, 0.86);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 26px 70px rgba(2, 6, 23, 0.48);
+        backdrop-filter: blur(18px);
+      }
+
+      h2 {
+        color: #f8fafc;
+      }
+
+      .login-subtitle {
+        color: #94a3b8;
+      }
+
+      input,
+      select {
+        background: rgba(30, 41, 59, 0.92);
+        border-color: rgba(148, 163, 184, 0.24);
+        color: #e2e8f0;
+      }
+
+      input::placeholder {
+        color: #94a3b8;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: rgba(96, 165, 250, 0.72);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+      }
+
+      .password-toggle {
+        background: rgba(30, 41, 59, 0.96);
+        color: #93c5fd;
+      }
+
+      .password-toggle:hover {
+        background: rgba(51, 65, 85, 0.96);
+      }
+
+      button {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.28);
+      }
+
+      button:hover {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+      }
+
+      .error {
+        color: #fca5a5;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .login-intro,
+      .login-box,
+      .login-intro-panel,
+      .login-intro-logo-wrap,
+      .login-intro::after,
+      .login-intro-orb,
+      .login-intro-shine {
+        transition: none;
+        animation: none;
+      }
+    }
   </style>
 </head>
 <body>
+<noscript>
+  <style>
+    .login-intro {
+      display: none !important;
+    }
 
-<div class="login-box">
-  <h2>Login</h2>
+    .login-box {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  </style>
+</noscript>
 
-  <select id="semesterLogin">
-    <option value="">Memuat semester...</option>
-  </select>
-  <input type="text" id="username" placeholder="Username">
-  <div class="password-field">
-    <input type="password" id="password" placeholder="Password">
-    <button type="button" id="togglePasswordBtn" class="password-toggle" onclick="togglePasswordVisibility()">Lihat</button>
+<div class="login-page">
+  <div class="login-intro" id="loginIntro" aria-hidden="true">
+    <div class="login-intro-grid"></div>
+    <div class="login-intro-orb login-intro-orb-a"></div>
+    <div class="login-intro-orb login-intro-orb-b"></div>
+    <div class="login-intro-shine"></div>
+    <div class="login-intro-panel">
+      <div class="login-intro-logos">
+        <div class="login-intro-logo-wrap">
+          <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-intro-logo">
+        </div>
+        <div class="login-intro-logo-wrap secondary">
+          <img src="img/logo_pemda.png" alt="Logo Pemerintah Daerah" class="login-intro-logo">
+        </div>
+      </div>
+      <div class="login-intro-kicker">Sistem Informasi Kurikulum</div>
+      <h1 class="login-intro-title">SMP Negeri 1 Umbulsari</h1>
+      <p class="login-intro-subtitle">Menyiapkan dashboard sekolah dan memuat akses pengguna. Form login akan tampil setelah splash screen selesai.</p>
+    </div>
   </div>
-  <button onclick="login()">Masuk</button>
 
-  <div class="error" id="error">Username atau password salah</div>
+  <div class="login-box" id="loginBox">
+    <h2>Login</h2>
+    <p class="login-subtitle">Masuk setelah splash screen sekolah selesai</p>
+
+    <select id="semesterLogin">
+      <option value="">Memuat semester...</option>
+    </select>
+    <input type="text" id="username" placeholder="Username">
+    <div class="password-field">
+      <input type="password" id="password" placeholder="Password">
+      <button type="button" id="togglePasswordBtn" class="password-toggle" onclick="togglePasswordVisibility()">Lihat</button>
+    </div>
+    <button onclick="login()">Masuk</button>
+
+    <div class="error" id="error">Username atau password salah</div>
+  </div>
 </div>
 
 <script>
@@ -244,7 +648,28 @@
     if (event.key === "Enter") login();
   });
 
-  loadSemesterLoginOptions();
+  function playLoginEntrance() {
+    const intro = document.getElementById("loginIntro");
+    const box = document.getElementById("loginBox");
+    if (!intro || !box) return;
+
+    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const introDuration = reduceMotion ? 80 : 3000;
+
+    document.body.classList.remove("login-ready");
+
+    window.setTimeout(() => {
+      document.body.classList.add("login-ready");
+      intro.classList.add("hidden");
+      box.classList.add("visible");
+      document.getElementById("username")?.focus();
+    }, introDuration);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    loadSemesterLoginOptions();
+    playLoginEntrance();
+  });
 </script>
 
 </body>
