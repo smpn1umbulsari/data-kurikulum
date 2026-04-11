@@ -31,6 +31,30 @@
     return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
   }
 
+  async function fetchAllCollectionRows(collectionPath) {
+    if (!client?.from) throw new Error("Supabase client belum siap");
+    const pageSize = 1000;
+    let offset = 0;
+    const rows = [];
+
+    while (true) {
+      const { data, error } = await client
+        .from(TABLE)
+        .select("id,data")
+        .eq("collection_path", collectionPath)
+        .range(offset, offset + pageSize - 1);
+
+      if (error) throw error;
+
+      const page = data || [];
+      rows.push(...page);
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+
+    return rows;
+  }
+
   function matchesFilter(row, filter) {
     const value = row?.data?.[filter.field];
     if (filter.op === "==") return String(value ?? "") === String(filter.value ?? "");
@@ -101,15 +125,8 @@
     }
 
     async get() {
-      if (!client?.from) throw new Error("Supabase client belum siap");
-      const { data, error } = await client
-        .from(TABLE)
-        .select("id,data")
-        .eq("collection_path", this.collectionPath);
-
-      if (error) throw error;
-
-      let rows = (data || []).filter(row => this._where.every(filter => matchesFilter(row, filter)));
+      let rows = (await fetchAllCollectionRows(this.collectionPath))
+        .filter(row => this._where.every(filter => matchesFilter(row, filter)));
       if (this._order) {
         const { field, direction } = this._order;
         rows = [...rows].sort((a, b) => {

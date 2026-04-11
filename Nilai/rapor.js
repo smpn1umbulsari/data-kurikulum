@@ -205,6 +205,17 @@ function setSemuaDataRaporNilai(items = []) {
   semuaDataRaporNilai = Array.from(byId.values());
 }
 
+function getRaporActiveTermId() {
+  return typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+}
+
+function isRaporNilaiInActiveTerm(item = {}) {
+  if (typeof isActiveTermDoc === "function") return isActiveTermDoc(item);
+  const activeTermId = getRaporActiveTermId();
+  if (!item?.term_id) return activeTermId === "legacy";
+  return String(item.term_id || "") === String(activeTermId || "");
+}
+
 function makeRaporNilaiDocId(kelasValue, mapelKode, nipd) {
   const parts = getRaporKelasParts(kelasValue);
   const baseId = [
@@ -283,6 +294,7 @@ function getRaporNilai(siswa, mapelKode) {
   }
 
   const candidates = semuaDataRaporNilai.filter(item => {
+    if (!isRaporNilaiInActiveTerm(item)) return false;
     if (String(item.nipd || "") !== String(siswa.nipd || "")) return false;
     if (String(item.mapel_kode || "").toUpperCase() !== targetMapel) return false;
 

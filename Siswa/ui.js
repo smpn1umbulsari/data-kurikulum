@@ -214,13 +214,13 @@ function renderTable() {
         <table class="siswa-compact-table">
           <thead>
             <tr>
-              ${renderSortableHeader("NIPD", "nipd", siswaSortField, siswaSortDirection, "setSiswaSort")}
-              ${renderSortableHeader("NISN", "nisn", siswaSortField, siswaSortDirection, "setSiswaSort")}
-              ${renderSortableHeader("Nama", "nama", siswaSortField, siswaSortDirection, "setSiswaSort")}
-              ${renderSortableHeader("JK", "jk", siswaSortField, siswaSortDirection, "setSiswaSort")}
-              ${renderSortableHeader("Agama", "agama", siswaSortField, siswaSortDirection, "setSiswaSort")}
-              ${renderSortableHeader("Kelas", "kelas", siswaSortField, siswaSortDirection, "setSiswaSort")}
-              <th>Aksi</th>
+              <th class="sortable-header siswa-col-nipd ${siswaSortField === "nipd" ? "active" : ""}" onclick="setSiswaSort('nipd')">NIPD${siswaSortField === "nipd" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+              <th class="sortable-header siswa-col-nisn ${siswaSortField === "nisn" ? "active" : ""}" onclick="setSiswaSort('nisn')">NISN${siswaSortField === "nisn" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+              <th class="sortable-header siswa-col-nama ${siswaSortField === "nama" ? "active" : ""}" onclick="setSiswaSort('nama')">Nama${siswaSortField === "nama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+              <th class="sortable-header siswa-col-jk ${siswaSortField === "jk" ? "active" : ""}" onclick="setSiswaSort('jk')">JK${siswaSortField === "jk" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+              <th class="sortable-header siswa-col-agama ${siswaSortField === "agama" ? "active" : ""}" onclick="setSiswaSort('agama')">Agama${siswaSortField === "agama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+              <th class="sortable-header siswa-col-kelas ${siswaSortField === "kelas" ? "active" : ""}" onclick="setSiswaSort('kelas')">Kelas${siswaSortField === "kelas" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+              <th class="siswa-col-aksi">Aksi</th>
             </tr>
           </thead>
           <tbody id="tbody"></tbody>
@@ -255,30 +255,30 @@ function renderRow(d) {
   if (currentEdit === d.nipd) {
     return `
       <tr class="table-edit-row" data-siswa-nipd="${safeNipd}">
-        <td>${safeNipd}</td>
-        <td><input id="nisn-${safeNipd}" value="${escapeSiswaHtml(d.nisn || "")}"></td>
-        <td><input id="nama-${safeNipd}" value="${escapeSiswaHtml(d.nama || "")}"></td>
+        <td class="siswa-col-nipd">${safeNipd}</td>
+        <td class="siswa-col-nisn"><input id="nisn-${safeNipd}" value="${escapeSiswaHtml(d.nisn || "")}"></td>
+        <td class="siswa-col-nama"><input id="nama-${safeNipd}" value="${escapeSiswaHtml(d.nama || "")}"></td>
 
-        <td>
+        <td class="siswa-col-jk">
           <select id="jk-${safeNipd}">
             <option value="L" ${d.jk==="L"?"selected":""}>L</option>
             <option value="P" ${d.jk==="P"?"selected":""}>P</option>
           </select>
         </td>
 
-        <td>
+        <td class="siswa-col-agama">
           <select id="agama-${safeNipd}">
             ${renderAgamaOptions(d.agama)}
           </select>
         </td>
 
-        <td>
+        <td class="siswa-col-kelas">
           <select id="kelas-${safeNipd}">
             ${renderSiswaKelasOptions(d.kelas || "")}
           </select>
         </td>
 
-        <td>
+        <td class="siswa-col-aksi">
           <div class="table-actions">
             <button onclick="saveEdit('${safeNipdJs}')" class="btn-primary btn-table-compact">Simpan</button>
             <button onclick="cancelEdit()" class="btn-secondary btn-table-compact">Batal</button>
@@ -290,13 +290,13 @@ function renderRow(d) {
 
   return `
     <tr data-siswa-nipd="${safeNipd}">
-      <td>${escapeSiswaHtml(d.nipd || "-")}</td>
-      <td>${escapeSiswaHtml(d.nisn || "-")}</td>
-      <td>${escapeSiswaHtml(d.nama || "-")}</td>
-      <td>${escapeSiswaHtml(d.jk || "-")}</td>
-      <td>${escapeSiswaHtml(d.agama || "-")}</td>
-      <td>${escapeSiswaHtml(d.kelas || "-")}</td>
-      <td>
+      <td class="siswa-col-nipd">${escapeSiswaHtml(d.nipd || "-")}</td>
+      <td class="siswa-col-nisn">${escapeSiswaHtml(d.nisn || "-")}</td>
+      <td class="siswa-col-nama" title="${escapeSiswaHtml(d.nama || "-")}">${escapeSiswaHtml(d.nama || "-")}</td>
+      <td class="siswa-col-jk">${escapeSiswaHtml(d.jk || "-")}</td>
+      <td class="siswa-col-agama">${escapeSiswaHtml(d.agama || "-")}</td>
+      <td class="siswa-col-kelas">${escapeSiswaHtml(d.kelas || "-")}</td>
+      <td class="siswa-col-aksi">
         ${d.nipd ? `
           <button class="btn-secondary btn-table-compact" onclick="editRow('${safeNipdJs}')">
             Edit

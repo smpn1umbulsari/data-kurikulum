@@ -124,6 +124,14 @@ function sortWaliClasses(rows) {
   });
 }
 
+function getWaliOwnClassValue(classes = getAccessibleWaliClasses()) {
+  const kodeGuru = String(getCurrentWaliUser().kode_guru || "").trim();
+  if (!kodeGuru) return "";
+  const ownClass = classes.find(item => String(item.kode_guru || "").trim() === kodeGuru);
+  if (!ownClass) return "";
+  return getWaliKelasParts(ownClass.kelas || `${ownClass.tingkat || ""}${ownClass.rombel || ""}`).kelas;
+}
+
 function getSelectedWaliClass() {
   const value = document.getElementById("waliKelasSelect")?.value || getPreferredWaliClass();
   return getWaliKelasParts(value);
@@ -132,11 +140,7 @@ function getSelectedWaliClass() {
 function getPreferredWaliClass() {
   const classes = getAccessibleWaliClasses();
   if (classes.length === 0) return "";
-  const user = getCurrentWaliUser();
-  const kodeGuru = String(user.kode_guru || "").trim();
-  const ownClass = classes
-    .map(item => getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas)
-    .find((kelas, index) => String(classes[index]?.kode_guru || "").trim() === kodeGuru);
+  const ownClass = getWaliOwnClassValue(classes);
   return ownClass || getWaliKelasParts(classes[0].kelas || `${classes[0].tingkat || ""}${classes[0].rombel || ""}`).kelas;
 }
 
@@ -851,6 +855,17 @@ function getWaliGuruPengajarName(assignment = {}) {
   return kodeGuru || "-";
 }
 
+function getWaliActiveTermId() {
+  return typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+}
+
+function isWaliNilaiInActiveTerm(item = {}) {
+  if (typeof isActiveTermDoc === "function") return isActiveTermDoc(item);
+  const activeTermId = getWaliActiveTermId();
+  if (!item?.term_id) return activeTermId === "legacy";
+  return String(item.term_id || "") === String(activeTermId || "");
+}
+
 function getWaliNilaiCount(kelas, mapelKode, field) {
   const mapel = getWaliMapelByKode(mapelKode);
   const students = getWaliStudentsByClass(kelas).filter(item => isWaliStudentEligibleForMapel(item, mapel));
@@ -874,6 +889,7 @@ function getWaliNilaiCount(kelas, mapelKode, field) {
   const completedStudentIds = new Set(
     semuaDataWaliNilai
       .filter(item =>
+        isWaliNilaiInActiveTerm(item) &&
         studentIds.has(String(item.nipd || "")) &&
         matchesClass(item) &&
         String(item.mapel_kode || "").toUpperCase() === String(mapelKode || "").toUpperCase() &&

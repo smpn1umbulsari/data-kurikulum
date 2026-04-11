@@ -159,16 +159,34 @@ function getNilaiItemTimestamp(item) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function getNilaiActiveTermId() {
+  return typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+}
+
+function isNilaiDocInActiveTerm(item = {}) {
+  if (typeof isActiveTermDoc === "function") return isActiveTermDoc(item);
+  const activeTermId = getNilaiActiveTermId();
+  if (!item?.term_id) return activeTermId === "legacy";
+  return String(item.term_id || "") === String(activeTermId || "");
+}
+
+function isNilaiDocMatchingAssignment(item = {}, assignment = {}) {
+  const tingkat = String(assignment.tingkat || "").trim();
+  const rombel = String(assignment.rombel || "").trim().toUpperCase();
+  const mapelKode = String(assignment.mapel_kode || "").trim().toUpperCase();
+  const itemKelas = getNilaiKelasParts(item.kelas || "").kelas;
+  const assignmentKelas = getNilaiKelasParts(`${tingkat}${rombel}`).kelas;
+  const sameClass = itemKelas
+    ? itemKelas === assignmentKelas
+    : String(item.tingkat || "").trim() === tingkat && String(item.rombel || "").trim().toUpperCase() === rombel;
+  return isNilaiDocInActiveTerm(item)
+    && sameClass
+    && String(item.mapel_kode || "").trim().toUpperCase() === mapelKode;
+}
+
 function getNilaiRowsFromCacheForAssignment(assignment) {
   if (!assignment?.mapel_kode) return [];
-  const tingkat = String(assignment.tingkat || "");
-  const rombel = String(assignment.rombel || "").toUpperCase();
-  const mapelKode = String(assignment.mapel_kode || "").toUpperCase();
-  return semuaDataNilai.filter(item =>
-    String(item?.tingkat || "") === tingkat
-    && String(item?.rombel || "").toUpperCase() === rombel
-    && String(item?.mapel_kode || "").toUpperCase() === mapelKode
-  );
+  return semuaDataNilai.filter(item => isNilaiDocMatchingAssignment(item, assignment));
 }
 
 function syncCurrentNilaiAssignmentRows(assignment) {
@@ -198,7 +216,13 @@ function getNilaiForStudent(assignment, nipd) {
   for (let index = semuaDataNilai.length - 1; index >= 0; index -= 1) {
     if (semuaDataNilai[index]?.id === docId) return semuaDataNilai[index];
   }
-  return null;
+  const matchesStudent = item => String(item?.nipd || "") === String(nipd || "");
+  const candidates = [
+    ...currentNilaiAssignmentRows.filter(item => matchesStudent(item) && isNilaiDocMatchingAssignment(item, assignment)),
+    ...semuaDataNilai.filter(item => matchesStudent(item) && isNilaiDocMatchingAssignment(item, assignment))
+  ];
+  if (!candidates.length) return null;
+  return [...candidates].sort((a, b) => getNilaiItemTimestamp(b) - getNilaiItemTimestamp(a))[0] || null;
 }
 
 function getNilaiActiveTermPayload() {

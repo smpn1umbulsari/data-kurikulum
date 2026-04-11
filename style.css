@@ -572,6 +572,98 @@ td {
   font-size: 13px;
 }
 
+.siswa-table-container {
+  -webkit-overflow-scrolling: touch;
+}
+
+.siswa-compact-table {
+  min-width: 760px;
+  table-layout: fixed;
+}
+
+.siswa-compact-table th,
+.siswa-compact-table td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+}
+
+.siswa-compact-table .siswa-col-nipd,
+.siswa-compact-table .siswa-col-nisn {
+  width: 108px;
+  min-width: 108px;
+}
+
+.siswa-compact-table .siswa-col-nama {
+  width: 220px;
+  min-width: 220px;
+  text-align: left;
+}
+
+.siswa-compact-table .siswa-col-jk {
+  width: 54px;
+  min-width: 54px;
+  text-align: center;
+}
+
+.siswa-compact-table .siswa-col-agama {
+  width: 112px;
+  min-width: 112px;
+}
+
+.siswa-compact-table .siswa-col-kelas {
+  width: 84px;
+  min-width: 84px;
+}
+
+.siswa-compact-table .siswa-col-aksi {
+  width: 150px;
+  min-width: 150px;
+}
+
+.siswa-compact-table .siswa-col-aksi .btn-table-compact {
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .siswa-table-container {
+    margin-inline: -8px;
+    padding-inline: 8px;
+  }
+
+  .siswa-compact-table {
+    min-width: 700px;
+  }
+
+  .siswa-compact-table th,
+  .siswa-compact-table td {
+    padding: 7px 8px;
+    font-size: 12.5px;
+  }
+
+  .siswa-compact-table .siswa-col-nama {
+    width: 180px;
+    min-width: 180px;
+  }
+
+  .siswa-compact-table .siswa-col-agama {
+    width: 96px;
+    min-width: 96px;
+  }
+
+  .siswa-compact-table .siswa-col-aksi {
+    width: 136px;
+    min-width: 136px;
+  }
+
+  .siswa-compact-table input,
+  .siswa-compact-table select {
+    min-height: 32px;
+    font-size: 12px;
+  }
+}
+
 /* zebra */
 tbody tr:nth-child(even) {
   background: #f9fafb;
