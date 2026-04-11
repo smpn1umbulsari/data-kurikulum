@@ -1,19 +1,113 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <title>Redirect...</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Maintenance</title>
+
+<style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        overflow: hidden;
+    }
+
+    .container {
+        text-align: center;
+        padding: 40px;
+        border-radius: 20px;
+        backdrop-filter: blur(15px);
+        background: rgba(255,255,255,0.1);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        animation: fadeIn 1.5s ease;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+        color: #fff;
+        margin-bottom: 10px;
+        animation: slideDown 1s ease;
+    }
+
+    p {
+        color: #eee;
+        font-size: 1.1rem;
+        margin-bottom: 25px;
+        animation: fadeIn 2s ease;
+    }
+
+    .loader {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .dot {
+        width: 12px;
+        height: 12px;
+        background: #fff;
+        border-radius: 50%;
+        animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .dot:nth-child(2) {
+        animation-delay: 0.2s;
+    }
+
+    .dot:nth-child(3) {
+        animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+        0%, 80%, 100% {
+            transform: scale(0);
+        }
+        40% {
+            transform: scale(1);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {opacity: 0;}
+        to {opacity: 1;}
+    }
+
+    @keyframes slideDown {
+        from {
+            transform: translateY(-30px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+</style>
 </head>
+
 <body>
 
-<script>
-  // cek status login
-  if (localStorage.getItem("login") === "true") {
-    window.location.href = "dashboard.html";
-  } else {
-    window.location.href = "login.html";
-  }
-</script>
+<div class="container">
+    <h1>🚧 Sedang Maintenance</h1>
+    <p>Kami sedang melakukan peningkatan sistem.<br>Silakan kembali beberapa saat lagi.</p>
+
+    <div class="loader">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+</div>
 
 </body>
 </html>
