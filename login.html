@@ -8,11 +8,6 @@
   <script src="supabase-config.js?v=20260408a"></script>
   <script src="supabase-firestore-compat.js?v=20260408a"></script>
   <script src="shared/maintenance-mode.js?v=20260411a"></script>
-  <script>
-    if (window.MaintenanceMode?.peekCached?.().enabled) {
-      window.location.replace("maintenance.html");
-    }
-  </script>
 
   <style>
     body {
@@ -207,6 +202,35 @@
       font-size: 14px;
     }
 
+    .login-maintenance-alert {
+      display: none;
+      margin: 0 0 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(245, 158, 11, 0.26);
+      background: linear-gradient(180deg, rgba(255, 251, 235, 0.98), rgba(254, 243, 199, 0.92));
+      color: #92400e;
+      box-shadow: 0 12px 24px rgba(245, 158, 11, 0.12);
+    }
+
+    .login-maintenance-alert.visible {
+      display: block;
+    }
+
+    .login-maintenance-alert strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .login-maintenance-alert p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
     input,
     select {
       width: 100%;
@@ -392,6 +416,13 @@
         color: #94a3b8;
       }
 
+      .login-maintenance-alert {
+        background: linear-gradient(180deg, rgba(120, 53, 15, 0.34), rgba(146, 64, 14, 0.28));
+        border-color: rgba(251, 191, 36, 0.28);
+        color: #fde68a;
+        box-shadow: 0 16px 28px rgba(2, 6, 23, 0.24);
+      }
+
       .login-form-logo {
         filter: drop-shadow(0 12px 24px rgba(2, 6, 23, 0.4));
       }
@@ -487,6 +518,11 @@
     <h2>Login</h2>
     <p class="login-subtitle">Masuk setelah splash screen sekolah selesai</p>
 
+    <div class="login-maintenance-alert" id="loginMaintenanceAlert" role="status" aria-live="polite">
+      <strong>Maintenance Aktif</strong>
+      <p id="loginMaintenanceMessage">Sistem sedang maintenance. Admin tetap bisa login untuk mematikan maintenance, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah berhasil masuk.</p>
+    </div>
+
     <select id="semesterLogin">
       <option value="">Memuat semester...</option>
     </select>
@@ -504,6 +540,20 @@
 <script>
   let daftarSemesterLogin = [];
 
+  function updateLoginMaintenanceAlert(state = {}) {
+    const alert = document.getElementById("loginMaintenanceAlert");
+    const message = document.getElementById("loginMaintenanceMessage");
+    if (!alert || !message) return;
+
+    if (state.enabled) {
+      alert.classList.add("visible");
+      message.textContent = "Sistem sedang maintenance. Admin tetap bisa login untuk mematikan maintenance, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah berhasil masuk.";
+      return;
+    }
+
+    alert.classList.remove("visible");
+  }
+
   function getStoredLoginUserRole() {
     try {
       return JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
@@ -516,12 +566,13 @@
     const isLoggedIn = localStorage.getItem("login") === "true";
     const role = getStoredLoginUserRole();
     const state = await window.MaintenanceMode.load({ force: true });
-    if (state.enabled && !isLoggedIn && !window.MaintenanceMode.isAdminRole(role)) {
-      window.MaintenanceMode.goToMaintenance();
-      return true;
-    }
+    updateLoginMaintenanceAlert(state);
     if (isLoggedIn) {
-      window.location.replace("dashboard.html");
+      if (state.enabled && !window.MaintenanceMode.isAdminRole(role)) {
+        window.location.replace("maintenance.html");
+      } else {
+        window.location.replace("dashboard.html");
+      }
       return true;
     }
     return false;
@@ -599,20 +650,16 @@
     const semester = getSelectedLoginSemester();
     const error = document.getElementById("error");
     error.style.display = "none";
-
     const maintenanceState = await window.MaintenanceMode.load({ force: true });
-    if (maintenanceState.enabled && !window.MaintenanceMode.isAdminRole(getStoredLoginUserRole())) {
-      window.MaintenanceMode.goToMaintenance();
-      return;
-    }
 
     if ((username === "admin" || !username) && (password === "admin123" || password === "kurikulumspenturi")) {
       localStorage.setItem("login", "true");
-      localStorage.setItem("appUser", JSON.stringify({
+      const adminPayload = {
         username: "admin",
         nama: "Administrator",
         role: "admin"
-      }));
+      };
+      localStorage.setItem("appUser", JSON.stringify(adminPayload));
       localStorage.setItem("appSemester", JSON.stringify(semester));
       window.location.href = "dashboard.html";
       return;
@@ -637,15 +684,20 @@
       }
 
       localStorage.setItem("login", "true");
-      localStorage.setItem("appUser", JSON.stringify({
+      const appUser = {
         id: user.id,
         username: user.username,
         nama: user.nama,
         role: user.role || "guru",
         kode_guru: user.kode_guru || "",
         nipd: user.nipd || ""
-      }));
+      };
+      localStorage.setItem("appUser", JSON.stringify(appUser));
       localStorage.setItem("appSemester", JSON.stringify(semester));
+      if (maintenanceState.enabled && !window.MaintenanceMode.isAdminRole(appUser.role)) {
+        window.location.href = "maintenance.html";
+        return;
+      }
       window.location.href = "dashboard.html";
     } catch (err) {
       console.error(err);

@@ -196,7 +196,7 @@
             </span>
           </label>
         </div>
-        <p class="sidebar-maintenance-copy">Saat aktif, halaman login akan dialihkan ke halaman maintenance. Admin yang sedang aktif tetap bisa masuk untuk mematikan mode ini.</p>
+      <p class="sidebar-maintenance-copy">Saat aktif, halaman login tetap bisa dibuka. Admin tetap bisa masuk untuk mematikan mode ini, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah login.</p>
         <a class="sidebar-maintenance-link" href="maintenance.html" target="_blank" rel="noopener">Lihat halaman maintenance</a>
       </div>
       <span>Sistem aktif</span>
@@ -316,7 +316,7 @@
 
     toggle.checked = state.enabled === true;
     panel.classList.toggle("is-active", state.enabled === true);
-    statusText.textContent = state.enabled ? "Aktif - login dialihkan" : "Nonaktif - sistem normal";
+    statusText.textContent = state.enabled ? "Aktif - non-admin ditahan" : "Nonaktif - sistem normal";
   }
 
   async function enforceDashboardMaintenanceMode() {
@@ -361,7 +361,7 @@
       Swal.fire(
         "Status diperbarui",
         nextEnabled
-          ? "Mode maintenance aktif. Semua akses login sekarang diarahkan ke halaman maintenance."
+          ? "Mode maintenance aktif. Login tetap terbuka, tetapi pengguna non-admin akan diarahkan ke halaman maintenance setelah berhasil masuk."
           : "Mode maintenance dimatikan. Halaman login kembali normal.",
         "success"
       );

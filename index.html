@@ -20,12 +20,16 @@
     } catch {}
 
     const maintenanceState = await window.MaintenanceMode.load({ force: true });
-    if (maintenanceState.enabled && !isLoggedIn && !window.MaintenanceMode.isAdminRole(role)) {
-      window.location.replace("maintenance.html");
+    if (isLoggedIn) {
+      if (maintenanceState.enabled && !window.MaintenanceMode.isAdminRole(role)) {
+        window.location.replace("maintenance.html");
+        return;
+      }
+      window.location.replace("dashboard.html");
       return;
     }
 
-    window.location.replace(isLoggedIn ? "dashboard.html" : "login.html");
+    window.location.replace("login.html");
   })();
 </script>
 
