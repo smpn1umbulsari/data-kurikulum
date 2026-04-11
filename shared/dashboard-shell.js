@@ -168,9 +168,17 @@
       return Promise.resolve();
     }
     if (role === "koordinator") {
-      return shell.refreshCoordinatorLevels()
-        .then(levels => {
-          setMenuDisplay(waliMenu, levels.length > 0);
+      const getCollectionQuery = options.getCollectionQuery;
+      const kodeGuru = String((typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser()).kode_guru || "").trim();
+      const ownWaliPromise = kodeGuru && typeof getCollectionQuery === "function"
+        ? getCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get()
+        : Promise.resolve({ empty: true });
+      return Promise.all([
+        shell.refreshCoordinatorLevels(),
+        ownWaliPromise
+      ])
+        .then(([levels, waliSnapshot]) => {
+          setMenuDisplay(waliMenu, levels.length > 0 || !waliSnapshot.empty);
         })
         .catch(() => {
           setMenuDisplay(waliMenu, false);

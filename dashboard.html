@@ -524,8 +524,17 @@
       return;
     }
     if (role === "koordinator") {
-      refreshCoordinatorLevels().then(levels => {
-        waliMenu.style.display = levels.length ? "" : "none";
+      const kodeGuru = String(getCurrentAppUser().kode_guru || "").trim();
+      const ownWaliPromise = kodeGuru
+        ? getDashboardCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get()
+        : Promise.resolve({ empty: true });
+      Promise.all([
+        refreshCoordinatorLevels(),
+        ownWaliPromise
+      ]).then(([levels, waliSnapshot]) => {
+        waliMenu.style.display = levels.length || !waliSnapshot.empty ? "" : "none";
+      }).catch(() => {
+        waliMenu.style.display = "none";
       });
       return;
     }

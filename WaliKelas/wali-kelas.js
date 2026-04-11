@@ -87,15 +87,31 @@ function filterWaliSelectableClasses(rows) {
   });
 }
 
+function mergeWaliClassRows(rows = []) {
+  const byClass = new Map();
+  rows.forEach(item => {
+    const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
+    if (!parts.kelas) return;
+    byClass.set(parts.kelas, item);
+  });
+  return [...byClass.values()];
+}
+
 function getAccessibleWaliClasses() {
   const user = getCurrentWaliUser();
   if ((user.role || "admin") === "admin") return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
   if ((user.role || "") === "koordinator" || ((user.role || "") === "guru" && typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess())) {
     const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
-    return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => {
+    const kodeGuru = String(user.kode_guru || "").trim();
+    const levelClasses = semuaDataWaliKelas.filter(item => {
       const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
       return levels.includes(parts.tingkat);
-    })));
+    });
+    const ownWaliClasses = semuaDataWaliKelas.filter(item => String(item.kode_guru || "").trim() === kodeGuru);
+    return sortWaliClasses(filterWaliSelectableClasses(mergeWaliClassRows([
+      ...levelClasses,
+      ...ownWaliClasses
+    ])));
   }
   return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => String(item.kode_guru || "") === String(user.kode_guru || ""))));
 }
@@ -803,6 +819,28 @@ function getWaliMapelName(mapelKode) {
   return mapel?.nama_mapel || mapelKode || "-";
 }
 
+function getWaliMapelByKode(mapelKode) {
+  const target = String(mapelKode || "").trim().toUpperCase();
+  return semuaDataWaliMapel.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target) || null;
+}
+
+function normalizeWaliAgama(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getWaliMapelIndukKode(mapel = {}) {
+  const value = String(mapel.induk_mapel || mapel.induk || mapel.kode_induk || "").trim().toUpperCase();
+  return value || String(mapel.kode_mapel || mapel.id || "").trim().toUpperCase();
+}
+
+function isWaliStudentEligibleForMapel(siswa, mapel) {
+  if (!mapel) return true;
+  if (getWaliMapelIndukKode(mapel) !== "PABP") return true;
+  const mapelAgama = normalizeWaliAgama(mapel.agama);
+  if (!mapelAgama) return true;
+  return normalizeWaliAgama(siswa.agama) === mapelAgama;
+}
+
 function getWaliGuruPengajarName(assignment = {}) {
   const directName = String(assignment.guru_nama || assignment.nama_guru || assignment.guru || "").trim();
   if (directName) return directName;
@@ -814,7 +852,8 @@ function getWaliGuruPengajarName(assignment = {}) {
 }
 
 function getWaliNilaiCount(kelas, mapelKode, field) {
-  const students = getWaliStudentsByClass(kelas);
+  const mapel = getWaliMapelByKode(mapelKode);
+  const students = getWaliStudentsByClass(kelas).filter(item => isWaliStudentEligibleForMapel(item, mapel));
   const studentIds = new Set(students.map(item => String(item.nipd || "")));
   const classParts = getWaliKelasParts(kelas);
   const fieldAliases = {
