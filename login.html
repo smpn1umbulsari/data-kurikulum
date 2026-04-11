@@ -108,36 +108,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 22px;
       margin-bottom: 28px;
     }
 
-    .login-intro-logo-wrap {
-      width: 116px;
-      height: 116px;
-      border-radius: 32px;
-      background: rgba(255, 255, 255, 0.14);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      backdrop-filter: blur(14px);
-      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      animation: loginIntroPulse 1.5s ease-in-out infinite alternate;
-    }
-
-    .login-intro-logo-wrap.secondary {
-      width: 92px;
-      height: 92px;
-      border-radius: 28px;
-      animation-delay: -0.4s;
-    }
-
     .login-intro-logo {
-      width: 78%;
-      height: 78%;
+      width: min(168px, 34vw);
+      height: auto;
       object-fit: contain;
-      filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.18));
+      filter: drop-shadow(0 14px 22px rgba(15, 23, 42, 0.28));
+      animation: loginIntroPulse 1.5s ease-in-out infinite alternate;
     }
 
     .login-intro-kicker {
@@ -206,33 +185,13 @@
       transform: translateY(0) scale(1);
     }
 
-    .login-box-brand {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-      margin-bottom: 18px;
-      text-align: center;
-    }
-
-    .login-box-logo-wrap {
-      width: 88px;
-      height: 88px;
-      border-radius: 26px;
-      background: linear-gradient(180deg, #f8fbff 0%, #e0f2fe 100%);
-      border: 1px solid rgba(59, 130, 246, 0.14);
-      box-shadow: 0 18px 34px rgba(37, 99, 235, 0.14);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .login-box-logo {
-      width: 72%;
-      height: 72%;
+    .login-form-logo {
+      display: block;
+      width: 82px;
+      height: auto;
+      margin: 0 auto 16px;
       object-fit: contain;
-      filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.14));
+      filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.14));
     }
 
     h2 {
@@ -375,15 +334,6 @@
     }
 
     @media (max-width: 640px) {
-      .login-intro-logos {
-        gap: 14px;
-      }
-
-      .login-intro-logo-wrap {
-        width: 96px;
-        height: 96px;
-      }
-
       .login-intro-panel {
         padding: 32px 18px;
       }
@@ -392,11 +342,15 @@
         font-size: 14px;
       }
 
-      .login-box-logo-wrap {
-        width: 78px;
-        height: 78px;
-        border-radius: 22px;
+      .login-intro-logo {
+        width: min(132px, 42vw);
       }
+
+      .login-form-logo {
+        width: 72px;
+        margin-bottom: 14px;
+      }
+
     }
 
     @media (prefers-color-scheme: dark) {
@@ -416,12 +370,6 @@
 
       .login-intro-grid {
         opacity: 0.28;
-      }
-
-      .login-intro-logo-wrap {
-        background: rgba(15, 23, 42, 0.34);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        box-shadow: 0 24px 60px rgba(2, 6, 23, 0.44);
       }
 
       .login-intro-kicker {
@@ -444,10 +392,8 @@
         color: #94a3b8;
       }
 
-      .login-box-logo-wrap {
-        background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(14, 116, 144, 0.36));
-        border-color: rgba(125, 211, 252, 0.22);
-        box-shadow: 0 22px 36px rgba(2, 6, 23, 0.34);
+      .login-form-logo {
+        filter: drop-shadow(0 12px 24px rgba(2, 6, 23, 0.4));
       }
 
       input,
@@ -495,7 +441,8 @@
       .login-intro,
       .login-box,
       .login-intro-panel,
-      .login-intro-logo-wrap,
+      .login-intro-logo,
+      .login-form-logo,
       .login-intro::after,
       .login-intro-orb,
       .login-intro-shine {
@@ -527,9 +474,7 @@
     <div class="login-intro-shine"></div>
     <div class="login-intro-panel">
       <div class="login-intro-logos">
-        <div class="login-intro-logo-wrap">
-          <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-intro-logo">
-        </div>
+        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-intro-logo">
       </div>
       <div class="login-intro-kicker">Sistem Informasi Kurikulum</div>
       <h1 class="login-intro-title">SMP Negeri 1 Umbulsari</h1>
@@ -538,11 +483,7 @@
   </div>
 
   <div class="login-box" id="loginBox">
-    <div class="login-box-brand">
-      <div class="login-box-logo-wrap">
-        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-box-logo">
-      </div>
-    </div>
+    <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-form-logo">
     <h2>Login</h2>
     <p class="login-subtitle">Masuk setelah splash screen sekolah selesai</p>
 
@@ -722,7 +663,7 @@
     if (!intro || !box) return;
 
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const introDuration = reduceMotion ? 80 : 3000;
+    const introDuration = reduceMotion ? 80 : 4000;
 
     document.body.classList.remove("login-ready");
 
