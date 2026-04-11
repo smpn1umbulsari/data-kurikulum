@@ -144,14 +144,36 @@
     onSnapshot(callback, onError) {
       if (!client?.channel) throw new Error("Supabase realtime belum siap");
       let active = true;
+      let refreshTimer = null;
+      let refreshInFlight = false;
+      let refreshQueued = false;
       const refresh = async () => {
         if (!active) return;
+        if (refreshInFlight) {
+          refreshQueued = true;
+          return;
+        }
+        refreshInFlight = true;
         try {
           callback(await this.get());
         } catch (error) {
           if (onError) onError(error);
           else console.error(error);
+        } finally {
+          refreshInFlight = false;
+          if (refreshQueued) {
+            refreshQueued = false;
+            refresh();
+          }
         }
+      };
+      const scheduleRefresh = () => {
+        if (!active) return;
+        if (refreshTimer) global.clearTimeout(refreshTimer);
+        refreshTimer = global.setTimeout(() => {
+          refreshTimer = null;
+          refresh();
+        }, 120);
       };
 
       refresh();
@@ -159,12 +181,13 @@
         .channel(makeChannelName("app-documents-native", this.collectionPath))
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
           const path = payload.new?.collection_path || payload.old?.collection_path;
-          if (path === this.collectionPath) refresh();
+          if (path === this.collectionPath) scheduleRefresh();
         })
         .subscribe();
 
       return () => {
         active = false;
+        if (refreshTimer) global.clearTimeout(refreshTimer);
         client.removeChannel(channel);
       };
     }
@@ -234,6 +257,7 @@
     onSnapshot(callback, onError) {
       if (!client?.channel) throw new Error("Supabase realtime belum siap");
       let active = true;
+      let refreshTimer = null;
       const refresh = async () => {
         if (!active) return;
         try {
@@ -243,6 +267,14 @@
           else console.error(error);
         }
       };
+      const scheduleRefresh = () => {
+        if (!active) return;
+        if (refreshTimer) global.clearTimeout(refreshTimer);
+        refreshTimer = global.setTimeout(() => {
+          refreshTimer = null;
+          refresh();
+        }, 120);
+      };
 
       refresh();
       const channel = client
@@ -250,12 +282,13 @@
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
           const path = payload.new?.collection_path || payload.old?.collection_path;
           const id = payload.new?.id || payload.old?.id;
-          if (path === this.collectionPath && id === this.id) refresh();
+          if (path === this.collectionPath && id === this.id) scheduleRefresh();
         })
         .subscribe();
 
       return () => {
         active = false;
+        if (refreshTimer) global.clearTimeout(refreshTimer);
         client.removeChannel(channel);
       };
     }

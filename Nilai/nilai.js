@@ -442,8 +442,11 @@ function loadRealtimeRekapNilai() {
 }
 
 function renderNilaiPageState() {
+  const assignmentSelect = document.getElementById("nilaiAssignmentSelect");
+  const isSelectingAssignment = document.activeElement === assignmentSelect;
   renderNilaiAssignmentOptions();
   syncCurrentNilaiAssignmentRows(getSelectedNilaiAssignment());
+  if (isSelectingAssignment) return;
   renderNilaiTableState();
 }
 
@@ -638,7 +641,7 @@ function renderNilaiAssignmentOptions() {
   if (!select) return;
   const currentValue = select.value || getStoredNilaiAssignmentId();
   const assignments = getNilaiAccessibleAssignments();
-  select.innerHTML = assignments.length
+  const nextOptions = assignments.length
     ? assignments.map(item => {
       const mapel = getNilaiMapel(item.mapel_kode);
       const label = `${item.tingkat} ${item.rombel} - ${mapel?.nama_mapel || item.mapel_kode}`;
@@ -646,8 +649,13 @@ function renderNilaiAssignmentOptions() {
       return `<option value="${escapeNilaiHtml(value)}">${escapeNilaiHtml(label)}</option>`;
     }).join("")
     : `<option value="">Tidak ada pembagian mengajar yang bisa diakses</option>`;
+  if (select.innerHTML !== nextOptions) {
+    select.innerHTML = nextOptions;
+  }
   if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) {
     select.value = currentValue;
+  } else if (!select.value && select.options.length > 0) {
+    select.value = select.options[0].value;
   }
   storeNilaiAssignmentId(select.value || "");
 }
@@ -1362,11 +1370,16 @@ async function uploadImportNilai() {
     }));
     await upsertNilaiRows(rows, assignment);
     mergeSavedNilaiRowsIntoCache(rows, assignment);
-    await hydrateNilaiCacheForAssignment(assignment, { force: true });
     syncCurrentNilaiAssignmentRows(assignment);
     closeNilaiPreviewModal();
     batalImportNilai(false);
     renderNilaiTableState();
+    hydrateNilaiCacheForAssignment(assignment, { force: true })
+      .then(() => {
+        syncCurrentNilaiAssignmentRows(assignment);
+        renderNilaiTableState();
+      })
+      .catch(error => console.error("hydrate nilai import failed", error));
     Swal.fire("Import selesai", `${siapUpload.length} nilai berhasil diupload.`, "success");
   } catch (error) {
     console.error(error);
@@ -1449,10 +1462,15 @@ async function saveNilaiAssignment() {
 
     await upsertNilaiRows(rows, assignment);
     mergeSavedNilaiRowsIntoCache(rows, assignment);
-    await hydrateNilaiCacheForAssignment(assignment, { force: true });
     syncCurrentNilaiAssignmentRows(assignment);
     setNilaiSavingState(false);
     renderNilaiTableState();
+    hydrateNilaiCacheForAssignment(assignment, { force: true })
+      .then(() => {
+        syncCurrentNilaiAssignmentRows(assignment);
+        renderNilaiTableState();
+      })
+      .catch(error => console.error("hydrate nilai save failed", error));
     Swal.fire("Tersimpan", "Nilai sudah disimpan.", "success");
   } catch (error) {
     console.error(error);
