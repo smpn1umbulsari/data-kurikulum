@@ -13,6 +13,10 @@ let nilaiLastImportInput = null;
 let isNilaiUploading = false;
 let isNilaiSaving = false;
 let currentNilaiAccessMode = "guru";
+const NILAI_LAST_ASSIGNMENT_KEY = "nilaiLastAssignmentId";
+const nilaiHydratedAssignmentKeys = new Set();
+let currentNilaiAssignmentId = "";
+let currentNilaiAssignmentRows = [];
 
 function escapeNilaiHtml(value) {
   return String(value ?? "")
@@ -123,9 +127,66 @@ function makeNilaiDocId(assignment, nipd) {
   return termId === "legacy" ? baseId : `${termId}_${baseId}`;
 }
 
+function setSemuaDataNilai(items = []) {
+  const byId = new Map();
+  items.forEach(item => {
+    if (!item?.id) return;
+    const current = byId.get(item.id);
+    const currentUpdatedAt = String(current?.updated_at || "");
+    const nextUpdatedAt = String(item?.updated_at || "");
+    if (!current || nextUpdatedAt >= currentUpdatedAt) {
+      byId.set(item.id, { ...item });
+    }
+  });
+  semuaDataNilai = Array.from(byId.values());
+}
+
+function getNilaiItemTimestamp(item) {
+  const updatedAt = item?.updated_at || item?.data?.updated_at || "";
+  const parsed = Date.parse(updatedAt);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getNilaiRowsFromCacheForAssignment(assignment) {
+  if (!assignment?.mapel_kode) return [];
+  const tingkat = String(assignment.tingkat || "");
+  const rombel = String(assignment.rombel || "").toUpperCase();
+  const mapelKode = String(assignment.mapel_kode || "").toUpperCase();
+  return semuaDataNilai.filter(item =>
+    String(item?.tingkat || "") === tingkat
+    && String(item?.rombel || "").toUpperCase() === rombel
+    && String(item?.mapel_kode || "").toUpperCase() === mapelKode
+  );
+}
+
+function syncCurrentNilaiAssignmentRows(assignment) {
+  const assignmentId = assignment?.mapel_kode ? makeNilaiAssignmentId(assignment) : "";
+  const byId = new Map();
+  if (assignmentId && assignmentId === currentNilaiAssignmentId) {
+    currentNilaiAssignmentRows.forEach(item => {
+      if (item?.id) byId.set(item.id, item);
+    });
+  }
+  getNilaiRowsFromCacheForAssignment(assignment).forEach(item => {
+    if (!item?.id) return;
+    const current = byId.get(item.id);
+    if (!current || getNilaiItemTimestamp(item) >= getNilaiItemTimestamp(current)) {
+      byId.set(item.id, item);
+    }
+  });
+  currentNilaiAssignmentId = assignmentId;
+  currentNilaiAssignmentRows = Array.from(byId.values());
+}
+
 function getNilaiForStudent(assignment, nipd) {
   const docId = makeNilaiDocId(assignment, nipd);
-  return semuaDataNilai.find(item => item.id === docId) || null;
+  for (let index = currentNilaiAssignmentRows.length - 1; index >= 0; index -= 1) {
+    if (currentNilaiAssignmentRows[index]?.id === docId) return currentNilaiAssignmentRows[index];
+  }
+  for (let index = semuaDataNilai.length - 1; index >= 0; index -= 1) {
+    if (semuaDataNilai[index]?.id === docId) return semuaDataNilai[index];
+  }
+  return null;
 }
 
 function getNilaiActiveTermPayload() {
@@ -146,6 +207,27 @@ function getNilaiFieldValue(nilaiDoc, field, fallbackSingle = "") {
 function getSelectedNilaiAssignment() {
   const select = document.getElementById("nilaiAssignmentSelect");
   return parseNilaiAssignmentId(select?.value || "");
+}
+
+function getStoredNilaiAssignmentId() {
+  return localStorage.getItem(NILAI_LAST_ASSIGNMENT_KEY) || "";
+}
+
+function storeNilaiAssignmentId(value = "") {
+  if (!value) {
+    localStorage.removeItem(NILAI_LAST_ASSIGNMENT_KEY);
+    return;
+  }
+  localStorage.setItem(NILAI_LAST_ASSIGNMENT_KEY, value);
+}
+
+function makeNilaiAssignmentHydrationKey(assignment) {
+  return [
+    typeof getActiveTermId === "function" ? getActiveTermId() : "legacy",
+    assignment.tingkat || "",
+    String(assignment.rombel || "").toUpperCase(),
+    String(assignment.mapel_kode || "").toUpperCase()
+  ].join("|");
 }
 
 function getNilaiStudentsForAssignment(assignment) {
@@ -184,7 +266,7 @@ function renderInputNilaiPage() {
       <div class="nilai-control-panel">
         <label class="form-group">
           <span>Pilih kelas dan mapel</span>
-          <select id="nilaiAssignmentSelect" onchange="renderNilaiTableState()"></select>
+          <select id="nilaiAssignmentSelect" onchange="handleNilaiAssignmentChange()"></select>
         </label>
         <div class="nilai-control-actions">
           <button type="button" class="btn-secondary" onclick="downloadNilaiTemplate()">Download Template</button>
@@ -250,22 +332,39 @@ function loadRealtimeInputNilai() {
     renderNilaiPageState();
   });
   unsubscribeNilaiData = db.collection("nilai").onSnapshot(snapshot => {
-    semuaDataNilai = snapshot.docs
+    setSemuaDataNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
     renderNilaiPageState();
   });
 }
 
 function renderNilaiPageState() {
   renderNilaiAssignmentOptions();
+  syncCurrentNilaiAssignmentRows(getSelectedNilaiAssignment());
   renderNilaiTableState();
+}
+
+async function handleNilaiAssignmentChange() {
+  const assignment = getSelectedNilaiAssignment();
+  syncCurrentNilaiAssignmentRows(assignment);
+  renderNilaiTableState();
+  if (!assignment?.mapel_kode) return;
+  try {
+    const changed = await hydrateNilaiCacheForAssignment(assignment, { force: true });
+    syncCurrentNilaiAssignmentRows(assignment);
+    if (changed || currentNilaiAssignmentRows.length > 0) {
+      renderNilaiTableState();
+    }
+  } catch (error) {
+    console.error("hydrate nilai assignment failed", error);
+  }
 }
 
 function renderNilaiAssignmentOptions() {
   const select = document.getElementById("nilaiAssignmentSelect");
   if (!select) return;
-  const currentValue = select.value;
+  const currentValue = select.value || getStoredNilaiAssignmentId();
   const assignments = getNilaiAccessibleAssignments();
   select.innerHTML = assignments.length
     ? assignments.map(item => {
@@ -275,14 +374,19 @@ function renderNilaiAssignmentOptions() {
       return `<option value="${escapeNilaiHtml(value)}">${escapeNilaiHtml(label)}</option>`;
     }).join("")
     : `<option value="">Tidak ada pembagian mengajar yang bisa diakses</option>`;
-  if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) select.value = currentValue;
+  if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+  storeNilaiAssignmentId(select.value || "");
 }
 
 function renderNilaiTableState() {
   const container = document.getElementById("nilaiTableContainer");
   const select = document.getElementById("nilaiAssignmentSelect");
   if (!container || !select) return;
+  storeNilaiAssignmentId(select.value || "");
   const assignment = parseNilaiAssignmentId(select.value);
+  syncCurrentNilaiAssignmentRows(assignment);
   renderNilaiAssignmentInfo(assignment);
   if (!assignment.mapel_kode) {
     container.innerHTML = `<div class="empty-panel">Belum ada data pembagian mengajar kelas bayangan.</div>`;
@@ -338,6 +442,102 @@ function normalizeNilaiManualInputValue(value) {
   const numberValue = Number(raw);
   if (!Number.isFinite(numberValue)) return "";
   return String(Math.max(0, Math.min(100, numberValue)));
+}
+
+function getNormalizedNilaiCellValueByRow(rowIndex, field) {
+  const input = getNilaiTableInput(rowIndex, field);
+  if (!input) throw new Error(`Input nilai ${String(field || "").toUpperCase()} pada baris ${Number(rowIndex) + 1} tidak ditemukan`);
+  const normalized = normalizeNilaiManualInputValue(input.value);
+  input.value = normalized;
+  return normalized;
+}
+
+function cleanNilaiPayloadValue(value) {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(cleanNilaiPayloadValue);
+  if (!value || typeof value !== "object") return value;
+  if (typeof value.toDate === "function") return value.toDate().toISOString();
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, item]) => item !== undefined)
+      .map(([key, item]) => [key, cleanNilaiPayloadValue(item)])
+  );
+}
+
+async function upsertNilaiRows(rows, assignment) {
+  if (!rows.length) return;
+
+  const supabaseClient = window.supabaseClient;
+  const documentsTable = window.supabaseConfig?.documentsTable || "app_documents";
+
+  if (supabaseClient?.from) {
+    for (let index = 0; index < rows.length; index += 200) {
+      const payloadRows = rows.slice(index, index + 200).map(row => ({
+        collection_path: "nilai",
+        id: makeNilaiDocId(assignment, row.siswa.nipd),
+        data: cleanNilaiPayloadValue(row.payload),
+        updated_at: new Date().toISOString()
+      }));
+      const { error } = await supabaseClient
+        .from(documentsTable)
+        .upsert(payloadRows, { onConflict: "collection_path,id" });
+      if (error) throw error;
+    }
+    return;
+  }
+
+  for (let index = 0; index < rows.length; index += 450) {
+    const batch = db.batch();
+    rows.slice(index, index + 450).forEach(row => {
+      const docId = makeNilaiDocId(assignment, row.siswa.nipd);
+      batch.set(db.collection("nilai").doc(docId), row.payload, { merge: true });
+    });
+    await batch.commit();
+  }
+}
+
+function mergeSavedNilaiRowsIntoCache(rows, assignment) {
+  const previousSerialized = JSON.stringify(semuaDataNilai);
+  const nextItems = rows.map(row => ({
+    id: makeNilaiDocId(assignment, row.siswa.nipd),
+    ...cleanNilaiPayloadValue(row.payload)
+  }));
+  setSemuaDataNilai([...semuaDataNilai, ...nextItems]);
+  return JSON.stringify(semuaDataNilai) !== previousSerialized;
+}
+
+async function hydrateNilaiCacheForAssignment(assignment, options = {}) {
+  if (!assignment?.mapel_kode) return false;
+  const supabaseClient = window.supabaseClient;
+  const documentsTable = window.supabaseConfig?.documentsTable || "app_documents";
+  if (!supabaseClient?.from) return false;
+
+  const key = makeNilaiAssignmentHydrationKey(assignment);
+  if (!options.force && nilaiHydratedAssignmentKeys.has(key)) return false;
+
+  const { data, error } = await supabaseClient
+    .from(documentsTable)
+    .select("id,data")
+    .eq("collection_path", "nilai")
+    .filter("data->>tingkat", "eq", String(assignment.tingkat || ""))
+    .filter("data->>rombel", "eq", String(assignment.rombel || "").toUpperCase())
+    .filter("data->>mapel_kode", "eq", String(assignment.mapel_kode || "").toUpperCase());
+
+  if (error) throw error;
+
+  nilaiHydratedAssignmentKeys.add(key);
+  const rows = (data || [])
+    .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item?.data || {}) : true)
+    .map(item => ({
+    siswa: { nipd: item?.data?.nipd || String(item?.id || "").split("_").at(-1) || "" },
+    payload: { ...(item?.data || {}) }
+  }));
+  currentNilaiAssignmentId = makeNilaiAssignmentId(assignment);
+  currentNilaiAssignmentRows = rows.map(row => ({
+    id: makeNilaiDocId(assignment, row.siswa.nipd),
+    ...cleanNilaiPayloadValue(row.payload)
+  }));
+  return mergeSavedNilaiRowsIntoCache(rows, assignment);
 }
 
 function getNilaiTableInput(rowIndex, field) {
@@ -854,11 +1054,9 @@ async function uploadImportNilai() {
 
   try {
     Swal.fire({ title: "Mengupload nilai...", didOpen: () => Swal.showLoading() });
-    for (let index = 0; index < siapUpload.length; index += 450) {
-      const batch = db.batch();
-      siapUpload.slice(index, index + 450).forEach(item => {
-        const docId = makeNilaiDocId(assignment, item.nipd);
-        batch.set(db.collection("nilai").doc(docId), {
+    const rows = siapUpload.map(item => ({
+      siswa: { nipd: item.nipd },
+      payload: {
           ...getNilaiActiveTermPayload(),
           nipd: item.nipd,
           nama_siswa: item.nama || "",
@@ -872,13 +1070,16 @@ async function uploadImportNilai() {
           uh_3: item.uh_3 === "" ? "" : Number(item.uh_3),
           pts: item.pts === "" ? "" : Number(item.pts),
           updated_by: user.username || "",
-          updated_at: new Date()
-        }, { merge: true });
-      });
-      await batch.commit();
-    }
+          updated_at: new Date().toISOString()
+        }
+    }));
+    await upsertNilaiRows(rows, assignment);
+    mergeSavedNilaiRowsIntoCache(rows, assignment);
+    await hydrateNilaiCacheForAssignment(assignment, { force: true });
+    syncCurrentNilaiAssignmentRows(assignment);
     closeNilaiPreviewModal();
     batalImportNilai(false);
+    renderNilaiTableState();
     Swal.fire("Import selesai", `${siapUpload.length} nilai berhasil diupload.`, "success");
   } catch (error) {
     console.error(error);
@@ -915,37 +1116,60 @@ async function saveNilaiAssignment() {
 
   try {
     setNilaiSavingState(true);
+    await hydrateNilaiCacheForAssignment(assignment, { force: true });
     const students = getNilaiStudentsForAssignment(assignment);
-    const batch = db.batch();
-    students.forEach(siswa => {
-      const uh1 = document.getElementById(`nilai-uh1-${siswa.nipd}`)?.value ?? "";
-      const uh2 = document.getElementById(`nilai-uh2-${siswa.nipd}`)?.value ?? "";
-      const uh3 = document.getElementById(`nilai-uh3-${siswa.nipd}`)?.value ?? "";
-      const pts = document.getElementById(`nilai-pts-${siswa.nipd}`)?.value ?? "";
-      const docId = makeNilaiDocId(assignment, siswa.nipd);
-      batch.set(db.collection("nilai").doc(docId), {
-        ...getNilaiActiveTermPayload(),
-        nipd: siswa.nipd || "",
-        nama_siswa: siswa.nama || "",
-        kelas: siswa.kelasNilaiParts.kelas || "",
-        tingkat: assignment.tingkat,
-        rombel: assignment.rombel,
-        mapel_kode: assignment.mapel_kode,
-        guru_kode: assignment.guru_kode,
-        uh_1: uh1 === "" ? "" : Number(uh1),
-        uh_2: uh2 === "" ? "" : Number(uh2),
-        uh_3: uh3 === "" ? "" : Number(uh3),
-        pts: pts === "" ? "" : Number(pts),
-        updated_by: user.username || "",
-        updated_at: new Date()
-      }, { merge: true });
+    const rows = students.map((siswa, index) => {
+      const existing = getNilaiForStudent(assignment, siswa.nipd);
+      const existingUh1 = getNilaiFieldValue(existing, "uh_1", existing?.nilai ?? "");
+      const existingUh2 = getNilaiFieldValue(existing, "uh_2", "");
+      const existingUh3 = getNilaiFieldValue(existing, "uh_3", "");
+      const existingPts = getNilaiFieldValue(existing, "pts", "");
+      const uh1 = getNormalizedNilaiCellValueByRow(index, "uh1");
+      const uh2 = getNormalizedNilaiCellValueByRow(index, "uh2");
+      const uh3 = getNormalizedNilaiCellValueByRow(index, "uh3");
+      const pts = getNormalizedNilaiCellValueByRow(index, "pts");
+      const nextUh1 = uh1 === "" ? existingUh1 : Number(uh1);
+      const nextUh2 = uh2 === "" ? existingUh2 : Number(uh2);
+      const nextUh3 = uh3 === "" ? existingUh3 : Number(uh3);
+      const nextPts = pts === "" ? existingPts : Number(pts);
+      return {
+        siswa,
+        payload: {
+          ...getNilaiActiveTermPayload(),
+          nipd: siswa.nipd || "",
+          nama_siswa: siswa.nama || "",
+          kelas: siswa.kelasNilaiParts.kelas || "",
+          tingkat: assignment.tingkat,
+          rombel: assignment.rombel,
+          mapel_kode: assignment.mapel_kode,
+          guru_kode: assignment.guru_kode,
+          uh_1: nextUh1 === "" ? "" : Number(nextUh1),
+          uh_2: nextUh2 === "" ? "" : Number(nextUh2),
+          uh_3: nextUh3 === "" ? "" : Number(nextUh3),
+          pts: nextPts === "" ? "" : Number(nextPts),
+          updated_by: user.username || "",
+          updated_at: new Date().toISOString()
+        }
+      };
     });
-    await batch.commit();
+
+    const invalidRow = rows.find(row =>
+      ["uh_1", "uh_2", "uh_3", "pts"].some(field => Number.isNaN(row.payload[field]))
+    );
+    if (invalidRow) {
+      throw new Error(`Nilai tidak valid untuk ${invalidRow.siswa?.nama || invalidRow.siswa?.nipd || "siswa"}`);
+    }
+
+    await upsertNilaiRows(rows, assignment);
+    mergeSavedNilaiRowsIntoCache(rows, assignment);
+    await hydrateNilaiCacheForAssignment(assignment, { force: true });
+    syncCurrentNilaiAssignmentRows(assignment);
     setNilaiSavingState(false);
+    renderNilaiTableState();
     Swal.fire("Tersimpan", "Nilai sudah disimpan.", "success");
   } catch (error) {
     console.error(error);
     setNilaiSavingState(false);
-    Swal.fire("Gagal menyimpan", "Nilai belum berhasil disimpan.", "error");
+    Swal.fire("Gagal menyimpan", error?.message || "Nilai belum berhasil disimpan.", "error");
   }
 }
