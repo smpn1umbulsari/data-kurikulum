@@ -385,14 +385,14 @@ async function loadRealtimeKelas() {
   try {
     const kelasQuery = typeof getSemesterCollectionQuery === "function"
       ? getSemesterCollectionQuery("kelas", "kelas")
-      : db.collection("kelas").orderBy("kelas");
+      : getKelasPageDocumentsApi().collection("kelas").orderBy("kelas");
     const siswaQuery = typeof getSemesterCollectionQuery === "function"
       ? getSemesterCollectionQuery("siswa", "nama")
-      : db.collection("siswa").orderBy("nama");
+      : getKelasPageDocumentsApi().collection("siswa").orderBy("nama");
     const [kelasSnapshot, guruSnapshot, mengajarSnapshot, siswaSnapshot] = await Promise.all([
       kelasQuery.get(),
-      db.collection("guru").orderBy("kode_guru").get(),
-      db.collection("mengajar").get(),
+      getKelasPageDocumentsApi().collection("guru").orderBy("kode_guru").get(),
+      getKelasPageDocumentsApi().collection("mengajar").get(),
       siswaQuery.get()
     ]);
     semuaDataKelas = kelasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -728,7 +728,7 @@ function importKelasExcel(event) {
           const existing = semuaDataKelas.find(kelas => kelas.kelas === item.kelas);
           const kelasRef = typeof getSemesterDocRef === "function"
             ? getSemesterDocRef("kelas", item.kelas)
-            : db.collection("kelas").doc(item.kelas);
+            : getKelasPageDocumentsApi().collection("kelas").doc(item.kelas);
           await kelasRef.set({
             ...item,
             created_at: existing ? existing.created_at || new Date() : new Date(),
@@ -1055,12 +1055,13 @@ async function simpanAnggotaKelas(namaKelas, selectedNipds) {
   try {
     Swal.fire({ title: "Menyimpan anggota...", didOpen: () => Swal.showLoading() });
 
-    const batch = db.batch();
+    const documentsApi = getKelasPageDocumentsApi();
+    const batch = documentsApi.batch();
     changes.forEach((payload, nipd) => {
       batch.set(
         typeof getSemesterDocRef === "function"
           ? getSemesterDocRef("siswa", nipd)
-          : db.collection("siswa").doc(nipd),
+          : documentsApi.collection("siswa").doc(nipd),
         {
           ...payload,
           updated_at: new Date()
@@ -1087,7 +1088,7 @@ function handleWaliKelasKey(event) {
 }
 
 async function getAcakWaliMengajarBayangan() {
-  const snapshot = await db.collection("mengajar_bayangan").get();
+  const snapshot = await getKelasPageDocumentsApi().collection("mengajar_bayangan").get();
   return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 }
 
@@ -1353,7 +1354,8 @@ async function applyAcakWaliResult(result) {
   }
   try {
     Swal.fire({ title: "Menyimpan wali kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-    const batch = db.batch();
+    const documentsApi = getKelasPageDocumentsApi();
+    const batch = documentsApi.batch();
     const localPayloads = [];
     saveAcakWaliUndoSnapshot(valid);
     valid.forEach(item => {
@@ -1365,7 +1367,7 @@ async function applyAcakWaliResult(result) {
       };
       const kelasRef = typeof getSemesterDocRef === "function"
         ? getSemesterDocRef("kelas", item.kelasItem.kelas)
-        : db.collection("kelas").doc(item.kelasItem.kelas);
+        : documentsApi.collection("kelas").doc(item.kelasItem.kelas);
       batch.set(kelasRef, payload, { merge: true });
       localPayloads.push(payload);
     });
@@ -1399,7 +1401,8 @@ async function undoAcakWaliKelas() {
 
   try {
     Swal.fire({ title: "Mengembalikan wali kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-    const batch = db.batch();
+    const documentsApi = getKelasPageDocumentsApi();
+    const batch = documentsApi.batch();
     const localPayloads = [];
     acakWaliKelasUndo.items.forEach(item => {
       const kelas = semuaDataKelas.find(entry => getStoredKelasParts(entry).kelas === item.kelas);
@@ -1412,7 +1415,7 @@ async function undoAcakWaliKelas() {
       };
       const kelasRef = typeof getSemesterDocRef === "function"
         ? getSemesterDocRef("kelas", kelas.kelas)
-        : db.collection("kelas").doc(kelas.kelas);
+        : documentsApi.collection("kelas").doc(kelas.kelas);
       batch.set(kelasRef, payload, { merge: true });
       localPayloads.push(payload);
     });
@@ -1593,4 +1596,7 @@ async function hapusKelas(namaKelas) {
     console.error(error);
     Swal.fire("Gagal", "Data kelas belum berhasil dihapus", "error");
   }
+}
+function getKelasPageDocumentsApi() {
+  return window.SupabaseDocuments;
 }

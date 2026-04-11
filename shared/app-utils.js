@@ -28,6 +28,21 @@
     return { tingkat: asli.tingkat, rombel: "", kelas: "" };
   };
 
+  AppUtils.compareStudentPlacement = function compareStudentPlacement(a = {}, b = {}) {
+    const asliA = AppUtils.parseKelas(a.kelas);
+    const asliB = AppUtils.parseKelas(b.kelas);
+    const bayanganA = AppUtils.getPrimaryKelasParts(a);
+    const bayanganB = AppUtils.getPrimaryKelasParts(b);
+
+    const asliCompare = String(asliA.rombel || "").localeCompare(String(asliB.rombel || ""), undefined, { sensitivity: "base" });
+    if (asliCompare !== 0) return asliCompare;
+
+    const bayanganCompare = String(bayanganA.rombel || "").localeCompare(String(bayanganB.rombel || ""), undefined, { sensitivity: "base" });
+    if (bayanganCompare !== 0) return bayanganCompare;
+
+    return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+  };
+
   AppUtils.setStorageJson = function setStorageJson(key, value) {
     global.localStorage.setItem(key, JSON.stringify(value));
     return value;

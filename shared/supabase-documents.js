@@ -1,26 +1,26 @@
-(function () {
-  const config = window.supabaseConfig || {};
-  if (!window.supabase || !config.url || !config.anonKey || config.url.includes("YOUR-PROJECT-REF")) {
-    throw new Error("Konfigurasi Supabase belum diisi di supabase-config.js");
-  }
+(function initSupabaseDocuments(global) {
+  if (global.SupabaseDocuments) return;
 
+  const config = global.supabaseConfig || {};
+  const client = global.supabaseClient || (global.supabase?.createClient && config.url && config.anonKey
+    ? global.supabase.createClient(config.url, config.anonKey)
+    : null);
   const TABLE = config.documentsTable || "app_documents";
-  const client = window.supabase.createClient(config.url, config.anonKey);
 
   function makeChannelName(prefix, path) {
-    const randomId = window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    return `${prefix}:${path.replace(/[^a-zA-Z0-9_-]/g, "-")}:${randomId}`;
+    const randomId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    return `${prefix}:${String(path || "").replace(/[^a-zA-Z0-9_-]/g, "-")}:${randomId}`;
   }
 
-  function cleanObject(value) {
+  function cleanValue(value) {
     if (value instanceof Date) return value.toISOString();
-    if (Array.isArray(value)) return value.map(cleanObject);
+    if (Array.isArray(value)) return value.map(cleanValue);
     if (!value || typeof value !== "object") return value;
     if (typeof value.toDate === "function") return value.toDate().toISOString();
     return Object.fromEntries(
       Object.entries(value)
         .filter(([, item]) => item !== undefined)
-        .map(([key, item]) => [key, cleanObject(item)])
+        .map(([key, item]) => [key, cleanValue(item)])
     );
   }
 
@@ -31,7 +31,7 @@
     return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
   }
 
-  function matchesWhere(row, filter) {
+  function matchesFilter(row, filter) {
     const value = row?.data?.[filter.field];
     if (filter.op === "==") return String(value ?? "") === String(filter.value ?? "");
     if (filter.op === "!=") return String(value ?? "") !== String(filter.value ?? "");
@@ -43,7 +43,19 @@
     return false;
   }
 
-  class SupabaseFirestoreDocumentSnapshot {
+  class QuerySnapshot {
+    constructor(docs) {
+      this.docs = docs;
+      this.empty = docs.length === 0;
+      this.size = docs.length;
+    }
+
+    forEach(callback) {
+      this.docs.forEach(callback);
+    }
+  }
+
+  class DocumentSnapshot {
     constructor(ref, row) {
       this.ref = ref;
       this.id = ref.id;
@@ -56,19 +68,7 @@
     }
   }
 
-  class SupabaseFirestoreQuerySnapshot {
-    constructor(docs) {
-      this.docs = docs;
-      this.empty = docs.length === 0;
-      this.size = docs.length;
-    }
-
-    forEach(callback) {
-      this.docs.forEach(callback);
-    }
-  }
-
-  class SupabaseFirestoreQuery {
+  class Query {
     constructor(collectionPath, options = {}) {
       this.collectionPath = collectionPath;
       this._where = options.where || [];
@@ -77,7 +77,7 @@
     }
 
     where(field, op, value) {
-      return new SupabaseFirestoreQuery(this.collectionPath, {
+      return new Query(this.collectionPath, {
         where: [...this._where, { field, op, value }],
         order: this._order,
         limit: this._limit
@@ -85,7 +85,7 @@
     }
 
     orderBy(field, direction = "asc") {
-      return new SupabaseFirestoreQuery(this.collectionPath, {
+      return new Query(this.collectionPath, {
         where: this._where,
         order: { field, direction },
         limit: this._limit
@@ -93,7 +93,7 @@
     }
 
     limit(count) {
-      return new SupabaseFirestoreQuery(this.collectionPath, {
+      return new Query(this.collectionPath, {
         where: this._where,
         order: this._order,
         limit: count
@@ -101,6 +101,7 @@
     }
 
     async get() {
+      if (!client?.from) throw new Error("Supabase client belum siap");
       const { data, error } = await client
         .from(TABLE)
         .select("id,data")
@@ -108,7 +109,7 @@
 
       if (error) throw error;
 
-      let rows = (data || []).filter(row => this._where.every(filter => matchesWhere(row, filter)));
+      let rows = (data || []).filter(row => this._where.every(filter => matchesFilter(row, filter)));
       if (this._order) {
         const { field, direction } = this._order;
         rows = [...rows].sort((a, b) => {
@@ -118,12 +119,13 @@
       }
       if (this._limit !== null) rows = rows.slice(0, Number(this._limit) || 0);
 
-      return new SupabaseFirestoreQuerySnapshot(
-        rows.map(row => new SupabaseFirestoreDocumentSnapshot(new SupabaseFirestoreDocumentReference(this.collectionPath, row.id), row))
+      return new QuerySnapshot(
+        rows.map(row => new DocumentSnapshot(new DocumentRef(this.collectionPath, row.id), row))
       );
     }
 
     onSnapshot(callback, onError) {
+      if (!client?.channel) throw new Error("Supabase realtime belum siap");
       let active = true;
       const refresh = async () => {
         if (!active) return;
@@ -137,7 +139,7 @@
 
       refresh();
       const channel = client
-        .channel(makeChannelName("app-documents", this.collectionPath))
+        .channel(makeChannelName("app-documents-native", this.collectionPath))
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
           const path = payload.new?.collection_path || payload.old?.collection_path;
           if (path === this.collectionPath) refresh();
@@ -151,18 +153,7 @@
     }
   }
 
-  class SupabaseFirestoreCollectionReference extends SupabaseFirestoreQuery {
-    constructor(collectionPath) {
-      super(collectionPath);
-      this.path = collectionPath;
-    }
-
-    doc(id) {
-      return new SupabaseFirestoreDocumentReference(this.collectionPath, id);
-    }
-  }
-
-  class SupabaseFirestoreDocumentReference {
+  class DocumentRef {
     constructor(collectionPath, id) {
       this.collectionPath = collectionPath;
       this.id = String(id || "");
@@ -170,10 +161,11 @@
     }
 
     collection(name) {
-      return new SupabaseFirestoreCollectionReference(`${this.collectionPath}/${this.id}/${name}`);
+      return new CollectionRef(`${this.collectionPath}/${this.id}/${name}`);
     }
 
     async get() {
+      if (!client?.from) throw new Error("Supabase client belum siap");
       const { data, error } = await client
         .from(TABLE)
         .select("id,data")
@@ -182,11 +174,12 @@
         .maybeSingle();
 
       if (error) throw error;
-      return new SupabaseFirestoreDocumentSnapshot(this, data);
+      return new DocumentSnapshot(this, data);
     }
 
     async set(data, options = {}) {
-      const payloadData = cleanObject(data || {});
+      if (!client?.from) throw new Error("Supabase client belum siap");
+      const payloadData = cleanValue(data || {});
       let nextData = payloadData;
 
       if (options?.merge) {
@@ -211,6 +204,7 @@
     }
 
     async delete() {
+      if (!client?.from) throw new Error("Supabase client belum siap");
       const { error } = await client
         .from(TABLE)
         .delete()
@@ -221,6 +215,7 @@
     }
 
     onSnapshot(callback, onError) {
+      if (!client?.channel) throw new Error("Supabase realtime belum siap");
       let active = true;
       const refresh = async () => {
         if (!active) return;
@@ -234,7 +229,7 @@
 
       refresh();
       const channel = client
-        .channel(makeChannelName("app-document", this.path))
+        .channel(makeChannelName("app-document-native", this.path))
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
           const path = payload.new?.collection_path || payload.old?.collection_path;
           const id = payload.new?.id || payload.old?.id;
@@ -249,7 +244,18 @@
     }
   }
 
-  class SupabaseFirestoreBatch {
+  class CollectionRef extends Query {
+    constructor(collectionPath) {
+      super(collectionPath);
+      this.path = collectionPath;
+    }
+
+    doc(id) {
+      return new DocumentRef(this.collectionPath, id);
+    }
+  }
+
+  class Batch {
     constructor() {
       this.operations = [];
     }
@@ -276,32 +282,26 @@
     }
   }
 
-  const firestoreCompat = {
+  global.SupabaseDocuments = {
+    client,
+    table: TABLE,
     collection(name) {
-      return new SupabaseFirestoreCollectionReference(name);
+      return new CollectionRef(name);
     },
     batch() {
-      return new SupabaseFirestoreBatch();
+      return new Batch();
+    },
+    Timestamp: {
+      fromDate(date) {
+        return {
+          toDate() {
+            return date;
+          },
+          toJSON() {
+            return date.toISOString();
+          }
+        };
+      }
     }
   };
-
-  window.supabaseClient = client;
-  window.db = firestoreCompat;
-  window.firebase = {
-    firestore() {
-      return firestoreCompat;
-    }
-  };
-  window.firebase.firestore.Timestamp = {
-    fromDate(date) {
-      return {
-        toDate() {
-          return date;
-        },
-        toJSON() {
-          return date.toISOString();
-        }
-      };
-    }
-  };
-})();
+})(window);

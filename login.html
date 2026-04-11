@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
-  <script src="supabase-firestore-compat.js?v=20260408a"></script>
+  <script src="shared/supabase-documents.js?v=20260411a"></script>
   <script src="shared/maintenance-mode.js?v=20260411a"></script>
 
   <style>
@@ -204,8 +204,10 @@
 
     .login-maintenance-alert {
       display: none;
+      align-items: center;
+      gap: 12px;
       margin: 0 0 18px;
-      padding: 14px 16px;
+      padding: 13px 15px;
       border-radius: 14px;
       border: 1px solid rgba(245, 158, 11, 0.26);
       background: linear-gradient(180deg, rgba(255, 251, 235, 0.98), rgba(254, 243, 199, 0.92));
@@ -214,12 +216,29 @@
     }
 
     .login-maintenance-alert.visible {
-      display: block;
+      display: flex;
+    }
+
+    .login-maintenance-icon {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.16);
+      color: #b45309;
+      font-size: 18px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    .login-maintenance-copy {
+      min-width: 0;
     }
 
     .login-maintenance-alert strong {
       display: block;
-      margin-bottom: 6px;
+      margin-bottom: 3px;
       font-size: 13px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
@@ -423,6 +442,12 @@
         box-shadow: 0 16px 28px rgba(2, 6, 23, 0.24);
       }
 
+      .login-maintenance-icon {
+        background: rgba(251, 191, 36, 0.12);
+        color: #fde68a;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
       .login-form-logo {
         filter: drop-shadow(0 12px 24px rgba(2, 6, 23, 0.4));
       }
@@ -516,11 +541,13 @@
   <div class="login-box" id="loginBox">
     <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-form-logo">
     <h2>Login</h2>
-    <p class="login-subtitle">Masuk setelah splash screen sekolah selesai</p>
 
     <div class="login-maintenance-alert" id="loginMaintenanceAlert" role="status" aria-live="polite">
-      <strong>Maintenance Aktif</strong>
-      <p id="loginMaintenanceMessage">Sistem sedang maintenance. Admin tetap bisa login untuk mematikan maintenance, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah berhasil masuk.</p>
+      <div class="login-maintenance-icon" aria-hidden="true">🛠</div>
+      <div class="login-maintenance-copy">
+        <strong>Maintenance</strong>
+        <p id="loginMaintenanceMessage">Sistem sedang dalam perawatan dan perbaikan.</p>
+      </div>
     </div>
 
     <select id="semesterLogin">
@@ -540,6 +567,10 @@
 <script>
   let daftarSemesterLogin = [];
 
+  function getLoginDocumentsApi() {
+    return window.SupabaseDocuments;
+  }
+
   function updateLoginMaintenanceAlert(state = {}) {
     const alert = document.getElementById("loginMaintenanceAlert");
     const message = document.getElementById("loginMaintenanceMessage");
@@ -547,7 +578,7 @@
 
     if (state.enabled) {
       alert.classList.add("visible");
-      message.textContent = "Sistem sedang maintenance. Admin tetap bisa login untuk mematikan maintenance, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah berhasil masuk.";
+      message.textContent = "Sistem sedang dalam perawatan dan perbaikan.";
       return;
     }
 
@@ -621,7 +652,7 @@
 
   async function loadSemesterLoginOptions() {
     try {
-      const snap = await db.collection("settings").doc("semester").get();
+      const snap = await getLoginDocumentsApi().collection("settings").doc("semester").get();
       normalizeLoginSemesterList(snap.exists ? snap.data() : {});
     } catch (error) {
       console.error(error);
@@ -666,7 +697,7 @@
     }
 
     try {
-      const snap = await db.collection("users")
+      const snap = await getLoginDocumentsApi().collection("users")
         .where("username", "==", username)
         .limit(1)
         .get();
@@ -715,7 +746,7 @@
     if (!intro || !box) return;
 
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const introDuration = reduceMotion ? 80 : 4000;
+    const introDuration = reduceMotion ? 80 : 3000;
 
     document.body.classList.remove("login-ready");
 

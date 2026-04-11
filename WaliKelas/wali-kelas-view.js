@@ -60,9 +60,9 @@
               <tr>
                 <td>${index + 1}</td>
                 <td class="wali-student-name">${context.escape(siswa.nama || "-")}</td>
-                <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.S}"></td>
-                <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.I}"></td>
-                <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.A}"></td>
+                <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" data-row="${index}" data-field="s" type="number" min="0" value="${counts.S}"></td>
+                <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" data-row="${index}" data-field="i" type="number" min="0" value="${counts.I}"></td>
+                <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" data-row="${index}" data-field="a" type="number" min="0" value="${counts.A}"></td>
               </tr>
             `;
           }).join("")}

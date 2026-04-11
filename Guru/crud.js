@@ -1,19 +1,23 @@
-// ================= FIRESTORE CRUD GURU =================
+// ================= CRUD GURU (SUPABASE COMPAT) =================
+
+function getGuruDocumentsApi() {
+  return window.SupabaseDocuments;
+}
 
 async function saveGuru(data) {
-  return db.collection("guru").doc(data.kode_guru).set(data);
+  return getGuruDocumentsApi().collection("guru").doc(data.kode_guru).set(data);
 }
 
 async function updateGuru(kodeGuru, data) {
-  return db.collection("guru").doc(kodeGuru).update(data);
+  return getGuruDocumentsApi().collection("guru").doc(kodeGuru).update(data);
 }
 
 async function deleteGuru(kodeGuru) {
-  return db.collection("guru").doc(kodeGuru).delete();
+  return getGuruDocumentsApi().collection("guru").doc(kodeGuru).delete();
 }
 
 function listenGuru(callback) {
-  return db.collection("guru")
+  return getGuruDocumentsApi().collection("guru")
     .orderBy("kode_guru")
     .onSnapshot(snapshot => {
       const data = snapshot.docs.map(doc => doc.data());

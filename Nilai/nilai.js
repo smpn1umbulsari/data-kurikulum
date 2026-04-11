@@ -14,9 +14,14 @@ let isNilaiUploading = false;
 let isNilaiSaving = false;
 let currentNilaiAccessMode = "guru";
 const NILAI_LAST_ASSIGNMENT_KEY = "nilaiLastAssignmentId";
+const NILAI_REKAP_LAST_CLASS_KEY = "nilaiRekapLastClass";
 const nilaiHydratedAssignmentKeys = new Set();
 let currentNilaiAssignmentId = "";
 let currentNilaiAssignmentRows = [];
+
+function getNilaiDocumentsApi() {
+  return window.SupabaseDocuments;
+}
 
 function escapeNilaiHtml(value) {
   return String(value ?? "")
@@ -37,6 +42,13 @@ function getCurrentNilaiUser() {
 
 function setNilaiAccessMode(mode = "guru") {
   currentNilaiAccessMode = mode === "koordinator" ? "koordinator" : "guru";
+}
+
+function getNilaiGenderLabel(siswa = {}) {
+  const raw = String(siswa.jenis_kelamin || siswa.jk || siswa.gender || siswa.kelamin || "").trim().toLowerCase();
+  if (["l", "lk", "laki", "laki-laki", "laki laki", "1"].includes(raw)) return "L";
+  if (["p", "pr", "perempuan", "2"].includes(raw)) return "P";
+  return "-";
 }
 
 function getNilaiKelasParts(kelasValue = "") {
@@ -239,7 +251,10 @@ function getNilaiStudentsForAssignment(assignment) {
       siswa.kelasNilaiParts.rombel === String(assignment.rombel || "").toUpperCase() &&
       isNilaiSiswaEligibleForMapel(siswa, mapel)
     )
-    .sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    });
 }
 
 function renderInputNilaiPage() {
@@ -297,6 +312,40 @@ function renderInputNilaiPage() {
   `;
 }
 
+function renderRekapNilaiPage() {
+  const user = getCurrentNilaiUser();
+  const role = user.role || "admin";
+  const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+  const roleDescription = role === "guru" && hasCoordinatorAccess && currentNilaiAccessMode === "koordinator"
+    ? `Koordinator dapat melihat rekap nilai pada jenjang ${((typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : []).join(", ") || "-")}.`
+    : role === "guru"
+      ? "Guru melihat rekap kelas yang dapat diakses sesuai assignment."
+      : role === "koordinator"
+        ? `Koordinator melihat rekap nilai sesuai jenjang ${((typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : []).join(", ") || "-")}.`
+        : "Admin dapat melihat rekap nilai seluruh kelas.";
+  return `
+    <div class="card">
+      <div class="kelas-bayangan-head nilai-page-head">
+        <div>
+          <span class="dashboard-eyebrow">Nilai</span>
+          <h2>Rekap Nilai per Kelas</h2>
+          <p>${roleDescription}</p>
+        </div>
+      </div>
+
+      <div class="nilai-control-panel">
+        <label class="form-group">
+          <span>Pilih kelas</span>
+          <select id="nilaiRekapClassSelect" onchange="renderRekapNilaiState()"></select>
+        </label>
+      </div>
+
+      <div id="nilaiRekapInfo" class="nilai-assignment-info">Memuat data rekap nilai...</div>
+      <div id="nilaiRekapContainer" class="table-container mapel-table-container"></div>
+    </div>
+  `;
+}
+
 function setNilaiSavingState(isSaving, message = "Menyimpan nilai...") {
   isNilaiSaving = Boolean(isSaving);
   const overlay = document.getElementById("nilaiSavingOverlay");
@@ -318,20 +367,21 @@ function loadRealtimeInputNilai() {
   if (unsubscribeNilaiMengajar) unsubscribeNilaiMengajar();
   if (unsubscribeNilaiData) unsubscribeNilaiData();
 
-  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : db.collection("siswa").orderBy("nama");
+  const documentsApi = getNilaiDocumentsApi();
+  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderNilaiPageState();
   });
-  unsubscribeNilaiMapel = db.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
+  unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderNilaiPageState();
   });
-  unsubscribeNilaiMengajar = db.collection("mengajar_bayangan").onSnapshot(snapshot => {
+  unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderNilaiPageState();
   });
-  unsubscribeNilaiData = db.collection("nilai").onSnapshot(snapshot => {
+  unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
     setSemuaDataNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
@@ -339,10 +389,208 @@ function loadRealtimeInputNilai() {
   });
 }
 
+function loadRealtimeRekapNilai() {
+  if (unsubscribeNilaiSiswa) unsubscribeNilaiSiswa();
+  if (unsubscribeNilaiMapel) unsubscribeNilaiMapel();
+  if (unsubscribeNilaiMengajar) unsubscribeNilaiMengajar();
+  if (unsubscribeNilaiData) unsubscribeNilaiData();
+
+  const documentsApi = getNilaiDocumentsApi();
+  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
+  unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
+    semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderRekapNilaiState();
+  });
+  unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
+    semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderRekapNilaiState();
+  });
+  unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
+    semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderRekapNilaiState();
+  });
+  unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
+    setSemuaDataNilai(snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
+    renderRekapNilaiState();
+  });
+}
+
 function renderNilaiPageState() {
   renderNilaiAssignmentOptions();
   syncCurrentNilaiAssignmentRows(getSelectedNilaiAssignment());
   renderNilaiTableState();
+}
+
+function getNilaiAccessibleClasses() {
+  const seen = new Map();
+  getNilaiAccessibleAssignments().forEach(item => {
+    const key = `${item.tingkat}|${String(item.rombel || "").toUpperCase()}`;
+    if (seen.has(key)) return;
+    seen.set(key, {
+      tingkat: String(item.tingkat || ""),
+      rombel: String(item.rombel || "").toUpperCase(),
+      label: `${item.tingkat} ${String(item.rombel || "").toUpperCase()}`
+    });
+  });
+  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function getStoredNilaiRekapClassKey() {
+  return localStorage.getItem(NILAI_REKAP_LAST_CLASS_KEY) || "";
+}
+
+function storeNilaiRekapClassKey(value = "") {
+  if (!value) {
+    localStorage.removeItem(NILAI_REKAP_LAST_CLASS_KEY);
+    return;
+  }
+  localStorage.setItem(NILAI_REKAP_LAST_CLASS_KEY, value);
+}
+
+function getSelectedNilaiRekapClass() {
+  const select = document.getElementById("nilaiRekapClassSelect");
+  const [tingkat = "", rombel = ""] = String(select?.value || "").split("|");
+  return { tingkat, rombel };
+}
+
+function renderNilaiRekapClassOptions() {
+  const select = document.getElementById("nilaiRekapClassSelect");
+  if (!select) return;
+  const classes = getNilaiAccessibleClasses();
+  const currentValue = select.value || getStoredNilaiRekapClassKey();
+  select.innerHTML = classes.length
+    ? classes.map(item => `<option value="${escapeNilaiHtml(`${item.tingkat}|${item.rombel}`)}">${escapeNilaiHtml(item.label)}</option>`).join("")
+    : `<option value="">Tidak ada kelas yang bisa diakses</option>`;
+  if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) {
+    select.value = currentValue;
+  }
+  storeNilaiRekapClassKey(select.value || "");
+}
+
+function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
+  return getNilaiAccessibleAssignments()
+    .filter(item =>
+      String(item.tingkat || "") === String(tingkat || "")
+      && String(item.rombel || "").toUpperCase() === String(rombel || "").toUpperCase()
+    )
+    .sort((a, b) => {
+      const mapelA = getNilaiMapel(a.mapel_kode) || {};
+      const mapelB = getNilaiMapel(b.mapel_kode) || {};
+      const mappingA = Number(mapelA.mapping ?? Number.MAX_SAFE_INTEGER);
+      const mappingB = Number(mapelB.mapping ?? Number.MAX_SAFE_INTEGER);
+      if (mappingA !== mappingB) return mappingA - mappingB;
+
+      const kodeA = String(a.mapel_kode || "").toUpperCase();
+      const kodeB = String(b.mapel_kode || "").toUpperCase();
+      return kodeA.localeCompare(kodeB, undefined, { sensitivity: "base" });
+    });
+}
+
+function renderRekapNilaiInfo(tingkat = "", rombel = "", assignments = [], students = []) {
+  const info = document.getElementById("nilaiRekapInfo");
+  if (!info) return;
+  if (!tingkat || !rombel) {
+    info.innerHTML = "Pilih kelas untuk melihat rekap nilai.";
+    return;
+  }
+  info.innerHTML = `
+    <span><strong>Kelas</strong>${escapeNilaiHtml(`${tingkat} ${rombel}`)}</span>
+    <span><strong>Mapel</strong>${assignments.length}</span>
+    <span><strong>Siswa</strong>${students.length}</span>
+  `;
+}
+
+function renderRekapNilaiState() {
+  renderNilaiRekapClassOptions();
+  const container = document.getElementById("nilaiRekapContainer");
+  const select = document.getElementById("nilaiRekapClassSelect");
+  if (!container || !select) return;
+
+  storeNilaiRekapClassKey(select.value || "");
+  const { tingkat, rombel } = getSelectedNilaiRekapClass();
+  const assignments = getNilaiAssignmentsForClass(tingkat, rombel);
+  const students = tingkat && rombel
+    ? semuaDataNilaiSiswa
+      .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
+      .filter(siswa =>
+        siswa.kelasNilaiParts.tingkat === String(tingkat || "")
+        && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
+      )
+      .sort((a, b) => {
+        if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+        return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+      })
+    : [];
+
+  renderRekapNilaiInfo(tingkat, rombel, assignments, students);
+
+  if (!tingkat || !rombel) {
+    container.innerHTML = `<div class="empty-panel">Belum ada kelas yang bisa ditampilkan pada rekap nilai.</div>`;
+    return;
+  }
+
+  if (assignments.length === 0) {
+    container.innerHTML = `<div class="empty-panel">Belum ada mapel pada kelas ${escapeNilaiHtml(`${tingkat} ${rombel}`)}.</div>`;
+    return;
+  }
+
+  if (students.length === 0) {
+    container.innerHTML = `<div class="empty-panel">Belum ada siswa pada kelas ${escapeNilaiHtml(`${tingkat} ${rombel}`)}.</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <table class="mapel-table nilai-table nilai-rekap-table">
+      <thead>
+        <tr>
+          <th rowspan="2">No</th>
+          <th rowspan="2">Nama</th>
+          <th rowspan="2">NIPD</th>
+          <th rowspan="2">L/P</th>
+          ${assignments.map(item => {
+            const mapel = getNilaiMapel(item.mapel_kode);
+            const code = String(item.mapel_kode || "").toUpperCase();
+            const title = mapel?.nama_mapel ? `${code} - ${mapel.nama_mapel}` : code;
+            return `<th colspan="4" class="nilai-rekap-mapel-group nilai-rekap-mapel-boundary" title="${escapeNilaiHtml(title)}">${escapeNilaiHtml(code)}</th>`;
+          }).join("")}
+        </tr>
+        <tr>
+          ${assignments.map(() => `
+            <th class="nilai-uh-head nilai-rekap-subcol nilai-rekap-mapel-start">UH 1</th>
+            <th class="nilai-uh-head nilai-rekap-subcol">UH 2</th>
+            <th class="nilai-uh-head nilai-rekap-subcol nilai-rekap-before-pts">UH 3</th>
+            <th class="nilai-pts-head nilai-rekap-subcol nilai-rekap-mapel-end">PTS</th>
+          `).join("")}
+        </tr>
+      </thead>
+      <tbody>
+        ${students.map((siswa, index) => `
+          <tr>
+            <td>${index + 1}</td>
+            <td class="nilai-student-name">${escapeNilaiHtml(siswa.nama || "-")}</td>
+            <td>${escapeNilaiHtml(siswa.nipd || "-")}</td>
+            <td>${escapeNilaiHtml(getNilaiGenderLabel(siswa))}</td>
+            ${assignments.map(item => {
+              const nilaiDoc = getNilaiForStudent(item, siswa.nipd);
+              const fallbackNilai = nilaiDoc?.nilai ?? "";
+              const nilaiUh1 = getNilaiFieldValue(nilaiDoc, "uh_1", fallbackNilai);
+              const nilaiUh2 = getNilaiFieldValue(nilaiDoc, "uh_2", "");
+              const nilaiUh3 = getNilaiFieldValue(nilaiDoc, "uh_3", "");
+              const nilaiPts = getNilaiFieldValue(nilaiDoc, "pts", "");
+              return `
+                <td class="nilai-rekap-subcol nilai-rekap-mapel-start">${escapeNilaiHtml(nilaiUh1 === "" ? "-" : nilaiUh1)}</td>
+                <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh2 === "" ? "-" : nilaiUh2)}</td>
+                <td class="nilai-rekap-subcol nilai-rekap-before-pts">${escapeNilaiHtml(nilaiUh3 === "" ? "-" : nilaiUh3)}</td>
+                <td class="nilai-rekap-subcol nilai-rekap-mapel-end">${escapeNilaiHtml(nilaiPts === "" ? "-" : nilaiPts)}</td>
+              `;
+            }).join("")}
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
 }
 
 async function handleNilaiAssignmentChange() {
@@ -486,11 +734,12 @@ async function upsertNilaiRows(rows, assignment) {
     return;
   }
 
+  const documentsApi = getNilaiDocumentsApi();
   for (let index = 0; index < rows.length; index += 450) {
-    const batch = db.batch();
+    const batch = documentsApi.batch();
     rows.slice(index, index + 450).forEach(row => {
       const docId = makeNilaiDocId(assignment, row.siswa.nipd);
-      batch.set(db.collection("nilai").doc(docId), row.payload, { merge: true });
+      batch.set(documentsApi.collection("nilai").doc(docId), row.payload, { merge: true });
     });
     await batch.commit();
   }
@@ -778,7 +1027,12 @@ function normalizeNilaiImportNumber(value) {
   if (value === "" || value === null || value === undefined) return "";
   const numberValue = Number(value);
   if (!Number.isFinite(numberValue)) return NaN;
-  return Math.min(Math.max(numberValue, 0), 100);
+  if (numberValue < 0 || numberValue > 100) return NaN;
+  return numberValue;
+}
+
+function hasNilaiImportValue(value) {
+  return !(value === "" || value === null || value === undefined);
 }
 
 function importNilaiExcel(event) {
@@ -837,7 +1091,16 @@ function importNilaiExcel(event) {
           message = "Semua kolom nilai kosong";
         } else if ([uh1, uh2, uh3, pts].some(value => Number.isNaN(value))) {
           status = "error";
-          message = "Nilai tidak valid";
+          message = "Nilai harus berupa angka antara 0 sampai 100";
+        } else if (hasNilaiImportValue(uh2Raw) && !hasNilaiImportValue(uh1Raw)) {
+          status = "error";
+          message = "UH 1 wajib diisi sebelum mengisi UH 2";
+        } else if (hasNilaiImportValue(uh3Raw) && !hasNilaiImportValue(uh1Raw)) {
+          status = "error";
+          message = "UH 1 wajib diisi sebelum mengisi UH 3";
+        } else if (hasNilaiImportValue(uh3Raw) && !hasNilaiImportValue(uh2Raw)) {
+          status = "error";
+          message = "UH 2 wajib diisi sebelum mengisi UH 3";
         } else if (
           String(existingValues.uh_1) === String(uh1) &&
           String(existingValues.uh_2) === String(uh2) &&

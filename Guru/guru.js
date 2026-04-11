@@ -229,7 +229,7 @@ function refreshGuruTable() {
 async function ensureGuruMapelOptions() {
   if (semuaMapelGuru.length > 0) return;
 
-  const snapshot = await db.collection("mapel").get();
+  const snapshot = await getGuruPageDocumentsApi().collection("mapel").get();
   semuaMapelGuru = snapshot.docs.map(doc => doc.data()).sort((a, b) => {
     const mappingA = Number(a.mapping ?? Number.MAX_SAFE_INTEGER);
     const mappingB = Number(b.mapping ?? Number.MAX_SAFE_INTEGER);
@@ -306,7 +306,7 @@ function importGuruExcel(event) {
       for (const guru of validRows) {
         try {
           const existing = semuaDataGuru.find(item => item.kode_guru === guru.kode_guru);
-          await db.collection("guru").doc(guru.kode_guru).set({
+          await getGuruPageDocumentsApi().collection("guru").doc(guru.kode_guru).set({
             ...guru,
             jp: Number(existing?.jp || 0),
             created_at: existing ? existing.created_at || new Date() : new Date(),
@@ -398,10 +398,11 @@ async function ensureGuruNamaDefaults(data = []) {
 
   isBackfillingGuruNama = true;
   try {
-    const batch = db.batch();
+    const documentsApi = getGuruPageDocumentsApi();
+    const batch = documentsApi.batch();
     changedGuru.forEach(guru => {
       const normalizedNama = normalizeGuruNamaValue(guru.nama);
-      batch.set(db.collection("guru").doc(String(guru.kode_guru).trim()), {
+      batch.set(documentsApi.collection("guru").doc(String(guru.kode_guru).trim()), {
         ...guru,
         nama: normalizedNama,
         nama_lengkap: [guru.gelar_depan, normalizedNama, guru.gelar_belakang]
@@ -434,10 +435,11 @@ async function ensureGuruStatusDefaults(data = []) {
 
   isBackfillingGuruStatus = true;
   try {
-    const batch = db.batch();
+    const documentsApi = getGuruPageDocumentsApi();
+    const batch = documentsApi.batch();
     missingStatus.forEach(guru => {
       const { id, ...guruData } = guru;
-      batch.set(db.collection("guru").doc(String(guru.kode_guru).trim()), {
+      batch.set(documentsApi.collection("guru").doc(String(guru.kode_guru).trim()), {
         ...guruData,
         status: "PNS",
         updated_at: new Date()
@@ -568,7 +570,7 @@ async function simpanGuruData() {
 }
 
 async function hapusGuru(kodeGuru) {
-  const assignmentSnapshot = await db.collection("mengajar").where("guru_kode", "==", kodeGuru).get();
+  const assignmentSnapshot = await getGuruPageDocumentsApi().collection("mengajar").where("guru_kode", "==", kodeGuru).get();
   if (!assignmentSnapshot.empty) {
     Swal.fire("Guru masih dipakai", "Hapus dulu pembagian mengajar guru ini sebelum menghapus data guru.", "warning");
     return;
@@ -684,8 +686,8 @@ async function showGuruJPRiwayat(kodeGuru) {
 
   try {
     const [mengajarSnapshot, mapelSnapshot] = await Promise.all([
-      db.collection("mengajar").where("guru_kode", "==", kodeGuru).get(),
-      db.collection("mapel").get()
+      getGuruPageDocumentsApi().collection("mengajar").where("guru_kode", "==", kodeGuru).get(),
+      getGuruPageDocumentsApi().collection("mapel").get()
     ]);
 
     const mapelLookup = new Map(
@@ -803,4 +805,7 @@ function renderGuruRow(d) {
       </td>
     </tr>
   `;
+}
+function getGuruPageDocumentsApi() {
+  return window.SupabaseDocuments;
 }

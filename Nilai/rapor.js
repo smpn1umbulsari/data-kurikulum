@@ -22,6 +22,12 @@ let unsubscribeRaporGuru = null;
 let unsubscribeRaporKehadiran = null;
 let unsubscribeRaporSettings = null;
 let unsubscribeAdminRaporSettings = null;
+const raporHydratedClassKeys = new Set();
+const raporHydrationPromises = new Map();
+
+function getRaporDocumentsApi() {
+  return window.SupabaseDocuments;
+}
 
 function escapeRaporHtml(value) {
   return String(value ?? "")
@@ -143,15 +149,38 @@ function isRaporMapelVisibleForSiswa(mapel, siswa) {
 function getRaporMapelForClass(kelasValue, siswa = null) {
   const parts = getRaporKelasParts(kelasValue);
   const seen = new Set();
-  return semuaDataRaporMengajar
+  const assignmentMapel = semuaDataRaporMengajar
     .filter(item => String(item.tingkat || "") === parts.tingkat && String(item.rombel || "").toUpperCase() === parts.rombel)
-    .map(item => getRaporMapelByKode(item.mapel_kode) || { kode_mapel: item.mapel_kode, nama_mapel: item.mapel_nama || item.mapel_kode, jp: item.jp || 0 })
+    .map(item => getRaporMapelByKode(item.mapel_kode) || {
+      kode_mapel: item.mapel_kode,
+      nama_mapel: item.mapel_nama || item.mapel_kode,
+      jp: item.jp || 0
+    });
+
+  const nilaiMapel = semuaDataRaporNilai
+    .filter(item => {
+      const itemKelas = getRaporKelasParts(item.kelas || "").kelas;
+      const itemTingkat = String(item.tingkat || "").trim();
+      const itemRombel = String(item.rombel || "").trim().toUpperCase();
+      const sameClass = itemKelas
+        ? itemKelas === parts.kelas
+        : itemTingkat === parts.tingkat && itemRombel === parts.rombel;
+      if (!sameClass) return false;
+      if (siswa && String(item.nipd || "") !== String(siswa.nipd || "")) return false;
+      return true;
+    })
+    .map(item => getRaporMapelByKode(item.mapel_kode) || {
+      kode_mapel: item.mapel_kode,
+      nama_mapel: item.mapel_nama || item.mapel_kode,
+      jp: item.jp || 0
+    });
+
+  return [...assignmentMapel, ...nilaiMapel]
     .filter(item => isRaporMapelVisibleForSiswa(item, siswa))
     .filter(item => {
       const kode = String(item.kode_mapel || item.id || "").trim().toUpperCase();
-      const seenKey = kode;
-      if (!kode || seen.has(seenKey)) return false;
-      seen.add(seenKey);
+      if (!kode || seen.has(kode)) return false;
+      seen.add(kode);
       return true;
     })
     .sort((a, b) => {
@@ -162,14 +191,116 @@ function getRaporMapelForClass(kelasValue, siswa = null) {
     });
 }
 
+function setSemuaDataRaporNilai(items = []) {
+  const byId = new Map();
+  items.forEach(item => {
+    if (!item?.id) return;
+    const current = byId.get(item.id);
+    const currentUpdatedAt = String(current?.updated_at || "");
+    const nextUpdatedAt = String(item?.updated_at || "");
+    if (!current || nextUpdatedAt >= currentUpdatedAt) {
+      byId.set(item.id, { ...item });
+    }
+  });
+  semuaDataRaporNilai = Array.from(byId.values());
+}
+
+function makeRaporNilaiDocId(kelasValue, mapelKode, nipd) {
+  const parts = getRaporKelasParts(kelasValue);
+  const baseId = [
+    parts.tingkat,
+    String(parts.rombel || "").toUpperCase(),
+    String(mapelKode || "").trim().toUpperCase(),
+    String(nipd || "").trim()
+  ].join("_");
+  const termId = typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+  return termId === "legacy" ? baseId : `${termId}_${baseId}`;
+}
+
+async function hydrateRaporNilaiForClass(kelasValue, options = {}) {
+  const parts = getRaporKelasParts(kelasValue);
+  if (!parts.tingkat || !parts.rombel) return false;
+
+  const key = [
+    typeof getActiveTermId === "function" ? getActiveTermId() : "legacy",
+    parts.tingkat,
+    parts.rombel
+  ].join("|");
+  if (!options.force && raporHydratedClassKeys.has(key)) return false;
+  if (!options.force && raporHydrationPromises.has(key)) return raporHydrationPromises.get(key);
+
+  const supabaseClient = window.supabaseClient;
+  const documentsTable = window.supabaseConfig?.documentsTable || "app_documents";
+  if (!supabaseClient?.from) return false;
+
+  const promise = (async () => {
+    const { data, error } = await supabaseClient
+      .from(documentsTable)
+      .select("id,data")
+      .eq("collection_path", "nilai")
+      .filter("data->>tingkat", "eq", String(parts.tingkat || ""))
+      .filter("data->>rombel", "eq", String(parts.rombel || "").toUpperCase());
+
+    if (error) throw error;
+
+    const rows = (data || [])
+      .map(item => ({ id: item?.id || "", ...(item?.data || {}) }))
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+
+    const previousSerialized = JSON.stringify(semuaDataRaporNilai);
+    setSemuaDataRaporNilai([...semuaDataRaporNilai, ...rows]);
+    raporHydratedClassKeys.add(key);
+    return JSON.stringify(semuaDataRaporNilai) !== previousSerialized;
+  })()
+    .finally(() => {
+      raporHydrationPromises.delete(key);
+    });
+
+  raporHydrationPromises.set(key, promise);
+  return promise;
+}
+
+function ensureRaporNilaiHydrated(kelasValue, onDone = null) {
+  const parts = getRaporKelasParts(kelasValue);
+  if (!parts.tingkat || !parts.rombel) return;
+  hydrateRaporNilaiForClass(parts.kelas)
+    .then(changed => {
+      if (changed && typeof onDone === "function") onDone();
+    })
+    .catch(error => {
+      console.error("hydrate rapor nilai failed", error);
+    });
+}
+
 function getRaporNilai(siswa, mapelKode) {
   const kelas = siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
+  const kelasParts = getRaporKelasParts(kelas);
   const targetMapel = String(mapelKode || "").trim().toUpperCase();
-  return semuaDataRaporNilai.find(item =>
-    String(item.nipd || "") === String(siswa.nipd || "") &&
-    String(item.kelas || "").toUpperCase() === String(kelas || "").toUpperCase() &&
-    String(item.mapel_kode || "").toUpperCase() === targetMapel
-  ) || null;
+  const targetDocId = makeRaporNilaiDocId(kelas, targetMapel, siswa.nipd);
+
+  for (let index = semuaDataRaporNilai.length - 1; index >= 0; index -= 1) {
+    if (String(semuaDataRaporNilai[index]?.id || "") === targetDocId) return semuaDataRaporNilai[index];
+  }
+
+  const candidates = semuaDataRaporNilai.filter(item => {
+    if (String(item.nipd || "") !== String(siswa.nipd || "")) return false;
+    if (String(item.mapel_kode || "").toUpperCase() !== targetMapel) return false;
+
+    const itemKelas = getRaporKelasParts(item.kelas || "").kelas;
+    if (itemKelas && itemKelas === String(kelas || "").toUpperCase()) return true;
+
+    const itemTingkat = String(item.tingkat || "").trim();
+    const itemRombel = String(item.rombel || "").trim().toUpperCase();
+    return itemTingkat === kelasParts.tingkat && itemRombel === kelasParts.rombel;
+  });
+
+  if (!candidates.length) return null;
+
+  return [...candidates].sort((a, b) => {
+    const timeA = Date.parse(String(a.updated_at || "")) || 0;
+    const timeB = Date.parse(String(b.updated_at || "")) || 0;
+    return timeB - timeA;
+  })[0] || null;
 }
 
 function getRaporNilaiValue(nilai, field) {
@@ -286,7 +417,7 @@ function renderAdminRaporPage() {
 
 function loadRealtimeAdminRapor() {
   clearAdminRaporListeners();
-  unsubscribeAdminRaporSettings = db.collection("settings").doc("rapor").onSnapshot(snapshot => {
+  unsubscribeAdminRaporSettings = getRaporDocumentsApi().collection("settings").doc("rapor").onSnapshot(snapshot => {
     raporAdminSettings = {
       ...raporAdminSettings,
       ...(snapshot.exists ? snapshot.data() : {})
@@ -354,7 +485,7 @@ async function saveAdminRaporSettings() {
 
   try {
     const kepalaTtd = await readSignature();
-    await db.collection("settings").doc("rapor").set({
+    await getRaporDocumentsApi().collection("settings").doc("rapor").set({
       tanggal,
       kepala_nama: kepalaNama,
       kepala_nip: kepalaNip,
@@ -369,7 +500,7 @@ async function saveAdminRaporSettings() {
 }
 
 async function clearAdminRaporSignature() {
-  await db.collection("settings").doc("rapor").set({
+  await getRaporDocumentsApi().collection("settings").doc("rapor").set({
     kepala_ttd: "",
     updated_at: new Date()
   }, { merge: true });
@@ -433,41 +564,42 @@ function loadRealtimeCetakRapor() {
     loadKepalaSekolahTtdSettings().then(renderCetakRaporState);
   }
   const render = () => renderCetakRaporState();
-  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : db.collection("siswa").orderBy("nama");
-  const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : db.collection("kelas");
+  const documentsApi = getRaporDocumentsApi();
+  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
+  const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : documentsApi.collection("kelas");
   unsubscribeRaporSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataRaporSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     render();
   });
-  unsubscribeRaporMapel = db.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
+  unsubscribeRaporMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataRaporMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     render();
   });
-  unsubscribeRaporMengajar = db.collection("mengajar_bayangan").onSnapshot(snapshot => {
+  unsubscribeRaporMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataRaporMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     render();
   });
-  unsubscribeRaporNilai = db.collection("nilai").onSnapshot(snapshot => {
-    semuaDataRaporNilai = snapshot.docs
+  unsubscribeRaporNilai = documentsApi.collection("nilai").onSnapshot(snapshot => {
+    setSemuaDataRaporNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
     render();
   });
   unsubscribeRaporKelas = kelasQuery.onSnapshot(snapshot => {
     semuaDataRaporKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     render();
   });
-  unsubscribeRaporGuru = db.collection("guru").onSnapshot(snapshot => {
+  unsubscribeRaporGuru = documentsApi.collection("guru").onSnapshot(snapshot => {
     semuaDataRaporGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     render();
   });
-  unsubscribeRaporKehadiran = db.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
+  unsubscribeRaporKehadiran = documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
     semuaDataRaporKehadiran = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
     render();
   });
-  unsubscribeRaporSettings = db.collection("settings").doc("rapor").onSnapshot(snapshot => {
+  unsubscribeRaporSettings = documentsApi.collection("settings").doc("rapor").onSnapshot(snapshot => {
     raporAdminSettings = {
       ...raporAdminSettings,
       ...(snapshot.exists ? snapshot.data() : {})
@@ -512,12 +644,14 @@ function renderRaporClassOptions() {
 function renderRaporStudentOptions(shouldPreview = true) {
   const select = document.getElementById("raporSiswaSelect");
   if (!select) return;
+  const selectedClass = getSelectedRaporKelas();
   const current = select.value;
-  const students = getRaporStudentsByClass(getSelectedRaporKelas());
+  const students = getRaporStudentsByClass(selectedClass);
   select.innerHTML = students.length
     ? students.map(siswa => `<option value="${escapeRaporHtml(siswa.nipd || "")}">${escapeRaporHtml(siswa.nama || "-")}</option>`).join("")
     : `<option value="">Tidak ada siswa</option>`;
   if (current && students.some(siswa => String(siswa.nipd || "") === current)) select.value = current;
+  ensureRaporNilaiHydrated(selectedClass, () => renderRaporPreview());
   if (shouldPreview) renderRaporPreview();
 }
 
@@ -533,6 +667,7 @@ function renderRaporPreview() {
   const info = document.getElementById("raporInfo");
   if (!info) return;
   const kelas = getSelectedRaporKelas();
+  ensureRaporNilaiHydrated(kelas, () => renderRaporPreview());
   const students = getRaporStudentsByClass(kelas);
   const mapel = getRaporMapelForClass(kelas);
   info.innerHTML = `
@@ -794,15 +929,18 @@ function openRaporPrint(students) {
   setTimeout(() => printWindow.print(), 400);
 }
 
-function printSelectedRapor() {
+async function printSelectedRapor() {
+  await hydrateRaporNilaiForClass(getSelectedRaporKelas());
   openRaporPrint(getSelectedRaporStudents(false));
 }
 
-function printAllRaporInClass() {
+async function printAllRaporInClass() {
+  await hydrateRaporNilaiForClass(getSelectedRaporKelas());
   openRaporPrint(getSelectedRaporStudents(true));
 }
 
-function printRaporByNipd(nipd) {
+async function printRaporByNipd(nipd) {
+  await hydrateRaporNilaiForClass(getSelectedRaporKelas());
   const siswa = getRaporStudentsByClass(getSelectedRaporKelas()).filter(item => String(item.nipd || "") === String(nipd || ""));
   openRaporPrint(siswa);
 }

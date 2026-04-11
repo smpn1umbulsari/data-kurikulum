@@ -95,7 +95,9 @@
       },
       "rekap-nilai": {
         title: "Rekap Nilai",
-        render: () => global.renderRekapNilaiPlaceholderPage()
+        beforeEnter: () => typeof global.setNilaiAccessMode === "function" && global.setNilaiAccessMode("koordinator"),
+        render: () => global.renderRekapNilaiPage(),
+        afterEnter: () => global.loadRealtimeRekapNilai()
       },
       "input": {
         title: "Input Data Siswa",

@@ -14,19 +14,24 @@
     };
   }
 
+  function getDocumentsApi() {
+    return global.SupabaseDocuments;
+  }
+
   function loadRealtime(page, options = {}) {
     options.clearListeners?.();
     options.setCurrentPage?.(page || "");
     options.setReadyState?.(getDefaultReadyState());
     options.renderLoading?.();
 
+    const documentsApi = getDocumentsApi();
     const render = () => options.renderActivePage?.(page);
     const siswaQuery = typeof global.getSemesterCollectionQuery === "function"
       ? global.getSemesterCollectionQuery("siswa", "nama")
-      : db.collection("siswa").orderBy("nama");
+      : documentsApi.collection("siswa").orderBy("nama");
     const kelasQuery = typeof global.getSemesterCollectionQuery === "function"
       ? global.getSemesterCollectionQuery("kelas")
-      : db.collection("kelas");
+      : documentsApi.collection("kelas");
 
     return {
       siswa: siswaQuery.onSnapshot(snapshot => {
@@ -39,22 +44,22 @@
         options.markReady?.("kelas");
         render();
       }),
-      mapel: db.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
+      mapel: documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
         options.onMapel?.(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         options.markReady?.("mapel");
         render();
       }),
-      mengajar: db.collection("mengajar_bayangan").onSnapshot(snapshot => {
+      mengajar: documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
         options.onMengajar?.(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         options.markReady?.("mengajar");
         render();
       }),
-      guru: db.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+      guru: documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
         options.onGuru?.(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         options.markReady?.("guru");
         render();
       }),
-      nilai: db.collection("nilai").onSnapshot(snapshot => {
+      nilai: documentsApi.collection("nilai").onSnapshot(snapshot => {
         const rows = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
@@ -62,7 +67,7 @@
         options.markReady?.("nilai");
         render();
       }),
-      kehadiran: db.collection("kehadiran_siswa").onSnapshot(snapshot => {
+      kehadiran: documentsApi.collection("kehadiran_siswa").onSnapshot(snapshot => {
         const rows = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
@@ -70,12 +75,16 @@
         options.markReady?.("kehadiran");
         render();
       }),
-      rekap: db.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
+      rekap: documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
         const rows = snapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
           .filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
         options.onRekap?.(rows);
         options.markReady?.("rekap");
+        render();
+      }),
+      source: documentsApi.collection("settings").doc("kelas_bayangan_source").onSnapshot(snapshot => {
+        options.onSource?.(snapshot.exists ? snapshot.data() : {});
         render();
       })
     };

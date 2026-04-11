@@ -14,6 +14,8 @@ let unsubscribeWaliGuru = null;
 let unsubscribeWaliNilai = null;
 let unsubscribeWaliKehadiran = null;
 let unsubscribeWaliKehadiranRekap = null;
+let unsubscribeWaliKelasBayanganSource = null;
+let waliKelasBayanganSourceByLevel = {};
 let currentWaliKelasPage = "";
 let waliInitialReady = {
   siswa: false,
@@ -25,6 +27,10 @@ let waliInitialReady = {
   kehadiran: false,
   rekap: false
 };
+
+function getWaliDocumentsApi() {
+  return window.SupabaseDocuments;
+}
 
 function escapeWaliHtml(value) {
   if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
@@ -65,16 +71,11 @@ function getWaliSiswaKelasBayanganParts(siswa) {
 }
 
 function getWaliExcludedKelasRealSourceSet() {
-  try {
-    const sourceByLevel = JSON.parse(localStorage.getItem("kelasBayanganSourceByLevel") || "{}");
-    return new Set(
-      Object.values(sourceByLevel)
-        .map(value => getWaliKelasParts(value).kelas)
-        .filter(Boolean)
-    );
-  } catch {
-    return new Set();
-  }
+  return new Set(
+    Object.values(waliKelasBayanganSourceByLevel)
+      .map(value => getWaliKelasParts(value).kelas)
+      .filter(Boolean)
+  );
 }
 
 function filterWaliSelectableClasses(rows) {
@@ -128,7 +129,10 @@ function getWaliStudentsByClass(kelasValue) {
   return semuaDataWaliSiswa
     .map(siswa => ({ ...siswa, kelasBayanganParts: getWaliSiswaKelasBayanganParts(siswa) }))
     .filter(siswa => siswa.kelasBayanganParts.kelas === target)
-    .sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" }));
+    .sort((a, b) => {
+      if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    });
 }
 
 function renderWaliKelasSelect() {
@@ -246,6 +250,15 @@ function loadRealtimeWaliKelas(page) {
       onRekap: rows => {
         semuaDataWaliKehadiranRekap = rows;
       },
+      onSource: data => {
+        waliKelasBayanganSourceByLevel = data?.levels && typeof data.levels === "object" && !Array.isArray(data.levels)
+          ? Object.fromEntries(
+              Object.entries(data.levels)
+                .map(([level, kelas]) => [String(level || "").trim(), getWaliKelasParts(kelas).kelas])
+                .filter(([level, kelas]) => level && kelas)
+            )
+          : {};
+      },
       markReady: key => {
         waliInitialReady[key] = true;
       }
@@ -258,6 +271,7 @@ function loadRealtimeWaliKelas(page) {
     unsubscribeWaliNilai = unsubs.nilai || null;
     unsubscribeWaliKehadiran = unsubs.kehadiran || null;
     unsubscribeWaliKehadiranRekap = unsubs.rekap || null;
+    unsubscribeWaliKelasBayanganSource = unsubs.source || null;
     return;
   }
   clearWaliKelasListeners();
@@ -274,8 +288,9 @@ function loadRealtimeWaliKelas(page) {
   };
   renderWaliKelasLoadingState();
   const render = () => renderWaliKelasActivePage(page);
-  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : db.collection("siswa").orderBy("nama");
-  const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : db.collection("kelas");
+  const documentsApi = getWaliDocumentsApi();
+  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
+  const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : documentsApi.collection("kelas");
   unsubscribeWaliSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataWaliSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     waliInitialReady.siswa = true;
@@ -286,46 +301,57 @@ function loadRealtimeWaliKelas(page) {
     waliInitialReady.kelas = true;
     render();
   });
-  unsubscribeWaliMapel = db.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
+  unsubscribeWaliMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataWaliMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     waliInitialReady.mapel = true;
     render();
   });
-  unsubscribeWaliMengajar = db.collection("mengajar_bayangan").onSnapshot(snapshot => {
+  unsubscribeWaliMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataWaliMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     waliInitialReady.mengajar = true;
     render();
   });
-  unsubscribeWaliGuru = db.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+  unsubscribeWaliGuru = documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
     semuaDataWaliGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     waliInitialReady.guru = true;
     render();
   });
-  unsubscribeWaliNilai = db.collection("nilai").onSnapshot(snapshot => {
+  unsubscribeWaliNilai = documentsApi.collection("nilai").onSnapshot(snapshot => {
     semuaDataWaliNilai = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
     waliInitialReady.nilai = true;
     render();
   });
-  unsubscribeWaliKehadiran = db.collection("kehadiran_siswa").onSnapshot(snapshot => {
+  unsubscribeWaliKehadiran = documentsApi.collection("kehadiran_siswa").onSnapshot(snapshot => {
     semuaDataWaliKehadiran = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
     waliInitialReady.kehadiran = true;
     render();
   });
-  unsubscribeWaliKehadiranRekap = db.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
+  unsubscribeWaliKehadiranRekap = documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
     semuaDataWaliKehadiranRekap = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
     waliInitialReady.rekap = true;
     render();
   });
+  unsubscribeWaliKelasBayanganSource = documentsApi.collection("settings").doc("kelas_bayangan_source").onSnapshot(snapshot => {
+    const data = snapshot.exists ? snapshot.data() : {};
+    waliKelasBayanganSourceByLevel = data?.levels && typeof data.levels === "object" && !Array.isArray(data.levels)
+      ? Object.fromEntries(
+          Object.entries(data.levels)
+            .map(([level, kelas]) => [String(level || "").trim(), getWaliKelasParts(kelas).kelas])
+            .filter(([level, kelas]) => level && kelas)
+        )
+      : {};
+    render();
+  });
 }
 
 function clearWaliKelasListeners() {
-  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliGuru, unsubscribeWaliNilai, unsubscribeWaliKehadiran, unsubscribeWaliKehadiranRekap].forEach(unsub => {
+  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliGuru, unsubscribeWaliNilai, unsubscribeWaliKehadiran, unsubscribeWaliKehadiranRekap, unsubscribeWaliKelasBayanganSource].forEach(unsub => {
     if (unsub) unsub();
   });
   unsubscribeWaliSiswa = null;
@@ -336,6 +362,7 @@ function clearWaliKelasListeners() {
   unsubscribeWaliNilai = null;
   unsubscribeWaliKehadiran = null;
   unsubscribeWaliKehadiranRekap = null;
+  unsubscribeWaliKelasBayanganSource = null;
 }
 
 function isWaliInitialDataReady(page = currentWaliKelasPage) {
@@ -355,6 +382,32 @@ function renderWaliKelasLoadingState(message = "Memuat data wali kelas...") {
   }
 }
 
+function renderWaliSavingOverlay() {
+  return `
+    <div id="waliSavingOverlay" class="nilai-saving-overlay" style="display:none;" aria-hidden="true">
+      <div class="nilai-saving-card">
+        <div class="nilai-saving-spinner" aria-hidden="true"></div>
+        <strong>Menyimpan data...</strong>
+        <span>Mohon tunggu sebentar, data sedang dikirim.</span>
+      </div>
+    </div>
+  `;
+}
+
+function setWaliSavingState(isSaving, message = "Menyimpan data...") {
+  const overlay = document.getElementById("waliSavingOverlay");
+  if (!overlay) return;
+  const title = overlay.querySelector("strong");
+  const subtitle = overlay.querySelector("span");
+  if (title) title.textContent = message || "Menyimpan data...";
+  if (subtitle) subtitle.textContent = isSaving
+    ? "Mohon tunggu sebentar, data sedang dikirim."
+    : "";
+  overlay.style.display = isSaving ? "flex" : "none";
+  overlay.setAttribute("aria-hidden", isSaving ? "false" : "true");
+  document.body.classList.toggle("nilai-saving-active", Boolean(isSaving));
+}
+
 function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
   const shell = document.getElementById("waliKelasPageShell");
   if (!shell) return false;
@@ -370,6 +423,7 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
         <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
       `)}
       <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
+      ${renderWaliSavingOverlay()}
     `;
     return true;
   }
@@ -468,6 +522,45 @@ function getWaliKehadiranCounts(kelas, nipd) {
   }, { S: 0, I: 0, A: 0 });
 }
 
+function getWaliRekapInput(rowIndex, field) {
+  return document.querySelector(`.wali-rekap-input[data-row="${rowIndex}"][data-field="${field}"]`);
+}
+
+function getWaliRekapInputMeta(input) {
+  const rowFromData = Number(input?.dataset?.row);
+  const fieldFromData = String(input?.dataset?.field || "");
+  if (!Number.isNaN(rowFromData) && fieldFromData) {
+    return { rowIndex: rowFromData, field: fieldFromData };
+  }
+
+  const match = String(input?.id || "").match(/^wali-rekap-([sia])-([0-9]+)$/i);
+  if (!match) return { rowIndex: NaN, field: "" };
+  return {
+    rowIndex: Number(match[2]),
+    field: String(match[1] || "").toLowerCase()
+  };
+}
+
+function handleWaliRekapKeydown(event) {
+  const input = event.target;
+  if (!input?.classList?.contains("wali-rekap-input")) return;
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const { rowIndex, field } = getWaliRekapInputMeta(input);
+  if (Number.isNaN(rowIndex) || !field) return;
+  const nextInput = getWaliRekapInput(rowIndex + 1, field);
+  if (!nextInput) return;
+  nextInput.focus();
+  nextInput.select?.();
+}
+
+function setupWaliRekapInputs() {
+  const container = document.getElementById("waliKehadiranTable");
+  if (!container) return;
+  container.removeEventListener("keydown", handleWaliRekapKeydown);
+  container.addEventListener("keydown", handleWaliRekapKeydown);
+}
+
 function renderWaliKehadiranTable() {
   const container = document.getElementById("waliKehadiranTable");
   if (!container) return;
@@ -480,6 +573,7 @@ function renderWaliKehadiranTable() {
       getCounts: getWaliKehadiranCounts,
       escape: escapeWaliHtml
     });
+    setupWaliRekapInputs();
     return;
   }
   container.innerHTML = `
@@ -507,15 +601,16 @@ function renderWaliKehadiranTable() {
               <tr>
                 <td>${index + 1}</td>
                 <td class="wali-student-name">${escapeWaliHtml(siswa.nama || "-")}</td>
-                <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.S}"></td>
-                <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.I}"></td>
-                <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" type="number" min="0" value="${counts.A}"></td>
+                <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" data-row="${index}" data-field="s" type="number" min="0" value="${counts.S}"></td>
+                <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" data-row="${index}" data-field="i" type="number" min="0" value="${counts.I}"></td>
+                <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" data-row="${index}" data-field="a" type="number" min="0" value="${counts.A}"></td>
               </tr>
           `;
         }).join("")}
       </tbody>
     </table>
   `;
+  setupWaliRekapInputs();
 }
 
 async function saveWaliKehadiranRekap() {
@@ -525,25 +620,34 @@ async function saveWaliKehadiranRekap() {
     Swal.fire("Tidak ada siswa", "", "warning");
     return;
   }
-  const batch = db.batch();
-  students.forEach((siswa, index) => {
-    const s = normalizeWaliRekapCount(document.getElementById(`wali-rekap-s-${index}`)?.value || 0);
-    const i = normalizeWaliRekapCount(document.getElementById(`wali-rekap-i-${index}`)?.value || 0);
-    const a = normalizeWaliRekapCount(document.getElementById(`wali-rekap-a-${index}`)?.value || 0);
-    batch.set(db.collection("kehadiran_rekap_siswa").doc(makeWaliKehadiranRekapDocId(kelas, siswa.nipd)), {
-      ...getWaliActiveTermPayload(),
-      kelas,
-      nipd: siswa.nipd || "",
-      nama_siswa: siswa.nama || "",
-      s,
-      i,
-      a,
-      updated_by: getCurrentWaliUser().username || "",
-      updated_at: new Date()
-    }, { merge: true });
-  });
-  await batch.commit();
-  Swal.fire("Tersimpan", "Rekap kehadiran siswa sudah disimpan.", "success");
+  try {
+    setWaliSavingState(true, "Menyimpan rekap kehadiran...");
+    const documentsApi = getWaliDocumentsApi();
+    const batch = documentsApi.batch();
+    students.forEach((siswa, index) => {
+      const s = normalizeWaliRekapCount(document.getElementById(`wali-rekap-s-${index}`)?.value || 0);
+      const i = normalizeWaliRekapCount(document.getElementById(`wali-rekap-i-${index}`)?.value || 0);
+      const a = normalizeWaliRekapCount(document.getElementById(`wali-rekap-a-${index}`)?.value || 0);
+      batch.set(documentsApi.collection("kehadiran_rekap_siswa").doc(makeWaliKehadiranRekapDocId(kelas, siswa.nipd)), {
+        ...getWaliActiveTermPayload(),
+        kelas,
+        nipd: siswa.nipd || "",
+        nama_siswa: siswa.nama || "",
+        s,
+        i,
+        a,
+        updated_by: getCurrentWaliUser().username || "",
+        updated_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    setWaliSavingState(false);
+    Swal.fire("Tersimpan", "Rekap kehadiran siswa sudah disimpan.", "success");
+  } catch (error) {
+    console.error(error);
+    setWaliSavingState(false);
+    Swal.fire("Gagal menyimpan", "Rekap kehadiran siswa belum berhasil disimpan.", "error");
+  }
 }
 
 function setWaliKehadiranDraft(nipd, status) {
@@ -565,23 +669,32 @@ async function saveWaliKehadiran() {
     Swal.fire("Tidak ada siswa", "", "warning");
     return;
   }
-  const batch = db.batch();
-  students.forEach(siswa => {
-    const status = getWaliKehadiranStatus(date, kelas, siswa.nipd);
-    if (!status) return;
-    batch.set(db.collection("kehadiran_siswa").doc(makeWaliKehadiranDocId(date, kelas, siswa.nipd)), {
-      ...getWaliActiveTermPayload(),
-      tanggal: date,
-      kelas,
-      nipd: siswa.nipd || "",
-      nama_siswa: siswa.nama || "",
-      status,
-      updated_by: getCurrentWaliUser().username || "",
-      updated_at: new Date()
-    }, { merge: true });
-  });
-  await batch.commit();
-  Swal.fire("Tersimpan", "Kehadiran siswa sudah disimpan.", "success");
+  try {
+    setWaliSavingState(true, "Menyimpan kehadiran...");
+    const documentsApi = getWaliDocumentsApi();
+    const batch = documentsApi.batch();
+    students.forEach(siswa => {
+      const status = getWaliKehadiranStatus(date, kelas, siswa.nipd);
+      if (!status) return;
+      batch.set(documentsApi.collection("kehadiran_siswa").doc(makeWaliKehadiranDocId(date, kelas, siswa.nipd)), {
+        ...getWaliActiveTermPayload(),
+        tanggal: date,
+        kelas,
+        nipd: siswa.nipd || "",
+        nama_siswa: siswa.nama || "",
+        status,
+        updated_by: getCurrentWaliUser().username || "",
+        updated_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    setWaliSavingState(false);
+    Swal.fire("Tersimpan", "Kehadiran siswa sudah disimpan.", "success");
+  } catch (error) {
+    console.error(error);
+    setWaliSavingState(false);
+    Swal.fire("Gagal menyimpan", "Kehadiran siswa belum berhasil disimpan.", "error");
+  }
 }
 
 function downloadWaliKehadiranTemplate() {
@@ -703,6 +816,7 @@ function getWaliGuruPengajarName(assignment = {}) {
 function getWaliNilaiCount(kelas, mapelKode, field) {
   const students = getWaliStudentsByClass(kelas);
   const studentIds = new Set(students.map(item => String(item.nipd || "")));
+  const classParts = getWaliKelasParts(kelas);
   const fieldAliases = {
     uh_1: ["uh_1", "UH1", "UH_1", "uh1"],
     uh_2: ["uh_2", "UH2", "UH_2", "uh2"],
@@ -711,13 +825,25 @@ function getWaliNilaiCount(kelas, mapelKode, field) {
   };
   const aliases = fieldAliases[field] || [field];
   const hasScore = item => aliases.some(alias => item[alias] !== "" && item[alias] !== null && item[alias] !== undefined);
-  const count = semuaDataWaliNilai.filter(item =>
-    studentIds.has(String(item.nipd || "")) &&
-    String(item.kelas || "").toUpperCase() === String(kelas || "").toUpperCase() &&
-    String(item.mapel_kode || "").toUpperCase() === String(mapelKode || "").toUpperCase() &&
-    hasScore(item)
-  ).length;
-  return { count, total: students.length };
+  const matchesClass = item => {
+    const itemKelas = getWaliKelasParts(item.kelas || "").kelas;
+    if (itemKelas && itemKelas === String(kelas || "").toUpperCase()) return true;
+    const itemTingkat = String(item.tingkat || "").trim();
+    const itemRombel = String(item.rombel || "").trim().toUpperCase();
+    return itemTingkat === classParts.tingkat && itemRombel === classParts.rombel;
+  };
+  const completedStudentIds = new Set(
+    semuaDataWaliNilai
+      .filter(item =>
+        studentIds.has(String(item.nipd || "")) &&
+        matchesClass(item) &&
+        String(item.mapel_kode || "").toUpperCase() === String(mapelKode || "").toUpperCase() &&
+        hasScore(item)
+      )
+      .map(item => String(item.nipd || ""))
+      .filter(Boolean)
+  );
+  return { count: completedStudentIds.size, total: students.length };
 }
 
 function getWaliCompletenessClass(count, total) {

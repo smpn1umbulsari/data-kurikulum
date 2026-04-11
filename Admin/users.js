@@ -21,6 +21,10 @@ const KOORDINATOR_LEVELS = [
   { key: "kelas_9", label: "Kelas 9" }
 ];
 
+function getAdminUsersDocumentsApi() {
+  return window.SupabaseDocuments;
+}
+
 function ensureAdminUserLoadingOverlay() {
   let overlay = document.getElementById("adminUserLoadingOverlay");
   if (overlay) return overlay;
@@ -236,11 +240,12 @@ async function ensureAdminGuruUserIdentity(userOrId) {
     return { userId: currentId, user: { ...canonicalSource, ...nextUser } };
   }
 
-  const batch = db.batch();
-  batch.set(db.collection("users").doc(nextId), nextUser, { merge: true });
+  const documentsApi = getAdminUsersDocumentsApi();
+  const batch = documentsApi.batch();
+  batch.set(documentsApi.collection("users").doc(nextId), nextUser, { merge: true });
   staleUsers.forEach(item => {
     const staleId = String(item.id || makeUserDocId(item.username)).trim();
-    if (staleId && staleId !== nextId) batch.delete(db.collection("users").doc(staleId));
+    if (staleId && staleId !== nextId) batch.delete(documentsApi.collection("users").doc(staleId));
   });
   await batch.commit();
 
@@ -256,7 +261,7 @@ function getSiswaByNipd(nipd) {
 }
 
 function getKoordinatorDocRef() {
-  return db.collection("informasi_urusan").doc("koordinator_kelas");
+  return getAdminUsersDocumentsApi().collection("informasi_urusan").doc("koordinator_kelas");
 }
 
 function sortAdminGuruList(list = []) {
@@ -361,14 +366,15 @@ async function ensureGuruDerivedUsernames() {
 
   isSyncingGuruDerivedUsernames = true;
   try {
-    const batch = db.batch();
+    const documentsApi = getAdminUsersDocumentsApi();
+    const batch = documentsApi.batch();
     updates.forEach(({ user, nextUsername, nextId, currentId }) => {
-      batch.set(db.collection("users").doc(nextId), {
+      batch.set(documentsApi.collection("users").doc(nextId), {
         ...user,
         username: nextUsername,
         updated_at: new Date()
       }, { merge: true });
-      batch.delete(db.collection("users").doc(currentId));
+      batch.delete(documentsApi.collection("users").doc(currentId));
     });
     await batch.commit();
     hasSyncedGuruDerivedUsernames = true;
@@ -572,14 +578,16 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
   if (unsubscribeAdminSiswa) unsubscribeAdminSiswa();
   if (unsubscribeAdminKoordinator) unsubscribeAdminKoordinator();
 
-  unsubscribeAdminGuru = db.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+  const documentsApi = getAdminUsersDocumentsApi();
+
+  unsubscribeAdminGuru = documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
     semuaDataAdminGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     hasSyncedGuruDerivedUsernames = false;
     ensureGuruDerivedUsernames();
     requestRenderAdminUsersState();
   });
 
-  unsubscribeAdminUser = db.collection("users").orderBy("role").onSnapshot(snapshot => {
+  unsubscribeAdminUser = documentsApi.collection("users").orderBy("role").onSnapshot(snapshot => {
     semuaDataAdminUser = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     ensureGuruDerivedUsernames();
     requestRenderAdminUsersState();
@@ -588,7 +596,7 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
   if (includeSiswa) {
     const siswaQuery = typeof getSemesterCollectionQuery === "function"
       ? getSemesterCollectionQuery("siswa", "nama")
-      : db.collection("siswa").orderBy("nama");
+      : documentsApi.collection("siswa").orderBy("nama");
     unsubscribeAdminSiswa = siswaQuery.onSnapshot(snapshot => {
       semuaDataAdminSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       requestRenderAdminUsersState();
@@ -853,9 +861,10 @@ async function syncGuruUsers() {
     return;
   }
 
-  const batch = db.batch();
+  const documentsApi = getAdminUsersDocumentsApi();
+  const batch = documentsApi.batch();
   candidates.forEach(user => {
-    batch.set(db.collection("users").doc(makeUserDocId(user.username)), { ...user, created_at: new Date() }, { merge: true });
+    batch.set(documentsApi.collection("users").doc(makeUserDocId(user.username)), { ...user, created_at: new Date() }, { merge: true });
   });
   await batch.commit();
   Swal.fire("Selesai", `${candidates.length} user guru ditambahkan.`, "success");
@@ -875,9 +884,10 @@ async function resetAllUserPasswords() {
   if (window.AdminUsersService?.resetAllPasswords) {
     await window.AdminUsersService.resetAllPasswords(semuaDataAdminUser, value);
   } else {
-    const batch = db.batch();
+    const documentsApi = getAdminUsersDocumentsApi();
+    const batch = documentsApi.batch();
     semuaDataAdminUser.forEach(user => {
-      batch.update(db.collection("users").doc(user.id), { password: value, updated_at: new Date() });
+      batch.update(documentsApi.collection("users").doc(user.id), { password: value, updated_at: new Date() });
     });
     await batch.commit();
   }
@@ -893,7 +903,7 @@ async function resetSingleUserPassword(userId) {
       return;
     }
     const targetId = resolved.userId || userId;
-    await db.collection("users").doc(targetId).set({
+    await getAdminUsersDocumentsApi().collection("users").doc(targetId).set({
       ...(resolved.user || {}),
       password: DEFAULT_USER_PASSWORD,
       updated_at: new Date()
@@ -915,7 +925,7 @@ async function saveUser(userId) {
       return;
     }
     const targetId = resolved.userId || userId;
-    await db.collection("users").doc(targetId).set({
+    await getAdminUsersDocumentsApi().collection("users").doc(targetId).set({
       ...(resolved.user || {}),
       password,
       role,
@@ -943,7 +953,7 @@ async function deleteUser(userId) {
   if (window.AdminUsersService?.deleteUser) {
     await window.AdminUsersService.deleteUser(userId);
   } else {
-    await db.collection("users").doc(userId).delete();
+    await getAdminUsersDocumentsApi().collection("users").doc(userId).delete();
   }
   Swal.fire("Terhapus", "User sudah dihapus.", "success");
 }
@@ -969,7 +979,7 @@ async function addHierarchyUser() {
     created_at: new Date()
   };
 
-  await db.collection("users").doc(makeUserDocId(username)).set(payload, { merge: true });
+  await getAdminUsersDocumentsApi().collection("users").doc(makeUserDocId(username)).set(payload, { merge: true });
   Swal.fire("Tersimpan", "Pengguna sudah ditambahkan.", "success");
 }
 

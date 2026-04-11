@@ -3,11 +3,12 @@ let semuaDataKelasBayanganSiswa = [];
 let semuaDataKelasBayanganKelas = [];
 let unsubscribeKelasBayanganSiswa = null;
 let unsubscribeKelasBayanganKelas = null;
+let unsubscribeKelasBayanganSourceSettings = null;
 let isKelasBayanganSiswaLoaded = false;
 let kelasBayanganSearch = "";
 let kelasBayanganTingkat = "";
 let kelasBayanganRombel = "";
-let kelasBayanganSourceByLevel = JSON.parse(localStorage.getItem("kelasBayanganSourceByLevel") || "{}");
+let kelasBayanganSourceByLevel = {};
 let kelasBayanganAnggotaDraft = null;
 let semuaDataMengajarBayangan = [];
 let semuaDataMengajarBayanganAsli = [];
@@ -21,6 +22,10 @@ let mengajarBayanganSearchQuery = "";
 let pendingMengajarBayanganChanges = {};
 let isCloningMapelBayangan = false;
 let isCloningMengajarBayangan = false;
+
+function getKelasBayanganDocumentsApi() {
+  return window.SupabaseDocuments;
+}
 
 function escapeKelasBayanganHtml(value) {
   if (typeof escapeSiswaHtml === "function") return escapeSiswaHtml(value);
@@ -133,7 +138,23 @@ function getKelasBayanganSourceForLevel(level) {
   return getKelasBayanganParts(kelasBayanganSourceByLevel[String(level)] || "").kelas;
 }
 
-function setKelasBayanganSource(kelasValue) {
+function normalizeKelasBayanganSourceState(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .map(([level, kelas]) => [String(level || "").trim(), getKelasBayanganParts(kelas).kelas])
+      .filter(([level, kelas]) => level && kelas)
+  );
+}
+
+function applyKelasBayanganSourceState(nextState) {
+  kelasBayanganSourceByLevel = normalizeKelasBayanganSourceState(nextState);
+  window.kelasBayanganSourceByLevel = { ...kelasBayanganSourceByLevel };
+  renderKelasBayanganKelasTable();
+  renderMengajarBayanganMatrix();
+}
+
+async function setKelasBayanganSource(kelasValue) {
   const parts = getKelasBayanganParts(kelasValue);
   if (!parts.tingkat || !parts.rombel) {
     Swal.fire("Kelas belum valid", "Pilih kelas yang valid terlebih dahulu.", "warning");
@@ -145,11 +166,20 @@ function setKelasBayanganSource(kelasValue) {
     return;
   }
 
-  kelasBayanganSourceByLevel[String(parts.tingkat)] = parts.kelas;
-  localStorage.setItem("kelasBayanganSourceByLevel", JSON.stringify(kelasBayanganSourceByLevel));
-  renderKelasBayanganKelasTable();
-  renderMengajarBayanganMatrix();
-  Swal.fire("Kelas real aktif", `${parts.kelas} menjadi sumber kelas real untuk tingkat ${parts.tingkat}.`, "success");
+  try {
+    const nextState = {
+      ...kelasBayanganSourceByLevel,
+      [String(parts.tingkat)]: parts.kelas
+    };
+    await getKelasBayanganDocumentsApi().collection("settings").doc("kelas_bayangan_source").set({
+      levels: normalizeKelasBayanganSourceState(nextState),
+      updated_at: new Date()
+    }, { merge: true });
+    Swal.fire("Kelas real aktif", `${parts.kelas} menjadi sumber kelas real untuk tingkat ${parts.tingkat}.`, "success");
+  } catch (error) {
+    console.error(error);
+    Swal.fire("Gagal menyimpan", "Kelas sumber belum berhasil diperbarui.", "error");
+  }
 }
 
 function getKelasBayanganSourceRemainingCount(kelasValue) {
@@ -328,6 +358,7 @@ function renderKelasBayanganPage() {
 function loadRealtimeKelasBayangan() {
   if (unsubscribeKelasBayanganSiswa) unsubscribeKelasBayanganSiswa();
   if (unsubscribeKelasBayanganKelas) unsubscribeKelasBayanganKelas();
+  if (unsubscribeKelasBayanganSourceSettings) unsubscribeKelasBayanganSourceSettings();
   isKelasBayanganSiswaLoaded = false;
 
   unsubscribeKelasBayanganSiswa = listenSiswa(data => {
@@ -341,6 +372,11 @@ function loadRealtimeKelasBayangan() {
     semuaDataKelasBayanganKelas = data;
     renderKelasBayanganViews();
     renderMengajarBayanganMatrix();
+  });
+
+  unsubscribeKelasBayanganSourceSettings = getKelasBayanganDocumentsApi().collection("settings").doc("kelas_bayangan_source").onSnapshot(snapshot => {
+    const data = snapshot.exists ? snapshot.data() : {};
+    applyKelasBayanganSourceState(data?.levels || {});
   });
 }
 
@@ -833,12 +869,13 @@ async function simpanAnggotaKelasBayangan(sourceKelas, targetKelas, selectedNipd
 
   try {
     Swal.fire({ title: "Menyimpan anggota kelas real...", didOpen: () => Swal.showLoading() });
-    const batch = db.batch();
+    const documentsApi = getKelasBayanganDocumentsApi();
+    const batch = documentsApi.batch();
     changes.forEach((payload, nipd) => {
       batch.set(
         typeof getSemesterDocRef === "function"
           ? getSemesterDocRef("siswa", nipd)
-          : db.collection("siswa").doc(nipd),
+          : documentsApi.collection("siswa").doc(nipd),
         {
           ...payload,
           updated_at: new Date()
@@ -859,7 +896,7 @@ function makeMengajarBayanganDocId(tingkat, rombel, mapelKode) {
 }
 
 function listenMengajarBayangan(callback) {
-  return db.collection("mengajar_bayangan").onSnapshot(snapshot => {
+  return getKelasBayanganDocumentsApi().collection("mengajar_bayangan").onSnapshot(snapshot => {
     callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   });
 }
@@ -869,18 +906,19 @@ async function ensureMapelBayanganClone() {
   isCloningMapelBayangan = true;
   try {
     const [originalSnapshot, bayanganSnapshot] = await Promise.all([
-      db.collection("mapel").get(),
-      db.collection("mapel_bayangan").get()
+      getKelasBayanganDocumentsApi().collection("mapel").get(),
+      getKelasBayanganDocumentsApi().collection("mapel_bayangan").get()
     ]);
     if (!bayanganSnapshot.empty) return;
     if (originalSnapshot.empty) return;
 
-    const batch = db.batch();
+    const documentsApi = getKelasBayanganDocumentsApi();
+    const batch = documentsApi.batch();
     originalSnapshot.docs.forEach(doc => {
       const data = { id: doc.id, ...doc.data() };
       const kode = String(data.kode_mapel || doc.id || "").trim().toUpperCase();
       if (!kode) return;
-      batch.set(db.collection("mapel_bayangan").doc(kode), {
+      batch.set(documentsApi.collection("mapel_bayangan").doc(kode), {
         ...data,
         kode_mapel: kode,
         sumber_clone: "mapel",
@@ -1310,12 +1348,12 @@ async function saveAllMengajarBayangan() {
     }
 
     Swal.fire({ title: "Menyimpan pembagian mengajar kelas real...", didOpen: () => Swal.showLoading() });
-    const batch = db.batch();
+    const batch = getKelasBayanganDocumentsApi().batch();
     let simpan = 0;
     let hapus = 0;
 
     prepared.forEach(item => {
-      const ref = db.collection("mengajar_bayangan").doc(makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode));
+      const ref = getKelasBayanganDocumentsApi().collection("mengajar_bayangan").doc(makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode));
       if (item.__delete) {
         batch.delete(ref);
         hapus++;
@@ -1454,11 +1492,12 @@ async function syncKelasBayanganUtama() {
   }
 
   for (let index = 0; index < candidates.length; index += 450) {
-    const batch = db.batch();
+    const documentsApi = getKelasBayanganDocumentsApi();
+    const batch = documentsApi.batch();
     candidates.slice(index, index + 450).forEach(siswa => {
       const siswaRef = typeof getSemesterDocRef === "function"
         ? getSemesterDocRef("siswa", siswa.nipd)
-        : db.collection("siswa").doc(siswa.nipd);
+        : documentsApi.collection("siswa").doc(siswa.nipd);
       batch.update(siswaRef, {
         kelas_bayangan: siswa.kelasAsliParts.kelas,
         updated_at: new Date()

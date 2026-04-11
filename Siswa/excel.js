@@ -424,13 +424,14 @@ async function uploadImport() {
 
   for (let index = 0; index < dataSiapUpload.length; index += 450) {
     const batchItems = dataSiapUpload.slice(index, index + 450);
-    const batch = db.batch();
+    const documentsApi = getSiswaExcelDocumentsApi();
+    const batch = documentsApi.batch();
     const newIds = [];
     batchItems.forEach(d => {
       const exists = !!d.existing;
       const ref = typeof getSemesterDocRef === "function"
         ? getSemesterDocRef("siswa", d.nipd)
-        : db.collection("siswa").doc(d.nipd);
+        : documentsApi.collection("siswa").doc(d.nipd);
       batch.set(ref, {
         nipd: d.nipd,
         nisn: d.nisn,
@@ -496,7 +497,7 @@ async function undoImport() {
   for (const id of lastImportedIds) {
     const ref = typeof getSemesterDocRef === "function"
       ? getSemesterDocRef("siswa", id)
-      : db.collection("siswa").doc(id);
+      : getSiswaExcelDocumentsApi().collection("siswa").doc(id);
     await ref.delete();
   }
 
@@ -514,4 +515,7 @@ function batalImport() {
   if (container) container.innerHTML = "";
   resetImportFileInput();
   closePreviewModal();
+}
+function getSiswaExcelDocumentsApi() {
+  return window.SupabaseDocuments;
 }

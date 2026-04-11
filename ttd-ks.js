@@ -32,9 +32,13 @@ function getKepalaSekolahTtdImage() {
   return String(getKepalaSekolahTtdSettings().ttd || "").trim();
 }
 
+function getKepalaSekolahDocumentsApi() {
+  return window.SupabaseDocuments;
+}
+
 async function loadKepalaSekolahTtdSettings() {
   try {
-    const snapshot = await db.collection("settings").doc("ttd_kepala_sekolah").get();
+    const snapshot = await getKepalaSekolahDocumentsApi().collection("settings").doc("ttd_kepala_sekolah").get();
     return cacheKepalaSekolahTtdSettings(snapshot.exists ? snapshot.data() : {});
   } catch (error) {
     console.error("Gagal memuat TTD KS", error);
@@ -83,7 +87,7 @@ async function saveKepalaSekolahTtdSettings() {
       ttd,
       updated_at: new Date()
     };
-    await db.collection("settings").doc("ttd_kepala_sekolah").set(payload, { merge: true });
+    await getKepalaSekolahDocumentsApi().collection("settings").doc("ttd_kepala_sekolah").set(payload, { merge: true });
     cacheKepalaSekolahTtdSettings(payload);
     const input = document.getElementById("kepalaSekolahTtdInput");
     if (input) input.value = "";
@@ -101,7 +105,7 @@ async function clearKepalaSekolahTtdSettings() {
       ttd: "",
       updated_at: new Date()
     };
-    await db.collection("settings").doc("ttd_kepala_sekolah").set(payload, { merge: true });
+    await getKepalaSekolahDocumentsApi().collection("settings").doc("ttd_kepala_sekolah").set(payload, { merge: true });
     cacheKepalaSekolahTtdSettings(payload);
     const input = document.getElementById("kepalaSekolahTtdInput");
     const preview = document.getElementById("kepalaSekolahTtdPreview");

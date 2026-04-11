@@ -291,13 +291,14 @@ async function ensureNormalizedSiswaNamaData(data = []) {
 
   isNormalizingSiswaNama = true;
   try {
-    const batch = db.batch();
+    const documentsApi = getSiswaMuridDocumentsApi();
+    const batch = documentsApi.batch();
     changedRows.forEach(item => {
       const nipd = String(item.nipd || item.id || "").trim();
       if (!nipd) return;
       const ref = typeof getSemesterDocRef === "function"
         ? getSemesterDocRef("siswa", nipd)
-        : db.collection("siswa").doc(nipd);
+        : documentsApi.collection("siswa").doc(nipd);
       batch.set(ref, {
         nama: normalizeSiswaNamaValue(item.nama),
         updated_at: new Date()
@@ -326,13 +327,14 @@ async function ensureNormalizedSiswaKelasData(data = []) {
 
   isNormalizingSiswaKelas = true;
   try {
-    const batch = db.batch();
+    const documentsApi = getSiswaMuridDocumentsApi();
+    const batch = documentsApi.batch();
     changedRows.forEach(item => {
       const nipd = String(item.nipd || item.id || "").trim();
       if (!nipd) return;
       const ref = typeof getSemesterDocRef === "function"
         ? getSemesterDocRef("siswa", nipd)
-        : db.collection("siswa").doc(nipd);
+        : documentsApi.collection("siswa").doc(nipd);
       batch.set(ref, {
         kelas: normalizeSiswaKelasValue(item.kelas),
         updated_at: new Date()
@@ -566,4 +568,7 @@ async function saveEdit(nipd) {
   } catch {
     Swal.fire("Gagal update", "", "error");
   }
+}
+function getSiswaMuridDocumentsApi() {
+  return window.SupabaseDocuments;
 }

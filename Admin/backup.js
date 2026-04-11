@@ -114,14 +114,14 @@ function serializeBackupValue(value) {
 function restoreBackupValue(value) {
   if (!value || typeof value !== "object") return value;
   if (value.__type === "timestamp" && value.value) {
-    return firebase.firestore.Timestamp.fromDate(new Date(value.value));
+    return window.SupabaseDocuments.Timestamp.fromDate(new Date(value.value));
   }
   if (Array.isArray(value)) return value.map(restoreBackupValue);
   return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, restoreBackupValue(item)]));
 }
 
 async function readBackupCollection(collectionName) {
-  const snapshot = await db.collection(collectionName).get();
+  const snapshot = await getBackupDocumentsApi().collection(collectionName).get();
   return snapshot.docs.map(doc => ({
     id: doc.id,
     data: serializeBackupValue(doc.data())
@@ -151,7 +151,7 @@ async function readBackupSemesterData(semesterIds) {
 }
 
 async function readBackupSemesterCollection(termId, collectionName) {
-  const snapshot = await db.collection("semester_data").doc(termId).collection(collectionName).get();
+  const snapshot = await getBackupDocumentsApi().collection("semester_data").doc(termId).collection(collectionName).get();
   return snapshot.docs.map(doc => ({
     id: doc.id,
     data: serializeBackupValue(doc.data())
@@ -273,11 +273,12 @@ async function restoreFullBackup() {
 async function writeBackupCollection(collectionName, rows = []) {
   let count = 0;
   for (let index = 0; index < rows.length; index += 450) {
-    const batch = db.batch();
+    const documentsApi = getBackupDocumentsApi();
+    const batch = documentsApi.batch();
     rows.slice(index, index + 450).forEach(row => {
       if (!row?.id) return;
       count++;
-      batch.set(db.collection(collectionName).doc(row.id), restoreBackupValue(row.data || {}));
+      batch.set(documentsApi.collection(collectionName).doc(row.id), restoreBackupValue(row.data || {}));
     });
     await batch.commit();
   }
@@ -287,12 +288,13 @@ async function writeBackupCollection(collectionName, rows = []) {
 async function writeBackupSemesterCollection(termId, collectionName, rows = []) {
   let count = 0;
   for (let index = 0; index < rows.length; index += 450) {
-    const batch = db.batch();
+    const documentsApi = getBackupDocumentsApi();
+    const batch = documentsApi.batch();
     rows.slice(index, index + 450).forEach(row => {
       if (!row?.id) return;
       count++;
       batch.set(
-        db.collection("semester_data").doc(termId).collection(collectionName).doc(row.id),
+        documentsApi.collection("semester_data").doc(termId).collection(collectionName).doc(row.id),
         restoreBackupValue(row.data || {})
       );
     });
@@ -348,13 +350,13 @@ async function resetAllApplicationData() {
     let deleted = 0;
     for (const collectionName of CLEAN_COLLECTIONS) {
       setBackupStatus("backupCleanStatus", `Menghapus ${collectionName}...`);
-      deleted += await deleteBackupCollection(db.collection(collectionName));
+      deleted += await deleteBackupCollection(getBackupDocumentsApi().collection(collectionName));
     }
     for (const termId of semesterIds) {
       setBackupStatus("backupCleanStatus", `Menghapus data semester ${termId}...`);
-      deleted += await deleteBackupCollection(db.collection("semester_data").doc(termId).collection("siswa"));
-      deleted += await deleteBackupCollection(db.collection("semester_data").doc(termId).collection("kelas"));
-      await db.collection("semester_data").doc(termId).delete();
+      deleted += await deleteBackupCollection(getBackupDocumentsApi().collection("semester_data").doc(termId).collection("siswa"));
+      deleted += await deleteBackupCollection(getBackupDocumentsApi().collection("semester_data").doc(termId).collection("kelas"));
+      await getBackupDocumentsApi().collection("semester_data").doc(termId).delete();
     }
     localStorage.clear();
     setBackupStatus("backupCleanStatus", `Selesai. ${deleted} dokumen dihapus. Cache lokal dibersihkan.`);
@@ -372,7 +374,7 @@ async function deleteBackupCollection(collectionRef) {
   while (true) {
     const snapshot = await collectionRef.limit(450).get();
     if (snapshot.empty) break;
-    const batch = db.batch();
+    const batch = getBackupDocumentsApi().batch();
     snapshot.docs.forEach(doc => {
       count++;
       batch.delete(doc.ref);
@@ -380,4 +382,7 @@ async function deleteBackupCollection(collectionRef) {
     await batch.commit();
   }
   return count;
+}
+function getBackupDocumentsApi() {
+  return window.SupabaseDocuments;
 }

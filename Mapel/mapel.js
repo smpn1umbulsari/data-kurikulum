@@ -371,14 +371,15 @@ async function syncMapelBayanganFromOriginal({ force = false, removeMissing = fa
   isSyncingMapelBayangan = true;
   try {
     const [originalSnapshot, bayanganSnapshot] = await Promise.all([
-      db.collection("mapel").get(),
-      db.collection("mapel_bayangan").get()
+      getMapelPageDocumentsApi().collection("mapel").get(),
+      getMapelPageDocumentsApi().collection("mapel_bayangan").get()
     ]);
     if (!force && !bayanganSnapshot.empty) return;
     if (originalSnapshot.empty) return;
     const bayanganById = new Map(bayanganSnapshot.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() }]));
     const originalIds = new Set();
-    const batch = db.batch();
+    const documentsApi = getMapelPageDocumentsApi();
+    const batch = documentsApi.batch();
     let count = 0;
     originalSnapshot.docs.forEach(doc => {
       const data = doc.data();
@@ -386,7 +387,7 @@ async function syncMapelBayanganFromOriginal({ force = false, removeMissing = fa
       if (!kode) return;
       originalIds.add(kode);
       const existing = bayanganById.get(kode);
-      batch.set(db.collection("mapel_bayangan").doc(kode), {
+      batch.set(documentsApi.collection("mapel_bayangan").doc(kode), {
         ...data,
         kode_mapel: kode,
         jp: existing?.jp !== undefined ? Number(existing.jp || 0) : Number(data.jp || 0),
@@ -948,4 +949,7 @@ async function hapusMapel(kodeMapel) {
     console.error(error);
     Swal.fire("Gagal", "Mata pelajaran belum berhasil dihapus", "error");
   }
+}
+function getMapelPageDocumentsApi() {
+  return window.SupabaseDocuments;
 }

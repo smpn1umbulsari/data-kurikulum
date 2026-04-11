@@ -144,7 +144,7 @@ function setSiswaLulusTahun(value) {
 
 function loadRealtimeSiswaLulus() {
   clearSiswaLulusListeners();
-  unsubscribeSiswaLulus = db.collection("siswa_lulus").onSnapshot(snapshot => {
+  unsubscribeSiswaLulus = getSiswaLulusDocumentsApi().collection("siswa_lulus").onSnapshot(snapshot => {
     semuaDataSiswaLulus = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderSiswaLulusState();
   });
@@ -155,4 +155,7 @@ function clearSiswaLulusListeners() {
     unsubscribeSiswaLulus();
     unsubscribeSiswaLulus = null;
   }
+}
+function getSiswaLulusDocumentsApi() {
+  return window.SupabaseDocuments;
 }

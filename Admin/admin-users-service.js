@@ -1,6 +1,10 @@
 (function initAdminUsersService(global) {
   if (global.AdminUsersService) return;
 
+  function getDocumentsApi() {
+    return global.SupabaseDocuments;
+  }
+
   function loadRealtimeUsers(options = {}) {
     const {
       includeSiswa = false,
@@ -13,14 +17,15 @@
       onRender
     } = options;
 
+    const documentsApi = getDocumentsApi();
     const unsubs = {
-      guru: db.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+      guru: documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
         const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         onGuruData?.(rows);
         onGuruUpdated?.();
         onRender?.();
       }),
-      user: db.collection("users").orderBy("role").onSnapshot(snapshot => {
+      user: documentsApi.collection("users").orderBy("role").onSnapshot(snapshot => {
         const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         onUserData?.(rows);
         onUserUpdated?.();
@@ -36,7 +41,7 @@
     if (includeSiswa) {
       const siswaQuery = typeof global.getSemesterCollectionQuery === "function"
         ? global.getSemesterCollectionQuery("siswa", "nama")
-        : db.collection("siswa").orderBy("nama");
+        : documentsApi.collection("siswa").orderBy("nama");
       unsubs.siswa = siswaQuery.onSnapshot(snapshot => {
         const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         onSiswaData?.(rows);
@@ -57,9 +62,10 @@
       return { added: 0 };
     }
 
-    const batch = db.batch();
+    const documentsApi = getDocumentsApi();
+    const batch = documentsApi.batch();
     candidates.forEach(user => {
-      batch.set(db.collection("users").doc(options.makeUserDocId(user.username)), {
+      batch.set(documentsApi.collection("users").doc(options.makeUserDocId(user.username)), {
         ...user,
         created_at: new Date()
       }, { merge: true });
@@ -69,9 +75,10 @@
   }
 
   async function resetAllPasswords(users = [], password = "") {
-    const batch = db.batch();
+    const documentsApi = getDocumentsApi();
+    const batch = documentsApi.batch();
     users.forEach(user => {
-      batch.update(db.collection("users").doc(user.id), {
+      batch.update(documentsApi.collection("users").doc(user.id), {
         password,
         updated_at: new Date()
       });
@@ -81,7 +88,7 @@
   }
 
   async function deleteUser(userId) {
-    await db.collection("users").doc(userId).delete();
+    await getDocumentsApi().collection("users").doc(userId).delete();
     return true;
   }
 

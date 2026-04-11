@@ -80,14 +80,14 @@
       return [];
     }
 
-    const db = options.db || global.db;
-    if (!db?.collection) {
+    const documentsApi = global.SupabaseDocuments;
+    if (!documentsApi?.collection) {
       shell.setStoredCoordinatorLevels([]);
       return [];
     }
 
     try {
-      const snapshot = await db.collection("informasi_urusan").doc("koordinator_kelas").get();
+      const snapshot = await documentsApi.collection("informasi_urusan").doc("koordinator_kelas").get();
       const data = snapshot?.exists ? snapshot.data() : {};
       const levels = [];
       if (String(data.kelas_7 || "").trim() === kodeGuru) levels.push("7");
@@ -131,7 +131,7 @@
       };
       roleInfo.innerText = labelMap[role] || "Pengguna";
     }
-    setText("firebaseProjectInfo", "Supabase");
+    setText("supabaseProjectInfo", "Supabase");
   };
 
   shell.canAccessPage = function canAccessPage(page) {
@@ -168,7 +168,7 @@
       return Promise.resolve();
     }
     if (role === "koordinator") {
-      return shell.refreshCoordinatorLevels({ db: options.db || global.db })
+      return shell.refreshCoordinatorLevels()
         .then(levels => {
           setMenuDisplay(waliMenu, levels.length > 0);
         })
@@ -185,7 +185,7 @@
 
       return Promise.all([
         getCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get(),
-        shell.refreshCoordinatorLevels({ db: options.db || global.db })
+        shell.refreshCoordinatorLevels()
       ])
         .then(([snapshot, coordinatorLevels]) => {
           const hasCoordinatorAccess = Array.isArray(coordinatorLevels) && coordinatorLevels.length > 0;
@@ -250,7 +250,7 @@
       : () => shell.updateSidebarSemesterInfo();
     const refreshCoordinatorLevels = typeof options.refreshCoordinatorLevels === "function"
       ? options.refreshCoordinatorLevels
-      : () => shell.refreshCoordinatorLevels({ db: options.db || global.db });
+      : () => shell.refreshCoordinatorLevels();
     const onError = typeof options.onError === "function" ? options.onError : error => global.console?.error?.(error);
 
     const finalize = () => Promise.resolve(applyRoleAccess())

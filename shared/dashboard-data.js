@@ -6,7 +6,8 @@
       if (["siswa", "kelas"].includes(collectionName) && typeof global.getSemesterCollectionQuery === "function") {
         return global.getSemesterCollectionQuery(collectionName, orderField);
       }
-      const ref = global.db.collection(collectionName);
+      const documentsApi = global.SupabaseDocuments;
+      const ref = documentsApi.collection(collectionName);
       return orderField ? ref.orderBy(orderField) : ref;
     }
   };

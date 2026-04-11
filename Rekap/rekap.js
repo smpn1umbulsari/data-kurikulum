@@ -61,12 +61,12 @@ function loadRealtimeRekapTugasMengajar() {
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapTugasTambahan = db.collection("tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeRekapTugasTambahan = getRekapDocumentsApi().collection("tugas_tambahan").onSnapshot(snapshot => {
     semuaDataRekapTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapGuruTugasTambahan = db.collection("guru_tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeRekapGuruTugasTambahan = getRekapDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
     semuaDataRekapGuruTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderRekapTugasMengajarTable();
   });
@@ -293,4 +293,7 @@ function renderRekapTaskList(taskGroup) {
   const names = Array.isArray(taskGroup) ? taskGroup : taskGroup.names || [];
   if (names.length === 0) return `<span class="muted-text">-</span>`;
   return `<div class="rekap-task-list">${names.map(name => `<span>${escapeRekapHtml(name)}</span>`).join("")}</div>`;
+}
+function getRekapDocumentsApi() {
+  return window.SupabaseDocuments;
 }

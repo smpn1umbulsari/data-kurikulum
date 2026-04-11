@@ -45,12 +45,13 @@
       if (cached.updated_at || cached.enabled) return cached;
     }
 
-    if (!global.db?.collection) {
+    const documents = global.SupabaseDocuments;
+    if (!documents?.collection) {
       return readCache();
     }
 
     try {
-      const snapshot = await global.db.collection(DOC_PATH.collection).doc(DOC_PATH.doc).get();
+      const snapshot = await documents.collection(DOC_PATH.collection).doc(DOC_PATH.doc).get();
       const state = normalizeState(snapshot.exists ? snapshot.data() : {});
       return writeCache(state);
     } catch (error) {
@@ -65,11 +66,12 @@
       updated_at: new Date().toISOString()
     });
 
-    if (!global.db?.collection) {
+    const documents = global.SupabaseDocuments;
+    if (!documents?.collection) {
       return writeCache(normalized);
     }
 
-    await global.db.collection(DOC_PATH.collection).doc(DOC_PATH.doc).set(normalized, { merge: true });
+    await documents.collection(DOC_PATH.collection).doc(DOC_PATH.doc).set(normalized, { merge: true });
     return writeCache(normalized);
   }
 

@@ -256,12 +256,12 @@ function loadRealtimeRekapTugasMengajar() {
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapTugasTambahan = db.collection("tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeRekapTugasTambahan = getRekapDocumentsApi().collection("tugas_tambahan").onSnapshot(snapshot => {
     semuaDataRekapTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapGuruTugasTambahan = db.collection("guru_tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeRekapGuruTugasTambahan = getRekapDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
     semuaDataRekapGuruTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderRekapTugasMengajarTable();
   });
@@ -1052,4 +1052,7 @@ function exportRekapTugasMengajarBayanganPdf() {
   printWindow.document.write(html);
   printWindow.document.close();
   setTimeout(() => printWindow.print(), 400);
+}
+function getRekapDocumentsApi() {
+  return window.SupabaseDocuments;
 }

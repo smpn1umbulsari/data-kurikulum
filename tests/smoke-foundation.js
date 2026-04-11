@@ -256,7 +256,7 @@ async function main() {
   assert(Array.isArray(levels) && levels.includes("7"), "DashboardShell.refreshCoordinatorLevels failed");
   assert(window.DashboardShell.canUseCoordinatorAccess() === true, "DashboardShell.canUseCoordinatorAccess failed");
   window.DashboardShell.updateSidebarSemesterInfo();
-  assert(window.document.getElementById("firebaseProjectInfo").innerText === "Supabase", "DashboardShell.updateSidebarSemesterInfo failed");
+  assert(window.document.getElementById("supabaseProjectInfo").innerText === "Supabase", "DashboardShell.updateSidebarSemesterInfo failed");
   window.DashboardShell.toggleSidebar(false, { document: window.document });
   assert(window.document.body.classList.contains("sidebar-collapsed"), "DashboardShell.toggleSidebar failed");
   window.DashboardShell.syncResponsiveSidebar({ document: window.document, innerWidth: 1400 });

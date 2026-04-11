@@ -1,5 +1,9 @@
-// ================= FIRESTORE CRUD MAPEL =================
+// ================= CRUD MAPEL (SUPABASE COMPAT) =================
 let activeMapelCollectionName = "mapel";
+
+function getMapelDocumentsApi() {
+  return window.SupabaseDocuments;
+}
 
 function setActiveMapelCollection(collectionName = "mapel") {
   activeMapelCollectionName = collectionName === "mapel_bayangan" ? "mapel_bayangan" : "mapel";
@@ -10,7 +14,7 @@ function getActiveMapelCollectionName() {
 }
 
 function getActiveMapelCollection() {
-  return db.collection(getActiveMapelCollectionName());
+  return getMapelDocumentsApi().collection(getActiveMapelCollectionName());
 }
 
 function getActiveMengajarCollectionForMapel() {
@@ -31,10 +35,11 @@ async function updateMapel(kodeLama, data) {
   const oldKodeNorm = String(kodeLama || "").trim().toUpperCase();
   const newKodeNorm = String(kodeBaru || "").trim().toUpperCase();
   const mengajarCollectionName = getActiveMengajarCollectionForMapel();
-  const mengajarSnapshot = await db.collection(mengajarCollectionName)
+  const documentsApi = getMapelDocumentsApi();
+  const mengajarSnapshot = await documentsApi.collection(mengajarCollectionName)
     .where("mapel_kode", "==", oldKodeNorm)
     .get();
-  const batch = db.batch();
+  const batch = documentsApi.batch();
   const mapelCollection = getActiveMapelCollection();
   const oldRef = mapelCollection.doc(kodeLama);
   const newRef = mapelCollection.doc(kodeBaru);
@@ -46,7 +51,7 @@ async function updateMapel(kodeLama, data) {
     const tingkat = String(mengajar.tingkat || "").trim();
     const rombel = String(mengajar.rombel || "").trim().toUpperCase();
     const newDocId = makeMengajarDocId(tingkat, rombel, newKodeNorm);
-    batch.set(db.collection(mengajarCollectionName).doc(newDocId), {
+    batch.set(documentsApi.collection(mengajarCollectionName).doc(newDocId), {
       ...mengajar,
       mapel_kode: newKodeNorm,
       mapel_nama: data.nama_mapel || "",
@@ -72,7 +77,7 @@ function listenMapel(callback) {
 }
 
 function listenMapelBayangan(callback) {
-  return db.collection("mapel_bayangan")
+  return getMapelDocumentsApi().collection("mapel_bayangan")
     .orderBy("kode_mapel")
     .onSnapshot(snapshot => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

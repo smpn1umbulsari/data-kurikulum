@@ -7,6 +7,10 @@ let semesterAdminState = {
 };
 let unsubscribeAdminSemesterSettings = null;
 
+function getSemesterDocumentsApi() {
+  return window.SupabaseDocuments;
+}
+
 function getDefaultSemesterContext() {
   return {
     id: "20252026_genap",
@@ -78,10 +82,11 @@ function shouldUseSemesterSnapshot() {
 }
 
 function getSemesterCollectionRef(collectionName, termId = getActiveTermId()) {
+  const documentsApi = getSemesterDocumentsApi();
   if (termId && termId !== "legacy") {
-    return db.collection("semester_data").doc(termId).collection(collectionName);
+    return documentsApi.collection("semester_data").doc(termId).collection(collectionName);
   }
-  return db.collection(collectionName);
+  return documentsApi.collection(collectionName);
 }
 
 function getSemesterDocRef(collectionName, docId, termId = getActiveTermId()) {
@@ -232,7 +237,7 @@ function escapeSemesterJs(value) {
 
 function loadRealtimeAdminSemester() {
   clearAdminSemesterListeners();
-  unsubscribeAdminSemesterSettings = db.collection("settings").doc("semester").onSnapshot(snapshot => {
+  unsubscribeAdminSemesterSettings = getSemesterDocumentsApi().collection("settings").doc("semester").onSnapshot(snapshot => {
     const data = snapshot.exists ? snapshot.data() : {};
     semesterAdminState = {
       ...semesterAdminState,
@@ -263,7 +268,7 @@ async function setAdminActiveSemester() {
   }
 
   await ensureSemesterDataExists(selected);
-  await db.collection("settings").doc("semester").set({
+  await getSemesterDocumentsApi().collection("settings").doc("semester").set({
     active_id: selected.id,
     semester: selected.semester,
     tahun: selected.tahun,
@@ -318,7 +323,7 @@ async function createNextSemester() {
 
     const nextList = mergeSemesterList(getSemesterSettingsList(), next);
     await markSemesterDataInitialized(next.id);
-    await db.collection("settings").doc("semester").set({
+    await getSemesterDocumentsApi().collection("settings").doc("semester").set({
       active_id: next.id,
       live_id: next.id,
       semester: next.semester,
@@ -326,7 +331,7 @@ async function createNextSemester() {
       list: nextList,
       updated_at: new Date()
     }, { merge: true });
-    await db.collection("settings").doc("rapor").set({
+    await getSemesterDocumentsApi().collection("settings").doc("rapor").set({
       semester: next.semester,
       tahun: next.tahun,
       updated_at: new Date()
@@ -350,7 +355,7 @@ async function verifyAdminSemesterPassword(password) {
     return password === "admin123" || password === "kurikulumspenturi";
   }
   if (!username) return false;
-  const snapshot = await db.collection("users").where("username", "==", username).limit(1).get();
+  const snapshot = await getSemesterDocumentsApi().collection("users").where("username", "==", username).limit(1).get();
   if (snapshot.empty) {
     return username === "admin" && (password === "admin123" || password === "kurikulumspenturi");
   }
@@ -367,7 +372,7 @@ async function ensureActiveSemesterDataAvailable() {
 async function ensureSemesterDataExists(term) {
   const termId = term?.id || "";
   if (!termId || termId === "legacy") return;
-  const metaRef = db.collection("semester_data").doc(termId);
+  const metaRef = getSemesterDocumentsApi().collection("semester_data").doc(termId);
   const meta = await metaRef.get();
   if (meta.exists && meta.data()?.initialized === true) return;
 
@@ -380,16 +385,17 @@ async function ensureSemesterDataExists(term) {
 
 async function markSemesterDataInitialized(termId) {
   if (!termId || termId === "legacy") return;
-  await db.collection("semester_data").doc(termId).set({
+  await getSemesterDocumentsApi().collection("semester_data").doc(termId).set({
     initialized: true,
     initialized_at: new Date()
   }, { merge: true });
 }
 
 async function copyMainCollectionToSemester(termId, collectionName) {
-  const snapshot = await db.collection(collectionName).get();
+  const documentsApi = getSemesterDocumentsApi();
+  const snapshot = await documentsApi.collection(collectionName).get();
   for (let index = 0; index < snapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = documentsApi.batch();
     snapshot.docs.slice(index, index + 450).forEach(doc => {
       batch.set(getSemesterDocRef(collectionName, doc.id, termId), {
         ...doc.data(),
@@ -435,7 +441,7 @@ async function deleteSemester(id) {
 
   const nextList = getSemesterSettingsList().filter(item => item.id !== target.id);
   const cleanupCount = await cleanupGraduatedStudentsForDeletedSemester(target);
-  await db.collection("settings").doc("semester").set({
+  await getSemesterDocumentsApi().collection("settings").doc("semester").set({
     list: nextList,
     updated_at: new Date()
   }, { merge: true });
@@ -445,13 +451,13 @@ async function deleteSemester(id) {
 async function cleanupGraduatedStudentsForDeletedSemester(term) {
   if (!term?.id) return 0;
   const snapshots = [];
-  snapshots.push(await db.collection("siswa_lulus").where("term_id", "==", term.id).get());
+  snapshots.push(await getSemesterDocumentsApi().collection("siswa_lulus").where("term_id", "==", term.id).get());
 
   if (normalizeSemesterText(term.semester) === "GANJIL") {
     const previous = getSemesterSettingsList().find(item => item.id === term.previous_id);
     const tahunLulus = normalizeTahunPelajaran(previous?.tahun || getPreviousTahunPelajaran(term.tahun));
     if (tahunLulus) {
-      snapshots.push(await db.collection("siswa_lulus")
+      snapshots.push(await getSemesterDocumentsApi().collection("siswa_lulus")
         .where("tahun_pelajaran_lulus", "==", tahunLulus)
         .get());
     }
@@ -465,7 +471,7 @@ async function cleanupGraduatedStudentsForDeletedSemester(term) {
   const allDocs = [...docs.values()];
   let count = 0;
   for (let index = 0; index < allDocs.length; index += 450) {
-    const batch = db.batch();
+    const batch = getSemesterDocumentsApi().batch();
     allDocs.slice(index, index + 450).forEach(doc => {
       count++;
       batch.delete(doc.ref);
@@ -520,7 +526,7 @@ async function getSemesterSourceSnapshot(term, collectionName) {
     const semesterSnapshot = await getSemesterCollectionRef(collectionName, termId).get();
     if (!semesterSnapshot.empty) return semesterSnapshot;
   }
-  return db.collection(collectionName).get();
+  return getSemesterDocumentsApi().collection(collectionName).get();
 }
 
 async function createNextSemesterData(active, next, isYearChange) {
@@ -531,7 +537,7 @@ async function createNextSemesterData(active, next, isYearChange) {
 async function cloneKelasForNextSemester(active, next, clearWali) {
   const snapshot = await getSemesterSourceSnapshot(active, "kelas");
   for (let index = 0; index < snapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = getSemesterDocumentsApi().batch();
     snapshot.docs.slice(index, index + 450).forEach(doc => {
       const data = doc.data();
       batch.set(getSemesterDocRef("kelas", data.kelas || doc.id, next.id), {
@@ -551,14 +557,15 @@ async function cloneSiswaForNextSemester(active, next, promote) {
   const tahunLulus = normalizeTahunPelajaran(active.tahun || semesterAdminState.tahun || "2025/2026");
   const snapshot = await getSemesterSourceSnapshot(active, "siswa");
   for (let index = 0; index < snapshot.docs.length; index += 225) {
-    const batch = db.batch();
+    const documentsApi = getSemesterDocumentsApi();
+    const batch = documentsApi.batch();
     snapshot.docs.slice(index, index + 225).forEach(doc => {
       const data = doc.data();
       const nipd = data.nipd || doc.id;
       if (!nipd) return;
       const kelasParts = getSemesterKelasParts(data.kelas);
       if (promote && kelasParts.tingkat === "9") {
-        batch.set(db.collection("siswa_lulus").doc(makeSiswaLulusDocId(tahunLulus, nipd)), {
+        batch.set(documentsApi.collection("siswa_lulus").doc(makeSiswaLulusDocId(tahunLulus, nipd)), {
           ...data,
           nipd,
           kelas_lulus: kelasParts.kelas || data.kelas || "",
@@ -586,14 +593,15 @@ async function cloneSiswaForNextSemester(active, next, promote) {
 async function promoteStudentsForNewYear() {
   const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
   const tahunLulus = normalizeTahunPelajaran(active.tahun || semesterAdminState.tahun || "2025/2026");
-  const snapshot = await db.collection("siswa").get();
+  const documentsApi = getSemesterDocumentsApi();
+  const snapshot = await documentsApi.collection("siswa").get();
   for (let index = 0; index < snapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = documentsApi.batch();
     snapshot.docs.slice(index, index + 450).forEach(doc => {
       const data = doc.data();
       const kelasParts = getSemesterKelasParts(data.kelas);
       if (kelasParts.tingkat === "9") {
-        const lulusRef = db.collection("siswa_lulus").doc(makeSiswaLulusDocId(tahunLulus, data.nipd || doc.id));
+        const lulusRef = documentsApi.collection("siswa_lulus").doc(makeSiswaLulusDocId(tahunLulus, data.nipd || doc.id));
         batch.set(lulusRef, {
           ...data,
           nipd: data.nipd || doc.id,
@@ -666,7 +674,7 @@ async function demoteActiveStudents() {
   const snapshot = await getSemesterSourceSnapshot(active, "siswa");
   let count = 0;
   for (let index = 0; index < snapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = getSemesterDocumentsApi().batch();
     snapshot.docs.slice(index, index + 450).forEach(doc => {
       const data = doc.data();
       const kelasParts = getSemesterKelasParts(data.kelas);
@@ -684,12 +692,12 @@ async function demoteActiveStudents() {
 }
 
 async function restoreGraduatedStudents(tahunLulus) {
-  const snapshot = await db.collection("siswa_lulus")
+  const snapshot = await getSemesterDocumentsApi().collection("siswa_lulus")
     .where("tahun_pelajaran_lulus", "==", tahunLulus)
     .get();
   let count = 0;
   for (let index = 0; index < snapshot.docs.length; index += 225) {
-    const batch = db.batch();
+    const batch = getSemesterDocumentsApi().batch();
     snapshot.docs.slice(index, index + 225).forEach(doc => {
       const data = doc.data();
       const nipd = data.nipd || doc.id;
@@ -776,15 +784,16 @@ async function repairPreviousSemesterSnapshot() {
 
 async function rebuildPreviousSiswaSnapshot(previous, active) {
   let count = 0;
-  const siswaSnapshot = await db.collection("siswa").get();
+  const documentsApi = getSemesterDocumentsApi();
+  const siswaSnapshot = await documentsApi.collection("siswa").get();
   for (let index = 0; index < siswaSnapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = documentsApi.batch();
     siswaSnapshot.docs.slice(index, index + 450).forEach(doc => {
       const previousData = cloneStudentForPreviousSnapshot({ id: doc.id, ...doc.data() });
       if (!previousData) return;
       count++;
       batch.set(
-        db.collection("semester_data").doc(previous.id).collection("siswa").doc(doc.id),
+        documentsApi.collection("semester_data").doc(previous.id).collection("siswa").doc(doc.id),
         {
           ...previousData,
           id_asli: doc.id,
@@ -798,18 +807,18 @@ async function rebuildPreviousSiswaSnapshot(previous, active) {
 
   if (normalizeSemesterText(previous.semester) === "GENAP") {
     const tahunLulus = normalizeTahunPelajaran(previous.tahun || active.tahun || "");
-    const lulusSnapshot = await db.collection("siswa_lulus")
+    const lulusSnapshot = await documentsApi.collection("siswa_lulus")
       .where("tahun_pelajaran_lulus", "==", tahunLulus)
       .get();
     for (let index = 0; index < lulusSnapshot.docs.length; index += 450) {
-      const batch = db.batch();
+      const batch = documentsApi.batch();
       lulusSnapshot.docs.slice(index, index + 450).forEach(doc => {
         const data = doc.data();
         const nipd = data.nipd || doc.id;
         if (!nipd) return;
         count++;
         batch.set(
-          db.collection("semester_data").doc(previous.id).collection("siswa").doc(nipd),
+          documentsApi.collection("semester_data").doc(previous.id).collection("siswa").doc(nipd),
           {
             ...data,
             nipd,
@@ -835,14 +844,15 @@ async function snapshotSemesterData(term) {
 }
 
 async function snapshotSemesterCollection(termId, collectionName) {
-  const snapshot = await db.collection(collectionName).get();
+  const documentsApi = getSemesterDocumentsApi();
+  const snapshot = await documentsApi.collection(collectionName).get();
   let count = 0;
   for (let index = 0; index < snapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = documentsApi.batch();
     snapshot.docs.slice(index, index + 450).forEach(doc => {
       count++;
       batch.set(
-        db.collection("semester_data").doc(termId).collection(collectionName).doc(doc.id),
+        documentsApi.collection("semester_data").doc(termId).collection(collectionName).doc(doc.id),
         {
           ...doc.data(),
           id_asli: doc.id,
@@ -858,9 +868,10 @@ async function snapshotSemesterCollection(termId, collectionName) {
 }
 
 async function clearAllWaliKelas() {
-  const snapshot = await db.collection("kelas").get();
+  const documentsApi = getSemesterDocumentsApi();
+  const snapshot = await documentsApi.collection("kelas").get();
   for (let index = 0; index < snapshot.docs.length; index += 450) {
-    const batch = db.batch();
+    const batch = documentsApi.batch();
     snapshot.docs.slice(index, index + 450).forEach(doc => {
       batch.set(doc.ref, {
         kode_guru: "",

@@ -9,8 +9,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
-  <script src="supabase-firestore-compat.js?v=20260408a"></script>
-  <script src="shared/maintenance-mode.js?v=20260411a"></script>
+  <script src="shared/supabase-documents.js?v=20260411a"></script>
+<script src="shared/maintenance-mode.js?v=20260411a"></script>
 
   <script>
     function applyDarkModePreference(isDark) {
@@ -41,7 +41,7 @@
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-top">
       <div class="sidebar-brand">
-        <span class="sidebar-brand-mark">DS</span>
+        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="sidebar-brand-mark">
         <div class="sidebar-brand-copy">
           <button class="sidebar-brand-title" onclick="renderHome()">Dashboard Sekolah</button>
           <div class="sidebar-brand-meta">
@@ -200,7 +200,7 @@
         <a class="sidebar-maintenance-link" href="maintenance.html" target="_blank" rel="noopener">Lihat halaman maintenance</a>
       </div>
       <span>Sistem aktif</span>
-      <strong id="firebaseProjectInfo">Supabase</strong>
+      <strong id="supabaseProjectInfo">Supabase</strong>
     </div>
   </aside>
   <div class="sidebar-overlay" onclick="toggleSidebar(true)"></div>
@@ -405,7 +405,7 @@
   }
 
   async function refreshCoordinatorLevels() {
-    if (window.DashboardShell?.refreshCoordinatorLevels) return window.DashboardShell.refreshCoordinatorLevels({ db });
+    if (window.DashboardShell?.refreshCoordinatorLevels) return window.DashboardShell.refreshCoordinatorLevels();
     if (!["koordinator", "guru"].includes(getCurrentAppRole())) {
       setStoredCoordinatorLevels([]);
       return [];
@@ -416,7 +416,8 @@
       return [];
     }
     try {
-      const snapshot = await db.collection("informasi_urusan").doc("koordinator_kelas").get();
+      const documentsApi = window.SupabaseDocuments;
+      const snapshot = await documentsApi.collection("informasi_urusan").doc("koordinator_kelas").get();
       const data = snapshot.exists ? snapshot.data() : {};
       const levels = [];
       if (String(data.kelas_7 || "").trim() === kodeGuru) levels.push("7");
@@ -463,10 +464,10 @@
       };
       roleInfo.innerText = labelMap[role] || "Pengguna";
     }
-    if (window.AppDom?.setText) window.AppDom.setText("firebaseProjectInfo", "Supabase");
+    if (window.AppDom?.setText) window.AppDom.setText("supabaseProjectInfo", "Supabase");
     else {
-      const firebaseInfo = document.getElementById("firebaseProjectInfo");
-      if (firebaseInfo) firebaseInfo.innerText = "Supabase";
+      const supabaseInfo = document.getElementById("supabaseProjectInfo");
+      if (supabaseInfo) supabaseInfo.innerText = "Supabase";
     }
   }
 
@@ -477,7 +478,8 @@
     if (["siswa", "kelas"].includes(collectionName) && typeof getSemesterCollectionQuery === "function") {
       return getSemesterCollectionQuery(collectionName, orderField);
     }
-    const ref = db.collection(collectionName);
+    const documentsApi = window.SupabaseDocuments;
+    const ref = documentsApi.collection(collectionName);
     return orderField ? ref.orderBy(orderField) : ref;
   }
 
@@ -502,7 +504,6 @@
     if (window.DashboardShell?.applyRoleAccess) {
       return window.DashboardShell.applyRoleAccess({
         document,
-        db,
         getRole: getCurrentAppRole,
         getUser: getCurrentAppUser,
         getCollectionQuery: getDashboardCollectionQuery
@@ -813,7 +814,6 @@
   });
   if (window.DashboardShell?.bootstrap) {
     window.DashboardShell.bootstrap({
-      db,
       getRole: getCurrentAppRole,
       refreshCoordinatorLevels,
       applyRoleAccess,

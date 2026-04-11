@@ -521,7 +521,7 @@ function loadRealtimeMengajar() {
     renderMengajarMatrix();
   });
 
-  unsubscribeMengajarGuruTugasTambahan = db.collection("guru_tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeMengajarGuruTugasTambahan = getMengajarPageDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
     semuaDataGuruTugasTambahanMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderMengajarMatrix();
   });
@@ -564,9 +564,9 @@ async function syncMengajarAsliFromBayangan() {
     Swal.fire({ title: "Menyinkronkan pembagian mengajar...", didOpen: () => Swal.showLoading() });
 
     const [bayanganSnapshot, guruSnapshot, mapelSnapshot] = await Promise.all([
-      db.collection("mengajar_bayangan").get(),
-      db.collection("guru").get(),
-      db.collection("mapel").get()
+      getMengajarPageDocumentsApi().collection("mengajar_bayangan").get(),
+      getMengajarPageDocumentsApi().collection("guru").get(),
+      getMengajarPageDocumentsApi().collection("mapel").get()
     ]);
     const guruRows = guruSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     const guruByKode = new Map(guruRows.map(guru => [String(guru.kode_guru || guru.id || "").trim(), guru]));
@@ -576,7 +576,8 @@ async function syncMengajarAsliFromBayangan() {
         return String(data.kode_mapel || doc.id || "").trim().toUpperCase();
       })
       .filter(Boolean));
-    const batch = db.batch();
+    const documentsApi = getMengajarPageDocumentsApi();
+    const batch = documentsApi.batch();
     let synced = 0;
     let skippedGb = 0;
     let skippedInvalid = 0;
@@ -613,7 +614,7 @@ async function syncMengajarAsliFromBayangan() {
         synced_at: new Date(),
         updated_at: new Date()
       };
-      batch.set(db.collection("mengajar").doc(makeMengajarDocId(tingkat, rombel, mapelKode)), payload);
+      batch.set(documentsApi.collection("mengajar").doc(makeMengajarDocId(tingkat, rombel, mapelKode)), payload);
       syncedPayloads.push(payload);
       synced++;
     });
@@ -723,7 +724,8 @@ async function syncGuruJPFromAssignments(assignments = semuaDataMengajar) {
     totals.set(guruKode, (totals.get(guruKode) || 0) + Number(item.jp_tugas_tambahan || 0));
   });
 
-  const batch = db.batch();
+  const documentsApi = getMengajarPageDocumentsApi();
+  const batch = documentsApi.batch();
   semuaDataGuru.forEach(guru => {
     const guruKode = String(guru.kode_guru || "").trim();
     if (!guruKode) return;
@@ -733,7 +735,7 @@ async function syncGuruJPFromAssignments(assignments = semuaDataMengajar) {
 
     const { id, ...guruData } = guru;
     batch.set(
-      db.collection("guru").doc(guruKode),
+      documentsApi.collection("guru").doc(guruKode),
       {
         ...guruData,
         jp: nextJP,
@@ -762,12 +764,13 @@ async function saveAllMengajar() {
 
     Swal.fire({ title: "Menyimpan pembagian mengajar...", didOpen: () => Swal.showLoading() });
 
-    const batch = db.batch();
+    const documentsApi = getMengajarPageDocumentsApi();
+    const batch = documentsApi.batch();
     let simpan = 0;
     let hapus = 0;
 
     prepared.forEach(item => {
-      const ref = db.collection("mengajar").doc(makeMengajarDocId(item.tingkat, item.rombel, item.mapel_kode));
+      const ref = documentsApi.collection("mengajar").doc(makeMengajarDocId(item.tingkat, item.rombel, item.mapel_kode));
       if (item.__delete) {
         batch.delete(ref);
         hapus++;
@@ -929,4 +932,7 @@ function importMengajarExcel(event) {
 
 if (!window.__mengajarSelectionBound) {
   window.__mengajarSelectionBound = true;
+}
+function getMengajarPageDocumentsApi() {
+  return window.SupabaseDocuments;
 }

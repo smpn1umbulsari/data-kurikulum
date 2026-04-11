@@ -481,7 +481,7 @@ function loadRealtimeTugasTambahan() {
     kelas: false
   };
 
-  unsubscribeTugasTambahan = db.collection("tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeTugasTambahan = getTugasTambahanDocumentsApi().collection("tugas_tambahan").onSnapshot(snapshot => {
     semuaDataTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     tugasTambahanSyncReady.tugas = true;
     if (semuaDataTugasTambahan.length === 0) {
@@ -500,7 +500,7 @@ function loadRealtimeTugasTambahan() {
     syncWaliKelasTugasTambahanFromState();
   });
 
-  unsubscribeTugasTambahanAssignments = db.collection("guru_tugas_tambahan").onSnapshot(snapshot => {
+  unsubscribeTugasTambahanAssignments = getTugasTambahanDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
     semuaDataGuruTugasTambahanAssignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     tugasTambahanSyncReady.assignments = true;
     requestRenderTugasTambahanViews();
@@ -548,8 +548,9 @@ async function seedDefaultTugasTambahan() {
   if (isSeedingTugasTambahan) return;
   isSeedingTugasTambahan = true;
   try {
-    const batch = db.batch();
-    batch.set(db.collection("tugas_tambahan").doc(FIXED_KEPALA_SEKOLAH_TASK_ID), {
+    const documentsApi = getTugasTambahanDocumentsApi();
+    const batch = documentsApi.batch();
+    batch.set(documentsApi.collection("tugas_tambahan").doc(FIXED_KEPALA_SEKOLAH_TASK_ID), {
       nama: FIXED_KEPALA_SEKOLAH_TASK_NAME,
       jenis: "Utama",
       jp: FIXED_KEPALA_SEKOLAH_TASK_JP,
@@ -558,7 +559,7 @@ async function seedDefaultTugasTambahan() {
       updated_at: new Date()
     }, { merge: true });
     DEFAULT_TUGAS_TAMBAHAN.forEach((item, index) => {
-      const ref = db.collection("tugas_tambahan").doc(makeTugasTambahanId(item.nama, item.jenis));
+      const ref = documentsApi.collection("tugas_tambahan").doc(makeTugasTambahanId(item.nama, item.jenis));
       batch.set(ref, {
         ...item,
         urutan: index + 1,
@@ -582,7 +583,7 @@ async function ensureFixedKepalaSekolahTugasTambahan() {
 
   isEnsuringFixedKepalaSekolahTask = true;
   try {
-    await db.collection("tugas_tambahan").doc(FIXED_KEPALA_SEKOLAH_TASK_ID).set({
+    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(FIXED_KEPALA_SEKOLAH_TASK_ID).set({
       nama: String(existing?.nama || "").trim() || FIXED_KEPALA_SEKOLAH_TASK_NAME,
       jenis: "Utama",
       jp: Number(existing?.jp ?? FIXED_KEPALA_SEKOLAH_TASK_JP),
@@ -759,7 +760,7 @@ function updateLocalGuruJpCache(guruKode, payload) {
 
 async function syncGuruJpWithTugasTambahan(guruKode, assignment) {
   const payload = buildGuruJpTugasTambahanPayload(guruKode, assignment);
-  await db.collection("guru").doc(guruKode).set(payload, { merge: true });
+  await getTugasTambahanDocumentsApi().collection("guru").doc(guruKode).set(payload, { merge: true });
   updateLocalGuruJpCache(guruKode, payload);
   return payload;
 }
@@ -854,7 +855,8 @@ async function propagateTugasTambahanChanges(taskId, taskName) {
   const affectedAssignments = semuaDataGuruTugasTambahanAssignments.filter(item => assignmentUsesTugasTambahan(item, taskId));
   if (affectedAssignments.length === 0) return 0;
 
-  const batch = db.batch();
+  const documentsApi = getTugasTambahanDocumentsApi();
+  const batch = documentsApi.batch();
   const localAssignments = [];
   affectedAssignments.forEach(item => {
     const nextAssignment = { ...item };
@@ -864,8 +866,8 @@ async function propagateTugasTambahanChanges(taskId, taskName) {
     const guruKode = String(nextAssignment.guru_kode || nextAssignment.id || "").trim();
     if (!guruKode) return;
     localAssignments.push({ guruKode, assignment: nextAssignment });
-    batch.set(db.collection("guru_tugas_tambahan").doc(guruKode), nextAssignment, { merge: true });
-    batch.set(db.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, nextAssignment), { merge: true });
+    batch.set(documentsApi.collection("guru_tugas_tambahan").doc(guruKode), nextAssignment, { merge: true });
+    batch.set(documentsApi.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, nextAssignment), { merge: true });
   });
 
   if (localAssignments.length === 0) return 0;
@@ -968,7 +970,8 @@ async function syncWaliKelasTugasTambahanFromState() {
   isSyncingWaliKelasTugasTambahan = true;
   try {
     const waliCodes = getWaliKelasGuruCodes();
-    const batch = db.batch();
+    const documentsApi = getTugasTambahanDocumentsApi();
+    const batch = documentsApi.batch();
     const guruUpdates = [];
 
     semuaDataGuruTugasTambahan.forEach(guru => {
@@ -984,8 +987,8 @@ async function syncWaliKelasTugasTambahanFromState() {
       const changed = applyWaliKelasToAssignment(assignment, waliItem, shouldHaveWali);
       if (!changed) return;
 
-      batch.set(db.collection("guru_tugas_tambahan").doc(guruKode), assignment, { merge: true });
-      batch.set(db.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, assignment), { merge: true });
+      batch.set(documentsApi.collection("guru_tugas_tambahan").doc(guruKode), assignment, { merge: true });
+      batch.set(documentsApi.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, assignment), { merge: true });
       guruUpdates.push({ guruKode, assignment });
     });
 
@@ -1003,12 +1006,12 @@ async function syncWaliKelasTugasTambahanFromState() {
 async function syncWaliKelasTugasTambahan() {
   try {
     const [tugasSnapshot, guruSnapshot, assignmentSnapshot, kelasSnapshot, mengajarSnapshot, mapelSnapshot] = await Promise.all([
-      db.collection("tugas_tambahan").get(),
-      db.collection("guru").get(),
-      db.collection("guru_tugas_tambahan").get(),
-      (typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : db.collection("kelas")).get(),
-      db.collection("mengajar").get(),
-      db.collection("mapel").get()
+      getTugasTambahanDocumentsApi().collection("tugas_tambahan").get(),
+      getTugasTambahanDocumentsApi().collection("guru").get(),
+      getTugasTambahanDocumentsApi().collection("guru_tugas_tambahan").get(),
+      (typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : getTugasTambahanDocumentsApi().collection("kelas")).get(),
+      getTugasTambahanDocumentsApi().collection("mengajar").get(),
+      getTugasTambahanDocumentsApi().collection("mapel").get()
     ]);
 
     semuaDataTugasTambahan = tugasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -1051,8 +1054,8 @@ async function saveGuruTugasTambahan(guruKode) {
   try {
     const guruPayload = buildGuruJpTugasTambahanPayload(guruKode, assignment);
     await Promise.all([
-      db.collection("guru_tugas_tambahan").doc(guruKode).set(assignment, { merge: true }),
-      db.collection("guru").doc(guruKode).set(guruPayload, { merge: true })
+      getTugasTambahanDocumentsApi().collection("guru_tugas_tambahan").doc(guruKode).set(assignment, { merge: true }),
+      getTugasTambahanDocumentsApi().collection("guru").doc(guruKode).set(guruPayload, { merge: true })
     ]);
     updateLocalGuruJpCache(guruKode, guruPayload);
     clearGuruTugasTambahanDraft(guruKode);
@@ -1080,15 +1083,16 @@ async function saveAllGuruTugasTambahan() {
 
   try {
     Swal.fire({ title: "Menyimpan matriks tugas tambahan...", didOpen: () => Swal.showLoading() });
-    const batch = db.batch();
+    const documentsApi = getTugasTambahanDocumentsApi();
+    const batch = documentsApi.batch();
     const guruUpdates = [];
 
     gurus.forEach(guru => {
       const guruKode = String(guru.kode_guru || "").trim();
       const assignment = buildGuruTugasTambahanAssignment(guruKode, guru);
 
-      batch.set(db.collection("guru_tugas_tambahan").doc(guruKode), assignment, { merge: true });
-      batch.set(db.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, assignment), { merge: true });
+      batch.set(documentsApi.collection("guru_tugas_tambahan").doc(guruKode), assignment, { merge: true });
+      batch.set(documentsApi.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, assignment), { merge: true });
       guruUpdates.push({ guruKode, assignment });
     });
 
@@ -1243,7 +1247,7 @@ async function simpanTugasTambahan() {
       btn.innerText = "Menyimpan...";
     }
 
-    await db.collection("tugas_tambahan").doc(id).set({
+    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(id).set({
       nama,
       jenis,
       jp,
@@ -1360,7 +1364,7 @@ async function saveEditTugasTambahan(id) {
       jp,
       updated_at: new Date()
     };
-    await db.collection("tugas_tambahan").doc(id).set(tugasPayload, { merge: true });
+    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(id).set(tugasPayload, { merge: true });
     semuaDataTugasTambahan = semuaDataTugasTambahan.map(item =>
       item.id === id ? { ...item, ...tugasPayload } : item
     );
@@ -1396,11 +1400,14 @@ async function hapusTugasTambahan(id) {
   if (!confirm.isConfirmed) return;
 
   try {
-    await db.collection("tugas_tambahan").doc(id).delete();
+    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(id).delete();
     if (currentEditTugasTambahan === id) currentEditTugasTambahan = null;
     Swal.fire("Berhasil", "Tugas tambahan dihapus.", "success");
   } catch (error) {
     console.error(error);
     Swal.fire("Gagal", "Tugas tambahan belum berhasil dihapus.", "error");
   }
+}
+function getTugasTambahanDocumentsApi() {
+  return window.SupabaseDocuments;
 }

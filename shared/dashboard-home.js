@@ -1,6 +1,10 @@
 (function initDashboardHome(global) {
   if (global.DashboardHome) return;
 
+  function getDocumentsApi() {
+    return global.SupabaseDocuments;
+  }
+
   function escapeHtml(value) {
     return global.AppUtils?.escapeHtml ? global.AppUtils.escapeHtml(value) : String(value ?? "");
   }
@@ -186,13 +190,14 @@
   async function loadHomeStats(options = {}) {
     const setText = (id, value) => global.AppDom?.setText?.(id, value);
     try {
+      const documentsApi = getDocumentsApi();
       const [guruSnap, siswaSnap, kelasSnap, mapelSnap, mengajarSnap, tugasSnap] = await Promise.all([
-        db.collection("guru").get(),
+        documentsApi.collection("guru").get(),
         options.getCollectionQuery("siswa").get(),
         options.getCollectionQuery("kelas").get(),
-        db.collection("mapel").get(),
-        db.collection("mengajar").get(),
-        db.collection("tugas_tambahan").get()
+        documentsApi.collection("mapel").get(),
+        documentsApi.collection("mengajar").get(),
+        documentsApi.collection("tugas_tambahan").get()
       ]);
       const guru = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -257,14 +262,15 @@
     }
 
     try {
+      const documentsApi = getDocumentsApi();
       const [guruSnap, siswaSnap, kelasSnap, mapelSnap, mengajarSnap, tugasSnap, tugasGuruSnap] = await Promise.all([
-        db.collection("guru").get(),
+        documentsApi.collection("guru").get(),
         options.getCollectionQuery("siswa").get(),
         options.getCollectionQuery("kelas").get(),
-        db.collection("mapel_bayangan").get(),
-        db.collection("mengajar_bayangan").get(),
-        db.collection("tugas_tambahan").get(),
-        db.collection("guru_tugas_tambahan").doc(kodeGuru).get()
+        documentsApi.collection("mapel_bayangan").get(),
+        documentsApi.collection("mengajar_bayangan").get(),
+        documentsApi.collection("tugas_tambahan").get(),
+        documentsApi.collection("guru_tugas_tambahan").doc(kodeGuru).get()
       ]);
       const guruList = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
