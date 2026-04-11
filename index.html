@@ -3,16 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <title>Redirect...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260408a"></script>
+  <script src="supabase-firestore-compat.js?v=20260408a"></script>
+  <script src="shared/maintenance-mode.js?v=20260411a"></script>
 </head>
 <body>
 
 <script>
-  // cek status login
-  if (localStorage.getItem("login") === "true") {
-    window.location.href = "dashboard.html";
-  } else {
-    window.location.href = "login.html";
-  }
+  (async function redirectAppEntry() {
+    const isLoggedIn = localStorage.getItem("login") === "true";
+    let role = "";
+    try {
+      role = JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
+    } catch {}
+
+    const maintenanceState = await window.MaintenanceMode.load({ force: true });
+    if (maintenanceState.enabled && !isLoggedIn && !window.MaintenanceMode.isAdminRole(role)) {
+      window.location.replace("maintenance.html");
+      return;
+    }
+
+    window.location.replace(isLoggedIn ? "dashboard.html" : "login.html");
+  })();
 </script>
 
 </body>

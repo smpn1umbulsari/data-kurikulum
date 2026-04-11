@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maintenance Sistem</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=20260408a"></script>
+  <script src="supabase-firestore-compat.js?v=20260408a"></script>
+  <script src="shared/maintenance-mode.js?v=20260411a"></script>
+  <style>
+    :root {
+      --bg-start: #667eea;
+      --bg-end: #764ba2;
+      --text-main: #ffffff;
+      --text-soft: rgba(255, 255, 255, 0.86);
+      --glass-bg: rgba(255, 255, 255, 0.12);
+      --glass-line: rgba(255, 255, 255, 0.22);
+      --glass-shadow: rgba(17, 24, 39, 0.26);
+      --btn-main: #ffffff;
+      --btn-text: #5b43b1;
+      --btn-soft: rgba(255, 255, 255, 0.14);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Poppins", "Segoe UI", sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      color: var(--text-main);
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.2), transparent 22%),
+        radial-gradient(circle at 82% 25%, rgba(255, 255, 255, 0.12), transparent 18%),
+        linear-gradient(135deg, var(--bg-start), var(--bg-end));
+    }
+
+    .maintenance-bg-shape,
+    .maintenance-bg-shape::before,
+    .maintenance-bg-shape::after {
+      position: absolute;
+      content: "";
+      border-radius: 999px;
+      filter: blur(6px);
+      pointer-events: none;
+    }
+
+    .maintenance-bg-shape {
+      width: 340px;
+      height: 340px;
+      top: -120px;
+      right: -80px;
+      background: rgba(255, 255, 255, 0.12);
+      animation: floatGlow 9s ease-in-out infinite;
+    }
+
+    .maintenance-bg-shape::before {
+      width: 240px;
+      height: 240px;
+      left: -540px;
+      top: 440px;
+      background: rgba(255, 255, 255, 0.09);
+      animation: floatGlow 11s ease-in-out infinite reverse;
+    }
+
+    .maintenance-bg-shape::after {
+      width: 160px;
+      height: 160px;
+      left: -220px;
+      top: 160px;
+      background: rgba(255, 255, 255, 0.14);
+      animation: pulseGlow 4.2s ease-in-out infinite;
+    }
+
+    .maintenance-shell {
+      position: relative;
+      width: min(960px, calc(100vw - 32px));
+      z-index: 1;
+    }
+
+    .maintenance-card {
+      position: relative;
+      padding: 42px 36px;
+      border-radius: 28px;
+      text-align: center;
+      backdrop-filter: blur(15px);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-line);
+      box-shadow: 0 28px 60px var(--glass-shadow);
+      animation: fadeIn 1.2s ease;
+      overflow: hidden;
+    }
+
+    .maintenance-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 45%, rgba(255, 255, 255, 0.05));
+      pointer-events: none;
+    }
+
+    .maintenance-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 16px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: rgba(255, 255, 255, 0.96);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    .maintenance-badge-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #ffffff;
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.8);
+      animation: pulseGlow 2s ease-in-out infinite;
+    }
+
+    .maintenance-logo-wrap {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 22px;
+      border-radius: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 16px 32px rgba(15, 23, 42, 0.18);
+      animation: fadeIn 1.4s ease;
+    }
+
+    .maintenance-logo {
+      width: 72%;
+      height: 72%;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 16px rgba(15, 23, 42, 0.2));
+    }
+
+    .maintenance-title {
+      font-size: clamp(2.3rem, 5vw, 3.6rem);
+      color: #fff;
+      margin-bottom: 12px;
+      line-height: 1.06;
+      animation: slideDown 1s ease;
+    }
+
+    .maintenance-copy {
+      max-width: 680px;
+      margin: 0 auto 24px;
+      color: var(--text-soft);
+      font-size: 1.08rem;
+      line-height: 1.8;
+      animation: fadeIn 1.8s ease;
+    }
+
+    .maintenance-loader {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 26px;
+    }
+
+    .maintenance-dot {
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+
+    .maintenance-dot:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .maintenance-dot:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    .maintenance-meta {
+      width: min(760px, 100%);
+      margin: 0 auto;
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.88);
+      line-height: 1.75;
+    }
+
+    .maintenance-meta strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 0.95rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .maintenance-actions {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 26px;
+    }
+
+    .maintenance-btn {
+      border: none;
+      padding: 13px 20px;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 0.96rem;
+      font-weight: 700;
+      transition: transform 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+    }
+
+    .maintenance-btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .maintenance-btn-primary {
+      background: var(--btn-main);
+      color: var(--btn-text);
+      box-shadow: 0 14px 28px rgba(255, 255, 255, 0.18);
+    }
+
+    .maintenance-btn-secondary {
+      background: var(--btn-soft);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .maintenance-status-line {
+      margin-top: 16px;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 0.93rem;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: scale(0);
+      }
+      40% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideDown {
+      from {
+        transform: translateY(-30px);
+        opacity: 0;
+      }
+      to {
+        transform: translateY(0);
+        opacity: 1;
+      }
+    }
+
+    @keyframes floatGlow {
+      0%, 100% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      50% {
+        transform: translate3d(-18px, 22px, 0) scale(1.08);
+      }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% {
+        transform: scale(0.92);
+        opacity: 0.7;
+      }
+      50% {
+        transform: scale(1.14);
+        opacity: 1;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        overflow: auto;
+        padding: 20px 0;
+      }
+
+      .maintenance-card {
+        padding: 32px 22px;
+      }
+
+      .maintenance-logo-wrap {
+        width: 82px;
+        height: 82px;
+        border-radius: 24px;
+      }
+
+      .maintenance-copy {
+        font-size: 1rem;
+      }
+
+      .maintenance-meta {
+        padding: 16px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .maintenance-card,
+      .maintenance-title,
+      .maintenance-copy,
+      .maintenance-logo-wrap,
+      .maintenance-dot,
+      .maintenance-bg-shape,
+      .maintenance-bg-shape::before,
+      .maintenance-bg-shape::after,
+      .maintenance-badge-dot,
+      .maintenance-btn {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="maintenance-bg-shape" aria-hidden="true"></div>
+
+  <main class="maintenance-shell">
+    <section class="maintenance-card">
+      <div class="maintenance-badge">
+        <span class="maintenance-badge-dot"></span>
+        Maintenance Mode
+      </div>
+
+      <div class="maintenance-logo-wrap">
+        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="maintenance-logo">
+      </div>
+
+      <h1 class="maintenance-title" id="maintenanceTitle">Sedang Maintenance</h1>
+      <p class="maintenance-copy" id="maintenanceMessage">Kami sedang melakukan peningkatan sistem. Silakan kembali beberapa saat lagi.</p>
+
+      <div class="maintenance-loader" aria-hidden="true">
+        <div class="maintenance-dot"></div>
+        <div class="maintenance-dot"></div>
+        <div class="maintenance-dot"></div>
+      </div>
+
+      <div class="maintenance-meta">
+        <strong id="maintenanceStatusBadge">Status Sistem</strong>
+        <p id="maintenanceMeta">Mode maintenance sedang diperiksa. Halaman ini akan menyesuaikan otomatis ketika sistem sudah dibuka kembali.</p>
+      </div>
+
+      <div class="maintenance-actions">
+        <button class="maintenance-btn maintenance-btn-primary" id="maintenanceRetryBtn" type="button">Coba Lagi</button>
+        <button class="maintenance-btn maintenance-btn-secondary" type="button" onclick="window.location.reload()">Muat Ulang</button>
+      </div>
+
+      <div class="maintenance-status-line">Akses login sementara diarahkan ke halaman ini sampai proses maintenance selesai.</div>
+    </section>
+  </main>
+
+  <script>
+    async function refreshMaintenancePage() {
+      const titleEl = document.getElementById("maintenanceTitle");
+      const messageEl = document.getElementById("maintenanceMessage");
+      const badgeEl = document.getElementById("maintenanceStatusBadge");
+      const metaEl = document.getElementById("maintenanceMeta");
+      const retryBtn = document.getElementById("maintenanceRetryBtn");
+
+      const state = await window.MaintenanceMode.load({ force: true });
+      const safeState = window.MaintenanceMode.normalizeState(state);
+
+      titleEl.textContent = safeState.title;
+      messageEl.textContent = safeState.message;
+
+      if (safeState.enabled) {
+        badgeEl.textContent = "Status Sistem";
+        metaEl.textContent = "Mode maintenance masih aktif. Silakan tunggu sebentar, lalu tekan tombol Coba Lagi untuk memeriksa ulang.";
+        retryBtn.textContent = "Coba Lagi";
+        retryBtn.onclick = () => window.location.reload();
+        return;
+      }
+
+      badgeEl.textContent = "Sistem Kembali Tersedia";
+      metaEl.textContent = "Maintenance sudah dimatikan. Anda bisa kembali ke halaman login dan masuk seperti biasa.";
+      retryBtn.textContent = "Masuk ke Login";
+      retryBtn.onclick = () => window.location.replace("login.html");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      refreshMaintenancePage();
+    });
+  </script>
+</body>
+</html>

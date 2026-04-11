@@ -7,6 +7,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
   <script src="supabase-firestore-compat.js?v=20260408a"></script>
+  <script src="shared/maintenance-mode.js?v=20260411a"></script>
+  <script>
+    if (window.MaintenanceMode?.peekCached?.().enabled) {
+      window.location.replace("maintenance.html");
+    }
+  </script>
 
   <style>
     body {
@@ -200,6 +206,35 @@
       transform: translateY(0) scale(1);
     }
 
+    .login-box-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      text-align: center;
+    }
+
+    .login-box-logo-wrap {
+      width: 88px;
+      height: 88px;
+      border-radius: 26px;
+      background: linear-gradient(180deg, #f8fbff 0%, #e0f2fe 100%);
+      border: 1px solid rgba(59, 130, 246, 0.14);
+      box-shadow: 0 18px 34px rgba(37, 99, 235, 0.14);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-box-logo {
+      width: 72%;
+      height: 72%;
+      object-fit: contain;
+      filter: drop-shadow(0 8px 14px rgba(15, 23, 42, 0.14));
+    }
+
     h2 {
       text-align: center;
       margin: 0 0 8px;
@@ -349,17 +384,18 @@
         height: 96px;
       }
 
-      .login-intro-logo-wrap.secondary {
-        width: 78px;
-        height: 78px;
-      }
-
       .login-intro-panel {
         padding: 32px 18px;
       }
 
       .login-intro-subtitle {
         font-size: 14px;
+      }
+
+      .login-box-logo-wrap {
+        width: 78px;
+        height: 78px;
+        border-radius: 22px;
       }
     }
 
@@ -406,6 +442,12 @@
 
       .login-subtitle {
         color: #94a3b8;
+      }
+
+      .login-box-logo-wrap {
+        background: linear-gradient(180deg, rgba(15, 23, 42, 0.92), rgba(14, 116, 144, 0.36));
+        border-color: rgba(125, 211, 252, 0.22);
+        box-shadow: 0 22px 36px rgba(2, 6, 23, 0.34);
       }
 
       input,
@@ -488,9 +530,6 @@
         <div class="login-intro-logo-wrap">
           <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-intro-logo">
         </div>
-        <div class="login-intro-logo-wrap secondary">
-          <img src="img/logo_pemda.png" alt="Logo Pemerintah Daerah" class="login-intro-logo">
-        </div>
       </div>
       <div class="login-intro-kicker">Sistem Informasi Kurikulum</div>
       <h1 class="login-intro-title">SMP Negeri 1 Umbulsari</h1>
@@ -499,6 +538,11 @@
   </div>
 
   <div class="login-box" id="loginBox">
+    <div class="login-box-brand">
+      <div class="login-box-logo-wrap">
+        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-box-logo">
+      </div>
+    </div>
     <h2>Login</h2>
     <p class="login-subtitle">Masuk setelah splash screen sekolah selesai</p>
 
@@ -519,9 +563,27 @@
 <script>
   let daftarSemesterLogin = [];
 
-  // Cegah masuk ke login jika sudah login
-  if (localStorage.getItem("login") === "true") {
-    window.location.href = "dashboard.html";
+  function getStoredLoginUserRole() {
+    try {
+      return JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function enforceMaintenanceBeforeLogin() {
+    const isLoggedIn = localStorage.getItem("login") === "true";
+    const role = getStoredLoginUserRole();
+    const state = await window.MaintenanceMode.load({ force: true });
+    if (state.enabled && !isLoggedIn && !window.MaintenanceMode.isAdminRole(role)) {
+      window.MaintenanceMode.goToMaintenance();
+      return true;
+    }
+    if (isLoggedIn) {
+      window.location.replace("dashboard.html");
+      return true;
+    }
+    return false;
   }
 
   function makeDefaultLoginSemester() {
@@ -597,6 +659,12 @@
     const error = document.getElementById("error");
     error.style.display = "none";
 
+    const maintenanceState = await window.MaintenanceMode.load({ force: true });
+    if (maintenanceState.enabled && !window.MaintenanceMode.isAdminRole(getStoredLoginUserRole())) {
+      window.MaintenanceMode.goToMaintenance();
+      return;
+    }
+
     if ((username === "admin" || !username) && (password === "admin123" || password === "kurikulumspenturi")) {
       localStorage.setItem("login", "true");
       localStorage.setItem("appUser", JSON.stringify({
@@ -667,8 +735,11 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    loadSemesterLoginOptions();
-    playLoginEntrance();
+    enforceMaintenanceBeforeLogin().then(isBlocked => {
+      if (isBlocked) return;
+      loadSemesterLoginOptions();
+      playLoginEntrance();
+    });
   });
 </script>
 
