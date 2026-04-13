@@ -53,6 +53,10 @@
     { id: "rapor-genap", name: "Pembagian Rapor Semester Genap", panel: "kegiatan-sekolah", category: "Kegiatan Sekolah", startDate: "", endDate: "", active: false, note: "Gunakan rentang jika ada beberapa hari layanan." },
     { id: "libur-semester-genap", name: "Libur Semester Genap", panel: "libur-sekolah", category: "Libur Sekolah", startDate: "", endDate: "", active: false, note: "Pilih awal dan akhir libur semester." },
     { id: "fakultatif-kolaborasi", name: "Pekan Efektif Fakultatif", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal khusus untuk pekan efektif fakultatif." },
+    { id: "fakultatif-ujian", name: "Ujian", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal pelaksanaan ujian." },
+    { id: "fakultatif-class-meeting", name: "Class Meeting", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal kegiatan class meeting." },
+    { id: "fakultatif-pondok-romadhon", name: "Pondok Romadhon", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal kegiatan pondok romadhon." },
+    { id: "fakultatif-p5", name: "P5", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal kegiatan P5." },
     { id: "hari-bumi", name: "Hari Bumi", panel: "hari-penting", category: "Hari Penting Nasional", startDate: "", endDate: "", active: false, note: "Gunakan jika sekolah mengadakan kegiatan tematik lingkungan." }
   ];
 
@@ -1906,4 +1910,5 @@
   global.exportKalenderKaldikPdf = exportKalenderKaldikPdf;
   global.exportKalenderRpePdf = exportKalenderRpePdf;
   global.saveKalenderPendidikan = saveKalenderPendidikan;
+  global.getKalenderRpeSummary = getRpeSemesterSummary;
 })(window);

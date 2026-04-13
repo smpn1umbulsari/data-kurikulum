@@ -58,6 +58,33 @@
     }).filter(Boolean);
   }
 
+  function isPresenceOnline(record = {}, thresholdMs = 180000) {
+    if (typeof global.DashboardShell?.isUserOnline === "function") {
+      return global.DashboardShell.isUserOnline(record, thresholdMs);
+    }
+    const raw = record?.last_seen_at || record?.updated_at || record?.created_at || "";
+    const seenAt = raw ? new Date(raw).getTime() : 0;
+    if (!seenAt) return Boolean(record?.online);
+    return Boolean(record?.online) && Date.now() - seenAt <= Number(thresholdMs || 180000);
+  }
+
+  function formatPresenceAge(value) {
+    const seenAt = value ? new Date(value).getTime() : 0;
+    if (!seenAt) return "Belum terdeteksi";
+    const diff = Math.max(0, Date.now() - seenAt);
+    if (diff < 60000) return "Baru saja";
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes} menit lalu`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} jam lalu`;
+    const days = Math.floor(hours / 24);
+    return `${days} hari lalu`;
+  }
+
+  function getPresenceUserLabel(record = {}) {
+    return record?.nama || record?.username || record?.kode_guru || "User";
+  }
+
   function renderMainHome() {
     return `
       <section class="dashboard-hero">
@@ -76,6 +103,11 @@
           <div class="dashboard-stat"><span>Jumlah Rombel</span><strong id="homeKelasCount">...</strong></div>
           <div class="dashboard-stat"><span>Total Siswa</span><strong id="homeSiswaCount">...</strong></div>
         </div>
+      </section>
+      <section class="dashboard-card-lite dashboard-online-card">
+        <span class="dashboard-card-label">User Online</span>
+        <h3 id="homeOnlineCount">0 user</h3>
+        <div id="homeOnlineList" class="dashboard-mini-list"><span>Memuat user online...</span></div>
       </section>
       <section class="dashboard-grid">
         <article class="dashboard-card-lite"><span class="dashboard-card-label">Pembelajaran</span><h3 id="homeMapelCount">0 mapel</h3><p id="homeMengajarCount">0 pembagian mengajar tersimpan</p></article>
@@ -191,13 +223,14 @@
     const setText = (id, value) => global.AppDom?.setText?.(id, value);
     try {
       const documentsApi = getDocumentsApi();
-      const [guruSnap, siswaSnap, kelasSnap, mapelSnap, mengajarSnap, tugasSnap] = await Promise.all([
+      const [guruSnap, siswaSnap, kelasSnap, mapelSnap, mengajarSnap, tugasSnap, presenceSnap] = await Promise.all([
         documentsApi.collection("guru").get(),
         options.getCollectionQuery("siswa").get(),
         options.getCollectionQuery("kelas").get(),
         documentsApi.collection("mapel").get(),
         documentsApi.collection("mengajar").get(),
-        documentsApi.collection("tugas_tambahan").get()
+        documentsApi.collection("tugas_tambahan").get(),
+        documentsApi.collection("user_presence").get()
       ]);
       const guru = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -205,6 +238,7 @@
       const mapel = mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const mengajar = mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const tugas = tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const presenceRows = presenceSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       const siswaByLevel = { 7: 0, 8: 0, 9: 0, lain: 0 };
       siswa.forEach(item => {
@@ -224,6 +258,10 @@
       const waliCount = kelas.filter(item => String(item.kode_guru || "").trim() || String(item.wali_kelas || "").trim()).length;
       const kelasBayanganCount = siswa.filter(item => String(item.kelas_bayangan || "").trim()).length;
       const totalTugasJp = tugas.reduce((sum, item) => sum + Number(item.jp || 0), 0);
+      const onlineUsers = presenceRows
+        .filter(item => isPresenceOnline(item))
+        .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
+        .slice(0, 10);
 
       setText("homeGuruCount", `${guru.length}`);
       setText("homeKelasCount", `${kelas.length}`);
@@ -234,6 +272,7 @@
       setText("homeKelasBayanganInfo", `${kelasBayanganCount} siswa memiliki kelas real manual`);
       setText("homeTugasTambahanCount", `${tugas.length} tugas`);
       setText("homeTugasTambahanJp", `${totalTugasJp} JP terdaftar`);
+      setText("homeOnlineCount", `${onlineUsers.length} user online`);
       setText("homeUpdatedAt", `Data dimuat ${new Date().toLocaleString("id-ID")}`);
 
       global.AppDom?.setHtml?.("homeGuruJpList", guruByJp.length
@@ -245,6 +284,14 @@
         <span><strong>Kelas 9</strong><b>${siswaByLevel[9]} siswa</b></span>
         <span><strong>Belum valid</strong><b>${siswaByLevel.lain} siswa</b></span>
       `);
+      global.AppDom?.setHtml?.("homeOnlineList", onlineUsers.length
+        ? onlineUsers.map(item => `
+            <span class="dashboard-online-chip">
+              <strong>${escapeHtml(getPresenceUserLabel(item))}</strong>
+              <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} · ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
+            </span>
+          `).join("")
+        : "<span>Belum ada user yang sedang online.</span>");
     } catch (error) {
       console.error(error);
       setText("homeUpdatedAt", "Ringkasan belum berhasil dimuat.");
@@ -348,6 +395,7 @@
     getMapelJp,
     formatGuruName,
     getTugasNames,
+    isPresenceOnline,
     renderMainHome,
     renderGuruHome,
     renderKoordinatorHome,

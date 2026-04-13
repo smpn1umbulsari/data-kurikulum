@@ -4,6 +4,8 @@
   const AI_SOAL_LAST_FORM_KEY = "aiSoalLastForm";
   const AI_SOAL_LAST_RESULT_KEY = "aiSoalLastResult";
   const AI_SOAL_ACTIVE_TAB_KEY = "aiSoalActiveTab";
+  const AI_SOAL_PAGE_KEY = "ai-soal";
+  const AI_PERANGKAT_PAGE_KEY = "generate-perangkat-pembelajaran";
   const AI_SOAL_APP_IDENTITY = {
     sekolah: "SMPN 1 UMBULSARI",
     jenjang: "SMP/MTs"
@@ -31,7 +33,10 @@
     perangkatCakupan: "1 Semester",
     perangkatModel: "Pembelajaran Diferensiasi",
     perangkatAlokasi: "2 x 40 menit",
-    perangkatProfil: "Beriman, bertakwa kepada Tuhan YME, bernalar kritis, gotong royong"
+    perangkatProfil: "Beriman, bertakwa kepada Tuhan YME, bernalar kritis, gotong royong",
+    mingguEfektif: "",
+    mingguEfektifGanjil: "",
+    mingguEfektifGenap: ""
   };
   const AI_SOAL_KELAS_OPTIONS = ["Kelas 7", "Kelas 8", "Kelas 9"];
   const AI_SOAL_BENTUK_OPTIONS = [
@@ -63,18 +68,33 @@
   let aiSoalIsGenerating = false;
   let aiSoalLastResult = "";
   let aiSoalMapelOptions = [];
+  let aiSoalCurrentPageKey = AI_SOAL_PAGE_KEY;
 
-  function getAiSoalActiveTab() {
+  function getAiSoalPageKey(context = {}) {
+    return String(context?.page || "").trim() === AI_PERANGKAT_PAGE_KEY ? AI_PERANGKAT_PAGE_KEY : AI_SOAL_PAGE_KEY;
+  }
+
+  function getAiSoalAllowedTabs(pageKey = AI_SOAL_PAGE_KEY) {
+    return pageKey === AI_PERANGKAT_PAGE_KEY ? ["perangkat", "ai-langsung"] : ["soal"];
+  }
+
+  function getAiSoalDefaultTab(pageKey = AI_SOAL_PAGE_KEY) {
+    if (pageKey === AI_PERANGKAT_PAGE_KEY) return "ai-langsung";
+    return getAiSoalAllowedTabs(pageKey)[0] || AI_SOAL_DEFAULTS.tab;
+  }
+
+  function getAiSoalActiveTab(pageKey = aiSoalCurrentPageKey) {
     const raw = String(localStorage.getItem(AI_SOAL_ACTIVE_TAB_KEY) || AI_SOAL_DEFAULTS.tab).trim();
-    return AI_PROMPT_TABS.some(item => item.value === raw) ? raw : AI_SOAL_DEFAULTS.tab;
+    const allowedTabs = getAiSoalAllowedTabs(pageKey);
+    return allowedTabs.includes(raw) ? raw : getAiSoalDefaultTab(pageKey);
   }
 
   function setAiSoalActiveTab(tab) {
-    const nextTab = AI_PROMPT_TABS.some(item => item.value === tab) ? tab : AI_SOAL_DEFAULTS.tab;
+    const nextTab = getAiSoalAllowedTabs(aiSoalCurrentPageKey).includes(tab) ? tab : getAiSoalDefaultTab(aiSoalCurrentPageKey);
     localStorage.setItem(AI_SOAL_ACTIVE_TAB_KEY, nextTab);
     const content = document.getElementById("content");
     if (!content) return;
-    content.innerHTML = renderAiSoalPage();
+    content.innerHTML = renderAiSoalPage({ page: aiSoalCurrentPageKey });
     initializeAiSoalPage();
   }
 
@@ -168,7 +188,8 @@
       perangkatCakupan: formData.perangkatCakupan,
       perangkatModel: formData.perangkatModel,
       perangkatAlokasi: formData.perangkatAlokasi,
-      perangkatProfil: formData.perangkatProfil
+      perangkatProfil: formData.perangkatProfil,
+      mingguEfektif: formData.mingguEfektif
     }));
   }
 
@@ -184,9 +205,9 @@
     return normalized;
   }
 
-  function getAiSoalFormState() {
+  function getAiSoalFormState(pageKey = aiSoalCurrentPageKey) {
     const stored = getAiSoalStoredForm();
-    const activeTab = getAiSoalActiveTab();
+    const activeTab = getAiSoalActiveTab(pageKey);
     return {
       ...AI_SOAL_DEFAULTS,
       ...stored,
@@ -283,7 +304,7 @@
   function rerenderAiSoalForm() {
     const content = document.getElementById("content");
     if (!content) return;
-    content.innerHTML = renderAiSoalPage();
+    content.innerHTML = renderAiSoalPage({ page: aiSoalCurrentPageKey });
     initializeAiSoalPage();
   }
 
@@ -300,27 +321,27 @@
     return ["perangkat", "ai-langsung"].includes(String(tab || "").trim());
   }
 
-  function getAiSoalTabCopy(tab = "") {
-    if (tab === "soal") {
+  function getAiSoalTabCopy(tab = "", pageKey = AI_SOAL_PAGE_KEY) {
+    if (pageKey === AI_PERANGKAT_PAGE_KEY) {
+      if (tab === "ai-langsung") {
+        return {
+          title: "Generate Perangkat AI Langsung",
+          description: "Tab ini langsung menghasilkan dokumen perangkat pembelajaran melalui Supabase Edge Function dan OpenAI, lalu mengunduh file Word hasilnya. Cocok saat Anda ingin file jadi, bukan prompt.",
+          resultTitle: "Hasil Generate Perangkat",
+          resultDescription: "File hasil generate akan langsung diunduh. Dokumen terakhir hanya tersimpan di browser ini.",
+          submitLabel: "Generate File"
+        };
+      }
       return {
-        title: "Prompt Soal",
+        title: "Prompt Perangkat Pembelajaran",
         description: "Identitas dokumen mengikuti data aplikasi. Hasil diarahkan untuk format Word dan memuat tempat tanda tangan kepala sekolah.",
         resultTitle: "Hasil Prompt",
         resultDescription: "Prompt tidak disimpan ke database. Hasil terakhir hanya tersimpan di browser ini.",
         submitLabel: "Buat Prompt"
       };
     }
-    if (tab === "ai-langsung") {
-      return {
-        title: "Generate AI Langsung",
-        description: "Tab ini langsung menghasilkan dokumen perangkat pembelajaran melalui Supabase Edge Function dan OpenAI. Cocok saat Anda ingin hasil jadi, bukan prompt.",
-        resultTitle: "Hasil Generate AI",
-        resultDescription: "Hasil AI tidak disimpan ke database. Dokumen terakhir hanya tersimpan di browser ini.",
-        submitLabel: "Generate AI"
-      };
-    }
     return {
-      title: "Prompt Perangkat Pembelajaran",
+      title: "Prompt Soal",
       description: "Identitas dokumen mengikuti data aplikasi. Hasil diarahkan untuk format Word dan memuat tempat tanda tangan kepala sekolah.",
       resultTitle: "Hasil Prompt",
       resultDescription: "Prompt tidak disimpan ke database. Hasil terakhir hanya tersimpan di browser ini.",
@@ -340,28 +361,27 @@
   async function generateAiSoalDirectViaHttp(payload) {
     const config = global.supabaseConfig || {};
     if (!config.url || !config.anonKey) {
-      throw new Error("Konfigurasi Supabase belum lengkap untuk AI langsung.");
+      throw new Error("Konfigurasi Supabase belum lengkap untuk generate perangkat langsung.");
     }
     const response = await fetch(`${String(config.url).replace(/\/+$/, "")}/functions/v1/generate-soal-ai`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        apikey: config.anonKey,
-        Authorization: `Bearer ${config.anonKey}`
+        apikey: config.anonKey
       },
       body: JSON.stringify(buildAiDirectRequestPayload(payload))
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      throw new Error(
+      throw new Error(normalizeAiSoalDirectErrorMessage(
         String(result?.error || "").trim() ||
         String(result?.message || "").trim() ||
         `Edge Function gagal (${response.status}).`
-      );
+      ));
     }
     const content = String(result?.content || "").trim();
     if (!content) {
-      throw new Error(String(result?.error || "").trim() || "AI belum mengembalikan isi dokumen.");
+      throw new Error(normalizeAiSoalDirectErrorMessage(String(result?.error || "").trim() || "Perangkat pembelajaran belum berhasil dibuat."));
     }
     return {
       content,
@@ -369,10 +389,32 @@
     };
   }
 
-  function renderAiPromptTabs(activeTab) {
+  function normalizeAiSoalDirectErrorMessage(message = "") {
+    const raw = String(message || "").trim();
+    if (!raw) return "Perangkat pembelajaran belum berhasil dibuat.";
+    return raw
+      .replace(/data generator soal belum lengkap/gi, "Data generator perangkat belum lengkap")
+      .replace(/generator soal ai gagal dijalankan/gi, "Generator perangkat AI gagal dijalankan")
+      .replace(/\bsoal\b/gi, "perangkat");
+  }
+
+  function isOpenAiQuotaError(message = "") {
+    const raw = String(message || "").toLowerCase();
+    return (
+      raw.includes("current quota") ||
+      raw.includes("insufficient_quota") ||
+      raw.includes("billing") ||
+      raw.includes("quota") ||
+      raw.includes("billing details")
+    );
+  }
+
+  function renderAiPromptTabs(activeTab, pageKey = AI_SOAL_PAGE_KEY) {
+    const allowedTabs = getAiSoalAllowedTabs(pageKey);
+    if (allowedTabs.length <= 1) return "";
     return `
       <div class="ai-soal-tabbar">
-        ${AI_PROMPT_TABS.map(item => `
+        ${AI_PROMPT_TABS.filter(item => allowedTabs.includes(item.value)).map(item => `
           <button type="button" class="ai-soal-tab ${item.value === activeTab ? "active" : ""}" onclick="setAiSoalActiveTab('${escapeAiSoalHtml(item.value)}')">
             ${escapeAiSoalHtml(item.label)}
           </button>
@@ -381,7 +423,59 @@
     `;
   }
 
-  function renderPerangkatFields(form) {
+  function getAiSoalKaldikSemesterKey() {
+    try {
+      const semester = JSON.parse(localStorage.getItem("appSemester") || "{}");
+      const raw = String(semester?.semester || "").trim().toLowerCase();
+      return raw === "ganjil" ? "ganjil" : "genap";
+    } catch {
+      return "genap";
+    }
+  }
+
+  function getAiSoalMingguEfektifBySemester(semesterKey = "") {
+    try {
+      if (typeof global.getKalenderRpeSummary === "function") {
+        const summary = global.getKalenderRpeSummary(semesterKey);
+        if (summary) {
+          const total = Number(summary?.totals?.effectiveCount || 0);
+          if (total > 0) return String(total);
+        }
+      }
+      const raw = JSON.parse(localStorage.getItem("kalenderPendidikanState") || "{}");
+      const schoolEvents = Array.isArray(raw?.schoolEvents) ? raw.schoolEvents : [];
+      const items = schoolEvents.filter(item => String(item.panel || "").trim() === "minggu-efektif-fakultatif");
+      if (!items.length) return "0";
+      const total = items.reduce((acc, item) => {
+        const start = String(item.startDate || "").trim();
+        const end = String(item.endDate || item.startDate || "").trim();
+        if (!start || !end) return acc;
+        const startDate = new Date(`${start}T00:00:00`);
+        const endDate = new Date(`${end}T00:00:00`);
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return acc;
+        return acc + Math.max(1, Math.floor((endDate.getTime() - startDate.getTime()) / 86400000) + 1);
+      }, 0);
+      return String(total || items.length);
+    } catch {
+      return "0";
+    }
+  }
+
+  function buildAiSoalMingguEfektifText(semesterKey = "") {
+    const key = String(semesterKey || getAiSoalKaldikSemesterKey()).trim();
+    if (!key || key === "ganjil" || key === "genap") {
+      return getAiSoalMingguEfektifBySemester(key || getAiSoalKaldikSemesterKey());
+    }
+    return "0";
+  }
+
+  function buildAiSoalMingguEfektifYearText() {
+    const ganjil = buildAiSoalMingguEfektifText("ganjil");
+    const genap = buildAiSoalMingguEfektifText("genap");
+    return `Semester Ganjil: ${ganjil} minggu | Semester Genap: ${genap} minggu`;
+  }
+
+  function renderPerangkatPromptFields(form) {
     const selectedMapel = getAiSoalSelectedMapelDetail(form.mapel);
     const cpText = getAiSoalMapelCpText(selectedMapel);
     const tujuanCpText = getAiSoalMapelTujuanText(selectedMapel);
@@ -430,6 +524,58 @@
         <textarea name="tujuan" rows="3" placeholder="Contoh: Peserta didik mampu memahami dan menerapkan materi">${escapeAiSoalHtml(form.tujuan)}</textarea>
       </label>
       `}
+      <label class="form-group ai-soal-form-grid-span">
+        <span>Catatan Tambahan</span>
+        <textarea name="catatanTambahan" rows="3" placeholder="Contoh: Susun dalam format Word dan tambahkan tempat tanda tangan kepala sekolah">${escapeAiSoalHtml(form.catatanTambahan)}</textarea>
+      </label>
+      <input type="hidden" name="topik" value="${escapeAiSoalHtml(form.topik || "")}">
+      <input type="hidden" name="tujuan" value="${escapeAiSoalHtml(form.tujuan || "")}">
+      <input type="hidden" name="perangkatAlokasi" value="${escapeAiSoalHtml(form.perangkatAlokasi || "")}">
+    `;
+  }
+
+  function renderPerangkatDirectFields(form) {
+    const isYearly = form.perangkatCakupan === "1 Tahun Ajaran";
+    const mingguEfektif = form.mingguEfektif || buildAiSoalMingguEfektifText();
+    const mingguEfektifGanjil = form.mingguEfektifGanjil || buildAiSoalMingguEfektifText("ganjil");
+    const mingguEfektifGenap = form.mingguEfektifGenap || buildAiSoalMingguEfektifText("genap");
+      return `
+      <label class="form-group">
+        <span>Jenis Perangkat</span>
+        <select name="perangkatJenis">${renderAiSoalOptions(AI_PERANGKAT_JENIS_OPTIONS.map(item => ({ value: item, label: item })), form.perangkatJenis)}</select>
+      </label>
+      <label class="form-group">
+        <span>Cakupan</span>
+        <select name="perangkatCakupan" onchange="handleAiSoalFormStructureChange()">${renderAiSoalOptions(AI_PERANGKAT_CAKUPAN_OPTIONS.map(item => ({ value: item, label: item })), form.perangkatCakupan)}</select>
+      </label>
+      <label class="form-group">
+        <span>Model Pembelajaran</span>
+        <select name="perangkatModel">${renderAiSoalOptions(AI_PERANGKAT_MODEL_OPTIONS.map(item => ({ value: item, label: item })), form.perangkatModel)}</select>
+      </label>
+        ${isYearly ? `
+        <label class="form-group">
+          <span>Jumlah Minggu KALDIK Semester Ganjil</span>
+          <input type="number" min="0" name="mingguEfektifGanjil" value="${escapeAiSoalHtml(mingguEfektifGanjil)}" readonly>
+        </label>
+        <label class="form-group">
+          <span>Jumlah Minggu KALDIK Semester Genap</span>
+          <input type="number" min="0" name="mingguEfektifGenap" value="${escapeAiSoalHtml(mingguEfektifGenap)}" readonly>
+        </label>
+        <input type="hidden" name="mingguEfektif" value="${escapeAiSoalHtml(buildAiSoalMingguEfektifYearText())}">
+        <div class="form-group ai-soal-form-grid-span">
+          <small class="ai-soal-help-text">Untuk cakupan 1 tahun ajaran, minggu efektif ditampilkan per semester agar pembagian alokasi waktu tiap Tujuan Pembelajaran lebih jelas.</small>
+        </div>
+        ` : `
+        <label class="form-group ai-soal-form-grid-span">
+          <span>Jumlah Minggu Efektif KALDIK</span>
+          <input type="number" min="0" name="mingguEfektif" value="${escapeAiSoalHtml(mingguEfektif)}" readonly>
+          <small class="ai-soal-help-text">Diambil otomatis dari KALDIK dan dipakai untuk membagi alokasi waktu tiap Tujuan Pembelajaran.</small>
+        </label>
+        `}
+      <label class="form-group">
+        <span>Profil Pelajar Pancasila</span>
+        <input type="text" name="perangkatProfil" value="${escapeAiSoalHtml(form.perangkatProfil)}" placeholder="Contoh: Bernalar kritis, gotong royong">
+      </label>
       <label class="form-group ai-soal-form-grid-span">
         <span>Catatan Tambahan</span>
         <textarea name="catatanTambahan" rows="3" placeholder="Contoh: Susun dalam format Word dan tambahkan tempat tanda tangan kepala sekolah">${escapeAiSoalHtml(form.catatanTambahan)}</textarea>
@@ -484,26 +630,48 @@
     `;
   }
 
-  function renderAiSoalPage() {
-    const form = getAiSoalFormState();
+  function getAiSoalPageCopy(pageKey = AI_SOAL_PAGE_KEY) {
+    if (pageKey === AI_PERANGKAT_PAGE_KEY) {
+      return {
+        eyebrow: "Perangkat AI",
+        title: "Generate Perangkat Pembelajaran",
+        description: "Satu halaman untuk menyusun prompt perangkat pembelajaran atau langsung generate dokumen perangkat pembelajaran. Tinggal pilih mode yang dibutuhkan.",
+        badgeTitle: "2 Mode",
+        badgeDescription: "Prompt perangkat dan generate perangkat langsung dipisah dari prompt soal agar alurnya lebih fokus."
+      };
+    }
+    return {
+      eyebrow: "Asesmen AI",
+      title: "Generate Prompt AI",
+      description: "Satu halaman khusus untuk menyusun prompt soal. Pilih mode soal lalu isi formnya.",
+      badgeTitle: "1 Mode",
+      badgeDescription: "Prompt soal difokuskan agar lebih ringkas dan mudah dipakai."
+    };
+  }
+
+  function renderAiSoalPage(context = {}) {
+    aiSoalCurrentPageKey = getAiSoalPageKey(context);
+    const form = getAiSoalFormState(aiSoalCurrentPageKey);
     const staticContext = getAiSoalStaticContext();
-    const activeTab = form.tab || getAiSoalActiveTab();
-    const tabCopy = getAiSoalTabCopy(activeTab);
+    const allowedTabs = getAiSoalAllowedTabs(aiSoalCurrentPageKey);
+    const activeTab = allowedTabs.includes(form.tab) ? form.tab : getAiSoalDefaultTab(aiSoalCurrentPageKey);
+    const tabCopy = getAiSoalTabCopy(activeTab, aiSoalCurrentPageKey);
+    const pageCopy = getAiSoalPageCopy(aiSoalCurrentPageKey);
     return `
       <section class="ai-soal-page">
         <div class="ai-soal-hero">
           <div>
-            <span class="dashboard-eyebrow">Asesmen AI</span>
-            <h2>Generate Prompt AI</h2>
-            <p>Satu halaman untuk menyusun prompt perangkat pembelajaran, prompt soal, atau langsung generate dokumen lewat AI. Tinggal pilih tab yang dibutuhkan.</p>
+            <span class="dashboard-eyebrow">${escapeAiSoalHtml(pageCopy.eyebrow)}</span>
+            <h2>${escapeAiSoalHtml(pageCopy.title)}</h2>
+            <p>${escapeAiSoalHtml(pageCopy.description)}</p>
           </div>
           <div class="ai-soal-hero-badge">
-            <strong>3 Mode</strong>
-            <span>Prompt perangkat, prompt soal, dan generate AI langsung dalam satu alur yang lebih rapi.</span>
+            <strong>${escapeAiSoalHtml(pageCopy.badgeTitle)}</strong>
+            <span>${escapeAiSoalHtml(pageCopy.badgeDescription)}</span>
           </div>
         </div>
 
-        ${renderAiPromptTabs(activeTab)}
+        ${renderAiPromptTabs(activeTab, aiSoalCurrentPageKey)}
 
         <div class="ai-soal-grid">
           <article class="card ai-soal-form-card">
@@ -532,7 +700,9 @@
                   <span>Mata Pelajaran</span>
                   <select name="mapel" id="aiSoalMapelSelect" onchange="handleAiSoalFormStructureChange()">${buildAiSoalMapelOptions(form.mapel)}</select>
                 </label>
-                ${isAiSoalPerangkatTab(activeTab) ? renderPerangkatFields(form) : renderSoalFields(form)}
+                ${aiSoalCurrentPageKey === AI_PERANGKAT_PAGE_KEY
+                  ? (activeTab === "ai-langsung" ? renderPerangkatDirectFields(form) : renderPerangkatPromptFields(form))
+                  : renderSoalFields(form)}
               </div>
 
               <div class="ai-soal-actions">
@@ -572,10 +742,10 @@
 
   function getAiSoalFormData() {
     const form = document.getElementById("aiSoalForm");
-    if (!form) return { ...getAiSoalStaticContext(), ...AI_SOAL_DEFAULTS, tab: getAiSoalActiveTab() };
+    if (!form) return { ...getAiSoalStaticContext(), ...AI_SOAL_DEFAULTS, tab: getAiSoalActiveTab(aiSoalCurrentPageKey) };
     const formData = new FormData(form);
     return {
-      tab: String(formData.get("tab") || getAiSoalActiveTab()).trim(),
+      tab: String(formData.get("tab") || getAiSoalActiveTab(aiSoalCurrentPageKey)).trim(),
       guru: String(formData.get("guru") || "").trim(),
       sekolah: String(formData.get("sekolah") || "").trim(),
       jenjang: String(formData.get("jenjang") || "").trim(),
@@ -596,14 +766,27 @@
       catatanTambahan: String(formData.get("catatanTambahan") || "").trim(),
       perangkatJenis: String(formData.get("perangkatJenis") || "").trim(),
       perangkatCakupan: String(formData.get("perangkatCakupan") || "").trim(),
-      perangkatModel: String(formData.get("perangkatModel") || "").trim(),
-      perangkatAlokasi: String(formData.get("perangkatAlokasi") || "").trim(),
-      perangkatProfil: String(formData.get("perangkatProfil") || "").trim()
-    };
-  }
+        perangkatModel: String(formData.get("perangkatModel") || "").trim(),
+        perangkatAlokasi: String(formData.get("perangkatAlokasi") || "").trim(),
+        perangkatProfil: String(formData.get("perangkatProfil") || "").trim(),
+        mingguEfektif: String(formData.get("mingguEfektif") || "").trim(),
+        mingguEfektifGanjil: String(formData.get("mingguEfektifGanjil") || "").trim(),
+        mingguEfektifGenap: String(formData.get("mingguEfektifGenap") || "").trim()
+      };
+    }
 
-  function validateAiSoalForm(form) {
-    if (!form.mapel) return "Mata pelajaran wajib dipilih.";
+    function validateAiSoalForm(form) {
+      if (!form.mapel) return "Mata pelajaran wajib dipilih.";
+      if (form.tab === "ai-langsung") {
+        if (form.perangkatCakupan === "1 Tahun Ajaran") {
+          if (!form.mingguEfektifGanjil || Number(form.mingguEfektifGanjil) <= 0) return "Minggu efektif semester ganjil wajib tersedia.";
+          if (!form.mingguEfektifGenap || Number(form.mingguEfektifGenap) <= 0) return "Minggu efektif semester genap wajib tersedia.";
+        } else if (!form.mingguEfektif || Number(form.mingguEfektif) <= 0) {
+          return "Jumlah minggu efektif KALDIK wajib tersedia.";
+        }
+        if (!form.perangkatJenis) return "Jenis perangkat wajib dipilih.";
+        return "";
+      }
     if (!(isAiSoalPerangkatTab(form.tab) && form.perangkatCakupan === "1 Tahun Ajaran") && !form.topik) return "Topik atau materi wajib diisi.";
     if (form.tab === "soal" && (!form.jumlahSoal || Number(form.jumlahSoal) < 1 || Number(form.jumlahSoal) > 50)) {
       return "Jumlah soal harus antara 1 sampai 50.";
@@ -621,10 +804,10 @@
     const overlaySubtitle = overlay?.querySelector("span");
     if (button) {
       button.disabled = aiSoalIsGenerating;
-      const activeTab = getAiSoalActiveTab();
-      const idleLabel = getAiSoalTabCopy(activeTab).submitLabel;
+      const activeTab = getAiSoalActiveTab(aiSoalCurrentPageKey);
+      const idleLabel = getAiSoalTabCopy(activeTab, aiSoalCurrentPageKey).submitLabel;
       button.textContent = aiSoalIsGenerating
-        ? (isAiSoalDirectTab(activeTab) ? "Generate AI..." : "Menyusun Prompt...")
+        ? (isAiSoalDirectTab(activeTab) ? "Generate File..." : "Menyusun Prompt...")
         : idleLabel;
     }
     if (status && message) status.textContent = message;
@@ -746,61 +929,88 @@
         : "- Gunakan materi pokok dan tujuan pembelajaran yang diberikan guru sebagai dasar penyusunan.",
       "- Tambahkan bagian penutup dokumen.",
       `- ${buildTtdPromptBlock()}`,
-      "- Pastikan hasil akhir rapi, jelas, dan siap digunakan guru."
+      "- Pastikan hasil akhir rapi, jelas, siap digunakan guru, dan selaras dengan pembelajaran mendalam."
+    ].join("\n");
+  }
+
+  function buildPerangkatDirectPrompt(payload, latestCpText = "") {
+    const mingguEfektif = String(payload.mingguEfektif || "").trim();
+    const cpFromInternet = String(latestCpText || payload.cpText || "").trim();
+    const cpSummary = cpFromInternet || "CP terbaru akan disusun dari rujukan resmi internet jika tersedia.";
+    return [
+      "Anda adalah asisten kurikulum profesional yang membantu guru Indonesia menyusun perangkat pembelajaran yang rapi, lengkap, formal, dan up to date.",
+      "Gunakan pendekatan pembelajaran mendalam (deep learning) pada perencanaan, aktivitas, asesmen, refleksi, dan diferensiasi.",
+      "",
+      "Aturan penting:",
+      "- Ambil CP terbaru dari sumber resmi internet atau rujukan resmi yang relevan untuk mata pelajaran ini.",
+      "- Turunkan Tujuan Pembelajaran langsung dari CP tersebut.",
+      "- Turunkan materi dari Tujuan Pembelajaran, bukan sebaliknya.",
+      "- Gunakan minggu efektif KALDIK berikut untuk membagi alokasi waktu tiap Tujuan Pembelajaran secara proporsional.",
+      "- Jangan meminta atau mengulang input alokasi waktu manual dari guru.",
+      "- Susun hasil jadi, bukan prompt.",
+      "",
+      "Identitas dan konteks:",
+      `- Nama guru: ${payload.guru || "-"}`,
+      `- Nama sekolah: ${payload.sekolah || "-"}`,
+      `- Jenjang: ${payload.jenjang || "-"}`,
+      `- Fase: ${payload.fase || "-"}`,
+      `- Kelas: ${payload.kelas || "-"}`,
+      `- Mata pelajaran: ${payload.mapel || "-"}`,
+      `- Semester: ${payload.semester || "-"}`,
+      `- Tahun pelajaran: ${payload.tahunAjaran || "-"}`,
+      `- Cakupan perangkat: ${payload.perangkatCakupan || "1 Semester"}`,
+      `- Jenis perangkat: ${payload.perangkatJenis || "Modul Ajar"}`,
+      `- Model pembelajaran: ${payload.perangkatModel || "-"}`,
+      `- Profil Pelajar Pancasila: ${payload.perangkatProfil || "-"}`,
+      `- Minggu efektif KALDIK (jumlah minggu): ${mingguEfektif || "-"}`,
+      `- Catatan tambahan: ${payload.catatanTambahan || "-"}`,
+      "",
+      "Rujukan CP terbaru dari internet:",
+      cpSummary,
+      "",
+      "Arahan output:",
+      "- Buat identitas, CP, Tujuan Pembelajaran, pemetaan materi, langkah pembelajaran, asesmen, refleksi, diferensiasi, dan penutup.",
+      "- Jika cakupan 1 tahun ajaran, susun urutan semester ganjil dan genap secara runtut berdasarkan CP dan minggu efektif yang tersedia.",
+      "- Jika cakupan 1 semester, fokus pada semester aktif dan bagi waktu berdasarkan minggu efektif yang tersedia.",
+      "- Sisipkan pembagian waktu untuk setiap Tujuan Pembelajaran secara jelas dengan merujuk jumlah minggu efektif KALDIK.",
+      "- Pastikan sistem pembelajaran mendalam tercermin dalam sintaks aktivitas dan asesmen.",
+      "- Tambahkan tempat tanda tangan kepala sekolah di bagian akhir dokumen.",
+      "- Gunakan format yang rapi, formal, dan siap ditempel ke Microsoft Word."
     ].join("\n");
   }
 
   function buildAiSoalPrompt(payload) {
-    return payload.tab === "soal" ? buildSoalPrompt(payload) : buildPerangkatPrompt(payload);
+    if (payload.tab === "soal") return buildSoalPrompt(payload);
+    if (payload.tab === "ai-langsung") return buildPerangkatDirectPrompt(payload);
+    return buildPerangkatPrompt(payload);
   }
 
   function buildAiDirectRequestPayload(payload) {
     const selectedMapel = getAiSoalSelectedMapelDetail(payload.mapel);
     const cpText = getAiSoalMapelCpText(selectedMapel);
     const tujuanCpText = getAiSoalMapelTujuanText(selectedMapel);
+    const isYearly = String(payload.perangkatCakupan || "").trim() === "1 Tahun Ajaran";
+    const mingguEfektifGanjil = String(payload.mingguEfektifGanjil || "").trim();
+    const mingguEfektifGenap = String(payload.mingguEfektifGenap || "").trim();
+    const mingguEfektif = isYearly
+      ? `Semester Ganjil: ${mingguEfektifGanjil || "-"} minggu | Semester Genap: ${mingguEfektifGenap || "-"} minggu`
+      : String(payload.mingguEfektif || "").trim();
     return {
       ...payload,
+      tab: "ai-langsung",
       mode: "perangkat-direct",
       cpText,
       tujuanCpText,
-      topik: payload.perangkatCakupan === "1 Tahun Ajaran"
-        ? (cpText || payload.topik || "")
-        : payload.topik,
-      tujuan: payload.perangkatCakupan === "1 Tahun Ajaran"
-        ? (tujuanCpText || payload.tujuan || "")
-        : payload.tujuan
+      mingguEfektif,
+      mingguEfektifGanjil,
+      mingguEfektifGenap,
+      topik: "",
+      tujuan: ""
     };
   }
 
   async function generateAiSoalDirect(payload) {
-    const client = getAiSoalSupabaseClient();
-    if (!client?.functions?.invoke) {
-      throw new Error("Koneksi Supabase belum siap untuk menjalankan generate AI langsung.");
-    }
-    const { data, error } = await client.functions.invoke("generate-soal-ai", {
-      body: buildAiDirectRequestPayload(payload)
-    });
-    if (error) {
-      const genericMessage = String(error?.message || "").trim();
-      const detailedMessage = [
-        genericMessage,
-        String(error?.context?.error || "").trim(),
-        String(error?.context?.message || "").trim(),
-        String(error?.context?.response?.error || "").trim()
-      ].find(Boolean);
-      if (/non-2xx/i.test(genericMessage || "")) {
-        return generateAiSoalDirectViaHttp(payload);
-      }
-      throw new Error(detailedMessage || "Generate AI langsung gagal dijalankan.");
-    }
-    const content = String(data?.content || "").trim();
-    if (!content) {
-      throw new Error(String(data?.error || "").trim() || "AI belum mengembalikan isi dokumen.");
-    }
-    return {
-      content,
-      meta: data?.meta && typeof data.meta === "object" ? data.meta : {}
-    };
+    return generateAiSoalDirectViaHttp(payload);
   }
 
   async function generateAiSoal() {
@@ -815,34 +1025,68 @@
     saveAiSoalFormState(form);
     localStorage.setItem(AI_SOAL_ACTIVE_TAB_KEY, form.tab || AI_SOAL_DEFAULTS.tab);
     setAiSoalGeneratingState(true, isAiSoalDirectTab(form.tab)
-      ? "Sedang generate dokumen AI langsung..."
+      ? "Sedang generate perangkat pembelajaran..."
       : `Sedang menyusun prompt ${form.tab === "soal" ? "soal" : "perangkat pembelajaran"}...`);
     try {
       await new Promise(resolve => setTimeout(resolve, 250));
-      const directResult = isAiSoalDirectTab(form.tab) ? await generateAiSoalDirect(form) : null;
+      let directResult = null;
+      let fallbackToPrompt = false;
+      if (isAiSoalDirectTab(form.tab)) {
+        try {
+          directResult = await generateAiSoalDirect(form);
+        } catch (error) {
+          const directError = String(error?.message || "").trim();
+          if (isOpenAiQuotaError(directError)) {
+            fallbackToPrompt = true;
+          } else {
+            throw error;
+          }
+        }
+      }
+
       const prompt = directResult?.content || buildAiSoalPrompt(form);
       const normalized = saveAiSoalResult({
         content: prompt,
         meta: {
-          mode: isAiSoalDirectTab(form.tab) ? "ai-direct" : "prompt-builder",
+          mode: fallbackToPrompt ? "prompt-builder-fallback" : (isAiSoalDirectTab(form.tab) ? "ai-direct" : "prompt-builder"),
           saved: "localStorage",
+          fallback: fallbackToPrompt ? "openai-quota" : "",
           ...(directResult?.meta || {})
         },
         form,
         generatedAt: new Date().toISOString()
       });
+
+      if (isAiSoalDirectTab(form.tab) && !fallbackToPrompt) {
+        downloadAiSoalWordFile(form, normalized.content, {
+          title: "Generate Perangkat Pembelajaran",
+          filePrefix: "generate-perangkat-pembelajaran"
+        });
+      }
+
       const output = document.getElementById("aiSoalResult");
       const status = document.getElementById("aiSoalStatus");
-      if (output) output.textContent = normalized.content || "Prompt belum berhasil dibuat.";
+      if (output) output.textContent = normalized.content || "Perangkat pembelajaran belum berhasil dibuat.";
       if (status) {
-        status.textContent = isAiSoalDirectTab(form.tab)
-          ? "Hasil generate AI langsung berhasil dibuat dan disimpan lokal di browser ini."
-          : `Prompt ${form.tab === "soal" ? "soal" : "perangkat pembelajaran"} berhasil dibuat dan disimpan lokal di browser ini.`;
+        if (fallbackToPrompt) {
+          status.textContent = "Kuota OpenAI habis. Menyusun prompt perangkat sebagai fallback.";
+        } else {
+          status.textContent = isAiSoalDirectTab(form.tab)
+            ? "File perangkat pembelajaran berhasil dibuat dan diunduh."
+            : `Prompt ${form.tab === "soal" ? "soal" : "perangkat pembelajaran"} berhasil dibuat dan disimpan lokal di browser ini.`;
+        }
       }
     } catch (error) {
       const status = document.getElementById("aiSoalStatus");
-      if (status) status.textContent = error?.message || "Prompt belum berhasil dibuat.";
-      Swal.fire("Gagal membuat prompt", error?.message || "Prompt belum berhasil dibuat.", "error");
+      const friendlyError = isAiSoalDirectTab(form.tab)
+        ? normalizeAiSoalDirectErrorMessage(error?.message || "")
+        : (error?.message || "Perangkat pembelajaran belum berhasil dibuat.");
+      if (status) status.textContent = friendlyError;
+      Swal.fire(
+        "Gagal membuat perangkat",
+        friendlyError,
+        "error"
+      );
     } finally {
       setAiSoalGeneratingState(false);
     }
@@ -850,7 +1094,7 @@
 
   function resetAiSoalForm() {
     localStorage.removeItem(AI_SOAL_LAST_FORM_KEY);
-    const activeTab = getAiSoalActiveTab();
+    const activeTab = getAiSoalActiveTab(aiSoalCurrentPageKey);
     const form = document.getElementById("aiSoalForm");
     if (!form) return;
     form.reset();
@@ -866,6 +1110,7 @@
     if (form.perangkatModel) form.perangkatModel.value = AI_SOAL_DEFAULTS.perangkatModel;
     if (form.perangkatAlokasi) form.perangkatAlokasi.value = AI_SOAL_DEFAULTS.perangkatAlokasi;
     if (form.perangkatProfil) form.perangkatProfil.value = AI_SOAL_DEFAULTS.perangkatProfil;
+    if (form.mingguEfektif) form.mingguEfektif.value = buildAiSoalMingguEfektifText();
     if (form.sertakanKunci) form.sertakanKunci.checked = AI_SOAL_DEFAULTS.sertakanKunci;
     if (form.sertakanPembahasan) form.sertakanPembahasan.checked = AI_SOAL_DEFAULTS.sertakanPembahasan;
     if (form.tab) form.tab.value = activeTab;
@@ -890,15 +1135,7 @@
     }
   }
 
-  function exportAiSoalToWord() {
-    const stored = getAiSoalStoredResult();
-    const content = String(stored.content || aiSoalLastResult || "").trim();
-    if (!content) {
-      Swal.fire("Belum ada hasil", "Buat soal dulu sebelum export ke Word.", "info");
-      return;
-    }
-
-    const form = stored.form || getAiSoalFormData();
+  function buildAiSoalWordHtml(form, content, title) {
     const metaRows = [
       ["Jenis Prompt", form.tab === "soal" ? "Soal" : "Perangkat Pembelajaran"],
       ["Nama Guru", form.guru],
@@ -912,13 +1149,13 @@
       ["Tahun Pelajaran", form.tahunAjaran],
       ["Cakupan Perangkat", form.perangkatCakupan || "-"]
     ];
-    const html = `
+    return `
       <html xmlns:o="urn:schemas-microsoft-com:office:office"
             xmlns:w="urn:schemas-microsoft-com:office:word"
             xmlns="http://www.w3.org/TR/REC-html40">
         <head>
           <meta charset="utf-8">
-          <title>Generate Prompt AI</title>
+          <title>${escapeAiSoalDoc(title)}</title>
           <style>
             body { font-family: Arial, sans-serif; color: #111827; line-height: 1.6; }
             h1 { font-size: 20pt; margin-bottom: 12px; }
@@ -929,7 +1166,7 @@
           </style>
         </head>
         <body>
-          <h1>Generate Prompt AI</h1>
+          <h1>${escapeAiSoalDoc(title)}</h1>
           <table>
             ${metaRows.map(([label, value]) => `<tr><td>${escapeAiSoalDoc(label)}</td><td>${escapeAiSoalDoc(value)}</td></tr>`).join("")}
           </table>
@@ -937,17 +1174,42 @@
         </body>
       </html>
     `;
+  }
+
+  function downloadAiSoalWordFile(form, content, options = {}) {
+    const safeContent = String(content || "").trim();
+    if (!safeContent) {
+      throw new Error("Konten dokumen kosong.");
+    }
+    const safeForm = form || getAiSoalFormData();
+    const title = String(options.title || "Generate Perangkat Pembelajaran").trim();
+    const html = buildAiSoalWordHtml(safeForm, safeContent, title);
     const blob = new Blob(["\ufeff", html], { type: "application/msword" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    const fileType = String(form.tab === "soal" ? "soal" : "perangkat").toLowerCase();
-    const fileMapel = String(form.mapel || "mapel").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
+    const fileType = String(safeForm.tab === "soal" ? "soal" : "perangkat").toLowerCase();
+    const fileMapel = String(safeForm.mapel || "mapel").replace(/[^a-z0-9]+/gi, "-").replace(/^-+|-+$/g, "").toLowerCase();
     link.href = url;
-    link.download = `generate-prompt-ai-${fileType}-${fileMapel || "mapel"}.doc`;
+    link.download = `${String(options.filePrefix || "generate-perangkat-pembelajaran").toLowerCase()}-${fileType}-${fileMapel || "mapel"}.doc`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
+  }
+
+  function exportAiSoalToWord() {
+    const stored = getAiSoalStoredResult();
+    const content = String(stored.content || aiSoalLastResult || "").trim();
+    if (!content) {
+      Swal.fire("Belum ada hasil", "Buat perangkat atau soal dulu sebelum export ke Word.", "info");
+      return;
+    }
+
+    const form = stored.form || getAiSoalFormData();
+    downloadAiSoalWordFile(form, content, {
+      title: "Generate Perangkat Pembelajaran",
+      filePrefix: "generate-perangkat-pembelajaran"
+    });
   }
 
   async function loadAiSoalMapelOptions() {

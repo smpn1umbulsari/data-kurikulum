@@ -12,8 +12,10 @@
       onUserData,
       onSiswaData,
       onKoordinatorData,
+      onPresenceData,
       onGuruUpdated,
       onUserUpdated,
+      onPresenceUpdated,
       onRender
     } = options;
 
@@ -29,6 +31,12 @@
         const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         onUserData?.(rows);
         onUserUpdated?.();
+        onRender?.();
+      }),
+      presence: documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").onSnapshot(snapshot => {
+        const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onPresenceData?.(rows);
+        onPresenceUpdated?.(rows);
         onRender?.();
       }),
       siswa: null,

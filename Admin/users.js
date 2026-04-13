@@ -2,16 +2,19 @@ let semuaDataAdminGuru = [];
 let semuaDataAdminUser = [];
 let semuaDataAdminSiswa = [];
 let semuaDataAdminKoordinator = {};
+let semuaDataAdminPresence = [];
 let unsubscribeAdminGuru = null;
 let unsubscribeAdminUser = null;
 let unsubscribeAdminSiswa = null;
 let unsubscribeAdminKoordinator = null;
+let unsubscribeAdminPresence = null;
 let currentEditAdminUser = null;
 let adminKoordinatorDraft = null;
 let isInteractingAdminHierarchyUi = false;
 let pendingAdminUsersRender = false;
 let isSyncingGuruDerivedUsernames = false;
 let hasSyncedGuruDerivedUsernames = false;
+const PRESENCE_ONLINE_THRESHOLD_MS = 180000;
 
 const DEFAULT_USER_PASSWORD = "guruspenturi";
 const USER_ROLES = ["admin", "guru", "koordinator", "urusan", "siswa"];
@@ -291,6 +294,98 @@ function getSiswaByNipd(nipd) {
   return semuaDataAdminSiswa.find(item => String(item.nipd || "") === String(nipd || "")) || null;
 }
 
+function normalizePresenceKey(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getPresenceKeysFromRecord(record = {}) {
+  return [record.id, record.user_id, record.username, record.kode_guru]
+    .map(normalizePresenceKey)
+    .filter(Boolean);
+}
+
+function isAdminPresenceOnline(record = {}, thresholdMs = PRESENCE_ONLINE_THRESHOLD_MS) {
+  const raw = record?.last_seen_at || record?.updated_at || record?.created_at || "";
+  const seenAt = raw ? new Date(raw).getTime() : 0;
+  if (!seenAt) return Boolean(record?.online);
+  return Boolean(record?.online) && (Date.now() - seenAt <= Number(thresholdMs || PRESENCE_ONLINE_THRESHOLD_MS));
+}
+
+function getAdminPresenceForUser(user = {}) {
+  const keys = getPresenceKeysFromRecord({
+    id: user.id || makeUserDocId(user.username),
+    user_id: user.id || user.username,
+    username: user.username,
+    kode_guru: user.kode_guru
+  });
+  if (keys.length === 0) return null;
+  return semuaDataAdminPresence.find(record => {
+    const recordKeys = getPresenceKeysFromRecord(record);
+    return keys.some(key => recordKeys.includes(key));
+  }) || null;
+}
+
+function getAdminOnlinePresenceRows() {
+  return [...semuaDataAdminPresence]
+    .filter(record => isAdminPresenceOnline(record))
+    .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime());
+}
+
+function formatAdminPresenceAge(value) {
+  const seenAt = value ? new Date(value).getTime() : 0;
+  if (!seenAt) return "Belum terdeteksi";
+  const diff = Math.max(0, Date.now() - seenAt);
+  if (diff < 60000) return "Baru saja";
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 60) return `${minutes} menit lalu`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} jam lalu`;
+  const days = Math.floor(hours / 24);
+  return `${days} hari lalu`;
+}
+
+function formatAdminPresenceLabel(record = {}) {
+  return isAdminPresenceOnline(record) ? "Online" : "Offline";
+}
+
+function renderAdminPresenceSummaryHtml() {
+  const onlineRows = getAdminOnlinePresenceRows();
+  const chips = onlineRows.slice(0, 6).map(record => {
+    const user = semuaDataAdminUser.find(item => {
+      const userKeys = getPresenceKeysFromRecord({
+        id: item.id || makeUserDocId(item.username),
+        user_id: item.id || item.username,
+        username: item.username,
+        kode_guru: item.kode_guru
+      });
+      const recordKeys = getPresenceKeysFromRecord(record);
+      return userKeys.some(key => recordKeys.includes(key));
+    }) || null;
+    const label = user ? (getAdminGuruName(user) || user.nama || user.username || "-") : (record.nama || record.username || record.kode_guru || "-");
+    const role = user ? String(user.role || "-").trim() : String(record.role || "-").trim();
+    return `
+      <span class="admin-presence-chip">
+        <strong>${escapeAdminHtml(label)}</strong>
+        <small>${escapeAdminHtml(role)} · ${escapeAdminHtml(formatAdminPresenceAge(record.last_seen_at))}</small>
+      </span>
+    `;
+  }).join("");
+
+  return `
+    <div class="dashboard-card-lite admin-presence-summary">
+      <div class="admin-presence-summary-head">
+        <div>
+          <span class="dashboard-card-label">Cek Online</span>
+          <h3>${onlineRows.length} user sedang online</h3>
+          <p>Status diambil dari heartbeat presence saat user membuka dashboard.</p>
+        </div>
+        <span class="status-pill status-active">${onlineRows.length} Online</span>
+      </div>
+      ${chips ? `<div class="admin-presence-chip-list">${chips}</div>` : `<div class="admin-presence-empty">Belum ada user yang terdeteksi online.</div>`}
+    </div>
+  `;
+}
+
 function getKoordinatorDocRef() {
   return getAdminUsersDocumentsApi().collection("informasi_urusan").doc("koordinator_kelas");
 }
@@ -484,7 +579,8 @@ function renderAdminUserPage() {
     return window.AdminUsersView.renderUserPage({
       defaultPassword: DEFAULT_USER_PASSWORD,
       roles: USER_ROLES,
-      canManageAiPrompt: isCurrentUserSuperadmin()
+      canManageAiPrompt: isCurrentUserSuperadmin(),
+      presenceSummaryHtml: renderAdminPresenceSummaryHtml()
     });
   }
   const canManageAiPrompt = isCurrentUserSuperadmin();
@@ -503,6 +599,7 @@ function renderAdminUserPage() {
       </div>
 
       <div class="matrix-toolbar-note">Password default pengguna baru: <strong>${DEFAULT_USER_PASSWORD}</strong></div>
+      ${renderAdminPresenceSummaryHtml()}
 
       <div class="table-container mapel-table-container admin-user-table-wrap">
         <table class="mapel-table admin-user-table">
@@ -512,6 +609,7 @@ function renderAdminUserPage() {
               <th>Username</th>
               <th>Password</th>
               <th>Role</th>
+              <th>Online</th>
               ${canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
               <th>Aksi</th>
             </tr>
@@ -533,6 +631,8 @@ function renderAdminHierarchyPage() {
           <p>Kelola pengguna berdasarkan role admin, guru, urusan, dan siswa.</p>
         </div>
       </div>
+
+      ${renderAdminPresenceSummaryHtml()}
 
       <div class="kelas-form-grid admin-hierarchy-form-grid">
         <label class="form-group admin-hierarchy-form-group">
@@ -574,6 +674,7 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
     if (unsubscribeAdminUser) unsubscribeAdminUser();
     if (unsubscribeAdminSiswa) unsubscribeAdminSiswa();
     if (unsubscribeAdminKoordinator) unsubscribeAdminKoordinator();
+    if (unsubscribeAdminPresence) unsubscribeAdminPresence();
 
     const unsubs = window.AdminUsersService.loadRealtimeUsers({
       includeSiswa,
@@ -594,6 +695,9 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
           requestRenderAdminUsersState();
         }
       },
+      onPresenceData: rows => {
+        semuaDataAdminPresence = rows;
+      },
       onGuruUpdated: () => {
         hasSyncedGuruDerivedUsernames = false;
         ensureGuruDerivedUsernames();
@@ -601,18 +705,23 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
       onUserUpdated: () => {
         ensureGuruDerivedUsernames();
       },
+      onPresenceUpdated: rows => {
+        semuaDataAdminPresence = rows || [];
+      },
       onRender: () => requestRenderAdminUsersState()
     });
     unsubscribeAdminGuru = unsubs.guru || null;
     unsubscribeAdminUser = unsubs.user || null;
     unsubscribeAdminSiswa = unsubs.siswa || null;
     unsubscribeAdminKoordinator = unsubs.koordinator || null;
+    unsubscribeAdminPresence = unsubs.presence || null;
     return;
   }
   if (unsubscribeAdminGuru) unsubscribeAdminGuru();
   if (unsubscribeAdminUser) unsubscribeAdminUser();
   if (unsubscribeAdminSiswa) unsubscribeAdminSiswa();
   if (unsubscribeAdminKoordinator) unsubscribeAdminKoordinator();
+  if (unsubscribeAdminPresence) unsubscribeAdminPresence();
 
   const documentsApi = getAdminUsersDocumentsApi();
 
@@ -646,6 +755,11 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
       requestRenderAdminUsersState();
     }
   });
+
+  unsubscribeAdminPresence = documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").onSnapshot(snapshot => {
+    semuaDataAdminPresence = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    requestRenderAdminUsersState();
+  });
 }
 
 function renderAdminUsersState() {
@@ -672,7 +786,11 @@ function renderAdminUserRows() {
       defaultPassword: DEFAULT_USER_PASSWORD,
       canManageAiPrompt: isCurrentUserSuperadmin(),
       escape: escapeAdminHtml,
-      makeUserDocId
+      makeUserDocId,
+      getPresenceForUser: getAdminPresenceForUser,
+      isPresenceOnline: isAdminPresenceOnline,
+      formatPresenceLabel: formatAdminPresenceLabel,
+      formatPresenceAge: formatAdminPresenceAge
     });
   }
   const rows = [...semuaDataAdminUser].sort((a, b) =>
@@ -680,7 +798,7 @@ function renderAdminUserRows() {
   );
 
   if (rows.length === 0) {
-    return `<tr><td colspan="${isCurrentUserSuperadmin() ? 6 : 5}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
+    return `<tr><td colspan="${isCurrentUserSuperadmin() ? 7 : 6}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
   }
 
   return rows.map(user => {
@@ -690,6 +808,8 @@ function renderAdminUserRows() {
     const canAccessPrompt = canUserAccessAiPrompt(user);
     const isAdminRole = String(user.role || "").trim().toLowerCase() === "admin";
     const canManageAiPrompt = isCurrentUserSuperadmin();
+    const presence = getAdminPresenceForUser(user);
+    const isOnline = isAdminPresenceOnline(presence);
     return `
       <tr class="${isEditing ? "table-edit-row admin-user-edit-row" : ""}" data-admin-user-id="${safeId}">
         <td class="admin-user-name">
@@ -702,6 +822,10 @@ function renderAdminUserRows() {
           <select class="admin-user-select" id="userRole-${safeId}" ${isEditing ? "" : "disabled"}>
             ${USER_ROLES.map(role => `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`).join("")}
           </select>
+        </td>
+        <td>
+          <span class="status-pill ${isOnline ? "status-active" : "status-offline"}">${escapeAdminHtml(formatAdminPresenceLabel(presence))}</span>
+          ${presence ? `<small class="admin-user-online-meta">${escapeAdminHtml(formatAdminPresenceAge(presence.last_seen_at))}</small>` : ""}
         </td>
         ${canManageAiPrompt ? `<td>
           <label class="admin-user-feature-toggle ${isAdminRole ? "is-locked" : ""}">

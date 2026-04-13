@@ -7,7 +7,7 @@
     );
 
     if (rows.length === 0) {
-      return `<tr><td colspan="${context.canManageAiPrompt ? 6 : 5}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
+      return `<tr><td colspan="${context.canManageAiPrompt ? 7 : 6}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
     }
 
     return rows.map(user => {
@@ -17,6 +17,15 @@
       const isEditing = context.currentEditId === rawId;
       const isAdminRole = String(user.role || "").trim().toLowerCase() === "admin";
       const canAccessPrompt = user.can_generate_prompt !== false || isAdminRole;
+      const presence = typeof context.getPresenceForUser === "function" ? context.getPresenceForUser(user) : null;
+      const isOnline = typeof context.isPresenceOnline === "function" ? context.isPresenceOnline(presence) : Boolean(presence?.online);
+      const onlineLabel = typeof context.formatPresenceLabel === "function"
+        ? context.formatPresenceLabel(presence)
+        : (isOnline ? "Online" : "Offline");
+      const onlineMeta = presence && typeof context.formatPresenceAge === "function"
+        ? context.formatPresenceAge(presence.last_seen_at)
+        : "";
+      const onlineClass = isOnline ? "status-active" : "status-offline";
       return `
         <tr class="${isEditing ? "table-edit-row admin-user-edit-row" : ""}" data-admin-user-id="${safeId}">
           <td class="admin-user-name">
@@ -29,6 +38,10 @@
             <select class="admin-user-select" id="userRole-${safeId}" ${isEditing ? "" : "disabled"}>
               ${context.roles.map(role => `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`).join("")}
             </select>
+          </td>
+        <td>
+          <span class="status-pill ${onlineClass}">${context.escape(onlineLabel)}</span>
+            ${onlineMeta ? `<small class="admin-user-online-meta">${context.escape(onlineMeta)}</small>` : ""}
           </td>
           ${context.canManageAiPrompt ? `<td>
             <label class="admin-user-feature-toggle ${isAdminRole ? "is-locked" : ""}">
@@ -75,6 +88,7 @@
         </div>
 
         <div class="matrix-toolbar-note">Password default pengguna baru: <strong>${context.defaultPassword}</strong></div>
+        ${context.presenceSummaryHtml || ""}
 
         <div class="table-container mapel-table-container admin-user-table-wrap">
           <table class="mapel-table admin-user-table">
@@ -84,6 +98,7 @@
                 <th>Username</th>
                 <th>Password</th>
                 <th>Role</th>
+                <th>Online</th>
                 ${context.canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
                 <th>Aksi</th>
               </tr>

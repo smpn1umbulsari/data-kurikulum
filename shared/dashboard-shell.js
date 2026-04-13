@@ -1,6 +1,11 @@
 (function initDashboardShell(global) {
   const shell = global.DashboardShell || {};
   const storage = global.AppUtils || {};
+  let presenceHeartbeatTimer = null;
+  let presenceVisibilityHandler = null;
+  let presenceBeforeUnloadHandler = null;
+  let presencePageHideHandler = null;
+  let currentPresenceDocId = "";
   const dom = global.AppDom || {};
 
   function getStorageJson(key, fallback) {
@@ -34,6 +39,7 @@
   }
 
   shell.logout = function logout() {
+    shell.stopPresenceTracking().catch(() => {});
     global.localStorage.removeItem("login");
     global.localStorage.removeItem("appUser");
     global.localStorage.removeItem("appSemester");
@@ -42,6 +48,134 @@
 
   shell.getCurrentAppUser = function getCurrentAppUser() {
     return getStorageJson("appUser", {}) || {};
+  };
+
+  shell.getPresenceDocId = function getPresenceDocId(user = shell.getCurrentAppUser()) {
+    const source = String(user?.id || user?.username || user?.kode_guru || "").trim();
+    return source ? source.replace(/[^a-zA-Z0-9._-]/g, "-") : "";
+  };
+
+  shell.isUserOnline = function isUserOnline(user = {}, thresholdMs = 180000) {
+    const raw = user?.last_seen_at || user?.updated_at || user?.created_at || "";
+    const seenAt = raw ? new Date(raw).getTime() : 0;
+    if (!seenAt) return Boolean(user?.online);
+    return Date.now() - seenAt <= Number(thresholdMs || 180000);
+  };
+
+  shell.getUserPresenceCollection = function getUserPresenceCollection() {
+    return global.SupabaseDocuments?.collection ? global.SupabaseDocuments.collection("user_presence") : null;
+  };
+
+  shell.getPresenceSnapshot = async function getPresenceSnapshot() {
+    const collection = shell.getUserPresenceCollection();
+    if (!collection?.orderBy) return [];
+    const snap = await collection.orderBy("last_seen_at", "desc").get();
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  };
+
+  shell.getOnlineUsers = async function getOnlineUsers(thresholdMs = 180000) {
+    const snapshot = await shell.getPresenceSnapshot();
+    return snapshot.filter(user => shell.isUserOnline(user, thresholdMs));
+  };
+
+  shell.getOnlineUserCount = async function getOnlineUserCount(thresholdMs = 180000) {
+    const users = await shell.getOnlineUsers(thresholdMs);
+    return users.length;
+  };
+
+  shell.markCurrentUserPresence = async function markCurrentUserPresence(extra = {}) {
+    const user = shell.getCurrentAppUser();
+    const docId = shell.getPresenceDocId(user);
+    if (!docId) return null;
+    const collection = shell.getUserPresenceCollection();
+    if (!collection) return null;
+    const payload = {
+      user_id: String(user?.id || user?.username || docId).trim(),
+      username: String(user?.username || "").trim(),
+      nama: String(user?.nama || "").trim(),
+      role: String(user?.role || "").trim(),
+      kode_guru: String(user?.kode_guru || "").trim(),
+      online: true,
+      last_seen_at: new Date().toISOString(),
+      session_id: String(user?.session_id || localStorage.getItem("login") || "").trim(),
+      page: String(global.location?.hash || global.location?.pathname || "").trim(),
+      ...extra
+    };
+    await collection.doc(docId).set(payload, { merge: true });
+    return payload;
+  };
+
+  shell.stopPresenceTracking = async function stopPresenceTracking() {
+    if (presenceHeartbeatTimer) global.clearInterval(presenceHeartbeatTimer);
+    presenceHeartbeatTimer = null;
+    const cleanup = async () => {
+      const user = shell.getCurrentAppUser();
+      const docId = currentPresenceDocId || shell.getPresenceDocId(user);
+      const collection = shell.getUserPresenceCollection();
+      if (!docId || !collection) return;
+      try {
+        await collection.doc(docId).set({
+          user_id: String(user?.id || user?.username || docId).trim(),
+          username: String(user?.username || "").trim(),
+          nama: String(user?.nama || "").trim(),
+          role: String(user?.role || "").trim(),
+          kode_guru: String(user?.kode_guru || "").trim(),
+          online: false,
+          last_seen_at: new Date().toISOString(),
+          page: String(global.location?.hash || global.location?.pathname || "").trim()
+        }, { merge: true });
+      } catch {
+        // noop
+      }
+    };
+    await cleanup();
+    if (presenceVisibilityHandler) global.document.removeEventListener("visibilitychange", presenceVisibilityHandler);
+    if (presenceBeforeUnloadHandler) global.removeEventListener("beforeunload", presenceBeforeUnloadHandler);
+    if (presencePageHideHandler) global.removeEventListener("pagehide", presencePageHideHandler);
+    presenceVisibilityHandler = null;
+    presenceBeforeUnloadHandler = null;
+    presencePageHideHandler = null;
+    currentPresenceDocId = "";
+  };
+
+  shell.startPresenceTracking = async function startPresenceTracking(options = {}) {
+    const user = typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser();
+    const role = String(user?.role || "").trim().toLowerCase();
+    if (!user?.username && !user?.id) return null;
+    if (!["admin", "superadmin", "guru", "koordinator", "urusan"].includes(role)) return null;
+    await shell.markCurrentUserPresence({
+      online: true,
+      page: String(options.page || global.location?.hash || global.location?.pathname || "").trim()
+    });
+    currentPresenceDocId = shell.getPresenceDocId(user);
+    if (presenceHeartbeatTimer) global.clearInterval(presenceHeartbeatTimer);
+    presenceHeartbeatTimer = global.setInterval(() => {
+      shell.markCurrentUserPresence({
+        online: true,
+        page: String(options.page || global.location?.hash || global.location?.pathname || "").trim()
+      }).catch(() => {});
+    }, 30000);
+    if (!presenceVisibilityHandler) {
+      presenceVisibilityHandler = () => {
+        if (global.document.visibilityState === "visible") {
+          shell.markCurrentUserPresence({ online: true }).catch(() => {});
+        }
+      };
+      global.document.addEventListener("visibilitychange", presenceVisibilityHandler);
+    }
+    if (!presenceBeforeUnloadHandler) {
+      presenceBeforeUnloadHandler = () => {
+        shell.stopPresenceTracking().catch(() => {});
+      };
+      global.addEventListener("beforeunload", presenceBeforeUnloadHandler);
+    }
+    if (!presencePageHideHandler) {
+      presencePageHideHandler = () => {
+        shell.stopPresenceTracking().catch(() => {});
+      };
+      global.addEventListener("pagehide", presencePageHideHandler);
+    }
+    return shell.getPresenceDocId(user);
   };
 
   shell.getCurrentAppRole = function getCurrentAppRole() {
@@ -143,17 +277,17 @@
 
   shell.canAccessPage = function canAccessPage(page) {
     const role = shell.getCurrentAppRole();
-    if (page === "ai-soal" && !shell.canAccessAiPrompt()) return false;
+    if (["ai-soal", "generate-perangkat-pembelajaran"].includes(page) && !shell.canAccessAiPrompt()) return false;
     if (["admin", "superadmin"].includes(role)) return true;
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (shell.canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
       }
-      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
+      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     }
-    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
-    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || page === "ai-soal";
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     return false;
   };
 
@@ -279,6 +413,12 @@
         updateSidebarSemesterInfo();
       })
       .then(() => {
+        if (["admin", "superadmin", "guru", "koordinator", "urusan"].includes(role)) {
+          shell.startPresenceTracking({
+            getUser: typeof options.getUser === "function" ? options.getUser : () => shell.getCurrentAppUser(),
+            page: global.location?.hash || global.location?.pathname || ""
+          }).catch(() => {});
+        }
         if (typeof ensureActiveSemesterDataAvailable === "function") {
           return ensureActiveSemesterDataAvailable()
             .catch(onError)

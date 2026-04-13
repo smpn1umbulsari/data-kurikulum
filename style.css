@@ -1598,6 +1598,36 @@ body.dark .teacher-side-label {
   color: #1d4ed8;
 }
 
+.dashboard-online-card {
+  grid-column: 1 / -1;
+}
+
+.dashboard-online-card h3 {
+  margin-bottom: 8px;
+}
+
+.dashboard-online-chip {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid #dbe4f0;
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  color: #334155;
+}
+
+.dashboard-online-chip strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.dashboard-online-chip b {
+  white-space: nowrap;
+  color: #2563eb;
+  font-size: 11px;
+}
+
 .tugas-tabbar {
   display: flex;
   flex-wrap: wrap;
@@ -2739,6 +2769,12 @@ body.dark .rekap-task-list span {
 
 .admin-user-table th:nth-child(5),
 .admin-user-table td:nth-child(5) {
+  width: 120px;
+  text-align: center;
+}
+
+.admin-user-table th:nth-child(6),
+.admin-user-table td:nth-child(6) {
   width: 160px;
   text-align: center;
 }
@@ -2820,6 +2856,79 @@ body.dark .rekap-task-list span {
 
 .admin-user-feature-toggle.is-locked input {
   cursor: not-allowed;
+}
+
+.admin-user-online-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+}
+
+.status-offline {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.admin-presence-summary {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 16px;
+  padding: 14px;
+}
+
+.admin-presence-summary-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-presence-summary-head h3 {
+  margin: 4px 0 6px;
+  color: #0f172a;
+}
+
+.admin-presence-summary-head p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.admin-presence-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-presence-chip {
+  display: grid;
+  gap: 2px;
+  min-width: 160px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 1px solid #dbe4ef;
+  background: #ffffff;
+}
+
+.admin-presence-chip strong {
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.admin-presence-chip small {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.admin-presence-empty {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .admin-user-loading-active {
@@ -7779,6 +7888,14 @@ body.dark .sidebar-maintenance-link {
 
 .ai-soal-form-grid-span {
   grid-column: 1 / -1;
+}
+
+.ai-soal-help-text {
+  display: block;
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .ai-soal-form textarea,

@@ -5,7 +5,7 @@
   <title>Dashboard Aplikasi Siswa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link rel="stylesheet" href="style.css?v=20260413c">
+<link rel="stylesheet" href="style.css?v=20260413e">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
@@ -111,6 +111,7 @@
         <button onclick="loadPage('mengajar')">Pembagian Mengajar</button>
         <button onclick="loadPage('rekap-tugas-mengajar')">Rekap Administrasi</button>
         <button onclick="loadPage('kalender-pendidikan')">Kalender Pendidikan</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('generate-perangkat-pembelajaran')">Generate Perangkat Pembelajaran</button>
 
         <div class="submenu-section-divider"></div>
         <div class="submenu-section-label">Asesmen</div>
@@ -129,6 +130,7 @@
       </button>
       <div class="submenu" id="submenuNilaiGuru">
         <button onclick="loadPage('nilai-input-guru')">Input Nilai</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('generate-perangkat-pembelajaran')">Generate Perangkat Pembelajaran</button>
         <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
       </div>
     </div>
@@ -153,6 +155,7 @@
       </button>
       <div class="submenu submenu-sectioned" id="submenuKurikulumKoordinator">
         <div class="submenu-section-label">Nilai</div>
+        <button data-ai-prompt-menu="true" onclick="loadPage('generate-perangkat-pembelajaran')">Generate Perangkat Pembelajaran</button>
         <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
         <button onclick="loadPage('nilai-input')">Nilai</button>
         <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
@@ -233,10 +236,10 @@
 <script src="shared/app-lifecycle.js?v=20260410a"></script>
 <script src="shared/app-print.js?v=20260410a"></script>
 <script src="shared/app-router.js?v=20260410a"></script>
-<script src="shared/dashboard-shell.js?v=20260410a"></script>
+<script src="shared/dashboard-shell.js?v=20260413m"></script>
 <script src="shared/dashboard-data.js?v=20260410a"></script>
-<script src="shared/dashboard-home.js?v=20260410a"></script>
-<script src="shared/dashboard-routes.js?v=20260410a"></script>
+<script src="shared/dashboard-home.js?v=20260413b"></script>
+<script src="shared/dashboard-routes.js?v=20260413l"></script>
 <script src="inline-notification.js?v=20260409a"></script>
 <script src="ttd-ks.js?v=20260409b"></script>
 <script src="Semester/semester.js?v=20260411b"></script>
@@ -252,9 +255,9 @@
 <script src="Guru/guru.js?v=20260409a"></script>
 <script src="Guru/ui.js"></script>
 <script src="Admin/admin-users-identity.js?v=20260410a"></script>
-<script src="Admin/admin-users-service.js?v=20260410a"></script>
-<script src="Admin/admin-users-view.js?v=20260410a"></script>
-<script src="Admin/users.js?v=20260409n"></script>
+<script src="Admin/admin-users-service.js?v=20260413a"></script>
+<script src="Admin/admin-users-view.js?v=20260413a"></script>
+<script src="Admin/users.js?v=20260413a"></script>
 <script src="Admin/backup.js?v=20260408d"></script>
 <script src="Mapel/crud.js?v=20260407c"></script>
 <script src="Mapel/mapel.js?v=20260408h"></script>
@@ -273,7 +276,7 @@
 <script src="Asesmen/pembagian-ruang-service.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-view.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-v2.js?v=20260409a"></script>
-<script src="Asesmen/soal-ai.js?v=20260412a"></script>
+<script src="Asesmen/soal-ai.js?v=20260413m"></script>
 <script src="Nilai/nilai.js?v=20260411c"></script>
 <script src="Nilai/rapor.js?v=20260413j"></script>
 <script src="WaliKelas/wali-kelas-service.js?v=20260411b"></script>
@@ -502,17 +505,17 @@
   function canAccessPage(page) {
     if (window.DashboardShell?.canAccessPage) return window.DashboardShell.canAccessPage(page);
     const role = getCurrentAppRole();
-    if (page === "ai-soal" && !canAccessAiPromptMenu()) return false;
+    if (["ai-soal", "generate-perangkat-pembelajaran"].includes(page) && !canAccessAiPromptMenu()) return false;
     if (["admin", "superadmin"].includes(role)) return true;
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
       }
-      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
+      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     }
-    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
-    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || page === "ai-soal";
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     if (role === "siswa") return false;
     return false;
   }
@@ -640,6 +643,14 @@
             <span>Total Siswa</span>
             <strong id="homeSiswaCount">...</strong>
           </div>
+        </div>
+      </section>
+
+      <section class="dashboard-card-lite dashboard-online-card">
+        <span class="dashboard-card-label">User Online</span>
+        <h3 id="homeOnlineCount">0 user</h3>
+        <div id="homeOnlineList" class="dashboard-mini-list">
+          <span>Memuat user online...</span>
         </div>
       </section>
 

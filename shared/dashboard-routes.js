@@ -98,9 +98,14 @@
         render: () => global.renderAdministrasiAsesmenPage(),
         afterEnter: () => global.loadRealtimeAdministrasiAsesmen()
       },
+      "generate-perangkat-pembelajaran": {
+        title: "Generate Perangkat Pembelajaran",
+        render: context => global.renderAiSoalPage(context),
+        afterEnter: () => global.initializeAiSoalPage()
+      },
       "ai-soal": {
         title: "Generate Prompt AI",
-        render: () => global.renderAiSoalPage(),
+        render: context => global.renderAiSoalPage(context),
         afterEnter: () => global.initializeAiSoalPage()
       },
       "rekap-nilai": {
