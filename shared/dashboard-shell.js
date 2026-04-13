@@ -256,6 +256,13 @@
         };
 
     setText("sidebarSemesterInfo", shell.getSidebarSemesterLabel());
+    const brandTitle = global.document.getElementById("sidebarBrandTitle");
+    if (brandTitle) {
+      const user = typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser();
+      const displayName = String(user?.nama || user?.username || user?.kode_guru || "Dashboard Sekolah").trim() || "Dashboard Sekolah";
+      brandTitle.innerText = displayName;
+      brandTitle.title = displayName;
+    }
     const roleInfo = global.document.getElementById("sidebarRoleInfo");
     if (roleInfo) {
       const role = typeof options.getRole === "function" ? options.getRole() : shell.getCurrentAppRole();
