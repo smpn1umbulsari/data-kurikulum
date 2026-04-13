@@ -1,10 +1,12 @@
 let semuaDataNilaiSiswa = [];
 let semuaDataNilaiMapel = [];
 let semuaDataNilaiMengajar = [];
+let semuaDataNilaiKelas = [];
 let semuaDataNilai = [];
 let unsubscribeNilaiSiswa = null;
 let unsubscribeNilaiMapel = null;
 let unsubscribeNilaiMengajar = null;
+let unsubscribeNilaiKelas = null;
 let unsubscribeNilaiData = null;
 let nilaiPreviewData = [];
 let nilaiPreviewPage = 1;
@@ -76,6 +78,10 @@ function getNilaiMapel(mapelKode) {
   ) || null;
 }
 
+function getNilaiClassKey(item = {}) {
+  return getNilaiKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas;
+}
+
 function normalizeNilaiAgama(value = "") {
   return String(value || "").trim().toLowerCase();
 }
@@ -93,20 +99,33 @@ function isNilaiSiswaEligibleForMapel(siswa, mapel) {
   return normalizeNilaiAgama(siswa.agama) === mapelAgama;
 }
 
+function getNilaiCoordinatorWaliClassSet() {
+  const user = getCurrentNilaiUser();
+  const kodeGuru = String(user.kode_guru || "").trim();
+  if (!kodeGuru) return new Set();
+  return new Set(
+    semuaDataNilaiKelas
+      .filter(item => String(item.kode_guru || "").trim() === kodeGuru)
+      .map(item => getNilaiClassKey(item))
+      .filter(Boolean)
+  );
+}
+
 function getNilaiAccessibleAssignments() {
   const user = getCurrentNilaiUser();
   const role = user.role || "admin";
   const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+  const coordinatorWaliClasses = getNilaiCoordinatorWaliClassSet();
   return semuaDataNilaiMengajar
     .filter(item => {
       if (!item.mapel_kode || !item.guru_kode || !item.tingkat || !item.rombel) return false;
-      if (role === "admin") return true;
+      if (role === "admin" || role === "superadmin") return true;
       if (role === "guru" && hasCoordinatorAccess && currentNilaiAccessMode === "koordinator") {
-        return coordinatorLevels.includes(String(item.tingkat || ""));
+        return coordinatorLevels.includes(String(item.tingkat || "")) || coordinatorWaliClasses.has(getNilaiClassKey(item));
       }
       if (role === "guru") return String(item.guru_kode || "") === String(user.kode_guru || "");
-      if (role === "koordinator") return coordinatorLevels.includes(String(item.tingkat || ""));
+      if (role === "koordinator") return coordinatorLevels.includes(String(item.tingkat || "")) || coordinatorWaliClasses.has(getNilaiClassKey(item));
       return false;
     })
     .filter(item => getNilaiStudentsForAssignment(item).length > 0)
@@ -262,7 +281,8 @@ function makeNilaiAssignmentHydrationKey(assignment) {
     typeof getActiveTermId === "function" ? getActiveTermId() : "legacy",
     assignment.tingkat || "",
     String(assignment.rombel || "").toUpperCase(),
-    String(assignment.mapel_kode || "").toUpperCase()
+    String(assignment.mapel_kode || "").toUpperCase(),
+    String(assignment.guru_kode || "").toUpperCase()
   ].join("|");
 }
 
@@ -389,6 +409,7 @@ function loadRealtimeInputNilai() {
   if (unsubscribeNilaiSiswa) unsubscribeNilaiSiswa();
   if (unsubscribeNilaiMapel) unsubscribeNilaiMapel();
   if (unsubscribeNilaiMengajar) unsubscribeNilaiMengajar();
+  if (unsubscribeNilaiKelas) unsubscribeNilaiKelas();
   if (unsubscribeNilaiData) unsubscribeNilaiData();
 
   const documentsApi = getNilaiDocumentsApi();
@@ -405,6 +426,16 @@ function loadRealtimeInputNilai() {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderNilaiPageState();
   });
+  unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
+    ? getSemesterCollectionQuery("kelas")
+      .onSnapshot(snapshot => {
+        semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderNilaiPageState();
+      })
+    : documentsApi.collection("kelas").onSnapshot(snapshot => {
+        semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderNilaiPageState();
+      });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
     setSemuaDataNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -417,6 +448,7 @@ function loadRealtimeRekapNilai() {
   if (unsubscribeNilaiSiswa) unsubscribeNilaiSiswa();
   if (unsubscribeNilaiMapel) unsubscribeNilaiMapel();
   if (unsubscribeNilaiMengajar) unsubscribeNilaiMengajar();
+  if (unsubscribeNilaiKelas) unsubscribeNilaiKelas();
   if (unsubscribeNilaiData) unsubscribeNilaiData();
 
   const documentsApi = getNilaiDocumentsApi();
@@ -433,6 +465,16 @@ function loadRealtimeRekapNilai() {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderRekapNilaiState();
   });
+  unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
+    ? getSemesterCollectionQuery("kelas")
+      .onSnapshot(snapshot => {
+        semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderRekapNilaiState();
+      })
+    : documentsApi.collection("kelas").onSnapshot(snapshot => {
+        semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        renderRekapNilaiState();
+      });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
     setSemuaDataNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -444,16 +486,17 @@ function loadRealtimeRekapNilai() {
 function renderNilaiPageState() {
   const assignmentSelect = document.getElementById("nilaiAssignmentSelect");
   const isSelectingAssignment = document.activeElement === assignmentSelect;
+  const isEditingTable = document.activeElement?.classList?.contains("nilai-input-cell");
   renderNilaiAssignmentOptions();
   syncCurrentNilaiAssignmentRows(getSelectedNilaiAssignment());
-  if (isSelectingAssignment) return;
+  if (isSelectingAssignment || isEditingTable) return;
   renderNilaiTableState();
 }
 
 function getNilaiAccessibleClasses() {
   const seen = new Map();
   getNilaiAccessibleAssignments().forEach(item => {
-    const key = `${item.tingkat}|${String(item.rombel || "").toUpperCase()}`;
+    const key = getNilaiClassKey(item);
     if (seen.has(key)) return;
     seen.set(key, {
       tingkat: String(item.tingkat || ""),
@@ -497,10 +540,10 @@ function renderNilaiRekapClassOptions() {
 }
 
 function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
+  const targetClassKey = getNilaiKelasParts(`${tingkat || ""}${rombel || ""}`).kelas;
   return getNilaiAccessibleAssignments()
     .filter(item =>
-      String(item.tingkat || "") === String(tingkat || "")
-      && String(item.rombel || "").toUpperCase() === String(rombel || "").toUpperCase()
+      getNilaiClassKey(item) === targetClassKey
     )
     .sort((a, b) => {
       const mapelA = getNilaiMapel(a.mapel_kode) || {};
@@ -626,7 +669,7 @@ async function handleNilaiAssignmentChange() {
   renderNilaiTableState();
   if (!assignment?.mapel_kode) return;
   try {
-    const changed = await hydrateNilaiCacheForAssignment(assignment, { force: true });
+    const changed = await hydrateNilaiCacheForAssignment(assignment);
     syncCurrentNilaiAssignmentRows(assignment);
     if (changed || currentNilaiAssignmentRows.length > 0) {
       renderNilaiTableState();
@@ -802,7 +845,8 @@ async function hydrateNilaiCacheForAssignment(assignment, options = {}) {
     .eq("collection_path", "nilai")
     .filter("data->>tingkat", "eq", String(assignment.tingkat || ""))
     .filter("data->>rombel", "eq", String(assignment.rombel || "").toUpperCase())
-    .filter("data->>mapel_kode", "eq", String(assignment.mapel_kode || "").toUpperCase());
+    .filter("data->>mapel_kode", "eq", String(assignment.mapel_kode || "").toUpperCase())
+    .filter("data->>guru_kode", "eq", String(assignment.guru_kode || "").toUpperCase());
 
   if (error) throw error;
 
@@ -1374,12 +1418,6 @@ async function uploadImportNilai() {
     closeNilaiPreviewModal();
     batalImportNilai(false);
     renderNilaiTableState();
-    hydrateNilaiCacheForAssignment(assignment, { force: true })
-      .then(() => {
-        syncCurrentNilaiAssignmentRows(assignment);
-        renderNilaiTableState();
-      })
-      .catch(error => console.error("hydrate nilai import failed", error));
     Swal.fire("Import selesai", `${siapUpload.length} nilai berhasil diupload.`, "success");
   } catch (error) {
     console.error(error);
@@ -1416,22 +1454,12 @@ async function saveNilaiAssignment() {
 
   try {
     setNilaiSavingState(true);
-    await hydrateNilaiCacheForAssignment(assignment, { force: true });
     const students = getNilaiStudentsForAssignment(assignment);
     const rows = students.map((siswa, index) => {
-      const existing = getNilaiForStudent(assignment, siswa.nipd);
-      const existingUh1 = getNilaiFieldValue(existing, "uh_1", existing?.nilai ?? "");
-      const existingUh2 = getNilaiFieldValue(existing, "uh_2", "");
-      const existingUh3 = getNilaiFieldValue(existing, "uh_3", "");
-      const existingPts = getNilaiFieldValue(existing, "pts", "");
       const uh1 = getNormalizedNilaiCellValueByRow(index, "uh1");
       const uh2 = getNormalizedNilaiCellValueByRow(index, "uh2");
       const uh3 = getNormalizedNilaiCellValueByRow(index, "uh3");
       const pts = getNormalizedNilaiCellValueByRow(index, "pts");
-      const nextUh1 = uh1 === "" ? existingUh1 : Number(uh1);
-      const nextUh2 = uh2 === "" ? existingUh2 : Number(uh2);
-      const nextUh3 = uh3 === "" ? existingUh3 : Number(uh3);
-      const nextPts = pts === "" ? existingPts : Number(pts);
       return {
         siswa,
         payload: {
@@ -1443,10 +1471,10 @@ async function saveNilaiAssignment() {
           rombel: assignment.rombel,
           mapel_kode: assignment.mapel_kode,
           guru_kode: assignment.guru_kode,
-          uh_1: nextUh1 === "" ? "" : Number(nextUh1),
-          uh_2: nextUh2 === "" ? "" : Number(nextUh2),
-          uh_3: nextUh3 === "" ? "" : Number(nextUh3),
-          pts: nextPts === "" ? "" : Number(nextPts),
+          uh_1: uh1 === "" ? "" : Number(uh1),
+          uh_2: uh2 === "" ? "" : Number(uh2),
+          uh_3: uh3 === "" ? "" : Number(uh3),
+          pts: pts === "" ? "" : Number(pts),
           updated_by: user.username || "",
           updated_at: new Date().toISOString()
         }
@@ -1465,12 +1493,6 @@ async function saveNilaiAssignment() {
     syncCurrentNilaiAssignmentRows(assignment);
     setNilaiSavingState(false);
     renderNilaiTableState();
-    hydrateNilaiCacheForAssignment(assignment, { force: true })
-      .then(() => {
-        syncCurrentNilaiAssignmentRows(assignment);
-        renderNilaiTableState();
-      })
-      .catch(error => console.error("hydrate nilai save failed", error));
     Swal.fire("Tersimpan", "Nilai sudah disimpan.", "success");
   } catch (error) {
     console.error(error);

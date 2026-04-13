@@ -121,7 +121,7 @@
         <div class="dashboard-hero-copy">
           <span class="dashboard-eyebrow">Koordinator</span>
           <h2>Area kerja jenjang ${escapeHtml(levels.length ? levels.join(", ") : "-")}.</h2>
-          <p>Akses dibatasi ke data siswa, nilai, wali kelas, dan kelas real sesuai jenjang yang Anda koordinasi.</p>
+          <p>Akses dibatasi ke data siswa, nilai, wali kelas, dan kelas real sesuai jenjang yang Anda koordinasi serta kelas yang Anda pegang sebagai wali kelas.</p>
           <div class="dashboard-hero-actions">
             <button class="btn-secondary" onclick="loadPage('lihat')">Data Siswa</button>
             <button class="btn-secondary" onclick="loadPage('nilai-input')">Nilai</button>

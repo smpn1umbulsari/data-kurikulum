@@ -1,17 +1,22 @@
 // ================= UI KELAS =================
 function renderKelasPage() {
+  const isKoordinator = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+  const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   return `
     <div class="card">
       <h2>Data Kelas</h2>
+      ${isKoordinator ? `<div class="matrix-toolbar-note">Koordinator hanya melihat kelas pada jenjang ${escapeKelasHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
 
       <div class="toolbar">
         <div class="toolbar-left"></div>
         <div class="toolbar-right">
-          <button class="btn-secondary" onclick="downloadKelasTemplate()">Download Template</button>
-          <label class="btn-upload">
-            Import
-            <input type="file" accept=".xlsx, .xls" onchange="importKelasExcel(event)">
-          </label>
+          ${isKoordinator ? "" : `
+            <button class="btn-secondary" onclick="downloadKelasTemplate()">Download Template</button>
+            <label class="btn-upload">
+              Import
+              <input type="file" accept=".xlsx, .xls" onchange="importKelasExcel(event)">
+            </label>
+          `}
         </div>
       </div>
 
@@ -32,7 +37,7 @@ function renderKelasPage() {
       </div>
 
       <div class="kelas-form-split">
-        <div id="kelasCreateForm"></div>
+        ${isKoordinator ? "" : `<div id="kelasCreateForm"></div>`}
       </div>
 
       <div class="table-container">
@@ -43,7 +48,7 @@ function renderKelasPage() {
               ${renderSortableHeader("Kelas", "rombel", kelasSortField, kelasSortDirection, "setKelasSort")}
               ${renderSortableHeader("Wali Kelas", "wali_kelas", kelasSortField, kelasSortDirection, "setKelasSort")}
               <th>Jumlah Anggota</th>
-              <th>Aksi</th>
+              <th>${isKoordinator ? "Detail" : "Aksi"}</th>
             </tr>
           </thead>
           <tbody id="tbodyKelas"></tbody>

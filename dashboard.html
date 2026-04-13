@@ -5,7 +5,7 @@
   <title>Dashboard Aplikasi Siswa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="style.css?v=20260411h">
+<link rel="stylesheet" href="style.css?v=20260413c">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
@@ -60,7 +60,7 @@
 
     <div class="sidebar-section-label">Navigasi</div>
 
-    <div class="menu-group role-menu role-admin" id="menuAdmin">
+    <div class="menu-group role-menu role-admin role-superadmin" id="menuAdmin">
       <button class="menu menu-parent" onclick="toggleMenu('submenuAdmin', this)">
         <span>Admin</span>
         <span class="menu-caret">+</span>
@@ -73,7 +73,7 @@
       </div>
     </div>
 
-    <div class="menu-group role-menu role-admin" id="menuDataSekolah">
+    <div class="menu-group role-menu role-admin role-superadmin" id="menuDataSekolah">
       <button class="menu menu-parent" onclick="toggleMenu('submenuDataSekolah', this)">
         <span>Data Sekolah</span>
         <span class="menu-caret">+</span>
@@ -98,7 +98,7 @@
       </div>
     </div>
 
-    <div class="menu-group role-menu role-admin role-urusan" id="menuKurikulum">
+    <div class="menu-group role-menu role-admin role-superadmin role-urusan" id="menuKurikulum">
       <button class="menu menu-parent" onclick="toggleMenu('submenuKurikulum', this)">
         <span>Kurikulum</span>
         <span class="menu-caret">+</span>
@@ -110,11 +110,13 @@
         <button onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
         <button onclick="loadPage('mengajar')">Pembagian Mengajar</button>
         <button onclick="loadPage('rekap-tugas-mengajar')">Rekap Administrasi</button>
+        <button onclick="loadPage('kalender-pendidikan')">Kalender Pendidikan</button>
 
         <div class="submenu-section-divider"></div>
         <div class="submenu-section-label">Asesmen</div>
         <button onclick="loadPage('pembagian-ruang')">Pembagian Ruang</button>
         <button onclick="loadPage('asesmen-administrasi')">Rekap Asesmen</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
         <button onclick="loadPage('nilai-input')">Nilai</button>
         <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
       </div>
@@ -127,6 +129,7 @@
       </button>
       <div class="submenu" id="submenuNilaiGuru">
         <button onclick="loadPage('nilai-input-guru')">Input Nilai</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
       </div>
     </div>
 
@@ -138,6 +141,7 @@
       <div class="submenu" id="submenuSiswaKoordinator">
         <button onclick="loadPage('input')">Input Data</button>
         <button onclick="loadPage('lihat')">Lihat Data</button>
+        <button onclick="loadPage('kelas')">Data Kelas</button>
         <button onclick="loadPage('kelas-bayangan-siswa')">Lihat Data Kelas Real</button>
       </div>
     </div>
@@ -149,6 +153,7 @@
       </button>
       <div class="submenu submenu-sectioned" id="submenuKurikulumKoordinator">
         <div class="submenu-section-label">Nilai</div>
+        <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
         <button onclick="loadPage('nilai-input')">Nilai</button>
         <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
       </div>
@@ -156,7 +161,7 @@
 
     <div class="sidebar-menu-divider"></div>
 
-    <div class="menu-group role-menu role-admin role-koordinator" id="menuWaliKelas">
+    <div class="menu-group role-menu role-admin role-superadmin role-koordinator" id="menuWaliKelas">
       <button class="menu menu-parent" onclick="toggleMenu('submenuWaliKelas', this)">
         <span>Wali Kelas</span>
         <span class="menu-caret">+</span>
@@ -168,7 +173,7 @@
       </div>
     </div>
 
-    <div class="menu-group role-menu role-admin">
+    <div class="menu-group role-menu role-admin role-superadmin">
       <button class="menu menu-parent" onclick="toggleMenu('submenuKelasBayangan', this)">
         <span>Kelas Real</span>
         <span class="menu-caret">+</span>
@@ -261,14 +266,16 @@
 <script src="Mengajar/mengajar.js?v=20260409a"></script>
 <script src="Mengajar/ui.js?v=20260409a"></script>
 <script src="TugasTambahan/tugas-tambahan.js?v=20260409i"></script>
+<script src="Kurikulum/kalender-pendidikan.js?v=20260412a"></script>
 <script src="Rekap/rekap-v2.js?v=20260409j"></script>
 <script src="Asesmen/pembagian-ruang-store.js?v=20260410a"></script>
 <script src="Asesmen/administrasi-settings.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-service.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-view.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-v2.js?v=20260409a"></script>
+<script src="Asesmen/soal-ai.js?v=20260412a"></script>
 <script src="Nilai/nilai.js?v=20260411c"></script>
-<script src="Nilai/rapor.js?v=20260411b"></script>
+<script src="Nilai/rapor.js?v=20260413j"></script>
 <script src="WaliKelas/wali-kelas-service.js?v=20260411b"></script>
 <script src="WaliKelas/wali-kelas-view.js?v=20260410a"></script>
 <script src="WaliKelas/wali-kelas.js?v=20260411c"></script>
@@ -456,6 +463,7 @@
     if (roleInfo) {
       const role = getCurrentAppRole();
       const labelMap = {
+        superadmin: "Superadmin",
         admin: "Admin",
         guru: canUseCoordinatorAccess() ? "Guru + Koordinator" : "Guru",
         koordinator: "Koordinator",
@@ -483,19 +491,28 @@
     return orderField ? ref.orderBy(orderField) : ref;
   }
 
+  function canAccessAiPromptMenu() {
+    if (window.DashboardShell?.canAccessAiPrompt) return window.DashboardShell.canAccessAiPrompt(getCurrentAppUser());
+    const user = getCurrentAppUser();
+    const role = String(user?.role || "").trim().toLowerCase();
+    if (["admin", "superadmin"].includes(role)) return true;
+    return user?.can_generate_prompt !== false;
+  }
+
   function canAccessPage(page) {
     if (window.DashboardShell?.canAccessPage) return window.DashboardShell.canAccessPage(page);
     const role = getCurrentAppRole();
-    if (role === "admin") return true;
+    if (page === "ai-soal" && !canAccessAiPromptMenu()) return false;
+    if (["admin", "superadmin"].includes(role)) return true;
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
       }
-      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan"].includes(page);
+      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
     }
-    if (role === "koordinator") return ["input", "lihat", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan"].includes(page);
-    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page);
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
+    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || page === "ai-soal";
     if (role === "siswa") return false;
     return false;
   }
@@ -511,15 +528,18 @@
     }
     const role = getCurrentAppRole();
     document.querySelectorAll(".role-menu").forEach(menu => {
-      menu.style.display = menu.classList.contains(`role-${role}`) ? "" : "none";
+      menu.style.display = (menu.classList.contains(`role-${role}`) || (role === "superadmin" && menu.classList.contains("role-admin"))) ? "" : "none";
     });
 
     const waliMenu = document.getElementById("menuWaliKelas");
     const nilaiMenu = document.getElementById("menuNilaiGuru");
     const siswaKoordinatorMenu = document.getElementById("menuSiswaKoordinator");
     const kurikulumKoordinatorMenu = document.getElementById("menuKurikulumKoordinator");
+    document.querySelectorAll("[data-ai-prompt-menu='true']").forEach(button => {
+      button.style.display = canAccessAiPromptMenu() ? "" : "none";
+    });
     if (!waliMenu) return;
-    if (role === "admin") {
+    if (role === "admin" || role === "superadmin") {
       waliMenu.style.display = "";
       return;
     }

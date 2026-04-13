@@ -20,10 +20,15 @@ let unsubscribeRaporNilai = null;
 let unsubscribeRaporKelas = null;
 let unsubscribeRaporGuru = null;
 let unsubscribeRaporKehadiran = null;
+let unsubscribeRaporCatatan = null;
 let unsubscribeRaporSettings = null;
 let unsubscribeAdminRaporSettings = null;
 const raporHydratedClassKeys = new Set();
 const raporHydrationPromises = new Map();
+let semuaDataRaporCatatan = [];
+let raporCatatanPanelEventsBound = false;
+let raporCatatanDocumentEventsBound = false;
+const RAPOR_CATATAN_LOCAL_CACHE_KEY = "rapor_catatan_wali_cache";
 
 function getRaporDocumentsApi() {
   return window.SupabaseDocuments;
@@ -64,14 +69,27 @@ function getRaporKelasBayanganParts(siswa) {
   return { tingkat: asli.tingkat, rombel: "", kelas: "" };
 }
 
+function getRaporCoordinatorWaliClassSet() {
+  const user = getCurrentRaporUser();
+  const kodeGuru = String(user.kode_guru || "").trim();
+  if (!kodeGuru) return new Set();
+  return new Set(
+    semuaDataRaporKelas
+      .filter(item => String(item.kode_guru || "").trim() === kodeGuru)
+      .map(item => getRaporKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas)
+      .filter(Boolean)
+  );
+}
+
 function getRaporKelasList() {
   const user = getCurrentRaporUser();
   const role = user.role || "admin";
   const kelasSet = new Set();
   const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
   const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
+  const coordinatorWaliClasses = getRaporCoordinatorWaliClassSet();
 
-  if (role === "admin") {
+  if (role === "admin" || role === "superadmin") {
     semuaDataRaporSiswa.forEach(siswa => {
       const parts = getRaporKelasBayanganParts(siswa);
       if (parts.kelas) kelasSet.add(parts.kelas);
@@ -79,12 +97,12 @@ function getRaporKelasList() {
   } else if (role === "guru" && hasCoordinatorAccess) {
     semuaDataRaporSiswa.forEach(siswa => {
       const parts = getRaporKelasBayanganParts(siswa);
-      if (parts.kelas && coordinatorLevels.includes(parts.tingkat)) kelasSet.add(parts.kelas);
+      if (parts.kelas && (coordinatorLevels.includes(parts.tingkat) || coordinatorWaliClasses.has(parts.kelas))) kelasSet.add(parts.kelas);
     });
   } else if (role === "koordinator") {
     semuaDataRaporSiswa.forEach(siswa => {
       const parts = getRaporKelasBayanganParts(siswa);
-      if (parts.kelas && coordinatorLevels.includes(parts.tingkat)) kelasSet.add(parts.kelas);
+      if (parts.kelas && (coordinatorLevels.includes(parts.tingkat) || coordinatorWaliClasses.has(parts.kelas))) kelasSet.add(parts.kelas);
     });
   } else if (role === "guru") {
     const kodeGuru = String(user.kode_guru || "").trim();
@@ -349,6 +367,331 @@ function getRaporKehadiran(siswa) {
   ) || {};
 }
 
+function getRaporJenisKelaminLabel(siswa = {}) {
+  const raw = String(siswa.jenis_kelamin || siswa.jk || siswa.gender || siswa.kelamin || "").trim().toLowerCase();
+  if (["l", "lk", "laki", "laki-laki", "laki laki", "1"].includes(raw)) return "L";
+  if (["p", "pr", "perempuan", "2"].includes(raw)) return "P";
+  return "-";
+}
+
+function getRaporCatatanKelasParts(value = "") {
+  return getRaporKelasParts(value);
+}
+
+function makeRaporCatatanDocId(kelasValue, nipd) {
+  const kelas = getRaporCatatanKelasParts(kelasValue).kelas;
+  const baseId = [kelas.replace(/\s+/g, ""), String(nipd || "").trim()].join("_");
+  const termId = typeof getRaporActiveTermId === "function" ? getRaporActiveTermId() : "legacy";
+  return termId === "legacy" ? baseId : `${termId}_${baseId}`;
+}
+
+function getRaporCatatanLocalCacheKey() {
+  return `${RAPOR_CATATAN_LOCAL_CACHE_KEY}_${getRaporActiveTermId()}`;
+}
+
+function readRaporCatatanLocalCache() {
+  try {
+    const raw = localStorage.getItem(getRaporCatatanLocalCacheKey()) || "[]";
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeRaporCatatanLocalCache(records = []) {
+  try {
+    localStorage.setItem(getRaporCatatanLocalCacheKey(), JSON.stringify(records));
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function mergeRaporCatatanRecords(records = []) {
+  const byId = new Map();
+  records.forEach(record => {
+    if (!record?.id) return;
+    byId.set(String(record.id), { ...record });
+  });
+  return Array.from(byId.values());
+}
+
+function syncRaporCatatanLocalCache(record) {
+  if (!record?.id) return;
+  const nextRecord = { ...record };
+  const current = readRaporCatatanLocalCache().filter(item => String(item.id || "") !== String(nextRecord.id));
+  current.unshift(nextRecord);
+  writeRaporCatatanLocalCache(current);
+}
+
+function removeRaporCatatanLocalCache(docId) {
+  const next = readRaporCatatanLocalCache().filter(item => String(item.id || "") !== String(docId || ""));
+  writeRaporCatatanLocalCache(next);
+}
+
+function getRaporCatatanRecord(siswaOrKelas, nipd = "") {
+  const siswa = typeof siswaOrKelas === "object" && siswaOrKelas !== null ? siswaOrKelas : null;
+  const kelas = siswa?.kelasRaporParts?.kelas || getRaporCatatanKelasParts(siswa?.kelas || siswaOrKelas || "").kelas;
+  const targetNipd = String(siswa?.nipd || nipd || "").trim();
+  if (!kelas || !targetNipd) return null;
+  const targetId = makeRaporCatatanDocId(kelas, targetNipd);
+  return semuaDataRaporCatatan.find(item =>
+    String(item.id || "") === targetId ||
+    (getRaporCatatanKelasParts(item.kelas || "").kelas === kelas && String(item.nipd || "").trim() === targetNipd)
+  ) || null;
+}
+
+function getRaporCatatanText(siswa) {
+  const record = getRaporCatatanRecord(siswa);
+  return String(record?.catatan_wali_kelas ?? record?.catatan ?? "").trim();
+}
+
+function getRaporCatatanInputId(kelasValue, nipd) {
+  return `rapor-catatan-${getRaporCatatanKelasParts(kelasValue).kelas.replace(/\s+/g, "")}-${String(nipd || "").trim()}`;
+}
+
+function cleanRaporCatatanValue(value = "") {
+  return String(value || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+}
+
+function formatRaporCatatanHtml(value = "") {
+  const text = String(value || "").trim();
+  return text ? escapeRaporHtml(text).replace(/\n/g, "<br>") : "-";
+}
+
+function getRaporActiveTermPayload() {
+  const term = typeof getActiveSemesterContext === "function" ? getActiveSemesterContext() : { id: "legacy", semester: "", tahun: "" };
+  return {
+    term_id: term.id || "legacy",
+    semester: term.semester || "",
+    tahun_pelajaran: term.tahun || ""
+  };
+}
+
+function setRaporCatatanNotice(message = "", kind = "info") {
+  const text = String(message || "").trim();
+  if (!text) return;
+  document.querySelectorAll(".admin-floating-toast").forEach(item => item.remove());
+  const toast = document.createElement("div");
+  toast.className = `admin-floating-toast ${kind === "error" ? "is-error" : ""}`;
+  toast.textContent = text;
+  document.body.appendChild(toast);
+  window.setTimeout(() => {
+    toast.classList.add("is-visible");
+  }, 10);
+  window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+    toast.classList.add("is-hiding");
+    window.setTimeout(() => toast.remove(), 260);
+  }, 2600);
+}
+
+async function saveRaporCatatanForStudent(nipd) {
+  return saveRaporCatatanForStudentWithInput(nipd, null);
+}
+
+async function saveRaporCatatanFromButton(buttonEl) {
+  const row = buttonEl?.closest("tr");
+  const textarea = row?.querySelector("textarea.rapor-catatan-input");
+  const nipd = String(buttonEl?.dataset?.nipd || textarea?.dataset?.nipd || "").trim();
+  if (textarea && nipd) {
+    textarea.dataset.nipd = nipd;
+    const inputId = textarea.id || getRaporCatatanInputId(getSelectedRaporKelas(), nipd);
+    if (!textarea.id) textarea.id = inputId;
+  }
+  return saveRaporCatatanForStudentWithInput(nipd, textarea || null);
+}
+
+async function saveRaporCatatanFromTextarea(textareaEl) {
+  const nipd = String(textareaEl?.dataset?.nipd || "").trim();
+  return saveRaporCatatanForStudentWithInput(nipd, textareaEl || null);
+}
+
+async function saveRaporCatatanForStudentWithInput(nipd, inputElement = null) {
+  setRaporCatatanNotice("Menjalankan simpan catatan...", "info");
+  const kelas = getSelectedRaporKelas();
+  const students = getRaporStudentsByClass(kelas);
+  const siswa = students.find(item => String(item.nipd || "") === String(nipd || ""));
+  if (!kelas || !siswa) {
+    setRaporCatatanNotice("Pilih kelas terlebih dahulu.", "warning");
+    return;
+  }
+
+  const inputId = getRaporCatatanInputId(kelas, nipd);
+  const input = inputElement || document.querySelector(`textarea.rapor-catatan-input[data-nipd="${String(nipd || "").replace(/"/g, '\\"')}"]`) || document.getElementById(inputId);
+  if (!input) {
+    setRaporCatatanNotice("Kotak catatan tidak ditemukan.", "error");
+    return;
+  }
+
+  const documentsApi = getRaporDocumentsApi();
+  const docId = makeRaporCatatanDocId(kelas, nipd);
+
+  try {
+    input.disabled = true;
+    setRaporCatatanRowStatus(nipd, "Menyimpan...");
+    setRaporCatatanNotice(`Menyimpan catatan ${siswa.nama || "-"}...`, "info");
+    const payload = {
+      ...getRaporActiveTermPayload(),
+      kelas,
+      nipd: String(nipd || "").trim(),
+      nama_siswa: siswa.nama || "",
+      catatan_wali_kelas: cleanRaporCatatanValue(input.value),
+      updated_by: getCurrentRaporUser().username || "",
+      updated_at: new Date().toISOString()
+    };
+    const nextRecord = { id: docId, ...payload };
+    semuaDataRaporCatatan = mergeRaporCatatanRecords([
+      ...semuaDataRaporCatatan.filter(item => String(item.id || "") !== String(docId)),
+      nextRecord
+    ]);
+    syncRaporCatatanLocalCache(nextRecord);
+    renderRaporPreview();
+    setRaporCatatanRowStatus(nipd, "Tersimpan");
+    setRaporCatatanNotice(`Catatan untuk ${siswa.nama || "-"} sudah disimpan.`, "success");
+    void documentsApi.collection("rapor_catatan_wali").doc(docId).set(payload)
+      .then(() => {
+        setRaporCatatanRowStatus(nipd, "Tersimpan");
+      })
+      .catch(error => {
+        console.error(error);
+        setRaporCatatanRowStatus(nipd, "Tersimpan lokal");
+      });
+  } catch (error) {
+    console.error(error);
+    setRaporCatatanRowStatus(nipd, "Gagal");
+    setRaporCatatanNotice("Catatan wali kelas belum berhasil disimpan.", "error");
+  } finally {
+    input.disabled = false;
+  }
+}
+
+async function deleteRaporCatatanForStudent(nipd) {
+  const kelas = getSelectedRaporKelas();
+  const students = getRaporStudentsByClass(kelas);
+  const siswa = students.find(item => String(item.nipd || "") === String(nipd || ""));
+  if (!kelas || !siswa) {
+    setRaporCatatanNotice("Pilih kelas terlebih dahulu.", "warning");
+    return;
+  }
+
+  const documentsApi = getRaporDocumentsApi();
+  const docId = makeRaporCatatanDocId(kelas, nipd);
+  const inputId = getRaporCatatanInputId(kelas, nipd);
+  const input = document.getElementById(inputId);
+  try {
+    if (input) input.disabled = true;
+    setRaporCatatanRowStatus(nipd, "Menghapus...");
+    setRaporCatatanNotice(`Menghapus catatan ${siswa.nama || "-"}...`, "info");
+    removeRaporCatatanLocalCache(docId);
+    semuaDataRaporCatatan = semuaDataRaporCatatan.filter(item => String(item.id || "") !== String(docId));
+    if (input) input.value = "";
+    renderRaporCatatanPanel();
+    renderRaporPreview();
+    setRaporCatatanRowStatus(nipd, "Dihapus");
+    setRaporCatatanNotice(`Catatan untuk ${siswa.nama || "-"} sudah dihapus.`, "success");
+    void documentsApi.collection("rapor_catatan_wali").doc(docId).delete().catch(error => {
+      console.error(error);
+      setRaporCatatanRowStatus(nipd, "Dihapus lokal");
+    });
+  } catch (error) {
+    console.error(error);
+    setRaporCatatanRowStatus(nipd, "Gagal");
+    setRaporCatatanNotice("Catatan wali kelas belum berhasil dihapus.", "error");
+  } finally {
+    if (input) input.disabled = false;
+  }
+}
+
+function setRaporCatatanRowStatus(nipd, text) {
+  const safeNipd = String(nipd || "").trim();
+  if (!safeNipd) return;
+  document.querySelectorAll("[data-rapor-catatan-status]").forEach(node => {
+    if (String(node.dataset.raporCatatanStatus || "").trim() === safeNipd) {
+      node.textContent = text || "";
+    }
+  });
+}
+
+function bindRaporCatatanPanelEvents() {
+  if (raporCatatanPanelEventsBound) return;
+  raporCatatanPanelEventsBound = true;
+}
+
+window.saveRaporCatatanForStudent = saveRaporCatatanForStudent;
+window.saveRaporCatatanFromButton = saveRaporCatatanFromButton;
+window.saveRaporCatatanFromTextarea = saveRaporCatatanFromTextarea;
+window.saveRaporCatatanForStudentWithInput = saveRaporCatatanForStudentWithInput;
+window.deleteRaporCatatanForStudent = deleteRaporCatatanForStudent;
+
+function renderRaporCatatanPanel() {
+  const container = document.getElementById("raporCatatanPanel");
+  if (!container) return;
+  bindRaporCatatanPanelEvents();
+  const kelas = getSelectedRaporKelas();
+  const students = getRaporStudentsByClass(kelas);
+  if (!kelas) {
+    container.innerHTML = `<div class="empty-panel">Pilih kelas untuk mengisi catatan wali kelas.</div>`;
+    return;
+  }
+  if (!students.length) {
+    container.innerHTML = `<div class="empty-panel">Belum ada siswa pada kelas ${escapeRaporHtml(kelas)}.</div>`;
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="rapor-catatan-head">
+      <div>
+        <span class="dashboard-eyebrow">Catatan Rapor</span>
+        <h3>Catatan Wali Kelas</h3>
+        <p>Isi catatan per murid dalam bentuk paragraf. Catatan ini akan dicetak pada rapor.</p>
+      </div>
+      <div class="rapor-catatan-meta">
+        <strong>${escapeRaporHtml(kelas)}</strong>
+        <span>${students.length} murid</span>
+      </div>
+    </div>
+    <div class="table-container mapel-table-container">
+      <table class="mapel-table rapor-catatan-table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Nama</th>
+            <th>L/P</th>
+            <th>Catatan Wali Kelas</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${students.map((siswa, index) => {
+            const inputId = getRaporCatatanInputId(kelas, siswa.nipd);
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td class="rapor-catatan-name">
+                  ${escapeRaporHtml(siswa.nama || "-")}
+                  <small>${escapeRaporHtml(siswa.nipd || "-")}</small>
+                </td>
+                <td>${escapeRaporHtml(getRaporJenisKelaminLabel(siswa) || "-")}</td>
+                <td>
+                  <textarea id="${escapeRaporHtml(inputId)}" class="rapor-catatan-input" data-nipd="${escapeRaporHtml(siswa.nipd || "")}" rows="4" placeholder="Tulis catatan wali kelas dalam paragraf..." onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'Enter'){ event.preventDefault(); window.saveRaporCatatanForStudentWithInput(this.dataset.nipd, this); }">${escapeRaporHtml(getRaporCatatanText(siswa))}</textarea>
+                </td>
+                <td class="rapor-catatan-actions">
+                  <button type="button" class="btn-secondary" onclick="window.saveRaporCatatanForStudentWithInput(this.dataset.nipd, this.closest('tr').querySelector('textarea.rapor-catatan-input'))" data-rapor-catatan-action="save" data-nipd="${escapeRaporHtml(siswa.nipd || "")}">Simpan</button>
+                  <button type="button" class="btn-secondary" onclick="window.deleteRaporCatatanForStudent(this.dataset.nipd)" data-rapor-catatan-action="delete" data-nipd="${escapeRaporHtml(siswa.nipd || "")}">Hapus</button>
+                  <span class="rapor-catatan-status" data-rapor-catatan-status="${escapeRaporHtml(siswa.nipd || "")}">${escapeRaporHtml(getRaporCatatanText(siswa) ? "Tersimpan" : "")}</span>
+                </td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function getRaporSettings() {
   const activeTerm = typeof getActiveSemesterContext === "function" ? getActiveSemesterContext() : null;
   return {
@@ -566,12 +909,14 @@ function renderCetakRaporPage() {
       </div>
 
       <div id="raporInfo" class="nilai-assignment-info">Memuat data rapor...</div>
+      <div id="raporCatatanPanel" class="rapor-catatan-panel"></div>
     </div>
   `;
 }
 
 function loadRealtimeCetakRapor() {
   clearCetakRaporListeners();
+  semuaDataRaporCatatan = mergeRaporCatatanRecords(readRaporCatatanLocalCache());
   if (typeof loadKepalaSekolahTtdSettings === "function") {
     loadKepalaSekolahTtdSettings().then(renderCetakRaporState);
   }
@@ -611,6 +956,13 @@ function loadRealtimeCetakRapor() {
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
     render();
   });
+  unsubscribeRaporCatatan = documentsApi.collection("rapor_catatan_wali").onSnapshot(snapshot => {
+    const remoteRecords = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    semuaDataRaporCatatan = mergeRaporCatatanRecords([...remoteRecords, ...readRaporCatatanLocalCache()]);
+    render();
+  });
   unsubscribeRaporSettings = documentsApi.collection("settings").doc("rapor").onSnapshot(snapshot => {
     raporAdminSettings = {
       ...raporAdminSettings,
@@ -621,7 +973,7 @@ function loadRealtimeCetakRapor() {
 }
 
 function clearCetakRaporListeners() {
-  [unsubscribeRaporSiswa, unsubscribeRaporMapel, unsubscribeRaporMengajar, unsubscribeRaporNilai, unsubscribeRaporKelas, unsubscribeRaporGuru, unsubscribeRaporKehadiran, unsubscribeRaporSettings].forEach(unsub => {
+  [unsubscribeRaporSiswa, unsubscribeRaporMapel, unsubscribeRaporMengajar, unsubscribeRaporNilai, unsubscribeRaporKelas, unsubscribeRaporGuru, unsubscribeRaporKehadiran, unsubscribeRaporCatatan, unsubscribeRaporSettings].forEach(unsub => {
     if (unsub) unsub();
   });
   unsubscribeRaporSiswa = null;
@@ -631,6 +983,7 @@ function clearCetakRaporListeners() {
   unsubscribeRaporKelas = null;
   unsubscribeRaporGuru = null;
   unsubscribeRaporKehadiran = null;
+  unsubscribeRaporCatatan = null;
   unsubscribeRaporSettings = null;
 }
 
@@ -638,6 +991,7 @@ function renderCetakRaporState() {
   renderRaporClassOptions();
   renderRaporStudentOptions(false);
   renderRaporPreview();
+  renderRaporCatatanPanel();
 }
 
 function renderRaporClassOptions() {
@@ -664,6 +1018,7 @@ function renderRaporStudentOptions(shouldPreview = true) {
     : `<option value="">Tidak ada siswa</option>`;
   if (current && students.some(siswa => String(siswa.nipd || "") === current)) select.value = current;
   ensureRaporNilaiHydrated(selectedClass, () => renderRaporPreview());
+  renderRaporCatatanPanel();
   if (shouldPreview) renderRaporPreview();
 }
 
@@ -682,6 +1037,9 @@ function renderRaporPreview() {
   ensureRaporNilaiHydrated(kelas, () => renderRaporPreview());
   const students = getRaporStudentsByClass(kelas);
   const mapel = getRaporMapelForClass(kelas);
+  const selectedNipd = document.getElementById("raporSiswaSelect")?.value || "";
+  const selectedStudent = students.find(siswa => String(siswa.nipd || "") === String(selectedNipd || ""));
+  const catatan = selectedStudent ? getRaporCatatanText(selectedStudent) : "";
   info.innerHTML = `
     <span><strong>Kelas</strong>${escapeRaporHtml(kelas || "-")}</span>
     <span><strong>Siswa</strong>${students.length}</span>
@@ -689,6 +1047,11 @@ function renderRaporPreview() {
     <span><strong>Semester</strong>${escapeRaporHtml(getRaporSettings().semester || "-")}</span>
     <span><strong>Tahun</strong>${escapeRaporHtml(getRaporSettings().tahun || "-")}</span>
     <span><strong>TTD KS</strong>${getRaporSettings().useKepalaTtd && getRaporSettings().kepala_ttd ? "Dipakai" : "Tidak dipakai"}</span>
+    <div class="rapor-preview-note">
+      <strong>Pratinjau Catatan</strong>
+      ${selectedStudent ? `<p>${escapeRaporHtml(selectedStudent.nama || "-")} - ${escapeRaporHtml(selectedStudent.nipd || "-")}</p>` : ""}
+      <div>${formatRaporCatatanHtml(catatan)}</div>
+    </div>
   `;
 }
 
@@ -774,8 +1137,8 @@ function renderRaporPage(siswa) {
       </div>
 
       <div class="rapor-identity">
-        <div><strong>NAMA PESERTA DIDIK</strong><span>:</span><b>${escapeRaporHtml(siswa.nama || "-")}</b></div>
-        <div><strong>KELAS</strong><span>:</span><b>${escapeRaporHtml(formatRaporDisplayClass(kelas))}</b></div>
+        <div><strong>NAMA MURID</strong><span>:</span><b>${escapeRaporHtml(siswa.nama || "-")}</b></div>
+        <div><strong>Kelas</strong><span>:</span><b>${escapeRaporHtml(formatRaporDisplayClass(kelas))}</b></div>
         <div><strong>NIPD / NISN</strong><span>:</span><b>${escapeRaporHtml(nomorInduk)}</b></div>
       </div>
 
@@ -810,7 +1173,7 @@ function renderRaporPage(siswa) {
           <tr><th>No.</th><th>Ketidakhadiran</th><th>Jumlah (Hari)</th><th>Catatan Wali Kelas</th></tr>
         </thead>
         <tbody>
-          <tr><td>1</td><td>Sakit</td><td>${escapeRaporHtml(kehadiran.s ?? 0)}</td><td rowspan="3"></td></tr>
+          <tr><td>1</td><td>Sakit</td><td>${escapeRaporHtml(kehadiran.s ?? 0)}</td><td class="rapor-catatan-print" rowspan="3">${formatRaporCatatanHtml(getRaporCatatanText(siswa))}</td></tr>
           <tr><td>2</td><td>Izin</td><td>${escapeRaporHtml(kehadiran.i ?? 0)}</td></tr>
           <tr><td>3</td><td>Tanpa Keterangan</td><td>${escapeRaporHtml(kehadiran.a ?? 0)}</td></tr>
         </tbody>
@@ -875,7 +1238,7 @@ function getRaporPrintHtml(students) {
           .rapor-title { text-align: center; margin: 10px 0 8px; line-height: 1.08; }
           .rapor-title h3 { margin: 0; font-size: 11pt; }
           .rapor-identity { display: grid; grid-template-columns: 1fr 170px; gap: 4px 20px; margin-bottom: 7px; font-size: 9.5pt; }
-          .rapor-identity div { display: grid; grid-template-columns: 118px 8px 1fr; gap: 3px; }
+          .rapor-identity div { display: grid; grid-template-columns: 104px 6px 1fr; gap: 2px; }
           .rapor-section-title { margin: 6px 0 3px; font-size: 9.8pt; font-weight: 800; }
           .rapor-sikap-row { display: flex; gap: 14px; margin: 2px 0 2px 16px; font-size: 9pt; }
           .rapor-description { border: 1px solid #555; min-height: 19px; padding: 4px 7px; margin: 0 0 4px 16px; font-size: 8.5pt; }
@@ -890,6 +1253,7 @@ function getRaporPrintHtml(students) {
           .rapor-note-table th { background: #f4b183; }
           .rapor-note-table td:first-child, .rapor-note-table td:nth-child(3) { text-align: center; width: 62px; }
           .rapor-note-table td:last-child { width: 42%; }
+          .rapor-catatan-print { vertical-align: top; white-space: pre-wrap; line-height: 1.35; padding: 3px 5px; }
           .rapor-date-line, .rapor-date-placeholder { display: block; min-height: 12px; font-size: 9pt; text-align: center; }
           .rapor-signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-top: 8px; text-align: center; font-size: 9pt; align-items: start; }
           .rapor-signatures div { display: grid; align-content: start; min-height: 70px; gap: 1px; }

@@ -245,7 +245,7 @@ async function restoreFullBackup() {
 
     const validPassword = typeof verifyAdminSemesterPassword === "function"
       ? await verifyAdminSemesterPassword(confirm.value)
-      : confirm.value === "admin123" || confirm.value === "kurikulumspenturi";
+      : confirm.value === "admin123" || confirm.value === "guruspenturi";
     if (!validPassword) {
       Swal.fire("Password salah", "Restore dibatalkan.", "error");
       return;
@@ -339,7 +339,7 @@ async function resetAllApplicationData() {
 
   const validPassword = typeof verifyAdminSemesterPassword === "function"
     ? await verifyAdminSemesterPassword(password.value)
-    : password.value === "admin123" || password.value === "kurikulumspenturi";
+    : password.value === "admin123" || password.value === "guruspenturi";
   if (!validPassword) {
     Swal.fire("Password salah", "Pembersihan dibatalkan.", "error");
     return;

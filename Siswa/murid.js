@@ -22,12 +22,20 @@ function getSiswaAccessibleLevels() {
 }
 
 function getSiswaVisibleData(rows = semuaData) {
+  if (typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess()) {
+    const levels = getSiswaAccessibleLevels();
+    return rows.filter(item => levels.includes(getSiswaTingkatFromKelas(item.kelas)));
+  }
   const levels = getSiswaAccessibleLevels();
   if (!levels.length) return rows;
   return rows.filter(item => levels.includes(getSiswaTingkatFromKelas(item.kelas)));
 }
 
 function getSiswaVisibleKelasList() {
+  if (typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess()) {
+    const levels = getSiswaAccessibleLevels();
+    return semuaKelasSiswa.filter(item => levels.includes(getSiswaTingkatFromKelas(item.kelas)));
+  }
   const levels = getSiswaAccessibleLevels();
   if (!levels.length) return semuaKelasSiswa;
   return semuaKelasSiswa.filter(item => levels.includes(getSiswaTingkatFromKelas(item.kelas)));

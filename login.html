@@ -675,6 +675,22 @@
     toggleBtn.setAttribute("aria-label", isHidden ? "Sembunyikan password" : "Lihat password");
   }
 
+  const SUPERADMIN_USERNAME = "superadmin";
+  const SUPERADMIN_PASSWORD_HASH = "d0a2c27c72bfaafc9a4bb5866fe95eedab9db8acbeb1ff9f1f445281c44ce2aa";
+
+  async function sha256Hex(value = "") {
+    if (!window.crypto?.subtle) return "";
+    const bytes = new TextEncoder().encode(String(value || ""));
+    const hashBuffer = await window.crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(hashBuffer)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function isValidSuperadminLogin(username, password) {
+    if (String(username || "").trim().toLowerCase() !== SUPERADMIN_USERNAME) return false;
+    const hashed = await sha256Hex(password);
+    return hashed === SUPERADMIN_PASSWORD_HASH;
+  }
+
   async function login() {
     const username = document.getElementById("username").value.trim().toLowerCase();
     const password = document.getElementById("password").value;
@@ -683,12 +699,27 @@
     error.style.display = "none";
     const maintenanceState = await window.MaintenanceMode.load({ force: true });
 
-    if ((username === "admin" || !username) && (password === "admin123" || password === "kurikulumspenturi")) {
+    if (await isValidSuperadminLogin(username, password)) {
+      localStorage.setItem("login", "true");
+      const superadminPayload = {
+        username: SUPERADMIN_USERNAME,
+        nama: "Super Administrator",
+        role: "superadmin",
+        can_generate_prompt: true
+      };
+      localStorage.setItem("appUser", JSON.stringify(superadminPayload));
+      localStorage.setItem("appSemester", JSON.stringify(semester));
+      window.location.href = "dashboard.html";
+      return;
+    }
+
+    if ((username === "admin" || !username) && (password === "admin123" || password === "guruspenturi")) {
       localStorage.setItem("login", "true");
       const adminPayload = {
         username: "admin",
         nama: "Administrator",
-        role: "admin"
+        role: "admin",
+        can_generate_prompt: true
       };
       localStorage.setItem("appUser", JSON.stringify(adminPayload));
       localStorage.setItem("appSemester", JSON.stringify(semester));
@@ -721,7 +752,8 @@
         nama: user.nama,
         role: user.role || "guru",
         kode_guru: user.kode_guru || "",
-        nipd: user.nipd || ""
+        nipd: user.nipd || "",
+        can_generate_prompt: user.can_generate_prompt !== false
       };
       localStorage.setItem("appUser", JSON.stringify(appUser));
       localStorage.setItem("appSemester", JSON.stringify(semester));

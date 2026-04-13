@@ -97,12 +97,14 @@ function mergeWaliClassRows(rows = []) {
   return [...byClass.values()];
 }
 
-function getAccessibleWaliClasses() {
-  const user = getCurrentWaliUser();
-  if ((user.role || "admin") === "admin") return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
-  if ((user.role || "") === "koordinator" || ((user.role || "") === "guru" && typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess())) {
-    const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
-    const kodeGuru = String(user.kode_guru || "").trim();
+  function getAccessibleWaliClasses() {
+    const user = getCurrentWaliUser();
+    if (["admin", "superadmin"].includes(String(user.role || "admin").trim().toLowerCase())) {
+      return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
+    }
+    if ((user.role || "") === "koordinator" || ((user.role || "") === "guru" && typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess())) {
+      const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
+      const kodeGuru = String(user.kode_guru || "").trim();
     const levelClasses = semuaDataWaliKelas.filter(item => {
       const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
       return levels.includes(parts.tingkat);
@@ -872,7 +874,7 @@ function getWaliNilaiCount(kelas, mapelKode, field) {
   const studentIds = new Set(students.map(item => String(item.nipd || "")));
   const classParts = getWaliKelasParts(kelas);
   const fieldAliases = {
-    uh_1: ["uh_1", "UH1", "UH_1", "uh1"],
+    uh_1: ["uh_1", "UH1", "UH_1", "uh1", "nilai"],
     uh_2: ["uh_2", "UH2", "UH_2", "uh2"],
     uh_3: ["uh_3", "UH3", "UH_3", "uh3"],
     pts: ["pts", "PTS", "nilai_pts", "nilaiPTS"]

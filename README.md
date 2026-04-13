@@ -59,6 +59,27 @@ Catatan:
 - Gunakan **anon/publishable key**, bukan service role key.
 - Aplikasi ini saat ini masih model static frontend, jadi kredensial yang dipakai di browser harus kredensial publik.
 
+### Generator Prompt Soal
+
+Fitur ini sekarang menjadi **Generator Prompt Soal** yang menyusun prompt siap pakai di browser tanpa menyimpan hasil ke database.
+
+File function ada di:
+
+- `supabase/functions/generate-soal-ai/index.ts`
+
+Secret yang perlu disiapkan di Supabase:
+
+- `OPENAI_API_KEY`
+- opsional: `OPENAI_MODEL`
+
+Contoh deploy:
+
+```bash
+supabase functions deploy generate-soal-ai
+supabase secrets set OPENAI_API_KEY=your_key_here
+supabase secrets set OPENAI_MODEL=gpt-4.1-mini
+```
+
 ## Login Default
 
 Admin default:

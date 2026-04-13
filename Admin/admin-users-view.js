@@ -7,7 +7,7 @@
     );
 
     if (rows.length === 0) {
-      return `<tr><td colspan="5" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
+      return `<tr><td colspan="${context.canManageAiPrompt ? 6 : 5}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
     }
 
     return rows.map(user => {
@@ -15,6 +15,8 @@
       const rawId = String(user.id || context.makeUserDocId(user.username));
       const safeIdJs = rawId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
       const isEditing = context.currentEditId === rawId;
+      const isAdminRole = String(user.role || "").trim().toLowerCase() === "admin";
+      const canAccessPrompt = user.can_generate_prompt !== false || isAdminRole;
       return `
         <tr class="${isEditing ? "table-edit-row admin-user-edit-row" : ""}" data-admin-user-id="${safeId}">
           <td class="admin-user-name">
@@ -28,6 +30,18 @@
               ${context.roles.map(role => `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`).join("")}
             </select>
           </td>
+          ${context.canManageAiPrompt ? `<td>
+            <label class="admin-user-feature-toggle ${isAdminRole ? "is-locked" : ""}">
+              <input
+                type="checkbox"
+                id="userAiPrompt-${safeId}"
+                ${canAccessPrompt ? "checked" : ""}
+                ${isAdminRole ? "checked disabled" : ""}
+                onchange="this.nextElementSibling.textContent = this.checked ? 'Aktif' : 'Nonaktif'; toggleUserGeneratePromptAccess('${safeIdJs}', this.checked)"
+              >
+              <span>${isAdminRole ? "Selalu aktif" : (canAccessPrompt ? "Aktif" : "Nonaktif")}</span>
+            </label>
+          </td>` : ""}
           <td>
             <div class="admin-user-actions">
               ${isEditing ? `
@@ -70,6 +84,7 @@
                 <th>Username</th>
                 <th>Password</th>
                 <th>Role</th>
+                ${context.canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
                 <th>Aksi</th>
               </tr>
             </thead>

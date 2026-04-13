@@ -48,6 +48,12 @@
     return shell.getCurrentAppUser().role || "admin";
   };
 
+  shell.canAccessAiPrompt = function canAccessAiPrompt(user = shell.getCurrentAppUser()) {
+    const role = String(user?.role || "").trim().toLowerCase();
+    if (["admin", "superadmin"].includes(role)) return true;
+    return user?.can_generate_prompt !== false;
+  };
+
   shell.getStoredCoordinatorLevels = function getStoredCoordinatorLevels() {
     const parsed = getStorageJson("appKoordinatorLevels", []);
     return Array.isArray(parsed) ? parsed.map(item => String(item || "").trim()).filter(Boolean) : [];
@@ -123,6 +129,7 @@
         ? options.canUseCoordinatorAccess()
         : shell.canUseCoordinatorAccess();
       const labelMap = {
+        superadmin: "Superadmin",
         admin: "Admin",
         guru: hasCoordinatorAccess ? "Guru + Koordinator" : "Guru",
         koordinator: "Koordinator",
@@ -136,16 +143,17 @@
 
   shell.canAccessPage = function canAccessPage(page) {
     const role = shell.getCurrentAppRole();
-    if (role === "admin") return true;
+    if (page === "ai-soal" && !shell.canAccessAiPrompt()) return false;
+    if (["admin", "superadmin"].includes(role)) return true;
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (shell.canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
       }
-      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan"].includes(page);
+      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
     }
-    if (role === "koordinator") return ["input", "lihat", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan"].includes(page);
-    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page);
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal"].includes(page);
+    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || page === "ai-soal";
     return false;
   };
 
@@ -153,7 +161,7 @@
     const role = typeof options.getRole === "function" ? options.getRole() : shell.getCurrentAppRole();
     const doc = options.document || global.document;
     doc.querySelectorAll(".role-menu").forEach(menu => {
-      setDisplay(menu, menu.classList.contains(`role-${role}`));
+      setDisplay(menu, menu.classList.contains(`role-${role}`) || (role === "superadmin" && menu.classList.contains("role-admin")));
     });
 
     const waliMenu = doc.getElementById("menuWaliKelas");
@@ -161,9 +169,14 @@
     const siswaKoordinatorMenu = doc.getElementById("menuSiswaKoordinator");
     const kurikulumKoordinatorMenu = doc.getElementById("menuKurikulumKoordinator");
     const setMenuDisplay = (menu, shouldShow) => setDisplay(menu, shouldShow);
+    const canAccessAiPrompt = shell.canAccessAiPrompt(typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser());
+
+    doc.querySelectorAll("[data-ai-prompt-menu='true']").forEach(button => {
+      setDisplay(button, canAccessAiPrompt);
+    });
 
     if (!waliMenu) return Promise.resolve();
-    if (role === "admin") {
+    if (["admin", "superadmin"].includes(role)) {
       setMenuDisplay(waliMenu, true);
       return Promise.resolve();
     }

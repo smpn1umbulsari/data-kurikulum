@@ -13,7 +13,7 @@ let pendingAdminUsersRender = false;
 let isSyncingGuruDerivedUsernames = false;
 let hasSyncedGuruDerivedUsernames = false;
 
-const DEFAULT_USER_PASSWORD = "kurikulumspenturi";
+const DEFAULT_USER_PASSWORD = "guruspenturi";
 const USER_ROLES = ["admin", "guru", "koordinator", "urusan", "siswa"];
 const KOORDINATOR_LEVELS = [
   { key: "kelas_7", label: "Kelas 7" },
@@ -23,6 +23,36 @@ const KOORDINATOR_LEVELS = [
 
 function getAdminUsersDocumentsApi() {
   return window.SupabaseDocuments;
+}
+
+function canUserAccessAiPrompt(user = {}) {
+  const role = String(user?.role || "").trim().toLowerCase();
+  if (["admin", "superadmin"].includes(role)) return true;
+  return user?.can_generate_prompt !== false;
+}
+
+function isCurrentUserSuperadmin() {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem("appUser") || "{}");
+    return String(currentUser?.role || "").trim().toLowerCase() === "superadmin";
+  } catch {
+    return false;
+  }
+}
+
+function syncStoredAppUserPatch(userId, patch = {}) {
+  try {
+    const currentUser = JSON.parse(localStorage.getItem("appUser") || "{}");
+    const currentId = String(currentUser?.id || currentUser?.username || "").trim();
+    const targetId = String(userId || "").trim();
+    if (!currentId || !targetId || currentId !== targetId) return;
+    localStorage.setItem("appUser", JSON.stringify({ ...currentUser, ...patch }));
+    if (typeof window.applyRoleAccess === "function") {
+      window.setTimeout(() => window.applyRoleAccess(), 0);
+    }
+  } catch {
+    // noop
+  }
 }
 
 function ensureAdminUserLoadingOverlay() {
@@ -222,6 +252,7 @@ async function ensureAdminGuruUserIdentity(userOrId) {
   const nextUser = {
     ...prepareGuruUser(guru, getAdminResolvedGuruRole(canonicalSource, ...matchedUsers, user)),
     aktif: canonicalSource.aktif !== false,
+    can_generate_prompt: canUserAccessAiPrompt(canonicalSource),
     created_at: canonicalSource.created_at || user.created_at || new Date(),
     updated_at: new Date()
   };
@@ -418,6 +449,7 @@ function prepareGuruUser(guru, role = "guru") {
     kode_guru: guru.kode_guru || "",
     nip: guru.nip || "",
     aktif: true,
+    can_generate_prompt: true,
     updated_at: new Date()
   };
 }
@@ -442,6 +474,7 @@ function prepareSiswaUser(siswa) {
     nipd: siswa.nipd || "",
     nisn: siswa.nisn || "",
     aktif: true,
+    can_generate_prompt: true,
     updated_at: new Date()
   };
 }
@@ -450,9 +483,11 @@ function renderAdminUserPage() {
   if (window.AdminUsersView?.renderUserPage) {
     return window.AdminUsersView.renderUserPage({
       defaultPassword: DEFAULT_USER_PASSWORD,
-      roles: USER_ROLES
+      roles: USER_ROLES,
+      canManageAiPrompt: isCurrentUserSuperadmin()
     });
   }
+  const canManageAiPrompt = isCurrentUserSuperadmin();
   return `
     <div class="card">
       <div class="kelas-bayangan-head">
@@ -477,6 +512,7 @@ function renderAdminUserPage() {
               <th>Username</th>
               <th>Password</th>
               <th>Role</th>
+              ${canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
               <th>Aksi</th>
             </tr>
           </thead>
@@ -634,6 +670,7 @@ function renderAdminUserRows() {
       currentEditId: currentEditAdminUser,
       roles: USER_ROLES,
       defaultPassword: DEFAULT_USER_PASSWORD,
+      canManageAiPrompt: isCurrentUserSuperadmin(),
       escape: escapeAdminHtml,
       makeUserDocId
     });
@@ -643,13 +680,16 @@ function renderAdminUserRows() {
   );
 
   if (rows.length === 0) {
-    return `<tr><td colspan="5" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
+    return `<tr><td colspan="${isCurrentUserSuperadmin() ? 6 : 5}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
   }
 
   return rows.map(user => {
     const safeId = escapeAdminHtml(user.id || makeUserDocId(user.username));
     const safeIdJs = String(user.id || makeUserDocId(user.username)).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     const isEditing = currentEditAdminUser === (user.id || makeUserDocId(user.username));
+    const canAccessPrompt = canUserAccessAiPrompt(user);
+    const isAdminRole = String(user.role || "").trim().toLowerCase() === "admin";
+    const canManageAiPrompt = isCurrentUserSuperadmin();
     return `
       <tr class="${isEditing ? "table-edit-row admin-user-edit-row" : ""}" data-admin-user-id="${safeId}">
         <td class="admin-user-name">
@@ -663,6 +703,18 @@ function renderAdminUserRows() {
             ${USER_ROLES.map(role => `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`).join("")}
           </select>
         </td>
+        ${canManageAiPrompt ? `<td>
+          <label class="admin-user-feature-toggle ${isAdminRole ? "is-locked" : ""}">
+            <input
+              type="checkbox"
+              id="userAiPrompt-${safeId}"
+              ${canAccessPrompt ? "checked" : ""}
+              ${isAdminRole ? "checked disabled" : ""}
+              onchange="this.nextElementSibling.textContent = this.checked ? 'Aktif' : 'Nonaktif'; toggleUserGeneratePromptAccess('${safeIdJs}', this.checked)"
+            >
+            <span>${isAdminRole ? "Selalu aktif" : (canAccessPrompt ? "Aktif" : "Nonaktif")}</span>
+          </label>
+        </td>` : ""}
         <td>
           <div class="admin-user-actions">
             ${isEditing ? `
@@ -790,7 +842,7 @@ function handleAdminRoleSourceChange(shouldClear = true) {
   if (!source) return;
 
   let options = [`<option value="">Manual</option>`];
-  if (role === "guru" || role === "admin" || role === "koordinator" || role === "urusan") {
+  if (role === "guru" || role === "admin" || role === "superadmin" || role === "koordinator" || role === "urusan") {
     options = options.concat(semuaDataAdminGuru.map(guru =>
       `<option value="guru:${escapeAdminHtml(guru.kode_guru || guru.id)}">${escapeAdminHtml(getAdminGuruName(guru) || guru.kode_guru || "-")}</option>`
     ));
@@ -915,29 +967,70 @@ async function resetSingleUserPassword(userId) {
 }
 
 async function saveUser(userId) {
-  setAdminUserLoading(true, "Menyimpan perubahan user", "Mohon tunggu sebentar. Perubahan password dan role sedang disimpan.");
   try {
     const password = document.getElementById(`userPassword-${userId}`)?.value || DEFAULT_USER_PASSWORD;
     const role = document.getElementById(`userRole-${userId}`)?.value || "guru";
+    const isSuperadmin = isCurrentUserSuperadmin();
     const resolved = await ensureAdminGuruUserIdentity(userId);
     if (!resolved.user) {
-      Swal.fire("User tidak ditemukan", "Silakan refresh halaman lalu coba lagi.", "warning");
+      showAdminFloatingToast("User tidak ditemukan.", "error");
       return;
     }
     const targetId = resolved.userId || userId;
+    const aiPromptEnabled = isSuperadmin
+      ? document.getElementById(`userAiPrompt-${userId}`)?.checked !== false
+      : canUserAccessAiPrompt(resolved.user || {});
     await getAdminUsersDocumentsApi().collection("users").doc(targetId).set({
       ...(resolved.user || {}),
       password,
       role,
+      can_generate_prompt: ["admin", "superadmin"].includes(role) ? true : aiPromptEnabled,
       updated_at: new Date()
     }, { merge: true });
+    syncStoredAppUserPatch(targetId, {
+      password,
+      role,
+      can_generate_prompt: ["admin", "superadmin"].includes(role) ? true : aiPromptEnabled
+    });
     currentEditAdminUser = null;
     renderAdminUsersState();
-    if (typeof showInlineSaveNotificationForData === "function") {
-      showInlineSaveNotificationForData("data-admin-user-id", userId, "Tersimpan");
+    showAdminFloatingToast("Perubahan user tersimpan.");
+  } catch (error) {
+    console.error(error);
+    showAdminFloatingToast("Perubahan user gagal disimpan.", "error");
+  }
+}
+
+async function toggleUserGeneratePromptAccess(userId, isEnabled) {
+  if (!isCurrentUserSuperadmin()) {
+    renderAdminUsersState();
+    return;
+  }
+  const targetUser = semuaDataAdminUser.find(item => String(item.id || makeUserDocId(item.username)).trim() === String(userId).trim());
+  if (String(targetUser?.role || "").trim().toLowerCase() === "admin") {
+    renderAdminUsersState();
+    return;
+  }
+
+  try {
+    const resolved = await ensureAdminGuruUserIdentity(userId);
+    if (!resolved.user) {
+      showAdminFloatingToast("User tidak ditemukan.", "error");
+      renderAdminUsersState();
+      return;
     }
-  } finally {
-    setAdminUserLoading(false);
+    const targetId = resolved.userId || userId;
+    const nextAccess = Boolean(isEnabled);
+    await getAdminUsersDocumentsApi().collection("users").doc(targetId).set({
+      ...(resolved.user || {}),
+      can_generate_prompt: nextAccess,
+      updated_at: new Date()
+    }, { merge: true });
+    syncStoredAppUserPatch(targetId, { can_generate_prompt: nextAccess });
+    showAdminFloatingToast(nextAccess ? "Akses Generate Prompt AI diaktifkan." : "Akses Generate Prompt AI dinonaktifkan.");
+  } catch (error) {
+    console.error(error);
+    showAdminFloatingToast("Hak akses belum berhasil diperbarui.", "error");
   }
 }
 
@@ -975,6 +1068,7 @@ async function addHierarchyUser() {
     password,
     role,
     aktif: true,
+    can_generate_prompt: true,
     updated_at: new Date(),
     created_at: new Date()
   };

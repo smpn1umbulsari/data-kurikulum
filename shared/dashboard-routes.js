@@ -32,6 +32,11 @@
         render: () => global.renderRekapTugasMengajarPage(),
         afterEnter: () => global.loadRealtimeRekapTugasMengajar()
       },
+      "kalender-pendidikan": {
+        title: "Kalender Pendidikan",
+        render: () => global.renderKalenderPendidikanPage(),
+        afterEnter: () => global.loadRealtimeKalenderPendidikan()
+      },
       "pembagian-ruang": {
         title: "Pembagian Ruang Ujian",
         render: () => global.renderPembagianRuangPage(),
@@ -92,6 +97,11 @@
         title: "Administrasi Asesmen",
         render: () => global.renderAdministrasiAsesmenPage(),
         afterEnter: () => global.loadRealtimeAdministrasiAsesmen()
+      },
+      "ai-soal": {
+        title: "Generate Prompt AI",
+        render: () => global.renderAiSoalPage(),
+        afterEnter: () => global.initializeAiSoalPage()
       },
       "rekap-nilai": {
         title: "Rekap Nilai",

@@ -21,6 +21,28 @@ let acakWaliKelasState = JSON.parse(localStorage.getItem("acakWaliKelasState") |
 let acakWaliKelasDraft = null;
 let acakWaliKelasUndo = JSON.parse(localStorage.getItem("acakWaliKelasUndo") || "null");
 
+function isKelasCoordinatorViewOnly() {
+  return typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+}
+
+function getKelasAccessibleLevels() {
+  if (!isKelasCoordinatorViewOnly()) return [];
+  if (typeof getCurrentCoordinatorLevelsSync !== "function") return [];
+  return getCurrentCoordinatorLevelsSync().map(item => String(item || "").trim()).filter(Boolean);
+}
+
+function getVisibleKelasData(rows = semuaDataKelas) {
+  if (!isKelasCoordinatorViewOnly()) return rows;
+  const levels = getKelasAccessibleLevels();
+  return rows.filter(item => levels.includes(getStoredKelasParts(item).tingkat));
+}
+
+function getVisibleKelasAnggota(rows = daftarSiswaKelas) {
+  if (!isKelasCoordinatorViewOnly()) return rows;
+  const levels = getKelasAccessibleLevels();
+  return rows.filter(item => levels.includes(getStoredKelasParts({ kelas: item.kelas }).tingkat));
+}
+
 function escapeKelasHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -347,7 +369,7 @@ function getKelasRowsPerPageValue() {
 }
 
 function setKelasPage(page) {
-  const totalPages = Math.max(1, Math.ceil(semuaDataKelas.length / getKelasRowsPerPageValue()));
+  const totalPages = Math.max(1, Math.ceil(getVisibleKelasData().length / getKelasRowsPerPageValue()));
   currentPageKelas = Math.min(Math.max(1, page), totalPages);
   renderKelasFiltered();
 }
@@ -437,11 +459,11 @@ function renderKelasFiltered() {
   const tbody = document.getElementById("tbodyKelas");
   const empty = document.getElementById("emptyStateKelas");
   const createForm = document.getElementById("kelasCreateForm");
-  const sortedData = sortKelasData(semuaDataKelas);
+  const sortedData = sortKelasData(getVisibleKelasData());
   const effectiveRowsPerPage = getKelasRowsPerPageValue();
   const totalPages = Math.max(1, Math.ceil(sortedData.length / effectiveRowsPerPage));
 
-  if (createForm) createForm.innerHTML = renderKelasCreateForm();
+  if (createForm && !isKelasCoordinatorViewOnly()) createForm.innerHTML = renderKelasCreateForm();
 
   if (!tbody) return;
 
@@ -609,8 +631,9 @@ function renderKelasRow(item, nomor) {
   const parts = getStoredKelasParts(item);
   const kelasJs = escapeKelasJs(item.kelas || parts.kelas);
   const jumlahAnggota = getJumlahAnggotaKelasAsli(parts.kelas);
+  const isReadOnly = isKelasCoordinatorViewOnly();
 
-  if (currentEditKelas === item.kelas) {
+  if (!isReadOnly && currentEditKelas === item.kelas) {
     const currentTingkat = parts.tingkat || "7";
     const currentRombel = parts.rombel || getNextRombelForTingkat(currentTingkat, item.kelas);
     return `
@@ -647,9 +670,11 @@ function renderKelasRow(item, nomor) {
       <td>${jumlahAnggota} siswa</td>
       <td>
         <div class="table-action-stack">
-          <button class="btn-secondary btn-table-compact btn-action-edit" onclick="editKelas('${kelasJs}')">Edit</button>
           <button class="btn-secondary btn-table-compact btn-action-members" onclick="showAnggotaKelas('${kelasJs}')">Anggota</button>
-          <button class="btn-secondary btn-table-compact btn-action-delete" onclick="hapusKelas('${kelasJs}')">Hapus</button>
+          ${isReadOnly ? "" : `
+            <button class="btn-secondary btn-table-compact btn-action-edit" onclick="editKelas('${kelasJs}')">Edit</button>
+            <button class="btn-secondary btn-table-compact btn-action-delete" onclick="hapusKelas('${kelasJs}')">Hapus</button>
+          `}
         </div>
       </td>
     </tr>
@@ -657,6 +682,11 @@ function renderKelasRow(item, nomor) {
 }
 
 function importKelasExcel(event) {
+  if (isKelasCoordinatorViewOnly()) {
+    if (event?.target) event.target.value = "";
+    Swal.fire("Akses dibatasi", "Koordinator hanya dapat melihat data kelas.", "info");
+    return;
+  }
   const file = event.target.files[0];
   if (!file) return;
 
@@ -767,6 +797,10 @@ function importKelasExcel(event) {
 }
 
 async function simpanKelasData() {
+  if (isKelasCoordinatorViewOnly()) {
+    Swal.fire("Akses dibatasi", "Koordinator tidak dapat menambah kelas.", "info");
+    return;
+  }
   if (isSubmittingKelas) return;
 
   const tingkatEl = document.getElementById("tingkatKelas");
@@ -854,6 +888,11 @@ async function startPilihWaliKelas(namaKelas) {
 }
 
 async function handleInlineWaliKelasChange(namaKelas, selectEl) {
+  if (isKelasCoordinatorViewOnly()) {
+    if (selectEl) selectEl.value = selectEl.dataset?.previousValue || "";
+    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengubah wali kelas dari menu ini.", "info");
+    return;
+  }
   const previousValue = selectEl?.dataset?.previousValue || "";
   const status = document.getElementById(`${selectEl.id}Status`);
   const kodeGuru = selectEl?.value || "";
@@ -915,6 +954,7 @@ function getAnggotaKelasDraftLists() {
 }
 
 function renderAnggotaKelasList(items, emptyText, actionLabel, actionName) {
+  const isReadOnly = isKelasCoordinatorViewOnly();
   if (items.length === 0) {
     return `<div class="empty-panel">${escapeKelasHtml(emptyText)}</div>`;
   }
@@ -929,7 +969,7 @@ function renderAnggotaKelasList(items, emptyText, actionLabel, actionName) {
           <strong>${escapeKelasHtml(nama)}</strong>
           <small>${escapeKelasHtml(nipd)}</small>
         </span>
-        <button type="button" class="btn-secondary" onclick="${actionName}('${escapeKelasJs(nipd)}')">${escapeKelasHtml(actionLabel)}</button>
+        ${isReadOnly ? "" : `<button type="button" class="btn-secondary" onclick="${actionName}('${escapeKelasJs(nipd)}')">${escapeKelasHtml(actionLabel)}</button>`}
       </div>
     `;
   }).join("");
@@ -991,6 +1031,7 @@ function removeAnggotaKelasDraft(nipd) {
 async function showAnggotaKelas(namaKelas) {
   const kelasValue = parseKelasParts(namaKelas || "").kelas;
   if (!kelasValue) return;
+  const isReadOnly = isKelasCoordinatorViewOnly();
   anggotaKelasDraft = {
     kelas: kelasValue,
     memberNipds: new Set(
@@ -1002,17 +1043,20 @@ async function showAnggotaKelas(namaKelas) {
   };
 
   const result = await Swal.fire({
-    title: `Anggota Kelas ${escapeKelasHtml(kelasValue)}`,
+    title: `${isReadOnly ? "Lihat" : "Anggota"} Kelas ${escapeKelasHtml(kelasValue)}`,
     width: 920,
     html: `
       <div class="anggota-modal-note">
-        Pindahkan siswa dari panel kiri ke panel kanan untuk memasukkannya ke ${escapeKelasHtml(kelasValue)}.
+        ${isReadOnly
+          ? `Daftar anggota kelas ${escapeKelasHtml(kelasValue)} ditampilkan dalam mode baca saja.`
+          : `Pindahkan siswa dari panel kiri ke panel kanan untuk memasukkannya ke ${escapeKelasHtml(kelasValue)}.`}
       </div>
       <div id="anggotaKelasModalBody">
         ${renderAnggotaKelasOptions(kelasValue)}
       </div>
     `,
-    showCancelButton: true,
+    showCancelButton: !isReadOnly,
+    showConfirmButton: !isReadOnly,
     confirmButtonText: "Simpan Anggota",
     cancelButtonText: "Batal",
     preConfirm: () => Array.from(anggotaKelasDraft?.memberNipds || [])
@@ -1027,6 +1071,10 @@ async function showAnggotaKelas(namaKelas) {
 }
 
 async function simpanAnggotaKelas(namaKelas, selectedNipds) {
+  if (isKelasCoordinatorViewOnly()) {
+    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengubah anggota kelas dari menu ini.", "info");
+    return;
+  }
   const targetKelas = parseKelasParts(namaKelas || "").kelas;
   const selectedSet = new Set(selectedNipds.map(value => String(value || "").trim()).filter(Boolean));
   const currentMembers = daftarSiswaKelas.filter(siswa => getSiswaKelasValue(siswa) === targetKelas.toUpperCase());
@@ -1218,6 +1266,10 @@ function saveAcakWaliCandidates(showMessage = true) {
 }
 
 async function showAcakWaliKelasModal() {
+  if (isKelasCoordinatorViewOnly()) {
+    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengacak wali kelas.", "info");
+    return;
+  }
   try {
     Swal.fire({ title: "Memuat calon wali kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
     const mengajarRows = await getAcakWaliMengajarBayangan();
@@ -1434,6 +1486,10 @@ async function undoAcakWaliKelas() {
 }
 
 async function simpanWaliKelasData(namaKelasArg = "", kodeGuruArg = "", options = {}) {
+  if (isKelasCoordinatorViewOnly()) {
+    if (!options.silent) Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengubah wali kelas.", "info");
+    return;
+  }
   const kelasEl = document.getElementById("kelasWaliTarget");
   const waliEl = document.getElementById("waliKelas");
   const btn = document.getElementById("btnSimpanWaliKelas");
@@ -1488,6 +1544,7 @@ async function simpanWaliKelasData(namaKelasArg = "", kodeGuruArg = "", options 
 }
 
 function editKelas(namaKelas) {
+  if (isKelasCoordinatorViewOnly()) return;
   currentEditKelas = namaKelas;
   renderKelasFiltered();
 }
@@ -1517,6 +1574,10 @@ function handleKelasEditKey(event, namaKelas) {
 }
 
 async function saveEditKelas(kelasLama) {
+  if (isKelasCoordinatorViewOnly()) {
+    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengedit kelas.", "info");
+    return;
+  }
   const tingkatBaru = document.getElementById("editTingkatKelas")?.value || "7";
   const rombelBaru = document.getElementById("editRombelKelas")?.value || "";
   const kelasBaru = buildKelasName(tingkatBaru, rombelBaru);
@@ -1573,6 +1634,10 @@ async function saveEditKelas(kelasLama) {
 }
 
 async function hapusKelas(namaKelas) {
+  if (isKelasCoordinatorViewOnly()) {
+    Swal.fire("Akses dibatasi", "Koordinator tidak dapat menghapus kelas.", "info");
+    return;
+  }
   const confirm = await Swal.fire({
     title: "Hapus data kelas?",
     text: `Data ${namaKelas} akan dihapus.`,

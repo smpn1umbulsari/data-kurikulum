@@ -76,7 +76,7 @@
   }
 
   function isAdminRole(role = "") {
-    return String(role || "").trim().toLowerCase() === "admin";
+    return ["admin", "superadmin"].includes(String(role || "").trim().toLowerCase());
   }
 
   function goToMaintenance() {
