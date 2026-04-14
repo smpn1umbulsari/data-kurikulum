@@ -127,6 +127,21 @@ Catatan:
 - Tidak ada menu baru.
 - Perubahan ini mengubah cara load awal dan penggunaan library spreadsheet.
 
+## Versi 1.01g.1
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Menambahkan cache collection di [shared/supabase-documents.js](/F:/Data%20Kurikulum/shared/supabase-documents.js) untuk mengurangi fetch berulang.
+- Menambahkan cache lookup untuk `doc.get()` saat data koleksi sudah ada di memori.
+- Menginvalidasi cache otomatis saat `set()` dan `delete()` berjalan.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini fokus ke performa data layer.
+
 ## Format Catatan Berikutnya
 
 Gunakan format berikut saat ada perubahan:

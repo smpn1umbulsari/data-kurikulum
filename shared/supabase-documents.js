@@ -6,6 +6,9 @@
     ? global.supabase.createClient(config.url, config.anonKey)
     : null);
   const TABLE = config.documentsTable || "app_documents";
+  const COLLECTION_CACHE_TTL_MS = 1200;
+  const collectionCache = new Map();
+  const collectionFetches = new Map();
 
   function makeChannelName(prefix, path) {
     const randomId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -31,28 +34,80 @@
     return String(left).localeCompare(String(right), undefined, { numeric: true, sensitivity: "base" });
   }
 
-  async function fetchAllCollectionRows(collectionPath) {
+  function getCollectionCacheKey(collectionPath) {
+    return String(collectionPath || "");
+  }
+
+  function cloneCollectionRows(rows = []) {
+    return rows.map(row => ({
+      id: row.id,
+      data: { ...(row.data || {}) }
+    }));
+  }
+
+  function getCachedCollectionRows(collectionPath) {
+    const cache = collectionCache.get(getCollectionCacheKey(collectionPath));
+    if (!cache) return null;
+    if (Date.now() - cache.fetchedAt > COLLECTION_CACHE_TTL_MS) return null;
+    return cloneCollectionRows(cache.rows);
+  }
+
+  function setCachedCollectionRows(collectionPath, rows) {
+    collectionCache.set(getCollectionCacheKey(collectionPath), {
+      fetchedAt: Date.now(),
+      rows: cloneCollectionRows(rows)
+    });
+  }
+
+  function invalidateCollectionCache(collectionPath) {
+    const key = getCollectionCacheKey(collectionPath);
+    collectionCache.delete(key);
+    collectionFetches.delete(key);
+  }
+
+  async function fetchAllCollectionRows(collectionPath, options = {}) {
     if (!client?.from) throw new Error("Supabase client belum siap");
+    const key = getCollectionCacheKey(collectionPath);
+    if (options.useCache !== false) {
+      const cached = getCachedCollectionRows(collectionPath);
+      if (cached) return cached;
+      const existingFetch = collectionFetches.get(key);
+      if (existingFetch) return existingFetch;
+    }
+
     const pageSize = 1000;
     let offset = 0;
     const rows = [];
+    const fetchPromise = (async () => {
+      while (true) {
+        const { data, error } = await client
+          .from(TABLE)
+          .select("id,data")
+          .eq("collection_path", collectionPath)
+          .range(offset, offset + pageSize - 1);
 
-    while (true) {
-      const { data, error } = await client
-        .from(TABLE)
-        .select("id,data")
-        .eq("collection_path", collectionPath)
-        .range(offset, offset + pageSize - 1);
+        if (error) throw error;
 
-      if (error) throw error;
+        const page = data || [];
+        rows.push(...page);
+        if (page.length < pageSize) break;
+        offset += pageSize;
+      }
 
-      const page = data || [];
-      rows.push(...page);
-      if (page.length < pageSize) break;
-      offset += pageSize;
+      setCachedCollectionRows(collectionPath, rows);
+      return cloneCollectionRows(rows);
+    })();
+
+    if (options.useCache !== false) {
+      collectionFetches.set(key, fetchPromise);
+      try {
+        return await fetchPromise;
+      } finally {
+        collectionFetches.delete(key);
+      }
     }
 
-    return rows;
+    return fetchPromise;
   }
 
   function matchesFilter(row, filter) {
@@ -206,6 +261,10 @@
 
     async get() {
       if (!client?.from) throw new Error("Supabase client belum siap");
+      const cachedRows = getCachedCollectionRows(this.collectionPath);
+      const cachedRow = cachedRows?.find(row => row.id === this.id);
+      if (cachedRow) return new DocumentSnapshot(this, cachedRow);
+
       const { data, error } = await client
         .from(TABLE)
         .select("id,data")
@@ -237,6 +296,7 @@
         }, { onConflict: "collection_path,id" });
 
       if (error) throw error;
+      invalidateCollectionCache(this.collectionPath);
     }
 
     async update(data) {
@@ -252,6 +312,7 @@
         .eq("id", this.id);
 
       if (error) throw error;
+      invalidateCollectionCache(this.collectionPath);
     }
 
     onSnapshot(callback, onError) {
