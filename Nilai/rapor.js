@@ -69,6 +69,12 @@ function getRaporKelasBayanganParts(siswa) {
   return { tingkat: asli.tingkat, rombel: "", kelas: "" };
 }
 
+function getRaporKelasAsliParts(siswa) {
+  const asli = getRaporKelasParts(siswa?.kelas || "");
+  if (asli.kelas) return asli;
+  return getRaporKelasBayanganParts(siswa);
+}
+
 function getRaporCoordinatorWaliClassSet() {
   const user = getCurrentRaporUser();
   const kodeGuru = String(user.kode_guru || "").trim();
@@ -1204,9 +1210,10 @@ function renderRaporRows(siswa, mapelList) {
 
 function renderRaporPage(siswa) {
   const settings = getRaporSettings();
-  const kelas = siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
-  const mapelList = getRaporMapelForClass(kelas, siswa);
-  const wali = getRaporWaliKelas(kelas);
+  const kelasBayangan = siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
+  const kelasAsli = getRaporKelasAsliParts(siswa).kelas || kelasBayangan;
+  const mapelList = getRaporMapelForClass(kelasBayangan, siswa);
+  const wali = getRaporWaliKelas(kelasAsli);
   const kehadiran = getRaporKehadiran(siswa);
   const nomorInduk = [siswa.nipd, siswa.nisn].filter(Boolean).join(" / ") || "-";
 
@@ -1231,7 +1238,7 @@ function renderRaporPage(siswa) {
 
       <div class="rapor-identity">
         <div><strong>NAMA MURID</strong><span>:</span><b>${escapeRaporHtml(siswa.nama || "-")}</b></div>
-        <div><strong>Kelas</strong><span>:</span><b>${escapeRaporHtml(formatRaporDisplayClass(kelas))}</b></div>
+        <div><strong>Kelas</strong><span>:</span><b>${escapeRaporHtml(formatRaporDisplayClass(kelasAsli))}</b></div>
         <div><strong>NIPD / NISN</strong><span>:</span><b>${escapeRaporHtml(nomorInduk)}</b></div>
       </div>
 
@@ -1328,12 +1335,18 @@ function getRaporPrintHtml(students) {
           .rapor-kop-text h3 { font-size: 12pt; }
           .rapor-kop-text h4 { font-size: 12pt; font-weight: 500; }
           .rapor-kop-text p { font-size: 8.6pt; line-height: 1.12; }
-          .rapor-title { text-align: center; margin: 10px 0 8px; line-height: 1.08; }
+          .rapor-title { text-align: center; margin: 10px 0 11px; line-height: 1.08; }
           .rapor-title h3 { margin: 0; font-size: 11pt; }
-          .rapor-identity { display: grid; grid-template-columns: 1fr 170px; gap: 4px 20px; margin-bottom: 7px; font-size: 9.5pt; }
-          .rapor-identity div { display: grid; grid-template-columns: 104px 6px 1fr; gap: 2px; }
+          .rapor-title h3:last-child { margin-bottom: 3px; }
+          .rapor-identity { display: grid; grid-template-columns: 1fr 170px; gap: 4px 16px; margin-bottom: 7px; font-size: 9.5pt; }
+          .rapor-identity div { display: grid; grid-template-columns: 94px 10px 1fr; gap: 2px; white-space: nowrap; }
+          .rapor-identity span { text-align: center; }
+          .rapor-identity b { white-space: nowrap; }
           .rapor-section-title { margin: 6px 0 3px; font-size: 9.8pt; font-weight: 800; }
-          .rapor-sikap-row { display: flex; gap: 14px; margin: 2px 0 2px 16px; font-size: 9pt; }
+          .rapor-sikap-row { display: flex; align-items: baseline; gap: 4px; margin: 2px 0 2px 16px; font-size: 9pt; white-space: nowrap; }
+          .rapor-sikap-row strong { display: inline-block; min-width: 170px; font-weight: 700; white-space: nowrap; }
+          .rapor-sikap-row span { display: inline-block; flex: 0 0 auto; white-space: nowrap; }
+          .rapor-sikap-row b { display: inline-block; min-width: 12px; text-align: left; font-weight: 800; white-space: nowrap; }
           .rapor-description { border: 1px solid #555; min-height: 19px; padding: 4px 7px; margin: 0 0 4px 16px; font-size: 8.5pt; }
           table { border-collapse: collapse; width: 100%; }
           .rapor-score-table { flex: 1 1 auto; }
