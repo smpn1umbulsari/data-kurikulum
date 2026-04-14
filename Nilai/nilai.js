@@ -18,6 +18,8 @@ let currentNilaiAccessMode = "guru";
 const NILAI_LAST_ASSIGNMENT_KEY = "nilaiLastAssignmentId";
 const NILAI_REKAP_LAST_CLASS_KEY = "nilaiRekapLastClass";
 const nilaiHydratedAssignmentKeys = new Set();
+let nilaiRenderFrameId = 0;
+let nilaiRekapRenderFrameId = 0;
 let currentNilaiAssignmentId = "";
 let currentNilaiAssignmentRows = [];
 
@@ -382,6 +384,9 @@ function renderRekapNilaiPage() {
           <span>Pilih kelas</span>
           <select id="nilaiRekapClassSelect" onchange="renderRekapNilaiState()"></select>
         </label>
+        <div class="nilai-control-actions">
+          <button type="button" class="btn-secondary" onclick="exportRekapNilaiExcel()">Export Excel</button>
+        </div>
       </div>
 
       <div id="nilaiRekapInfo" class="nilai-assignment-info">Memuat data rekap nilai...</div>
@@ -405,6 +410,22 @@ function setNilaiSavingState(isSaving, message = "Menyimpan nilai...") {
   document.body.classList.toggle("nilai-saving-active", isNilaiSaving);
 }
 
+function scheduleNilaiPageStateRender() {
+  if (nilaiRenderFrameId) return;
+  nilaiRenderFrameId = window.requestAnimationFrame(() => {
+    nilaiRenderFrameId = 0;
+    renderNilaiPageState();
+  });
+}
+
+function scheduleRekapNilaiStateRender() {
+  if (nilaiRekapRenderFrameId) return;
+  nilaiRekapRenderFrameId = window.requestAnimationFrame(() => {
+    nilaiRekapRenderFrameId = 0;
+    renderRekapNilaiState();
+  });
+}
+
 function loadRealtimeInputNilai() {
   if (unsubscribeNilaiSiswa) unsubscribeNilaiSiswa();
   if (unsubscribeNilaiMapel) unsubscribeNilaiMapel();
@@ -416,31 +437,31 @@ function loadRealtimeInputNilai() {
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderNilaiPageState();
+    scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderNilaiPageState();
+    scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderNilaiPageState();
+    scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
     ? getSemesterCollectionQuery("kelas")
       .onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderNilaiPageState();
+        scheduleNilaiPageStateRender();
       })
     : documentsApi.collection("kelas").onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderNilaiPageState();
+        scheduleNilaiPageStateRender();
       });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
     setSemuaDataNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
-    renderNilaiPageState();
+    scheduleNilaiPageStateRender();
   });
 }
 
@@ -455,31 +476,31 @@ function loadRealtimeRekapNilai() {
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRekapNilaiState();
+    scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRekapNilaiState();
+    scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRekapNilaiState();
+    scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
     ? getSemesterCollectionQuery("kelas")
       .onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderRekapNilaiState();
+        scheduleRekapNilaiStateRender();
       })
     : documentsApi.collection("kelas").onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        renderRekapNilaiState();
+        scheduleRekapNilaiStateRender();
       });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
     setSemuaDataNilai(snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
-    renderRekapNilaiState();
+    scheduleRekapNilaiStateRender();
   });
 }
 
@@ -661,6 +682,201 @@ function renderRekapNilaiState() {
       </tbody>
     </table>
   `;
+}
+
+function getCurrentRekapNilaiDataset() {
+  const { tingkat, rombel } = getSelectedNilaiRekapClass();
+  const assignments = getNilaiAssignmentsForClass(tingkat, rombel);
+  const students = tingkat && rombel
+    ? semuaDataNilaiSiswa
+      .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
+      .filter(siswa =>
+        siswa.kelasNilaiParts.tingkat === String(tingkat || "")
+        && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
+      )
+      .sort((a, b) => {
+        if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+        return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+      })
+    : [];
+
+  return { tingkat, rombel, assignments, students };
+}
+
+function buildRekapNilaiSheetRows(assignments = [], students = []) {
+  const topHeader = ["No", "Nama", "NIPD", "L/P"];
+  const subHeader = ["", "", "", ""];
+  const merges = [
+    { s: { r: 0, c: 0 }, e: { r: 1, c: 0 } },
+    { s: { r: 0, c: 1 }, e: { r: 1, c: 1 } },
+    { s: { r: 0, c: 2 }, e: { r: 1, c: 2 } },
+    { s: { r: 0, c: 3 }, e: { r: 1, c: 3 } }
+  ];
+
+  let currentCol = 4;
+  assignments.forEach(item => {
+    const mapel = getNilaiMapel(item.mapel_kode);
+    const code = String(item.mapel_kode || "").toUpperCase();
+    topHeader.push(code, "", "", "");
+    subHeader.push("UH 1", "UH 2", "UH 3", "PTS");
+    merges.push({
+      s: { r: 0, c: currentCol },
+      e: { r: 0, c: currentCol + 3 }
+    });
+    currentCol += 4;
+  });
+
+  const bodyRows = students.map((siswa, index) => {
+    const row = [
+      index + 1,
+      String(siswa.nama || "").trim(),
+      String(siswa.nipd || "").trim(),
+      getNilaiGenderLabel(siswa)
+    ];
+    assignments.forEach(item => {
+      const nilaiDoc = getNilaiForStudent(item, siswa.nipd);
+      const fallbackNilai = nilaiDoc?.nilai ?? "";
+      row.push(
+        getNilaiFieldValue(nilaiDoc, "uh_1", fallbackNilai),
+        getNilaiFieldValue(nilaiDoc, "uh_2", ""),
+        getNilaiFieldValue(nilaiDoc, "uh_3", ""),
+        getNilaiFieldValue(nilaiDoc, "pts", "")
+      );
+    });
+    return row;
+  });
+
+  return {
+    rows: [topHeader, subHeader, ...bodyRows],
+    merges
+  };
+}
+
+function applyRekapNilaiSheetStyles(worksheet, assignments = [], studentCount = 0) {
+  if (!window.XLSX?.utils) return;
+  const range = XLSX.utils.decode_range(worksheet["!ref"]);
+  const thinBorder = {
+    top: { style: "thin", color: { rgb: "CBD5E1" } },
+    bottom: { style: "thin", color: { rgb: "CBD5E1" } },
+    left: { style: "thin", color: { rgb: "CBD5E1" } },
+    right: { style: "thin", color: { rgb: "CBD5E1" } }
+  };
+  const mediumBorder = {
+    top: { style: "medium", color: { rgb: "93C5FD" } },
+    bottom: { style: "medium", color: { rgb: "93C5FD" } },
+    left: { style: "medium", color: { rgb: "93C5FD" } },
+    right: { style: "medium", color: { rgb: "93C5FD" } }
+  };
+  const topHeaderStyle = {
+    font: { bold: true, color: { rgb: "0F172A" } },
+    fill: { fgColor: { rgb: "E0F2FE" } },
+    alignment: { horizontal: "center", vertical: "center" },
+    border: thinBorder
+  };
+  const subHeaderStyle = {
+    font: { bold: true, color: { rgb: "0F172A" } },
+    fill: { fgColor: { rgb: "F8FAFC" } },
+    alignment: { horizontal: "center", vertical: "center" },
+    border: thinBorder
+  };
+  const textCellStyle = {
+    alignment: { horizontal: "left", vertical: "center" },
+    border: thinBorder
+  };
+  const centerCellStyle = {
+    alignment: { horizontal: "center", vertical: "center" },
+    border: thinBorder
+  };
+
+  for (let col = range.s.c; col <= range.e.c; col += 1) {
+    const topCell = worksheet[XLSX.utils.encode_cell({ r: 0, c: col })];
+    if (topCell) topCell.s = topHeaderStyle;
+    const subCell = worksheet[XLSX.utils.encode_cell({ r: 1, c: col })];
+    if (subCell) subCell.s = subHeaderStyle;
+  }
+
+  for (let row = 2; row <= studentCount + 1; row += 1) {
+    for (let col = range.s.c; col <= range.e.c; col += 1) {
+      const address = XLSX.utils.encode_cell({ r: row, c: col });
+      if (!worksheet[address]) worksheet[address] = { t: "s", v: "" };
+      worksheet[address].s = col === 1 ? textCellStyle : centerCellStyle;
+    }
+  }
+
+  assignments.forEach((_, index) => {
+    const startCol = 4 + (index * 4);
+    const endCol = startCol + 3;
+
+    for (let col = startCol; col <= endCol; col += 1) {
+      const topAddress = XLSX.utils.encode_cell({ r: 0, c: col });
+      const subAddress = XLSX.utils.encode_cell({ r: 1, c: col });
+      if (worksheet[topAddress]) {
+        worksheet[topAddress].s = {
+          ...worksheet[topAddress].s,
+          border: mediumBorder
+        };
+      }
+      if (worksheet[subAddress]) {
+        worksheet[subAddress].s = {
+          ...worksheet[subAddress].s,
+          border: {
+            ...thinBorder,
+            left: col === startCol ? mediumBorder.left : thinBorder.left,
+            right: col === endCol ? mediumBorder.right : thinBorder.right,
+            bottom: mediumBorder.bottom
+          }
+        };
+      }
+
+      for (let row = 2; row <= studentCount + 1; row += 1) {
+        const bodyAddress = XLSX.utils.encode_cell({ r: row, c: col });
+        if (!worksheet[bodyAddress]) continue;
+        worksheet[bodyAddress].s = {
+          ...worksheet[bodyAddress].s,
+          border: {
+            ...thinBorder,
+            left: col === startCol ? mediumBorder.left : thinBorder.left,
+            right: col === endCol ? mediumBorder.right : thinBorder.right
+          }
+        };
+      }
+    }
+  });
+
+  worksheet["!cols"] = [
+    { wch: 4.5 },
+    { wch: 22 },
+    { wch: 11 },
+    { wch: 5 },
+    ...assignments.flatMap(() => ([{ wch: 6.5 }, { wch: 6.5 }, { wch: 6.5 }, { wch: 6.5 }]))
+  ];
+  worksheet["!rows"] = [{ hpt: 22 }, { hpt: 20 }];
+}
+
+async function exportRekapNilaiExcel() {
+  await ensureSpreadsheetLibraries();
+  const { tingkat, rombel, assignments, students } = getCurrentRekapNilaiDataset();
+  if (!tingkat || !rombel) {
+    Swal.fire("Pilih kelas", "Pilih kelas terlebih dahulu untuk export rekap nilai.", "warning");
+    return;
+  }
+  if (!assignments.length) {
+    Swal.fire("Belum ada mapel", `Belum ada mapel pada kelas ${tingkat} ${rombel}.`, "warning");
+    return;
+  }
+  if (!students.length) {
+    Swal.fire("Belum ada siswa", `Belum ada siswa pada kelas ${tingkat} ${rombel}.`, "warning");
+    return;
+  }
+
+  const { rows, merges } = buildRekapNilaiSheetRows(assignments, students);
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  worksheet["!merges"] = merges;
+  applyRekapNilaiSheetStyles(worksheet, assignments, students.length);
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, `Rekap ${tingkat}${rombel}`);
+  XLSX.writeFile(workbook, `rekap-nilai-${tingkat}${rombel}.xlsx`);
 }
 
 async function handleNilaiAssignmentChange() {
@@ -1156,6 +1372,12 @@ async function importNilaiExcel(event) {
           uh_3: getNilaiFieldValue(existing, "uh_3", ""),
           pts: getNilaiFieldValue(existing, "pts", "")
         };
+        const resolvedValues = {
+          uh_1: hasNilaiImportValue(uh1Raw) ? uh1 : existingValues.uh_1,
+          uh_2: hasNilaiImportValue(uh2Raw) ? uh2 : existingValues.uh_2,
+          uh_3: hasNilaiImportValue(uh3Raw) ? uh3 : existingValues.uh_3,
+          pts: hasNilaiImportValue(ptsRaw) ? pts : existingValues.pts
+        };
 
         let status = "update";
         let message = "";
@@ -1171,20 +1393,20 @@ async function importNilaiExcel(event) {
         } else if ([uh1, uh2, uh3, pts].some(value => Number.isNaN(value))) {
           status = "error";
           message = "Nilai harus berupa angka antara 0 sampai 100";
-        } else if (hasNilaiImportValue(uh2Raw) && !hasNilaiImportValue(uh1Raw)) {
+        } else if (hasNilaiImportValue(uh2Raw) && !hasNilaiImportValue(resolvedValues.uh_1)) {
           status = "error";
           message = "UH 1 wajib diisi sebelum mengisi UH 2";
-        } else if (hasNilaiImportValue(uh3Raw) && !hasNilaiImportValue(uh1Raw)) {
+        } else if (hasNilaiImportValue(uh3Raw) && !hasNilaiImportValue(resolvedValues.uh_1)) {
           status = "error";
           message = "UH 1 wajib diisi sebelum mengisi UH 3";
-        } else if (hasNilaiImportValue(uh3Raw) && !hasNilaiImportValue(uh2Raw)) {
+        } else if (hasNilaiImportValue(uh3Raw) && !hasNilaiImportValue(resolvedValues.uh_2)) {
           status = "error";
           message = "UH 2 wajib diisi sebelum mengisi UH 3";
         } else if (
-          String(existingValues.uh_1) === String(uh1) &&
-          String(existingValues.uh_2) === String(uh2) &&
-          String(existingValues.uh_3) === String(uh3) &&
-          String(existingValues.pts) === String(pts)
+          String(existingValues.uh_1) === String(resolvedValues.uh_1) &&
+          String(existingValues.uh_2) === String(resolvedValues.uh_2) &&
+          String(existingValues.uh_3) === String(resolvedValues.uh_3) &&
+          String(existingValues.pts) === String(resolvedValues.pts)
         ) {
           status = "same";
           message = "Nilai sama";
@@ -1199,10 +1421,10 @@ async function importNilaiExcel(event) {
           kelas: siswa?.kelasNilaiParts?.kelas || kelas,
           mapel_kode: assignment.mapel_kode,
           guru_kode: assignment.guru_kode,
-          uh_1: uh1,
-          uh_2: uh2,
-          uh_3: uh3,
-          pts,
+          uh_1: resolvedValues.uh_1,
+          uh_2: resolvedValues.uh_2,
+          uh_3: resolvedValues.uh_3,
+          pts: resolvedValues.pts,
           existing,
           status,
           message
