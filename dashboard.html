@@ -9,12 +9,13 @@
     document.documentElement.classList.add("role-access-pending");
   </script>
 
-<link rel="stylesheet" href="style.css?v=20260413e">
+<link rel="stylesheet" href="style.css?v=20260414b">
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase-config.js?v=20260408a"></script>
-  <script src="shared/supabase-documents.js?v=20260411b"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js?v=20260408a"></script>
+<script src="shared/supabase-documents.js?v=20260411b"></script>
 <script src="shared/maintenance-mode.js?v=20260411b"></script>
+<script src="shared/spreadsheet-libs.js?v=20260414a"></script>
 
   <script>
     function applyDarkModePreference(isDark) {
@@ -36,8 +37,6 @@
       applyDarkModePreference(localStorage.getItem("darkMode") === "true");
     });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/exceljs/dist/exceljs.min.js"></script>
 </head>
 
 <body>
@@ -199,7 +198,7 @@
     <div class="sidebar-footer">
       <span class="sidebar-footer-kicker">Sistem aktif</span>
       <span class="sidebar-footer-line">
-        <span class="sidebar-footer-version" id="sidebarVersionLabel">Ver 1.01f</span>
+        <span class="sidebar-footer-version" id="sidebarVersionLabel">Ver 1.01g</span>
         <span class="sidebar-footer-separator">|</span>
         <strong id="supabaseProjectInfo">Supabase</strong>
       </span>

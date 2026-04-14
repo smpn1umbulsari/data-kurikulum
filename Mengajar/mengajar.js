@@ -796,7 +796,8 @@ async function saveAllMengajar() {
   }
 }
 
-function downloadMengajarTemplate() {
+async function downloadMengajarTemplate() {
+  await ensureSpreadsheetLibraries();
   const worksheet = XLSX.utils.aoa_to_sheet([[
     "TINGKAT",
     "ROMBEL",
@@ -805,7 +806,7 @@ function downloadMengajarTemplate() {
   ]]);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-  XLSX.writeFile(workbook, "template-import-pembagian-mengajar.xlsx");
+  return XLSX.writeFile(workbook, "template-import-pembagian-mengajar.xlsx");
 }
 
 function normalizeMengajarHeader(text) {
@@ -827,9 +828,10 @@ function getMengajarCellValue(row, aliases) {
   return "";
 }
 
-function importMengajarExcel(event) {
+async function importMengajarExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
+  await ensureSpreadsheetLibraries();
 
   const reader = new FileReader();
 

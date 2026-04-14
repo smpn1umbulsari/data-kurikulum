@@ -205,7 +205,8 @@ function getGuruCellValue(row, aliases) {
   return "";
 }
 
-function downloadGuruTemplate() {
+async function downloadGuruTemplate() {
+  await ensureSpreadsheetLibraries();
   const worksheet = XLSX.utils.aoa_to_sheet([[
     "KODE_GURU",
     "NAMA",
@@ -218,7 +219,7 @@ function downloadGuruTemplate() {
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-  XLSX.writeFile(workbook, "template-import-guru.xlsx");
+  return XLSX.writeFile(workbook, "template-import-guru.xlsx");
 }
 
 function refreshGuruTable() {
@@ -238,9 +239,10 @@ async function ensureGuruMapelOptions() {
   });
 }
 
-function importGuruExcel(event) {
+async function importGuruExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
+  await ensureSpreadsheetLibraries();
 
   const reader = new FileReader();
 

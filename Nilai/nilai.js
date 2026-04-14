@@ -1007,6 +1007,7 @@ function applyNilaiTemplateStyles(worksheet, rowCount) {
 }
 
 async function downloadNilaiTemplate() {
+  await ensureSpreadsheetLibraries({ needsExcelJs: true });
   const assignment = getSelectedNilaiAssignment();
   if (!assignment.mapel_kode) {
     Swal.fire("Pilih kelas dan mapel", "Template dibuat berdasarkan kelas dan mapel yang dipilih.", "warning");
@@ -1033,6 +1034,7 @@ async function downloadNilaiTemplate() {
 }
 
 async function downloadNilaiTemplateExcelJs(rows, assignment) {
+  await ensureSpreadsheetLibraries({ needsExcelJs: true });
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Template Nilai");
   worksheet.columns = [
@@ -1111,10 +1113,11 @@ function hasNilaiImportValue(value) {
   return !(value === "" || value === null || value === undefined);
 }
 
-function importNilaiExcel(event) {
+async function importNilaiExcel(event) {
   const file = event.target.files?.[0];
   if (!file) return;
   nilaiLastImportInput = event.target;
+  await ensureSpreadsheetLibraries();
 
   const assignment = getSelectedNilaiAssignment();
   if (!assignment.mapel_kode) {

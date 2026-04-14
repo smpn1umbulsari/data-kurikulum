@@ -719,7 +719,8 @@ async function saveWaliKehadiran() {
   }
 }
 
-function downloadWaliKehadiranTemplate() {
+async function downloadWaliKehadiranTemplate() {
+  await ensureSpreadsheetLibraries();
   const kelas = getSelectedWaliClass().kelas;
   const students = getWaliStudentsByClass(kelas);
   if (!kelas || students.length === 0) {
@@ -741,16 +742,17 @@ function downloadWaliKehadiranTemplate() {
   worksheet["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 30 }, { wch: 8 }, { wch: 8 }, { wch: 8 }];
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Kehadiran");
-  XLSX.writeFile(workbook, `template-rekap-kehadiran-${kelas.replace(/\s+/g, "")}.xlsx`);
+  return XLSX.writeFile(workbook, `template-rekap-kehadiran-${kelas.replace(/\s+/g, "")}.xlsx`);
 }
 
 function triggerWaliKehadiranImport() {
   document.getElementById("waliKehadiranImportInput")?.click();
 }
 
-function importWaliKehadiranExcel(event) {
+async function importWaliKehadiranExcel(event) {
   const file = event.target.files?.[0];
   if (!file) return;
+  await ensureSpreadsheetLibraries();
   const kelas = getSelectedWaliClass().kelas;
   const students = getWaliStudentsByClass(kelas);
   const reader = new FileReader();

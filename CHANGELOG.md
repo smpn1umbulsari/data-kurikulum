@@ -112,6 +112,21 @@ Catatan:
 - Tidak ada menu baru.
 - Perubahan ini hanya menyentuh cara render awal sidebar.
 
+## Versi 1.01g
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Menghapus pemuatan awal library spreadsheet agar `XLSX` dan `ExcelJS` baru diunduh saat fitur import/export dipakai.
+- Menambahkan loader spreadsheet on-demand untuk guru, kelas, mapel, mengajar, siswa, nilai, wali kelas, dan rekap.
+- Mempertahankan fitur spreadsheet tanpa membebani load awal dashboard.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini mengubah cara load awal dan penggunaan library spreadsheet.
+
 ## Format Catatan Berikutnya
 
 Gunakan format berikut saat ada perubahan:

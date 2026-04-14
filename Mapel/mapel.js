@@ -23,7 +23,8 @@ const INDUK_MAPEL_OPTIONS = [
 ];
 const MAPEL_AGAMA_OPTIONS = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"];
 
-function downloadMapelTemplate() {
+async function downloadMapelTemplate() {
+  await ensureSpreadsheetLibraries();
   const worksheet = XLSX.utils.aoa_to_sheet([[
     "MAPPING",
     "INDUK_MAPEL",
@@ -35,7 +36,7 @@ function downloadMapelTemplate() {
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-  XLSX.writeFile(workbook, "template-import-mapel.xlsx");
+  return XLSX.writeFile(workbook, "template-import-mapel.xlsx");
 }
 
 function normalizeMapelHeader(text) {
@@ -639,9 +640,10 @@ function resetMapelFilter() {
   renderMapelFiltered();
 }
 
-function importMapelExcel(event) {
+async function importMapelExcel(event) {
   const file = event.target.files[0];
   if (!file) return;
+  await ensureSpreadsheetLibraries();
 
   const reader = new FileReader();
 

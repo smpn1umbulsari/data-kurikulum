@@ -9,16 +9,17 @@ let lastImportInput = null;
 let previewPage = 1;
 let previewRowsPerPage = 10;
 
-function downloadExcelTemplate(filename, headers) {
+async function downloadExcelTemplate(filename, headers) {
+  await ensureSpreadsheetLibraries();
   const worksheet = XLSX.utils.aoa_to_sheet([headers]);
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-  XLSX.writeFile(workbook, filename);
+  return XLSX.writeFile(workbook, filename);
 }
 
-function downloadSiswaTemplate() {
-  downloadExcelTemplate("template-import-siswa.xlsx", [
+async function downloadSiswaTemplate() {
+  return downloadExcelTemplate("template-import-siswa.xlsx", [
     "NIPD",
     "NISN",
     "NAMA",
@@ -111,7 +112,7 @@ function setPreviewRowsPerPage(value) {
 // =====================================================
 // STEP 1: IMPORT FILE
 // =====================================================
-function importExcel(e) {
+async function importExcel(e) {
   if (isSiswaImportLockedBySemester()) {
     Swal.fire(
       "Import dikunci",
@@ -125,6 +126,7 @@ function importExcel(e) {
   const file = e.target.files[0];
   if (!file) return;
   lastImportInput = e.target;
+  await ensureSpreadsheetLibraries();
 
   const reader = new FileReader();
 

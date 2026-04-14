@@ -792,12 +792,8 @@ function renderRekapTaskList(taskGroup) {
   return `<div class="rekap-task-list">${names.map(name => `<span>${escapeRekapHtml(formatRekapTaskBullet(name))}</span>`).join("")}</div>`;
 }
 
-function exportRekapTugasMengajarExcel() {
-  if (typeof XLSX === "undefined") {
-    Swal.fire("Export Excel belum bisa dilakukan", "Library XLSX belum tersedia.", "warning");
-    return;
-  }
-
+async function exportRekapTugasMengajarExcel() {
+  await ensureSpreadsheetLibraries();
   saveRekapSettings();
   const settings = getRekapSettings();
   const kepalaSekolah = getRekapKepalaSekolahInfo();
@@ -869,12 +865,8 @@ function exportRekapTugasMengajarExcel() {
   XLSX.writeFile(workbook, "rekap-tugas-dan-mengajar.xlsx");
 }
 
-function exportRekapTugasMengajarBayanganExcel() {
-  if (typeof XLSX === "undefined") {
-    Swal.fire("Export Excel belum bisa dilakukan", "Library XLSX belum tersedia.", "warning");
-    return;
-  }
-
+async function exportRekapTugasMengajarBayanganExcel() {
+  await ensureSpreadsheetLibraries();
   saveRekapSettings();
   const settings = getRekapSettings();
   const kepalaSekolah = getRekapKepalaSekolahInfo();

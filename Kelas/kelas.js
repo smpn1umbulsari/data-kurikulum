@@ -58,7 +58,8 @@ function escapeKelasJs(value) {
     .replace(/'/g, "\\'");
 }
 
-function downloadKelasTemplate() {
+async function downloadKelasTemplate() {
+  await ensureSpreadsheetLibraries();
   const worksheet = XLSX.utils.aoa_to_sheet([[
     "KELAS",
     "KODE_GURU",
@@ -67,7 +68,7 @@ function downloadKelasTemplate() {
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
-  XLSX.writeFile(workbook, "template-import-kelas.xlsx");
+  return XLSX.writeFile(workbook, "template-import-kelas.xlsx");
 }
 
 function normalizeKelasHeader(text) {
@@ -681,7 +682,7 @@ function renderKelasRow(item, nomor) {
   `;
 }
 
-function importKelasExcel(event) {
+async function importKelasExcel(event) {
   if (isKelasCoordinatorViewOnly()) {
     if (event?.target) event.target.value = "";
     Swal.fire("Akses dibatasi", "Koordinator hanya dapat melihat data kelas.", "info");
@@ -689,6 +690,7 @@ function importKelasExcel(event) {
   }
   const file = event.target.files[0];
   if (!file) return;
+  await ensureSpreadsheetLibraries();
 
   if (daftarGuruKelas.length === 0) {
     event.target.value = "";
