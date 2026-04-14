@@ -12,9 +12,11 @@ let currentEditAdminUser = null;
 let adminKoordinatorDraft = null;
 let isInteractingAdminHierarchyUi = false;
 let pendingAdminUsersRender = false;
+let pendingAdminUsersRenderTimer = null;
 let isSyncingGuruDerivedUsernames = false;
 let hasSyncedGuruDerivedUsernames = false;
 const PRESENCE_ONLINE_THRESHOLD_MS = 180000;
+const ADMIN_USERS_RENDER_DEBOUNCE_MS = 80;
 
 const DEFAULT_USER_PASSWORD = "guruspenturi";
 const USER_ROLES = ["admin", "guru", "koordinator", "urusan", "siswa"];
@@ -456,14 +458,29 @@ function getAdminKoordinatorFormDataFromDom() {
   }, {});
 }
 
-function requestRenderAdminUsersState() {
+function requestRenderAdminUsersState(options = {}) {
+  const presenceOnly = Boolean(options.presenceOnly);
   const hierarchyVisible = document.getElementById("adminHierarchySections");
   if (hierarchyVisible && isInteractingAdminHierarchyUi) {
     pendingAdminUsersRender = true;
+    if (pendingAdminUsersRenderTimer) return;
     return;
   }
   pendingAdminUsersRender = false;
-  renderAdminUsersState();
+  if (pendingAdminUsersRenderTimer) {
+    clearTimeout(pendingAdminUsersRenderTimer);
+    pendingAdminUsersRenderTimer = null;
+  }
+
+  if (presenceOnly) {
+    pendingAdminUsersRenderTimer = setTimeout(() => {
+      pendingAdminUsersRenderTimer = null;
+      renderAdminUsersState({ presenceOnly: true });
+    }, ADMIN_USERS_RENDER_DEBOUNCE_MS);
+    return;
+  }
+
+  renderAdminUsersState({ presenceOnly: false });
 }
 
 async function ensureGuruDerivedUsernames() {
@@ -707,6 +724,7 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
       },
       onPresenceUpdated: rows => {
         semuaDataAdminPresence = rows || [];
+        requestRenderAdminUsersState({ presenceOnly: true });
       },
       onRender: () => requestRenderAdminUsersState()
     });
@@ -758,13 +776,28 @@ function loadRealtimeAdminUsers(includeSiswa = false) {
 
   unsubscribeAdminPresence = documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").onSnapshot(snapshot => {
     semuaDataAdminPresence = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    requestRenderAdminUsersState();
+    requestRenderAdminUsersState({ presenceOnly: true });
   });
 }
 
-function renderAdminUsersState() {
+function updateAdminPresenceSummaryDom() {
+  const html = renderAdminPresenceSummaryHtml();
+  const summaryNodes = document.querySelectorAll(".admin-presence-summary");
+  if (summaryNodes.length === 0) return;
+  summaryNodes.forEach(node => {
+    node.outerHTML = html;
+  });
+}
+
+function renderAdminUsersState(options = {}) {
+  const presenceOnly = Boolean(options.presenceOnly);
   const userBody = document.getElementById("adminUserBody");
   if (userBody) userBody.innerHTML = renderAdminUserRows();
+
+  if (presenceOnly) {
+    updateAdminPresenceSummaryDom();
+    return;
+  }
 
   const hierarchy = document.getElementById("adminHierarchySections");
   if (hierarchy) {
@@ -775,6 +808,8 @@ function renderAdminUsersState() {
       ...USER_ROLES.map(renderAdminHierarchySection)
     ].join("");
   }
+
+  updateAdminPresenceSummaryDom();
 }
 
 function renderAdminUserRows() {

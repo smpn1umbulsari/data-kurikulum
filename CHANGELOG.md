@@ -142,6 +142,21 @@ Catatan:
 - Tidak ada menu baru.
 - Perubahan ini fokus ke performa data layer.
 
+## Versi 1.01g.2
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Mengurangi rerender penuh di halaman admin user saat presence berubah.
+- Memisahkan update presence online dari rerender hierarchy agar UI lebih ringan.
+- Menambahkan debounce ringan untuk refresh presence admin user.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini fokus ke performa render UI.
+
 ## Format Catatan Berikutnya
 
 Gunakan format berikut saat ada perubahan:
