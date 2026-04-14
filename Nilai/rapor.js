@@ -814,6 +814,10 @@ function formatRaporDisplayClass(kelasValue) {
 function setRaporPaperSize() {
   const value = document.getElementById("raporPaperSize")?.value || "A4";
   localStorage.setItem("raporPaperSize", value);
+  if (typeof showFloatingToast === "function") {
+    showFloatingToast("Pengaturan telah diset");
+    return;
+  }
   Swal.fire("Diset", `Ukuran kertas rapor: ${value === "F4" ? "F4 / FLSA" : "A4"}`, "success");
 }
 
@@ -1359,7 +1363,7 @@ function getRaporPrintHtml(students) {
           .rapor-note-table th { background: #f4b183; }
           .rapor-note-table td:first-child, .rapor-note-table td:nth-child(3) { text-align: center; width: 62px; }
           .rapor-note-table td:last-child { width: 42%; }
-          .rapor-catatan-print { vertical-align: top; white-space: pre-wrap; line-height: 1.35; padding: 3px 5px; }
+          .rapor-catatan-print { vertical-align: top; white-space: pre-wrap; line-height: 1.45; padding: 3px 5px; font-size: 9.6pt; }
           .rapor-date-line, .rapor-date-placeholder { display: block; min-height: 12px; font-size: 9pt; text-align: center; }
           .rapor-signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; margin-top: 8px; text-align: center; font-size: 9pt; align-items: start; }
           .rapor-signatures div { display: grid; align-content: start; min-height: 70px; gap: 1px; }

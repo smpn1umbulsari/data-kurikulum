@@ -15,6 +15,7 @@ let mengajarSearchQuery = "";
 let pendingMengajarChanges = {};
 let currentMengajarRombels = [];
 let currentMengajarMapels = [];
+let mengajarSupportLoadToken = 0;
 const MENGAJAR_GREEN_MIN_JP = 12;
 const MENGAJAR_GREEN_MAX_JP = 28;
 const MENGAJAR_WARN_MIN_JP = 29;
@@ -343,6 +344,49 @@ function getGuruJPStatus(totalJP) {
   return "neutral";
 }
 
+function getMengajarCurrentUserRole() {
+  try {
+    const user = global.DashboardShell?.getCurrentAppUser?.() || JSON.parse(global.localStorage.getItem("appUser") || "{}");
+    return String(user?.role || "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function canRecalculateGuruJP() {
+  return ["admin", "superadmin", "urusan"].includes(getMengajarCurrentUserRole());
+}
+
+async function recalculateGuruJPFromCurrentData() {
+  if (Object.keys(pendingMengajarChanges).length > 0) {
+    Swal.fire("Masih ada perubahan", "Simpan atau refresh perubahan mengajar terlebih dahulu sebelum rekalkulasi JP guru.", "warning");
+    return;
+  }
+
+  const confirm = await Swal.fire({
+    title: "Rekalkulasi JP Guru?",
+    text: "Total JP guru akan dihitung ulang dari pembagian mengajar aktif dan tugas tambahan.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Rekalkulasi",
+    cancelButtonText: "Batal"
+  });
+  if (!confirm.isConfirmed) return;
+
+  try {
+    Swal.fire({ title: "Menghitung ulang JP guru...", didOpen: () => Swal.showLoading() });
+    const result = await syncGuruJPFromAssignments(semuaDataMengajar);
+    Swal.fire(
+      "Rekalkulasi selesai",
+      `Total guru diproses: ${result?.total || 0}<br>Diperbarui: ${result?.updated || 0}<br>Tidak berubah: ${result?.unchanged || 0}`,
+      "success"
+    );
+  } catch (error) {
+    console.error(error);
+    Swal.fire("Gagal", "Rekalkulasi JP guru belum berhasil.", "error");
+  }
+}
+
 function buildMengajarSummaryHtml(assignments = getProjectedMengajarAssignments()) {
   const totals = getProjectedGuruJPTotals(assignments);
   const ownMapelTotals = getProjectedGuruOwnMapelJPTotals(assignments);
@@ -377,7 +421,7 @@ function buildMengajarSummaryHtml(assignments = getProjectedMengajarAssignments(
     <section class="mengajar-summary-panel">
       <div class="mengajar-summary-header">
         <div>
-          <h3>Rekap JP Guru</h3>
+          <h3 class="mengajar-summary-title">Rekap JP Guru</h3>
           <p>Perubahan mengikuti pilihan dropdown saat ini, bahkan sebelum disimpan.</p>
         </div>
         <div class="mengajar-summary-badges">
@@ -494,6 +538,11 @@ function loadRealtimeMengajar() {
   if (unsubscribeMengajarSiswa) unsubscribeMengajarSiswa();
   if (unsubscribeMengajarGuruTugasTambahan) unsubscribeMengajarGuruTugasTambahan();
   isMengajarSiswaLoaded = false;
+  const loadToken = ++mengajarSupportLoadToken;
+  const documentsApi = getMengajarPageDocumentsApi();
+  const siswaQuery = typeof getSemesterCollectionQuery === "function"
+    ? getSemesterCollectionQuery("siswa", "nama")
+    : documentsApi.collection("siswa").orderBy("nama");
 
   unsubscribeMengajar = listenMengajar(data => {
     semuaDataMengajar = data;
@@ -515,16 +564,37 @@ function loadRealtimeMengajar() {
     renderMengajarMatrix();
   });
 
-  unsubscribeMengajarSiswa = listenSiswa(data => {
-    semuaDataSiswaMengajar = data;
-    isMengajarSiswaLoaded = true;
-    renderMengajarMatrix();
-  });
-
   unsubscribeMengajarGuruTugasTambahan = getMengajarPageDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
     semuaDataGuruTugasTambahanMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderMengajarMatrix();
   });
+
+  loadMengajarSupportData(loadToken, siswaQuery);
+}
+
+async function loadMengajarSupportData(loadToken = mengajarSupportLoadToken, siswaQuery = null) {
+  try {
+    const siswaSnapshot = siswaQuery
+      ? await siswaQuery.get()
+      : [];
+    if (loadToken !== mengajarSupportLoadToken) return;
+    semuaDataSiswaMengajar = siswaSnapshot.docs ? siswaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) : siswaSnapshot;
+    isMengajarSiswaLoaded = true;
+    renderMengajarMatrix();
+    if (siswaQuery) {
+      window.setTimeout(() => {
+        if (loadToken !== mengajarSupportLoadToken) return;
+        unsubscribeMengajarSiswa = siswaQuery.onSnapshot(snapshot => {
+          if (loadToken !== mengajarSupportLoadToken) return;
+          semuaDataSiswaMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          isMengajarSiswaLoaded = true;
+          renderMengajarMatrix();
+        });
+      }, 0);
+    }
+  } catch (error) {
+    console.error(error);
+  }
 }
 
 function setMengajarTingkat(value) {
@@ -726,12 +796,19 @@ async function syncGuruJPFromAssignments(assignments = semuaDataMengajar) {
 
   const documentsApi = getMengajarPageDocumentsApi();
   const batch = documentsApi.batch();
+  let total = 0;
+  let updated = 0;
+  let unchanged = 0;
   semuaDataGuru.forEach(guru => {
     const guruKode = String(guru.kode_guru || "").trim();
     if (!guruKode) return;
+    total++;
     const nextJP = totals.get(guruKode) || 0;
     const currentJP = Number(guru.jp || 0) || 0;
-    if (currentJP === nextJP) return;
+    if (currentJP === nextJP) {
+      unchanged++;
+      return;
+    }
 
     const { id, ...guruData } = guru;
     batch.set(
@@ -742,9 +819,13 @@ async function syncGuruJPFromAssignments(assignments = semuaDataMengajar) {
         updated_at: new Date()
       }
     );
+    updated++;
   });
 
-  await batch.commit();
+  if (updated > 0) {
+    await batch.commit();
+  }
+  return { total, updated, unchanged };
 }
 
 async function saveAllMengajar() {

@@ -10,6 +10,7 @@ let unsubscribeKelasSiswa = null;
 let currentPageKelas = 1;
 let rowsPerPageKelas = 10;
 let isSubmittingKelas = false;
+let kelasSupportLoadToken = 0;
 let currentEditKelas = null;
 let kelasSortField = "tingkat";
 let kelasSortDirection = "asc";
@@ -404,6 +405,7 @@ async function loadRealtimeKelas() {
   if (tbody) {
     tbody.innerHTML = `<tr><td colspan="5">Memuat data kelas...</td></tr>`;
   }
+  const loadToken = ++kelasSupportLoadToken;
 
   try {
     const kelasQuery = typeof getSemesterCollectionQuery === "function"
@@ -412,22 +414,34 @@ async function loadRealtimeKelas() {
     const siswaQuery = typeof getSemesterCollectionQuery === "function"
       ? getSemesterCollectionQuery("siswa", "nama")
       : getKelasPageDocumentsApi().collection("siswa").orderBy("nama");
-    const [kelasSnapshot, guruSnapshot, mengajarSnapshot, siswaSnapshot] = await Promise.all([
+    const [kelasSnapshot, siswaSnapshot] = await Promise.all([
       kelasQuery.get(),
-      getKelasPageDocumentsApi().collection("guru").orderBy("kode_guru").get(),
-      getKelasPageDocumentsApi().collection("mengajar").get(),
       siswaQuery.get()
     ]);
     semuaDataKelas = kelasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    daftarGuruKelas = guruSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    daftarMengajarKelas = mengajarSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     daftarSiswaKelas = siswaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     renderKelasFiltered();
+    loadKelasSupportData(loadToken);
   } catch (error) {
     console.error(error);
     if (tbody) {
       tbody.innerHTML = `<tr><td colspan="5">Data kelas belum berhasil dimuat.</td></tr>`;
     }
+  }
+}
+
+async function loadKelasSupportData(loadToken = kelasSupportLoadToken) {
+  try {
+    const [guruSnapshot, mengajarSnapshot] = await Promise.all([
+      getKelasPageDocumentsApi().collection("guru").orderBy("kode_guru").get(),
+      getKelasPageDocumentsApi().collection("mengajar").get()
+    ]);
+    if (loadToken !== kelasSupportLoadToken) return;
+    daftarGuruKelas = guruSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    daftarMengajarKelas = mengajarSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    renderKelasFiltered();
+  } catch (error) {
+    console.error(error);
   }
 }
 

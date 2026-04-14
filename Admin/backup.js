@@ -188,7 +188,7 @@ async function readBackupSemesterCollection(termId, collectionName) {
 async function downloadFullBackup() {
   try {
     setBackupStatus("backupExportStatus", "Membaca data...");
-    Swal.fire({ title: "Membuat backup...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    window.AppLoading?.set("backup-export", true, { title: "Membuat backup...", message: "Mohon tunggu sebentar." });
     const collections = {};
     for (const name of BACKUP_COLLECTIONS) {
       setBackupStatus("backupExportStatus", `Membaca ${name}...`);
@@ -219,6 +219,8 @@ async function downloadFullBackup() {
     console.error(error);
     setBackupStatus("backupExportStatus", "Backup gagal.");
     Swal.fire("Backup gagal", error.message || "", "error");
+  } finally {
+    window.AppLoading?.set("backup-export", false);
   }
 }
 
@@ -278,18 +280,22 @@ async function restoreFullBackup() {
       return;
     }
 
-    Swal.fire({ title: "Restore berjalan...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-    let count = 0;
-    for (const [collectionName, rows] of Object.entries(payload.collections || {})) {
-      setBackupStatus("backupRestoreStatus", `Restore ${collectionName}...`);
-      count += await writeBackupCollection(collectionName, rows);
+    window.AppLoading?.set("backup-restore", true, { title: "Restore berjalan...", message: "Mohon tunggu sebentar." });
+    try {
+      let count = 0;
+      for (const [collectionName, rows] of Object.entries(payload.collections || {})) {
+        setBackupStatus("backupRestoreStatus", `Restore ${collectionName}...`);
+        count += await writeBackupCollection(collectionName, rows);
+      }
+      for (const [termId, termData] of Object.entries(payload.semester_data || {})) {
+        count += await writeBackupSemesterCollection(termId, "siswa", termData.siswa || []);
+        count += await writeBackupSemesterCollection(termId, "kelas", termData.kelas || []);
+      }
+      setBackupStatus("backupRestoreStatus", `Restore selesai. ${count} dokumen ditulis.`);
+      await Swal.fire("Restore selesai", `${count} dokumen ditulis. Silakan logout dan login ulang.`, "success");
+    } finally {
+      window.AppLoading?.set("backup-restore", false);
     }
-    for (const [termId, termData] of Object.entries(payload.semester_data || {})) {
-      count += await writeBackupSemesterCollection(termId, "siswa", termData.siswa || []);
-      count += await writeBackupSemesterCollection(termId, "kelas", termData.kelas || []);
-    }
-    setBackupStatus("backupRestoreStatus", `Restore selesai. ${count} dokumen ditulis.`);
-    await Swal.fire("Restore selesai", `${count} dokumen ditulis. Silakan logout dan login ulang.`, "success");
   } catch (error) {
     console.error(error);
     setBackupStatus("backupRestoreStatus", "Restore gagal.");
@@ -373,22 +379,26 @@ async function resetAllApplicationData() {
   }
 
   try {
-    Swal.fire({ title: "Membersihkan data...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
-    let deleted = 0;
-    for (const collectionName of CLEAN_COLLECTIONS) {
-      setBackupStatus("backupCleanStatus", `Menghapus ${collectionName}...`);
-      deleted += await deleteBackupCollection(getBackupDocumentsApi().collection(collectionName));
+    window.AppLoading?.set("backup-clean", true, { title: "Membersihkan data...", message: "Mohon tunggu sebentar." });
+    try {
+      let deleted = 0;
+      for (const collectionName of CLEAN_COLLECTIONS) {
+        setBackupStatus("backupCleanStatus", `Menghapus ${collectionName}...`);
+        deleted += await deleteBackupCollection(getBackupDocumentsApi().collection(collectionName));
+      }
+      for (const termId of semesterIds) {
+        setBackupStatus("backupCleanStatus", `Menghapus data semester ${termId}...`);
+        deleted += await deleteBackupCollection(getBackupDocumentsApi().collection("semester_data").doc(termId).collection("siswa"));
+        deleted += await deleteBackupCollection(getBackupDocumentsApi().collection("semester_data").doc(termId).collection("kelas"));
+        await getBackupDocumentsApi().collection("semester_data").doc(termId).delete();
+      }
+      localStorage.clear();
+      setBackupStatus("backupCleanStatus", `Selesai. ${deleted} dokumen dihapus. Cache lokal dibersihkan.`);
+      await Swal.fire("Selesai", `${deleted} dokumen dihapus. Aplikasi siap diisi dari awal.`, "success");
+      window.location.href = "login.html";
+    } finally {
+      window.AppLoading?.set("backup-clean", false);
     }
-    for (const termId of semesterIds) {
-      setBackupStatus("backupCleanStatus", `Menghapus data semester ${termId}...`);
-      deleted += await deleteBackupCollection(getBackupDocumentsApi().collection("semester_data").doc(termId).collection("siswa"));
-      deleted += await deleteBackupCollection(getBackupDocumentsApi().collection("semester_data").doc(termId).collection("kelas"));
-      await getBackupDocumentsApi().collection("semester_data").doc(termId).delete();
-    }
-    localStorage.clear();
-    setBackupStatus("backupCleanStatus", `Selesai. ${deleted} dokumen dihapus. Cache lokal dibersihkan.`);
-    await Swal.fire("Selesai", `${deleted} dokumen dihapus. Aplikasi siap diisi dari awal.`, "success");
-    window.location.href = "login.html";
   } catch (error) {
     console.error(error);
     setBackupStatus("backupCleanStatus", "Pembersihan gagal.");

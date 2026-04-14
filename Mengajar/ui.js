@@ -22,6 +22,9 @@ function renderMengajarPage() {
             Import
             <input type="file" accept=".xlsx, .xls" onchange="importMengajarExcel(event)">
           </label>
+          <button class="btn-secondary mengajar-recalc-button" onclick="recalculateGuruJPFromCurrentData()">
+            Rekalkulasi JP Guru
+          </button>
           <button class="btn-primary" onclick="saveAllMengajar()">Simpan Semua</button>
         </div>
       </div>

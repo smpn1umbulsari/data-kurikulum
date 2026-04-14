@@ -13,6 +13,7 @@ let adminKoordinatorDraft = null;
 let isInteractingAdminHierarchyUi = false;
 let pendingAdminUsersRender = false;
 let pendingAdminUsersRenderTimer = null;
+let adminUserActiveTab = "daftar-user";
 let isSyncingGuruDerivedUsernames = false;
 let hasSyncedGuruDerivedUsernames = false;
 const PRESENCE_ONLINE_THRESHOLD_MS = 180000;
@@ -451,6 +452,37 @@ function showAdminFloatingToast(message = "Tersimpan", type = "success") {
   }, 3000);
 }
 
+function normalizeAdminUserTab(tab) {
+  return tab === "tambah-manual" ? "tambah-manual" : "daftar-user";
+}
+
+function syncAdminUserTabDom() {
+  const tab = normalizeAdminUserTab(adminUserActiveTab);
+  document.querySelectorAll("[data-admin-user-tab]").forEach(button => {
+    const isActive = button.dataset.adminUserTab === tab;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-selected", isActive ? "true" : "false");
+    button.tabIndex = isActive ? 0 : -1;
+  });
+  document.querySelectorAll("[data-admin-user-tab-panel]").forEach(panel => {
+    const isActive = panel.dataset.adminUserTabPanel === tab;
+    panel.classList.toggle("is-active", isActive);
+    panel.hidden = !isActive;
+  });
+}
+
+function setAdminUsersTab(tab) {
+  adminUserActiveTab = normalizeAdminUserTab(tab);
+  syncAdminUserTabDom();
+  if (adminUserActiveTab === "tambah-manual") {
+    handleAdminRoleSourceChange(false);
+    fillAdminUserFromSource();
+    window.setTimeout(() => {
+      document.getElementById("newUserName")?.focus();
+    }, 0);
+  }
+}
+
 function getAdminKoordinatorFormDataFromDom() {
   return KOORDINATOR_LEVELS.reduce((result, item) => {
     result[item.key] = String(document.getElementById(`koordinator-${item.key}`)?.value || "").trim();
@@ -597,7 +629,8 @@ function renderAdminUserPage() {
       defaultPassword: DEFAULT_USER_PASSWORD,
       roles: USER_ROLES,
       canManageAiPrompt: isCurrentUserSuperadmin(),
-      presenceSummaryHtml: renderAdminPresenceSummaryHtml()
+      presenceSummaryHtml: renderAdminPresenceSummaryHtml(),
+      activeTab: adminUserActiveTab
     });
   }
   const canManageAiPrompt = isCurrentUserSuperadmin();
@@ -618,22 +651,70 @@ function renderAdminUserPage() {
       <div class="matrix-toolbar-note">Password default pengguna baru: <strong>${DEFAULT_USER_PASSWORD}</strong></div>
       ${renderAdminPresenceSummaryHtml()}
 
-      <div class="table-container mapel-table-container admin-user-table-wrap">
-        <table class="mapel-table admin-user-table">
-          <thead>
-            <tr>
-              <th>Nama</th>
-              <th>Username</th>
-              <th>Password</th>
-              <th>Role</th>
-              <th>Online</th>
-              ${canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="adminUserBody"></tbody>
-        </table>
+      <div class="admin-user-tabbar" role="tablist" aria-label="Menu pengguna">
+        <button class="admin-user-tab ${adminUserActiveTab === "daftar-user" ? "active" : ""}" type="button" data-admin-user-tab="daftar-user" aria-selected="${adminUserActiveTab === "daftar-user" ? "true" : "false"}" onclick="setAdminUsersTab('daftar-user')">Daftar User</button>
+        <button class="admin-user-tab ${adminUserActiveTab === "tambah-manual" ? "active" : ""}" type="button" data-admin-user-tab="tambah-manual" aria-selected="${adminUserActiveTab === "tambah-manual" ? "true" : "false"}" onclick="setAdminUsersTab('tambah-manual')">Tambah Manual</button>
       </div>
+
+      <section class="admin-user-tab-panel ${adminUserActiveTab === "daftar-user" ? "is-active" : ""}" data-admin-user-tab-panel="daftar-user" ${adminUserActiveTab === "daftar-user" ? "" : "hidden"}>
+        <div class="table-container mapel-table-container admin-user-table-wrap">
+          <table class="mapel-table admin-user-table">
+            <thead>
+              <tr>
+                <th>Nama</th>
+                <th>Username</th>
+                <th>Password</th>
+                <th>Role</th>
+                <th>Online</th>
+                ${canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adminUserBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="admin-user-tab-panel ${adminUserActiveTab === "tambah-manual" ? "is-active" : ""}" data-admin-user-tab-panel="tambah-manual" ${adminUserActiveTab === "tambah-manual" ? "" : "hidden"}>
+        <div class="kelas-bayangan-head admin-user-create-head">
+          <div>
+            <span class="dashboard-eyebrow">Tambah User</span>
+            <h2>Tambah Manual</h2>
+            <p>Pilih sumber data atau isi manual untuk menambahkan akun baru.</p>
+          </div>
+        </div>
+
+        <div class="admin-user-create-grid">
+          <label class="form-group">
+            <span>Role</span>
+            <select id="newUserRole" onchange="handleAdminRoleSourceChange(); fillAdminUserFromSource()">
+              ${USER_ROLES.map(role => `<option value="${role}">${role}</option>`).join("")}
+            </select>
+          </label>
+          <label class="form-group">
+            <span>Sumber data</span>
+            <select id="newUserSource" onchange="fillAdminUserFromSource()">
+              <option value="">Manual</option>
+            </select>
+          </label>
+          <label class="form-group">
+            <span>Nama</span>
+            <input id="newUserName" oninput="document.getElementById('newUserSource').value=''; document.getElementById('newUserUsername').value = makeUsernameFromName(this.value)">
+          </label>
+          <label class="form-group">
+            <span>Username</span>
+            <input id="newUserUsername">
+          </label>
+          <label class="form-group">
+            <span>Password</span>
+            <input id="newUserPassword" value="${DEFAULT_USER_PASSWORD}">
+          </label>
+        </div>
+
+        <div class="kelas-bayangan-actions admin-user-create-actions">
+          <button class="btn-primary" onclick="createUser()">Tambah User</button>
+        </div>
+      </section>
     </div>
   `;
 }
@@ -650,34 +731,8 @@ function renderAdminHierarchyPage() {
       </div>
 
       ${renderAdminPresenceSummaryHtml()}
-
-      <div class="kelas-form-grid admin-hierarchy-form-grid">
-        <label class="form-group admin-hierarchy-form-group">
-          <span>Role</span>
-          <select id="newUserRole" onchange="handleAdminRoleSourceChange()">
-            ${USER_ROLES.map(role => `<option value="${role}">${role}</option>`).join("")}
-          </select>
-        </label>
-        <label class="form-group admin-hierarchy-form-group">
-          <span>Sumber Data</span>
-          <select id="newUserSource" onchange="fillAdminUserFromSource()"></select>
-        </label>
-        <label class="form-group admin-hierarchy-form-group">
-          <span>Nama</span>
-          <input id="newUserName" placeholder="Nama pengguna">
-        </label>
-        <label class="form-group admin-hierarchy-form-group">
-          <span>Username</span>
-          <input id="newUserUsername" placeholder="Username">
-        </label>
-        <label class="form-group admin-hierarchy-form-group">
-          <span>Password</span>
-          <input id="newUserPassword" value="${DEFAULT_USER_PASSWORD}">
-        </label>
-        <div class="form-group admin-hierarchy-form-group">
-          <span>&nbsp;</span>
-          <button class="btn-primary" onclick="addHierarchyUser()">Tambah Pengguna</button>
-        </div>
+      <div class="dashboard-card-lite admin-hierarchy-note">
+        Form tambah manual dipindahkan ke menu <strong>User</strong> agar menu hirarki fokus pada koordinator dan ringkasan role.
       </div>
 
       <div id="adminHierarchySections" class="dashboard-grid"></div>
@@ -793,6 +848,10 @@ function renderAdminUsersState(options = {}) {
   const presenceOnly = Boolean(options.presenceOnly);
   const userBody = document.getElementById("adminUserBody");
   if (userBody) userBody.innerHTML = renderAdminUserRows();
+
+  if (document.getElementById("newUserRole")) {
+    handleAdminRoleSourceChange(false);
+  }
 
   if (presenceOnly) {
     updateAdminPresenceSummaryDom();
@@ -1234,6 +1293,10 @@ async function addHierarchyUser() {
 
   await getAdminUsersDocumentsApi().collection("users").doc(makeUserDocId(username)).set(payload, { merge: true });
   Swal.fire("Tersimpan", "Pengguna sudah ditambahkan.", "success");
+}
+
+async function createUser() {
+  return addHierarchyUser();
 }
 
 async function saveAdminKoordinator() {

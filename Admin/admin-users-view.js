@@ -73,6 +73,7 @@
   }
 
   function renderUserPage(context) {
+    const activeTab = context.activeTab === "tambah-manual" ? "tambah-manual" : "daftar-user";
     return `
       <div class="card">
         <div class="kelas-bayangan-head">
@@ -90,61 +91,71 @@
         <div class="matrix-toolbar-note">Password default pengguna baru: <strong>${context.defaultPassword}</strong></div>
         ${context.presenceSummaryHtml || ""}
 
-        <div class="table-container mapel-table-container admin-user-table-wrap">
-          <table class="mapel-table admin-user-table">
-            <thead>
-              <tr>
-                <th>Nama</th>
-                <th>Username</th>
-                <th>Password</th>
-                <th>Role</th>
-                <th>Online</th>
-                ${context.canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody id="adminUserBody"></tbody>
-          </table>
+        <div class="admin-user-tabbar" role="tablist" aria-label="Menu pengguna">
+          <button class="admin-user-tab ${activeTab === "daftar-user" ? "active" : ""}" type="button" data-admin-user-tab="daftar-user" aria-selected="${activeTab === "daftar-user" ? "true" : "false"}" onclick="setAdminUsersTab('daftar-user')">Daftar User</button>
+          <button class="admin-user-tab ${activeTab === "tambah-manual" ? "active" : ""}" type="button" data-admin-user-tab="tambah-manual" aria-selected="${activeTab === "tambah-manual" ? "true" : "false"}" onclick="setAdminUsersTab('tambah-manual')">Tambah Manual</button>
         </div>
 
-        <div class="kelas-bayangan-head admin-user-create-head">
-          <div>
-            <span class="dashboard-eyebrow">Tambah User</span>
-            <h2>Tambah Manual</h2>
-            <p>Pilih sumber data atau isi manual untuk menambahkan akun baru.</p>
+        <section class="admin-user-tab-panel ${activeTab === "daftar-user" ? "is-active" : ""}" data-admin-user-tab-panel="daftar-user" ${activeTab === "daftar-user" ? "" : "hidden"}>
+          <div class="table-container mapel-table-container admin-user-table-wrap">
+            <table class="mapel-table admin-user-table">
+              <thead>
+                <tr>
+                  <th>Nama</th>
+                  <th>Username</th>
+                  <th>Password</th>
+                  <th>Role</th>
+                  <th>Online</th>
+                  ${context.canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="adminUserBody"></tbody>
+            </table>
           </div>
-        </div>
+        </section>
 
-        <div class="admin-user-create-grid">
-          <label class="form-group">
-            <span>Role</span>
-            <select id="newUserRole" onchange="handleAdminRoleSourceChange(); fillAdminUserFromSource()">
-              ${context.roles.map(role => `<option value="${role}">${role}</option>`).join("")}
-            </select>
-          </label>
-          <label class="form-group">
-            <span>Sumber data</span>
-            <select id="newUserSource" onchange="fillAdminUserFromSource()">
-              <option value="">Manual</option>
-            </select>
-          </label>
-          <label class="form-group">
-            <span>Nama</span>
-            <input id="newUserName" oninput="document.getElementById('newUserSource').value=''; document.getElementById('newUserUsername').value = makeUsernameFromName(this.value)">
-          </label>
-          <label class="form-group">
-            <span>Username</span>
-            <input id="newUserUsername">
-          </label>
-          <label class="form-group">
-            <span>Password</span>
-            <input id="newUserPassword" value="${context.defaultPassword}">
-          </label>
-        </div>
+        <section class="admin-user-tab-panel ${activeTab === "tambah-manual" ? "is-active" : ""}" data-admin-user-tab-panel="tambah-manual" ${activeTab === "tambah-manual" ? "" : "hidden"}>
+          <div class="kelas-bayangan-head admin-user-create-head">
+            <div>
+              <span class="dashboard-eyebrow">Tambah User</span>
+              <h2>Tambah Manual</h2>
+              <p>Pilih sumber data atau isi manual untuk menambahkan akun baru.</p>
+            </div>
+          </div>
 
-        <div class="kelas-bayangan-actions admin-user-create-actions">
-          <button class="btn-primary" onclick="createUser()">Tambah User</button>
-        </div>
+          <div class="admin-user-create-grid">
+            <label class="form-group">
+              <span>Role</span>
+              <select id="newUserRole" onchange="handleAdminRoleSourceChange(); fillAdminUserFromSource()">
+                ${context.roles.map(role => `<option value="${role}">${role}</option>`).join("")}
+              </select>
+            </label>
+            <label class="form-group">
+              <span>Sumber data</span>
+              <select id="newUserSource" onchange="fillAdminUserFromSource()">
+                <option value="">Manual</option>
+              </select>
+            </label>
+            <label class="form-group">
+              <span>Nama</span>
+              <input id="newUserName" oninput="document.getElementById('newUserSource').value=''; document.getElementById('newUserUsername').value = makeUsernameFromName(this.value)">
+            </label>
+            <label class="form-group">
+              <span>Username</span>
+              <input id="newUserUsername">
+            </label>
+            <label class="form-group">
+              <span>Password</span>
+              <input id="newUserPassword" value="${context.defaultPassword}">
+            </label>
+          </div>
+
+          <div class="kelas-bayangan-actions admin-user-create-actions">
+            <button class="btn-primary" onclick="createUser()">Tambah User</button>
+          </div>
+        </section>
+
       </div>
     `;
   }
