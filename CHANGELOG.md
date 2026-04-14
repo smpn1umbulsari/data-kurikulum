@@ -54,6 +54,64 @@ Catatan:
 - Tidak ada menu baru.
 - Perubahan ini tetap hanya mengubah fungsi catatan wali kelas.
 
+## Versi 1.01c
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Menambahkan label versi pada panel `Sistem aktif` di sidebar.
+- Menambah jarak panel `Sistem aktif` dari menu di atasnya.
+- Menambahkan garis pemisah di bawah menu `Kelas Real` agar konsisten dengan section menu lain.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini hanya menyentuh tampilan sidebar.
+
+## Versi 1.01d
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Memindahkan kontrol maintenance dari sidebar ke menu `Backup & Restore`.
+- Memperbolehkan role `superadmin` mengakses dan mengubah status maintenance.
+- Menjaga tampilan maintenance panel tetap konsisten dengan style panel sistem.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini hanya memindahkan lokasi kontrol dan memperluas akses role.
+
+## Versi 1.01e
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Memperjelas styling panel `Sistem aktif` agar label, versi, dan `Supabase` punya hirarki visual berbeda.
+- Menyamakan label versi sidebar dengan changelog terbaru.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini hanya menyentuh tampilan sidebar dan penomoran versi.
+
+## Versi 1.01f
+
+Status: draft
+
+Tanggal: 2026-04-14
+
+Perubahan:
+- Menutup flash menu role di awal load dengan menyembunyikan menu sampai akses role selesai dihitung.
+- Membuat tampilan awal lebih cepat terasa bersih untuk guru, koordinator, dan urusan.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini hanya menyentuh cara render awal sidebar.
+
 ## Format Catatan Berikutnya
 
 Gunakan format berikut saat ada perubahan:

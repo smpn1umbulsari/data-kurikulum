@@ -5,6 +5,10 @@
   <title>Dashboard Aplikasi Siswa</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <script>
+    document.documentElement.classList.add("role-access-pending");
+  </script>
+
 <link rel="stylesheet" href="style.css?v=20260413e">
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -190,25 +194,15 @@
       </div>
     </div>
 
+    <div class="sidebar-menu-divider"></div>
+
     <div class="sidebar-footer">
-      <div class="sidebar-maintenance-panel" id="sidebarMaintenancePanel" hidden>
-        <div class="sidebar-maintenance-head">
-          <div>
-            <span class="sidebar-maintenance-label">Maintenance</span>
-            <strong id="maintenanceStatusText">Memuat status...</strong>
-          </div>
-          <label class="maintenance-switch" aria-label="Toggle maintenance mode">
-            <input type="checkbox" id="maintenanceModeToggle" onchange="handleMaintenanceToggleChange(this)">
-            <span class="maintenance-switch-track">
-              <span class="maintenance-switch-thumb"></span>
-            </span>
-          </label>
-        </div>
-      <p class="sidebar-maintenance-copy">Saat aktif, halaman login tetap bisa dibuka. Admin tetap bisa masuk untuk mematikan mode ini, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah login.</p>
-        <a class="sidebar-maintenance-link" href="maintenance.html" target="_blank" rel="noopener">Lihat halaman maintenance</a>
-      </div>
-      <span>Sistem aktif</span>
-      <strong id="supabaseProjectInfo">Supabase</strong>
+      <span class="sidebar-footer-kicker">Sistem aktif</span>
+      <span class="sidebar-footer-line">
+        <span class="sidebar-footer-version" id="sidebarVersionLabel">Ver 1.01f</span>
+        <span class="sidebar-footer-separator">|</span>
+        <strong id="supabaseProjectInfo">Supabase</strong>
+      </span>
     </div>
   </aside>
   <div class="sidebar-overlay" onclick="toggleSidebar(true)"></div>
@@ -315,12 +309,14 @@
   }
 
   function applyMaintenanceUiState(state = {}) {
-    const panel = document.getElementById("sidebarMaintenancePanel");
+    const panel = document.getElementById("backupMaintenancePanel") || document.getElementById("sidebarMaintenancePanel");
     const toggle = document.getElementById("maintenanceModeToggle");
     const statusText = document.getElementById("maintenanceStatusText");
     if (!panel || !toggle || !statusText) return;
 
-    const isAdmin = getCurrentAppRole() === "admin";
+    const isAdmin = window.MaintenanceMode?.isAdminRole
+      ? window.MaintenanceMode.isAdminRole(getCurrentAppRole())
+      : ["admin", "superadmin"].includes(getCurrentAppRole());
     panel.hidden = !isAdmin;
     if (!isAdmin) return;
 
@@ -329,15 +325,22 @@
     statusText.textContent = state.enabled ? "Aktif - non-admin ditahan" : "Nonaktif - sistem normal";
   }
 
+  function markRoleAccessReady() {
+    document.documentElement.classList.remove("role-access-pending");
+  }
+
   async function enforceDashboardMaintenanceMode() {
     const role = getCurrentAppRole();
-    if (window.MaintenanceMode.peekCached().enabled && role !== "admin") {
+    const isAdmin = window.MaintenanceMode?.isAdminRole
+      ? window.MaintenanceMode.isAdminRole(role)
+      : ["admin", "superadmin"].includes(role);
+    if (window.MaintenanceMode.peekCached().enabled && !isAdmin) {
       window.MaintenanceMode.goToMaintenance();
       return true;
     }
 
     const state = await window.MaintenanceMode.load({ force: true });
-    if (state.enabled && role !== "admin") {
+    if (state.enabled && !isAdmin) {
       window.MaintenanceMode.goToMaintenance();
       return true;
     }
@@ -347,7 +350,7 @@
   }
 
   async function initializeMaintenanceToggle() {
-    if (getCurrentAppRole() !== "admin") {
+    if (!window.MaintenanceMode?.isAdminRole?.(getCurrentAppRole())) {
       applyMaintenanceUiState({ enabled: false });
       return;
     }
@@ -356,7 +359,7 @@
   }
 
   async function handleMaintenanceToggleChange(input) {
-    if (!input || getCurrentAppRole() !== "admin") return;
+    if (!input || !window.MaintenanceMode?.isAdminRole?.(getCurrentAppRole())) return;
 
     const nextEnabled = Boolean(input.checked);
     input.disabled = true;
@@ -522,12 +525,14 @@
 
   function applyRoleAccess() {
     if (window.DashboardShell?.applyRoleAccess) {
-      return window.DashboardShell.applyRoleAccess({
+      const result = window.DashboardShell.applyRoleAccess({
         document,
         getRole: getCurrentAppRole,
         getUser: getCurrentAppUser,
         getCollectionQuery: getDashboardCollectionQuery
       });
+      Promise.resolve(result).finally(markRoleAccessReady);
+      return result;
     }
     const role = getCurrentAppRole();
     document.querySelectorAll(".role-menu").forEach(menu => {
@@ -541,31 +546,37 @@
     document.querySelectorAll("[data-ai-prompt-menu='true']").forEach(button => {
       button.style.display = canAccessAiPromptMenu() ? "" : "none";
     });
-    if (!waliMenu) return;
+    if (!waliMenu) {
+      markRoleAccessReady();
+      return Promise.resolve();
+    }
     if (role === "admin" || role === "superadmin") {
       waliMenu.style.display = "";
-      return;
+      markRoleAccessReady();
+      return Promise.resolve();
     }
     if (role === "koordinator") {
       const kodeGuru = String(getCurrentAppUser().kode_guru || "").trim();
       const ownWaliPromise = kodeGuru
         ? getDashboardCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get()
         : Promise.resolve({ empty: true });
-      Promise.all([
+      return Promise.all([
         refreshCoordinatorLevels(),
         ownWaliPromise
       ]).then(([levels, waliSnapshot]) => {
         waliMenu.style.display = levels.length || !waliSnapshot.empty ? "" : "none";
       }).catch(() => {
         waliMenu.style.display = "none";
-      });
-      return;
+      }).finally(markRoleAccessReady);
     }
     waliMenu.style.display = "none";
     if (role === "guru") {
       const kodeGuru = String(getCurrentAppUser().kode_guru || "").trim();
-      if (!kodeGuru) return;
-      Promise.all([
+      if (!kodeGuru) {
+        markRoleAccessReady();
+        return Promise.resolve();
+      }
+      return Promise.all([
         getDashboardCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get(),
         refreshCoordinatorLevels()
       ])
@@ -581,11 +592,13 @@
           if (nilaiMenu) nilaiMenu.style.display = "";
           if (siswaKoordinatorMenu) siswaKoordinatorMenu.style.display = "none";
           if (kurikulumKoordinatorMenu) kurikulumKoordinatorMenu.style.display = "none";
-        });
-      return;
+        })
+        .finally(markRoleAccessReady);
     }
     if (siswaKoordinatorMenu) siswaKoordinatorMenu.style.display = "none";
     if (kurikulumKoordinatorMenu) kurikulumKoordinatorMenu.style.display = "none";
+    markRoleAccessReady();
+    return Promise.resolve();
   }
 
   function renderHome() {

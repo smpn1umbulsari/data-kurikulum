@@ -1422,17 +1422,63 @@ body.dark .teacher-side-label {
 }
 
 .sidebar-footer {
-  margin-top: 4px;
-  padding: 12px;
+  margin-top: 28px;
+  padding: 14px 12px;
   border-radius: 14px;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-footer-kicker {
+  display: block;
+  color: #2563eb;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.sidebar-footer-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: #0f172a;
+}
+
+.sidebar-footer-version {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.sidebar-footer-separator {
+  color: #94a3b8;
+  font-weight: 700;
 }
 
 .sidebar-footer strong {
-  display: block;
-  margin-top: 4px;
+  display: inline;
+  margin-top: 0;
   color: #0f172a;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+html.role-access-pending .role-menu {
+  display: none !important;
+}
+
+html.role-access-pending .sidebar-menu-divider {
+  visibility: hidden;
 }
 
 .main-panel {
@@ -2029,6 +2075,32 @@ body.dark .dashboard-stat span {
 body.dark .sidebar-role-line {
   background: rgba(148, 163, 184, 0.16);
   color: #f8fafc;
+}
+
+body.dark .sidebar-footer {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+body.dark .sidebar-footer-kicker {
+  color: #38bdf8;
+}
+
+body.dark .sidebar-footer-version {
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+
+body.dark .sidebar-footer-line {
+  color: #e2e8f0;
+}
+
+body.dark .sidebar-footer-separator {
+  color: #64748b;
+}
+
+body.dark .sidebar-footer strong {
+  color: #e2e8f0;
 }
 
 body.dark #sidebarSemesterInfo {

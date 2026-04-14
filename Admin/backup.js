@@ -21,6 +21,16 @@ const CLEAN_COLLECTIONS = [...BACKUP_COLLECTIONS];
 let selectedBackupRestoreFile = null;
 
 function renderAdminBackupPage() {
+  setTimeout(() => {
+    if (typeof window.initializeMaintenanceToggle === "function") {
+      window.initializeMaintenanceToggle();
+    } else if (typeof window.applyMaintenanceUiState === "function" && window.MaintenanceMode?.load) {
+      window.MaintenanceMode.load({ force: true })
+        .then(state => window.applyMaintenanceUiState(state))
+        .catch(() => {});
+    }
+  }, 0);
+
   return `
     <section class="backup-page">
       <div class="nilai-page-head">
@@ -55,6 +65,23 @@ function renderAdminBackupPage() {
           <div id="backupRestoreStatus" class="backup-status">Restore membutuhkan password admin.</div>
         </article>
       </div>
+
+      <section class="backup-panel backup-wide backup-maintenance-panel sidebar-maintenance-panel" id="backupMaintenancePanel" hidden>
+        <div class="sidebar-maintenance-head">
+          <div>
+            <span class="sidebar-maintenance-label">Maintenance</span>
+            <strong id="maintenanceStatusText">Memuat status...</strong>
+          </div>
+          <label class="maintenance-switch" aria-label="Toggle maintenance mode">
+            <input type="checkbox" id="maintenanceModeToggle" onchange="handleMaintenanceToggleChange(this)">
+            <span class="maintenance-switch-track">
+              <span class="maintenance-switch-thumb"></span>
+            </span>
+          </label>
+        </div>
+        <p class="sidebar-maintenance-copy">Saat aktif, halaman login tetap bisa dibuka. Admin dan superadmin tetap bisa masuk untuk mematikan mode ini, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah login.</p>
+        <a class="sidebar-maintenance-link" href="maintenance.html" target="_blank" rel="noopener">Lihat halaman maintenance</a>
+      </section>
 
       <section class="backup-panel backup-wide">
         <h3>Isi Backup</h3>
