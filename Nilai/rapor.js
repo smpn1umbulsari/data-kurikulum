@@ -568,6 +568,98 @@ async function saveRaporCatatanForStudentWithInput(nipd, inputElement = null) {
   }
 }
 
+async function saveAllRaporCatatanForCurrentClass() {
+  const kelas = getSelectedRaporKelas();
+  const students = getRaporStudentsByClass(kelas);
+
+  if (!kelas) {
+    setRaporCatatanNotice("Pilih kelas terlebih dahulu.", "warning");
+    return;
+  }
+
+  if (!students.length) {
+    setRaporCatatanNotice("Belum ada siswa pada kelas ini.", "warning");
+    return;
+  }
+
+  const items = students
+    .map(siswa => {
+      const nipd = String(siswa.nipd || "").trim();
+      if (!nipd) return null;
+      const inputId = getRaporCatatanInputId(kelas, nipd);
+      const input = document.querySelector(`textarea.rapor-catatan-input[data-nipd="${String(nipd || "").replace(/"/g, '\\"')}"]`) || document.getElementById(inputId);
+      return input ? { siswa, nipd, input } : null;
+    })
+    .filter(Boolean);
+
+  if (!items.length) {
+    setRaporCatatanNotice("Kotak catatan tidak ditemukan.", "error");
+    return;
+  }
+
+  setRaporCatatanNotice("Menyimpan semua catatan...", "info");
+  let saved = 0;
+  let failed = 0;
+  let filled = 0;
+  let empty = 0;
+
+  for (const item of items) {
+    const nipd = String(item.nipd || "").trim();
+    const siswa = item.siswa || {};
+    const input = item.input;
+
+    if (!nipd || !input) {
+      failed += 1;
+      continue;
+    }
+
+    const docId = makeRaporCatatanDocId(kelas, nipd);
+    const payload = {
+      ...getRaporActiveTermPayload(),
+      kelas,
+      nipd,
+      nama_siswa: siswa.nama || "",
+      catatan_wali_kelas: cleanRaporCatatanValue(input.value),
+      updated_by: getCurrentRaporUser().username || "",
+      updated_at: new Date().toISOString()
+    };
+    const hasContent = Boolean(String(payload.catatan_wali_kelas || "").trim());
+    if (hasContent) filled += 1;
+    else empty += 1;
+
+    try {
+      input.disabled = true;
+      setRaporCatatanRowStatus(nipd, "Menyimpan...");
+      const nextRecord = { id: docId, ...payload };
+      semuaDataRaporCatatan = mergeRaporCatatanRecords([
+        ...semuaDataRaporCatatan.filter(record => String(record.id || "") !== String(docId)),
+        nextRecord
+      ]);
+      syncRaporCatatanLocalCache(nextRecord);
+      renderRaporPreview();
+      setRaporCatatanRowStatus(nipd, "Tersimpan");
+      saved += 1;
+      void getRaporDocumentsApi().collection("rapor_catatan_wali").doc(docId).set(payload)
+        .catch(error => {
+          console.error(error);
+          setRaporCatatanRowStatus(nipd, "Tersimpan lokal");
+        });
+    } catch (error) {
+      console.error(error);
+      failed += 1;
+      setRaporCatatanRowStatus(nipd, "Gagal");
+    } finally {
+      input.disabled = false;
+    }
+  }
+
+  if (failed === 0) {
+    setRaporCatatanNotice(`Selesai: ${filled} terisi, ${empty} kosong, ${saved} tersimpan.`, "success");
+  } else {
+    setRaporCatatanNotice(`Selesai: ${filled} terisi, ${empty} kosong, ${saved} tersimpan, ${failed} gagal.`, "warning");
+  }
+}
+
 async function deleteRaporCatatanForStudent(nipd) {
   const kelas = getSelectedRaporKelas();
   const students = getRaporStudentsByClass(kelas);
@@ -624,6 +716,7 @@ window.saveRaporCatatanForStudent = saveRaporCatatanForStudent;
 window.saveRaporCatatanFromButton = saveRaporCatatanFromButton;
 window.saveRaporCatatanFromTextarea = saveRaporCatatanFromTextarea;
 window.saveRaporCatatanForStudentWithInput = saveRaporCatatanForStudentWithInput;
+window.saveAllRaporCatatanForCurrentClass = saveAllRaporCatatanForCurrentClass;
 window.deleteRaporCatatanForStudent = deleteRaporCatatanForStudent;
 
 function renderRaporCatatanPanel() {
@@ -651,6 +744,7 @@ function renderRaporCatatanPanel() {
       <div class="rapor-catatan-meta">
         <strong>${escapeRaporHtml(kelas)}</strong>
         <span>${students.length} murid</span>
+        <button type="button" class="btn-primary" onclick="window.saveAllRaporCatatanForCurrentClass()">Simpan Semua</button>
       </div>
     </div>
     <div class="table-container mapel-table-container">
@@ -676,10 +770,9 @@ function renderRaporCatatanPanel() {
                 </td>
                 <td>${escapeRaporHtml(getRaporJenisKelaminLabel(siswa) || "-")}</td>
                 <td>
-                  <textarea id="${escapeRaporHtml(inputId)}" class="rapor-catatan-input" data-nipd="${escapeRaporHtml(siswa.nipd || "")}" rows="4" placeholder="Tulis catatan wali kelas dalam paragraf..." onkeydown="if((event.ctrlKey || event.metaKey) && event.key === 'Enter'){ event.preventDefault(); window.saveRaporCatatanForStudentWithInput(this.dataset.nipd, this); }">${escapeRaporHtml(getRaporCatatanText(siswa))}</textarea>
+                  <textarea id="${escapeRaporHtml(inputId)}" class="rapor-catatan-input" data-nipd="${escapeRaporHtml(siswa.nipd || "")}" rows="4" placeholder="Tulis catatan wali kelas dalam paragraf...">${escapeRaporHtml(getRaporCatatanText(siswa))}</textarea>
                 </td>
                 <td class="rapor-catatan-actions">
-                  <button type="button" class="btn-secondary" onclick="window.saveRaporCatatanForStudentWithInput(this.dataset.nipd, this.closest('tr').querySelector('textarea.rapor-catatan-input'))" data-rapor-catatan-action="save" data-nipd="${escapeRaporHtml(siswa.nipd || "")}">Simpan</button>
                   <button type="button" class="btn-secondary" onclick="window.deleteRaporCatatanForStudent(this.dataset.nipd)" data-rapor-catatan-action="delete" data-nipd="${escapeRaporHtml(siswa.nipd || "")}">Hapus</button>
                   <span class="rapor-catatan-status" data-rapor-catatan-status="${escapeRaporHtml(siswa.nipd || "")}">${escapeRaporHtml(getRaporCatatanText(siswa) ? "Tersimpan" : "")}</span>
                 </td>

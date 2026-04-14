@@ -3474,8 +3474,17 @@ body.dark .rekap-task-list span {
   font-size: 15px;
 }
 
+.rapor-catatan-meta .btn-primary {
+  margin-top: 6px;
+  min-width: 132px;
+}
+
 .rapor-catatan-table {
   min-width: 920px;
+}
+
+.rapor-catatan-actions .btn-secondary {
+  min-width: 120px;
 }
 
 .rapor-catatan-table th:nth-child(1),
