@@ -6,7 +6,12 @@ let draftJumlahRuangUjian = jumlahRuangUjian;
 let pembagianKelasAsesmen = ["manual", "20siswa"].includes(localStorage.getItem("asesmenPembagianKelas")) ? localStorage.getItem("asesmenPembagianKelas") : "setengah";
 let draftPembagianKelasAsesmen = pembagianKelasAsesmen;
 const asesmenRuangStore = window.AsesmenRuangStore || null;
+let asesmenSaveStateTimer = null;
+const asesmenStudentLevelCache = new Map();
+const asesmenUnassignedLevelCache = new Map();
+const asesmenOrderedStudentsCache = new Map();
 const createAsesmenLevelSettings = asesmenRuangStore?.createLevelSettings || ((mode = "setengah") => ({
+  enabled: true,
   mode,
   order: "az",
   roomRanges: [{ start: "", end: "" }, { start: "", end: "" }],
@@ -25,11 +30,18 @@ const draftAsesmenLevelSettings = {
 const appliedAsesmenLevels = new Set();
 const ASESMEN_STORAGE_KEY = "asesmenPembagianRuangV2";
 
+function invalidateAsesmenStudentCaches() {
+  asesmenStudentLevelCache.clear();
+  asesmenUnassignedLevelCache.clear();
+  asesmenOrderedStudentsCache.clear();
+}
+
 function cloneAsesmenLevelSettings(settings) {
   if (asesmenRuangStore?.cloneLevelSettings) {
     return asesmenRuangStore.cloneLevelSettings(settings);
   }
   return {
+    enabled: settings.enabled !== false,
     mode: settings.mode,
     order: settings.order,
     roomRanges: settings.roomRanges.map(range => ({ ...range })),
@@ -65,6 +77,7 @@ function sanitizeAsesmenLevelSettings(settings = {}, fallbackMode = pembagianKel
     ? settings.manualCounts.map(value => String(value ?? "").trim())
     : [];
   const sanitized = {
+    enabled: settings.enabled !== false,
     mode: ["manual", "20siswa", "setengah"].includes(settings.mode) ? settings.mode : fallbackMode,
     order: settings.order === "za" ? "za" : "az",
     roomRanges: sanitizedRanges,
@@ -75,6 +88,10 @@ function sanitizeAsesmenLevelSettings(settings = {}, fallbackMode = pembagianKel
 }
 
 function saveAsesmenPembagianRuangState() {
+  if (asesmenSaveStateTimer) {
+    clearTimeout(asesmenSaveStateTimer);
+    asesmenSaveStateTimer = null;
+  }
   if (asesmenRuangStore?.save) {
     asesmenRuangStore.save(ASESMEN_STORAGE_KEY, {
       jumlahRuangUjian,
@@ -105,6 +122,13 @@ function saveAsesmenPembagianRuangState() {
     }
   };
   localStorage.setItem(ASESMEN_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function scheduleAsesmenPembagianRuangSave(delayMs = 140) {
+  if (asesmenSaveStateTimer) clearTimeout(asesmenSaveStateTimer);
+  asesmenSaveStateTimer = setTimeout(() => {
+    saveAsesmenPembagianRuangState();
+  }, delayMs);
 }
 
 function loadAsesmenPembagianRuangState() {
@@ -170,6 +194,10 @@ function isAsesmenLevelApplied(level) {
   return appliedAsesmenLevels.has(String(level));
 }
 
+function isAsesmenLevelEnabled(level) {
+  return draftAsesmenLevelSettings[level]?.enabled !== false;
+}
+
 function escapeAsesmenHtml(value) {
   if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
   return String(value ?? "")
@@ -233,7 +261,10 @@ function getAsesmenKelasBayanganParts(siswa) {
 }
 
 function getAsesmenStudentsByLevel(level) {
-  return semuaDataAsesmenSiswa
+  const cacheKey = String(level);
+  if (asesmenStudentLevelCache.has(cacheKey)) return asesmenStudentLevelCache.get(cacheKey);
+
+  const students = semuaDataAsesmenSiswa
     .map(siswa => {
       const asliKelasParts = getAsesmenKelasParts(siswa.kelas);
       const kelasParts = getAsesmenKelasBayanganParts(siswa);
@@ -245,6 +276,8 @@ function getAsesmenStudentsByLevel(level) {
       if (kelasResult !== 0) return kelasResult;
       return compareAsesmenSiswaDalamKelas(a, b);
     });
+  asesmenStudentLevelCache.set(cacheKey, students);
+  return students;
 }
 
 function getAsesmenRombelCode(rombel = "") {
@@ -291,23 +324,32 @@ function getAsesmenKelasAsliNote(siswa) {
 }
 
 function getAsesmenUnassignedStudentsByLevel(level) {
-  return semuaDataAsesmenSiswa
+  const cacheKey = String(level);
+  if (asesmenUnassignedLevelCache.has(cacheKey)) return asesmenUnassignedLevelCache.get(cacheKey);
+
+  const students = semuaDataAsesmenSiswa
     .map(siswa => {
       const asliKelasParts = getAsesmenKelasParts(siswa.kelas);
       const kelasParts = getAsesmenKelasBayanganParts(siswa);
       return { ...siswa, asliKelasParts, kelasParts };
     })
     .filter(siswa => siswa.asliKelasParts.tingkat === String(level) && !siswa.kelasParts.rombel);
+  asesmenUnassignedLevelCache.set(cacheKey, students);
+  return students;
 }
 
 function getOrderedAsesmenStudents(level) {
+  const cacheKey = `${level}:${asesmenLevelSettings[level]?.order || "az"}`;
+  if (asesmenOrderedStudentsCache.has(cacheKey)) return asesmenOrderedStudentsCache.get(cacheKey);
   const settings = asesmenLevelSettings[level];
   const classDirection = settings.order === "za" ? "desc" : "asc";
-  return getAsesmenStudentsByLevel(level).sort((a, b) => {
+  const students = [...getAsesmenStudentsByLevel(level)].sort((a, b) => {
     const kelasResult = asesmenCompare(a.kelasParts.rombel, b.kelasParts.rombel, classDirection);
     if (kelasResult !== 0) return kelasResult;
     return compareAsesmenSiswaDalamKelas(a, b);
   });
+  asesmenOrderedStudentsCache.set(cacheKey, students);
+  return students;
 }
 
 function chunkAsesmenStudents(students, size) {
@@ -446,12 +488,12 @@ function getCombinedAsesmenRoomMap() {
 
 function setJumlahRuangUjian(value) {
   draftJumlahRuangUjian = Math.min(Math.max(Number(value) || 1, 1), 99);
-  saveAsesmenPembagianRuangState();
+  scheduleAsesmenPembagianRuangSave();
 }
 
 function setPembagianKelasAsesmen(value) {
   draftPembagianKelasAsesmen = ["manual", "20siswa"].includes(value) ? value : "setengah";
-  saveAsesmenPembagianRuangState();
+  scheduleAsesmenPembagianRuangSave();
 }
 
 function applyJumlahRuangUjian() {
@@ -468,21 +510,35 @@ function applyJumlahRuangUjian() {
   });
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
+  if (typeof showFloatingToast === "function") showFloatingToast("Pengaturan telah diset");
+}
+
+function setAsesmenLevelEnabled(level, enabled) {
+  const normalizedLevel = String(level);
+  const safeEnabled = enabled === true || enabled === "true";
+  draftAsesmenLevelSettings[normalizedLevel].enabled = safeEnabled;
+  asesmenLevelSettings[normalizedLevel].enabled = safeEnabled;
+  if (!safeEnabled) appliedAsesmenLevels.delete(normalizedLevel);
+  saveAsesmenPembagianRuangState();
+  renderPembagianRuangState();
+  if (typeof showFloatingToast === "function") {
+    showFloatingToast(safeEnabled ? `Kelas ${normalizedLevel} diaktifkan` : `Kelas ${normalizedLevel} dinonaktifkan`);
+  }
 }
 
 function setAsesmenOrder(level, value) {
   draftAsesmenLevelSettings[level].order = value === "za" ? "za" : "az";
-  saveAsesmenPembagianRuangState();
+  scheduleAsesmenPembagianRuangSave();
 }
 
 function setAsesmenRoomRange(level, rangeIndex, key, value) {
   draftAsesmenLevelSettings[level].roomRanges[rangeIndex][key] = value;
-  saveAsesmenPembagianRuangState();
+  scheduleAsesmenPembagianRuangSave();
 }
 
 function setAsesmenManualCount(level, roomIndex, value) {
   draftAsesmenLevelSettings[level].manualCounts[roomIndex] = value;
-  saveAsesmenPembagianRuangState();
+  scheduleAsesmenPembagianRuangSave();
 }
 
 function openAsesmenManualCountDialog(level) {
@@ -529,12 +585,19 @@ function openAsesmenManualCountDialog(level) {
   }).then(result => {
     if (!result.isConfirmed || !Array.isArray(result.value)) return;
     draftAsesmenLevelSettings[levelKey].manualCounts = result.value;
+    invalidateAsesmenStudentCaches();
     saveAsesmenPembagianRuangState();
     renderPembagianRuangState();
   });
 }
 
 function applyAsesmenLevelSettings(level) {
+  if (draftAsesmenLevelSettings[level].enabled === false) {
+    appliedAsesmenLevels.delete(String(level));
+    saveAsesmenPembagianRuangState();
+    renderPembagianRuangState();
+    return;
+  }
   syncAsesmenManualCountLength(draftAsesmenLevelSettings[level]);
   draftAsesmenLevelSettings[level].mode = pembagianKelasAsesmen;
   asesmenLevelSettings[level] = cloneAsesmenLevelSettings(draftAsesmenLevelSettings[level]);
@@ -548,6 +611,7 @@ function loadRealtimePembagianRuang() {
     unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadPembagianRuang(unsubscribeAsesmenSiswa, {
       onData: data => {
         semuaDataAsesmenSiswa = data;
+        invalidateAsesmenStudentCaches();
       },
       onRender: () => renderPembagianRuangState()
     });
@@ -556,6 +620,7 @@ function loadRealtimePembagianRuang() {
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
   unsubscribeAsesmenSiswa = listenSiswa(data => {
     semuaDataAsesmenSiswa = data;
+    invalidateAsesmenStudentCaches();
     renderPembagianRuangState();
   });
 }
@@ -565,6 +630,7 @@ function loadRealtimeAdministrasiAsesmen() {
     unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadAdministrasi(unsubscribeAsesmenSiswa, {
       onData: data => {
         semuaDataAsesmenSiswa = data;
+        invalidateAsesmenStudentCaches();
       },
       onRender: () => renderAdministrasiAsesmenState()
     });
@@ -576,6 +642,7 @@ function loadRealtimeAdministrasiAsesmen() {
   }
   unsubscribeAsesmenSiswa = listenSiswa(data => {
     semuaDataAsesmenSiswa = data;
+    invalidateAsesmenStudentCaches();
     renderAdministrasiAsesmenState();
   });
 }
@@ -725,6 +792,7 @@ function renderAsesmenManualInputs(level) {
     }, level);
   }
   const settings = draftAsesmenLevelSettings[level];
+  const isEnabled = settings.enabled !== false;
   if (settings.mode !== "manual") return "";
 
   const filledCounts = settings.manualCounts
@@ -735,7 +803,7 @@ function renderAsesmenManualInputs(level) {
     <div class="asesmen-manual-summary">
       <div class="asesmen-manual-summary-head">
         <span>Manual per ruang</span>
-        <button type="button" class="btn-secondary btn-table-compact" onclick="openAsesmenManualCountDialog('${level}')">Atur Manual</button>
+          <button type="button" class="btn-secondary btn-table-compact" onclick="openAsesmenManualCountDialog('${level}')" ${isEnabled ? "" : "disabled"}>Atur Manual</button>
       </div>
       <div class="asesmen-level-summary">
         ${Array.from({ length: jumlahRuangUjian }, (_, index) => `<span>Ruang ${index + 1}: ${filledCounts[index] || 0}</span>`).join("")}
@@ -752,25 +820,28 @@ function renderAsesmenRoomRangeInputs(level) {
     }, level);
   }
   const ranges = draftAsesmenLevelSettings[level].roomRanges;
+  const isEnabled = draftAsesmenLevelSettings[level].enabled !== false;
   return `
     <div class="asesmen-range-grid">
       ${ranges.map((range, index) => `
         <div class="asesmen-range-group">
           <span>Rentang ${index + 1}</span>
-          <input
-            type="number"
-            min="1"
-            value="${escapeAsesmenHtml(range.start)}"
-            placeholder="Awal"
-            oninput="setAsesmenRoomRange('${level}', ${index}, 'start', this.value)"
-          >
-          <input
-            type="number"
-            min="1"
-            value="${escapeAsesmenHtml(range.end)}"
-            placeholder="Akhir"
-            oninput="setAsesmenRoomRange('${level}', ${index}, 'end', this.value)"
-          >
+            <input
+              type="number"
+              min="1"
+              value="${escapeAsesmenHtml(range.start)}"
+              placeholder="Awal"
+              ${isEnabled ? "" : "disabled"}
+              oninput="setAsesmenRoomRange('${level}', ${index}, 'start', this.value)"
+            >
+            <input
+              type="number"
+              min="1"
+              value="${escapeAsesmenHtml(range.end)}"
+              placeholder="Akhir"
+              ${isEnabled ? "" : "disabled"}
+              oninput="setAsesmenRoomRange('${level}', ${index}, 'end', this.value)"
+            >
         </div>
       `).join("")}
     </div>
@@ -788,21 +859,25 @@ function renderAsesmenLevelPanel(level) {
   }
   const settings = draftAsesmenLevelSettings[level];
   const totalSiswa = getAsesmenStudentsByLevel(level).length;
+  const isEnabled = settings.enabled !== false;
 
   return `
-    <section class="asesmen-level-panel">
+    <section class="asesmen-level-panel ${isEnabled ? "" : "asesmen-level-panel-disabled"}">
       <div class="asesmen-panel-head">
         <div>
           <span class="mapel-row-hint">Panel Kelas ${level}</span>
           <h3>Kelas ${level}</h3>
         </div>
-        <strong>${totalSiswa} siswa</strong>
+        <div class="asesmen-panel-head-meta">
+          <strong>${totalSiswa} siswa</strong>
+          <button type="button" class="kalender-toggle-btn ${isEnabled ? "is-active" : ""}" onclick="setAsesmenLevelEnabled('${level}', ${isEnabled ? "false" : "true"})" aria-label="${isEnabled ? "Nonaktifkan" : "Aktifkan"}"><span>${isEnabled ? "Aktif" : "Nonaktif"}</span></button>
+        </div>
       </div>
 
       <div class="asesmen-control-grid">
         <label class="form-group">
           <span>Urutan</span>
-          <select class="kelas-inline-select" onchange="setAsesmenOrder('${level}', this.value)">
+          <select class="kelas-inline-select" onchange="setAsesmenOrder('${level}', this.value)" ${isEnabled ? "" : "disabled"}>
             <option value="az" ${settings.order === "az" ? "selected" : ""}>A-Z</option>
             <option value="za" ${settings.order === "za" ? "selected" : ""}>Z-A</option>
           </select>
@@ -813,8 +888,8 @@ function renderAsesmenLevelPanel(level) {
       ${renderAsesmenManualInputs(level)}
 
       <div class="asesmen-panel-actions">
-        <button type="button" class="btn-primary btn-table-compact" onclick="applyAsesmenLevelSettings('${level}')">Set Kelas ${level}</button>
-        <span class="mapel-row-hint">Perubahan panel ini diterapkan setelah klik Set.</span>
+        <button type="button" class="btn-primary btn-table-compact" onclick="applyAsesmenLevelSettings('${level}')" ${isEnabled ? "" : "disabled"}>Set Kelas ${level}</button>
+        <span class="mapel-row-hint">${isEnabled ? "Perubahan panel ini diterapkan setelah klik Set." : `Kelas ${level} nonaktif dan dikeluarkan dari pembagian ruang.`}</span>
       </div>
 
       <div id="asesmenPreview-${level}" class="asesmen-preview"></div>
@@ -1845,3 +1920,5 @@ function renderAsesmenRoomArrangement() {
     </div>
   `;
 }
+
+window.setAsesmenLevelEnabled = setAsesmenLevelEnabled;

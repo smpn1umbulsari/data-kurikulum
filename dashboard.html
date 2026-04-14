@@ -9,7 +9,7 @@
     document.documentElement.classList.add("role-access-pending");
   </script>
 
-<link rel="stylesheet" href="style.css?v=20260414b">
+<link rel="stylesheet" href="style.css?v=20260414w">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-config.js?v=20260408a"></script>
@@ -63,18 +63,17 @@
 
     <div class="sidebar-section-label">Navigasi</div>
 
-    <div class="menu-group role-menu role-admin role-superadmin" id="menuAdmin">
-      <button class="menu menu-parent" onclick="toggleMenu('submenuAdmin', this)">
-        <span>Admin</span>
-        <span class="menu-caret">+</span>
-      </button>
-      <div class="submenu" id="submenuAdmin">
-        <button onclick="loadPage('admin-user')">User</button>
-        <button onclick="loadPage('admin-hierarki')">Pengguna Hierarki</button>
-        <button onclick="loadPage('admin-semester')">Semester</button>
-        <button onclick="loadPage('admin-backup')">Backup & Restore</button>
+      <div class="menu-group role-menu role-admin role-superadmin" id="menuAdmin">
+        <button class="menu menu-parent" onclick="toggleMenu('submenuAdmin', this)">
+          <span>Admin</span>
+          <span class="menu-caret">+</span>
+        </button>
+        <div class="submenu" id="submenuAdmin">
+          <button onclick="loadPage('admin-user')">User</button>
+          <button onclick="loadPage('admin-hierarki')">Pengguna Hierarki</button>
+          <button onclick="loadPage('admin-semester')">Semester dan Tahun Pelajaran</button>
+        </div>
       </div>
-    </div>
 
     <div class="menu-group role-menu role-admin role-superadmin" id="menuDataSekolah">
       <button class="menu menu-parent" onclick="toggleMenu('submenuDataSekolah', this)">
@@ -195,10 +194,20 @@
 
     <div class="sidebar-menu-divider"></div>
 
+    <div class="menu-group role-menu role-admin role-superadmin" id="menuBackupAdmin">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuBackupAdmin', this)">
+        <span>Backup & Restore</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu" id="submenuBackupAdmin">
+        <button onclick="loadPage('admin-backup')">Backup & Restore</button>
+      </div>
+    </div>
+
     <div class="sidebar-footer">
       <span class="sidebar-footer-kicker">Sistem aktif</span>
       <span class="sidebar-footer-line">
-        <span class="sidebar-footer-version" id="sidebarVersionLabel">Ver 1.01g.2</span>
+        <span class="sidebar-footer-version" id="sidebarVersionLabel">Ver 1.01l.29</span>
         <span class="sidebar-footer-separator">|</span>
         <strong id="supabaseProjectInfo">Supabase</strong>
       </span>
@@ -225,13 +234,13 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="shared/app-utils.js?v=20260410a"></script>
 <script src="shared/app-dom.js?v=20260410a"></script>
-<script src="shared/app-loading.js?v=20260410a"></script>
+<script src="shared/app-loading.js?v=20260414b"></script>
 <script src="shared/app-lifecycle.js?v=20260410a"></script>
 <script src="shared/app-print.js?v=20260410a"></script>
 <script src="shared/app-router.js?v=20260410a"></script>
 <script src="shared/dashboard-shell.js?v=20260413n"></script>
 <script src="shared/dashboard-data.js?v=20260410a"></script>
-<script src="shared/dashboard-home.js?v=20260413b"></script>
+<script src="shared/dashboard-home.js?v=20260414m"></script>
 <script src="shared/dashboard-routes.js?v=20260413l"></script>
 <script src="inline-notification.js?v=20260409a"></script>
 <script src="ttd-ks.js?v=20260409b"></script>
@@ -249,30 +258,30 @@
 <script src="Guru/ui.js"></script>
 <script src="Admin/admin-users-identity.js?v=20260410a"></script>
 <script src="Admin/admin-users-service.js?v=20260413a"></script>
-<script src="Admin/admin-users-view.js?v=20260413a"></script>
-<script src="Admin/users.js?v=20260414a"></script>
+<script src="Admin/admin-users-view.js?v=20260414c"></script>
+<script src="Admin/users.js?v=20260414c"></script>
 <script src="Admin/backup.js?v=20260408d"></script>
 <script src="Mapel/crud.js?v=20260407c"></script>
 <script src="Mapel/mapel.js?v=20260408h"></script>
 <script src="Mapel/ui.js?v=20260408e"></script>
 <script src="Kelas/crud.js?v=20260408b"></script>
-<script src="Kelas/kelas.js?v=20260410a"></script>
+<script src="Kelas/kelas.js?v=20260414c"></script>
 <script src="Kelas/ui.js?v=20260410a"></script>
 <script src="Mengajar/crud.js?v=20260406c"></script>
-<script src="Mengajar/mengajar.js?v=20260409a"></script>
-<script src="Mengajar/ui.js?v=20260409a"></script>
+<script src="Mengajar/mengajar.js?v=20260414e"></script>
+<script src="Mengajar/ui.js?v=20260414h"></script>
 <script src="TugasTambahan/tugas-tambahan.js?v=20260409i"></script>
 <script src="Kurikulum/kalender-pendidikan.js?v=20260412a"></script>
 <script src="Rekap/rekap-v2.js?v=20260409j"></script>
-<script src="Asesmen/pembagian-ruang-store.js?v=20260410a"></script>
+<script src="Asesmen/pembagian-ruang-store.js?v=20260414a"></script>
 <script src="Asesmen/administrasi-settings.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-service.js?v=20260410a"></script>
-<script src="Asesmen/pembagian-ruang-view.js?v=20260410a"></script>
-<script src="Asesmen/pembagian-ruang-v2.js?v=20260409a"></script>
+<script src="Asesmen/pembagian-ruang-view.js?v=20260414a"></script>
+<script src="Asesmen/pembagian-ruang-v2.js?v=20260414a"></script>
 <script src="Asesmen/soal-ai.js?v=20260413m"></script>
-<script src="Nilai/nilai.js?v=20260411c"></script>
-<script src="Nilai/rapor.js?v=20260413j"></script>
-<script src="WaliKelas/wali-kelas-service.js?v=20260411b"></script>
+<script src="Nilai/nilai.js?v=20260414c"></script>
+<script src="Nilai/rapor.js?v=20260414f"></script>
+<script src="WaliKelas/wali-kelas-service.js?v=20260414b"></script>
 <script src="WaliKelas/wali-kelas-view.js?v=20260410a"></script>
 <script src="WaliKelas/wali-kelas.js?v=20260411c"></script>
 
@@ -608,6 +617,7 @@
         role: getCurrentAppRole(),
         hasCoordinatorAccess: canUseCoordinatorAccess,
         getCoordinatorLevels: getCurrentCoordinatorLevelsSync,
+        getCollectionQuery: getDashboardCollectionQuery,
         loadHomeStats,
         loadGuruHomeStats
       });
@@ -772,18 +782,20 @@
     return "";
   }
 
-  async function loadGuruHomeStats() {
+  async function loadGuruHomeStats(options = {}) {
     if (window.DashboardHome?.loadGuruHomeStats) {
       await window.DashboardHome.loadGuruHomeStats({
+        ...options,
         getCurrentUser: getCurrentAppUser,
         getCollectionQuery: getDashboardCollectionQuery
       });
     }
   }
 
-  async function loadHomeStats() {
+  async function loadHomeStats(options = {}) {
     if (window.DashboardHome?.loadHomeStats) {
       await window.DashboardHome.loadHomeStats({
+        ...options,
         getCollectionQuery: getDashboardCollectionQuery
       });
     }

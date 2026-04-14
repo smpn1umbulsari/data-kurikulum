@@ -5339,6 +5339,24 @@ body.dark .ks-ttd-preview {
   transform: translateX(18px);
 }
 
+.asesmen-panel-head-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.asesmen-level-panel-disabled {
+  opacity: 0.78;
+  border-color: #d6dee8;
+  background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+}
+
+.asesmen-level-panel-disabled input,
+.asesmen-level-panel-disabled select,
+.asesmen-level-panel-disabled button[disabled] {
+  cursor: not-allowed;
+}
+
 .kalender-range-trigger {
   min-width: 210px;
   width: 100%;

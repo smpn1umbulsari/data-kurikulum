@@ -75,6 +75,7 @@
 
   function renderManualInputs(context, level) {
     const settings = context.draftSettings[level];
+    const isEnabled = settings.enabled !== false;
     if (settings.mode !== "manual") return "";
 
     const filledCounts = settings.manualCounts
@@ -85,7 +86,7 @@
       <div class="asesmen-manual-summary">
         <div class="asesmen-manual-summary-head">
           <span>Manual per ruang</span>
-          <button type="button" class="btn-secondary btn-table-compact" onclick="openAsesmenManualCountDialog('${level}')">Atur Manual</button>
+          <button type="button" class="btn-secondary btn-table-compact" onclick="openAsesmenManualCountDialog('${level}')" ${isEnabled ? "" : "disabled"}>Atur Manual</button>
         </div>
         <div class="asesmen-level-summary">
           ${Array.from({ length: context.jumlahRuangUjian }, (_, index) => `<span>Ruang ${index + 1}: ${filledCounts[index] || 0}</span>`).join("")}
@@ -96,6 +97,7 @@
 
   function renderRoomRangeInputs(context, level) {
     const ranges = context.draftSettings[level].roomRanges;
+    const isEnabled = context.draftSettings[level].enabled !== false;
     return `
       <div class="asesmen-range-grid">
         ${ranges.map((range, index) => `
@@ -106,6 +108,7 @@
               min="1"
               value="${context.escape(range.start)}"
               placeholder="Awal"
+              ${isEnabled ? "" : "disabled"}
               oninput="setAsesmenRoomRange('${level}', ${index}, 'start', this.value)"
             >
             <input
@@ -113,6 +116,7 @@
               min="1"
               value="${context.escape(range.end)}"
               placeholder="Akhir"
+              ${isEnabled ? "" : "disabled"}
               oninput="setAsesmenRoomRange('${level}', ${index}, 'end', this.value)"
             >
           </div>
@@ -124,21 +128,25 @@
   function renderLevelPanel(context, level) {
     const settings = context.draftSettings[level];
     const totalSiswa = context.getStudentCount(level);
+    const isEnabled = settings.enabled !== false;
 
     return `
-      <section class="asesmen-level-panel">
+      <section class="asesmen-level-panel ${isEnabled ? "" : "asesmen-level-panel-disabled"}">
         <div class="asesmen-panel-head">
           <div>
             <span class="mapel-row-hint">Panel Kelas ${level}</span>
             <h3>Kelas ${level}</h3>
           </div>
-          <strong>${totalSiswa} siswa</strong>
+          <div class="asesmen-panel-head-meta">
+            <strong>${totalSiswa} siswa</strong>
+            <button type="button" class="kalender-toggle-btn ${isEnabled ? "is-active" : ""}" onclick="setAsesmenLevelEnabled('${level}', ${isEnabled ? "false" : "true"})" aria-label="${isEnabled ? "Nonaktifkan" : "Aktifkan"}"><span>${isEnabled ? "Aktif" : "Nonaktif"}</span></button>
+          </div>
         </div>
 
         <div class="asesmen-control-grid">
           <label class="form-group">
             <span>Urutan</span>
-            <select class="kelas-inline-select" onchange="setAsesmenOrder('${level}', this.value)">
+            <select class="kelas-inline-select" onchange="setAsesmenOrder('${level}', this.value)" ${isEnabled ? "" : "disabled"}>
               <option value="az" ${settings.order === "az" ? "selected" : ""}>A-Z</option>
               <option value="za" ${settings.order === "za" ? "selected" : ""}>Z-A</option>
             </select>
@@ -149,8 +157,8 @@
         ${renderManualInputs(context, level)}
 
         <div class="asesmen-panel-actions">
-          <button type="button" class="btn-primary btn-table-compact" onclick="applyAsesmenLevelSettings('${level}')">Set Kelas ${level}</button>
-          <span class="mapel-row-hint">Perubahan panel ini diterapkan setelah klik Set.</span>
+          <button type="button" class="btn-primary btn-table-compact" onclick="applyAsesmenLevelSettings('${level}')" ${isEnabled ? "" : "disabled"}>Set Kelas ${level}</button>
+          <span class="mapel-row-hint">${isEnabled ? "Perubahan panel ini diterapkan setelah klik Set." : `Kelas ${level} nonaktif dan dikeluarkan dari pembagian ruang.`}</span>
         </div>
 
         <div id="asesmenPreview-${level}" class="asesmen-preview"></div>

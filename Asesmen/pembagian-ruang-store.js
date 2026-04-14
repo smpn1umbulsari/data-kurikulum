@@ -3,6 +3,7 @@
 
   function createLevelSettings(mode = "setengah") {
     return {
+      enabled: true,
       mode,
       order: "az",
       roomRanges: [{ start: "", end: "" }, { start: "", end: "" }],
@@ -12,6 +13,7 @@
 
   function cloneLevelSettings(settings = createLevelSettings()) {
     return {
+      enabled: settings.enabled !== false,
       mode: settings.mode,
       order: settings.order,
       roomRanges: Array.isArray(settings.roomRanges) ? settings.roomRanges.map(range => ({ ...range })) : [{ start: "", end: "" }, { start: "", end: "" }],
@@ -30,6 +32,7 @@
     const fallbackMode = ["manual", "20siswa", "setengah"].includes(options.fallbackMode) ? options.fallbackMode : "setengah";
     const roomRanges = Array.isArray(settings.roomRanges) ? settings.roomRanges : [];
     const sanitized = {
+      enabled: settings.enabled !== false,
       mode: ["manual", "20siswa", "setengah"].includes(settings.mode) ? settings.mode : fallbackMode,
       order: settings.order === "za" ? "za" : "az",
       roomRanges: [0, 1].map(index => {
