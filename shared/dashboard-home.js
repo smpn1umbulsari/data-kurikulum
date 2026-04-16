@@ -551,6 +551,7 @@
     if (context.isGuru) {
       return `
         <button class="btn-secondary" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
+        <button class="btn-secondary" onclick="loadPage('wali-rekap-nilai')">Rekap Nilai Wali</button>
         <button class="btn-secondary" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
         <button class="btn-secondary" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
       `;
