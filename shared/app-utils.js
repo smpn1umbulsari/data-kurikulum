@@ -57,5 +57,45 @@
     }
   };
 
+  AppUtils.parseDateValue = function parseDateValue(value) {
+    if (value instanceof Date) {
+      return Number.isNaN(value.getTime()) ? null : value;
+    }
+    const text = String(value ?? "").trim();
+    if (!text) return null;
+    const isoDateOnlyMatch = text.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoDateOnlyMatch) {
+      const [, year, month, day] = isoDateOnlyMatch;
+      const localDate = new Date(Number(year), Number(month) - 1, Number(day));
+      return Number.isNaN(localDate.getTime()) ? null : localDate;
+    }
+    const parsed = new Date(text);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  AppUtils.formatDateId = function formatDateId(value, options = {}, fallback = "-") {
+    const date = AppUtils.parseDateValue(value);
+    if (!date) return fallback;
+    const hasExplicitDateParts = ["weekday", "day", "month", "year"].some(key => Object.prototype.hasOwnProperty.call(options, key));
+    return new Intl.DateTimeFormat("id-ID", {
+      ...(hasExplicitDateParts ? {} : {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }),
+      ...options
+    }).format(date);
+  };
+
+  AppUtils.formatDateTimeId = function formatDateTimeId(value, options = {}, fallback = "-") {
+    const date = AppUtils.parseDateValue(value);
+    if (!date) return fallback;
+    return new Intl.DateTimeFormat("id-ID", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      ...options
+    }).format(date);
+  };
+
   global.AppUtils = AppUtils;
 })(window);

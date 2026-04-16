@@ -32,7 +32,8 @@
 
   function makeGuruUsername(guru = {}) {
     const nip = String(guru?.nip || "").trim();
-    return nip || makeUsernameFromName(getGuruUsernameName(guru));
+    const normalizedNip = nip === "-" ? "" : nip;
+    return normalizedNip || makeUsernameFromName(getGuruUsernameName(guru));
   }
 
   function makeUserDocId(username) {

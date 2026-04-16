@@ -1173,6 +1173,9 @@ function renderRaporLogo(position) {
 }
 
 function formatRaporDate(dateValue) {
+  if (window.AppUtils?.formatDateId) {
+    return window.AppUtils.formatDateId(dateValue, { day: "numeric", month: "long", year: "numeric" }, dateValue || "-");
+  }
   if (!dateValue) return "-";
   const date = new Date(`${dateValue}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateValue;

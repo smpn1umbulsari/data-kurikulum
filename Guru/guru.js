@@ -70,6 +70,42 @@ function isGuruStatusGB(guru = {}) {
   return getGuruStatus(guru) === "GB";
 }
 
+function normalizeGuruNipValue(nipValue = "", statusValue = "PNS") {
+  const status = normalizeGuruStatus(statusValue);
+  if (status === "GB") return "-";
+  const trimmed = String(nipValue || "").trim();
+  return trimmed === "-" ? "" : trimmed;
+}
+
+function applyGuruStatusNipUi(statusValue = "PNS", options = {}) {
+  const status = normalizeGuruStatus(statusValue);
+  const input = typeof options.inputId === "string"
+    ? document.getElementById(options.inputId)
+    : (options.input || document.getElementById("nipGuru"));
+  if (!input) return;
+
+  if (status === "GB") {
+    input.value = "-";
+    input.readOnly = true;
+    input.placeholder = "Otomatis '-' untuk GB";
+    return;
+  }
+
+  if (String(input.value || "").trim() === "-") input.value = "";
+  input.readOnly = false;
+  input.placeholder = "Masukkan NIP";
+}
+
+function handleGuruStatusChange() {
+  const statusEl = document.getElementById("statusGuru");
+  applyGuruStatusNipUi(statusEl?.value || "PNS");
+  validateGuruForm();
+}
+
+function handleInlineGuruStatusChange(selectEl) {
+  applyGuruStatusNipUi(selectEl?.value || "PNS", { inputId: "inlineNipGuru" });
+}
+
 function renderGuruStatusOptions(selectedValue = "PNS") {
   const selectedStatus = normalizeGuruStatus(selectedValue);
   return GURU_STATUS_OPTIONS
@@ -531,13 +567,13 @@ async function simpanGuruData() {
     nama: normalizeGuruNamaValue(namaGuruEl.value),
     gelar_depan: gelarDepanEl.value.trim(),
     gelar_belakang: gelarBelakangEl.value.trim(),
-    nip: nipGuruEl.value.trim(),
     status: normalizeGuruStatus(statusGuruEl?.value || "PNS"),
     mata_pelajaran: mapelGuruEl.value.trim(),
     jp: 0,
     nama_lengkap: [gelarDepanEl.value.trim(), normalizeGuruNamaValue(namaGuruEl.value), gelarBelakangEl.value.trim()].filter(Boolean).join(" "),
     created_at: new Date()
   };
+  data.nip = normalizeGuruNipValue(nipGuruEl.value, data.status);
 
   try {
     isSubmittingGuru = true;
@@ -556,6 +592,7 @@ async function simpanGuruData() {
     gelarBelakangEl.value = "";
     nipGuruEl.value = "";
     if (statusGuruEl) statusGuruEl.value = "PNS";
+    applyGuruStatusNipUi("PNS");
     mapelGuruEl.value = "";
     populateGuruMapelSelect();
 
@@ -612,8 +649,8 @@ function cancelEditGuru() {
 
 async function saveGuruInline(kodeGuru) {
   const nama = normalizeGuruNamaValue(document.getElementById("inlineNamaGuru")?.value || "");
-  const nip = document.getElementById("inlineNipGuru")?.value.trim() || "";
   const status = normalizeGuruStatus(document.getElementById("inlineStatusGuru")?.value || "PNS");
+  const nip = normalizeGuruNipValue(document.getElementById("inlineNipGuru")?.value || "", status);
   const gelarDepan = document.getElementById("inlineGelarDepanGuru")?.value.trim() || "";
   const gelarBelakang = document.getElementById("inlineGelarBelakangGuru")?.value.trim() || "";
   const mataPelajaran = document.getElementById("inlineMapelGuru")?.value.trim() || "";
@@ -633,7 +670,7 @@ async function saveGuruInline(kodeGuru) {
     return;
   }
 
-  if (nip && !/^[0-9]+$/.test(nip)) {
+  if (status !== "GB" && nip && !/^[0-9]+$/.test(nip)) {
     Swal.fire("NIP harus berupa angka", "", "warning");
     return;
   }
@@ -641,6 +678,7 @@ async function saveGuruInline(kodeGuru) {
   const duplicateNip = semuaDataGuru.some(item =>
     item.kode_guru !== kodeGuru &&
     String(item.nip || "").trim() !== "" &&
+    String(item.nip || "").trim() !== "-" &&
     String(item.nip || "").trim() === nip
   );
 
@@ -758,9 +796,9 @@ function renderGuruEditRow(d) {
           </div>
         </div>
       </td>
-      <td><input id="inlineNipGuru" value="${escapeGuruHtml(d.nip || "")}" placeholder="NIP"></td>
+      <td><input id="inlineNipGuru" value="${escapeGuruHtml(isGuruStatusGB(d) ? "-" : (d.nip || ""))}" placeholder="${isGuruStatusGB(d) ? "Otomatis '-' untuk GB" : "NIP"}" ${isGuruStatusGB(d) ? "readonly" : ""}></td>
       <td>
-        <select id="inlineStatusGuru">
+        <select id="inlineStatusGuru" onchange="handleInlineGuruStatusChange(this)">
           ${renderGuruStatusOptions(d.status || "PNS")}
         </select>
       </td>

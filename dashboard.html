@@ -72,6 +72,7 @@
           <button onclick="loadPage('admin-user')">User</button>
           <button onclick="loadPage('admin-hierarki')">Pengguna Hierarki</button>
           <button onclick="loadPage('admin-semester')">Semester dan Tahun Pelajaran</button>
+          <button onclick="loadPage('admin-quota')">Quota</button>
         </div>
       </div>
 
@@ -117,6 +118,7 @@
 
         <div class="submenu-section-divider"></div>
         <div class="submenu-section-label">Asesmen</div>
+        <button onclick="loadPage('kepangawasan')">Kepangawasan</button>
         <button onclick="loadPage('pembagian-ruang')">Pembagian Ruang</button>
         <button onclick="loadPage('asesmen-administrasi')">Rekap Asesmen</button>
         <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
@@ -174,6 +176,7 @@
       <div class="submenu" id="submenuWaliKelas">
         <button onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
         <button onclick="loadPage('wali-kelengkapan')">Cek Kelengkapan Nilai Siswa</button>
+        <button onclick="loadPage('wali-rekap-nilai')">Rekap Nilai</button>
         <button onclick="loadPage('nilai-rapor')">Cetak Rapor</button>
       </div>
     </div>
@@ -240,6 +243,7 @@
 <script src="shared/app-router.js?v=20260410a"></script>
 <script src="shared/dashboard-shell.js?v=20260413n"></script>
 <script src="shared/dashboard-data.js?v=20260410a"></script>
+<script src="shared/network-traffic.js?v=20260415a"></script>
 <script src="shared/dashboard-home.js?v=20260414m"></script>
 <script src="shared/dashboard-routes.js?v=20260413l"></script>
 <script src="inline-notification.js?v=20260409a"></script>
@@ -261,6 +265,7 @@
 <script src="Admin/admin-users-view.js?v=20260414c"></script>
 <script src="Admin/users.js?v=20260414c"></script>
 <script src="Admin/backup.js?v=20260408d"></script>
+<script src="Admin/quota.js?v=20260415a"></script>
 <script src="Mapel/crud.js?v=20260407c"></script>
 <script src="Mapel/mapel.js?v=20260408h"></script>
 <script src="Mapel/ui.js?v=20260408e"></script>
@@ -278,6 +283,7 @@
 <script src="Asesmen/pembagian-ruang-service.js?v=20260410a"></script>
 <script src="Asesmen/pembagian-ruang-view.js?v=20260414a"></script>
 <script src="Asesmen/pembagian-ruang-v2.js?v=20260414a"></script>
+<script src="Asesmen/kepangawasan.js?v=20260416a"></script>
 <script src="Asesmen/soal-ai.js?v=20260413m"></script>
 <script src="Nilai/nilai.js?v=20260414d"></script>
 <script src="Nilai/rapor.js?v=20260414f"></script>
@@ -521,11 +527,11 @@
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
       }
-      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "wali-rekap-nilai", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     }
-    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     if (role === "siswa") return false;
     return false;

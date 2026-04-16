@@ -293,7 +293,7 @@
       setText("homeTugasTambahanCount", `${tugas.length} tugas`);
       setText("homeTugasTambahanInfo", `${tugas.length} tugas tambahan terdaftar`);
       setText("homeOnlineCount", `${onlineUsers.length} user online`);
-      setText("homeUpdatedAt", `Data dimuat ${new Date().toLocaleString("id-ID")}`);
+      setText("homeUpdatedAt", `Data dimuat ${global.AppUtils?.formatDateTimeId ? global.AppUtils.formatDateTimeId(new Date()) : new Date().toLocaleString("id-ID")}`);
       if (options.role === "guru" || options.role === "koordinator" || options.role === "guruadmin" || options.role === "superadmin") {
         const teachingTitle = document.getElementById("homeTeachingTitle");
         const teachingTable = document.getElementById("homeTeachingTable");
@@ -367,7 +367,7 @@
       setText("guruHomeTugasCount", `${tugasNames.length} tugas`);
       setText("guruHomeTugasCardCount", `${tugasNames.length} tugas`);
       setText("guruHomeWaliKelas", waliRows.length ? waliRows.map(item => getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas).join(", ") : "-");
-      setText("guruHomeUpdatedAt", `Data dimuat ${new Date().toLocaleString("id-ID")}`);
+      setText("guruHomeUpdatedAt", `Data dimuat ${global.AppUtils?.formatDateTimeId ? global.AppUtils.formatDateTimeId(new Date()) : new Date().toLocaleString("id-ID")}`);
 
       global.AppDom?.setHtml?.("guruHomeMengajarTable", renderTeachingTable(teachingRows, "Belum ada tugas mengajar kelas real."));
       global.AppDom?.setHtml?.("guruHomeTugasList", tugasNames.length
@@ -431,6 +431,83 @@
             ? "Urusan"
             : "Dashboard";
     return { user, role, hasCoordinatorAccess, coordinatorLevels, kodeGuru, isAdmin, isGuru, isKoordinator, isGuruAdmin, label };
+  }
+
+  function normalizeHomeIdentity(value = "") {
+    if (global.AdminUsersIdentity?.makeUserDocId) {
+      return global.AdminUsersIdentity.makeUserDocId(value);
+    }
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .replace(/[^a-z0-9._-]/g, "");
+  }
+
+  function getHomeGuruByKode(guruList = [], kodeGuru = "") {
+    return guruList.find(item => String(item?.kode_guru || "").trim() === String(kodeGuru || "").trim()) || null;
+  }
+
+  function resolveHomeGuruFromUser(user = {}, guruList = []) {
+    const kodeGuru = String(user?.kode_guru || "").trim();
+    if (kodeGuru) return getHomeGuruByKode(guruList, kodeGuru);
+
+    if (global.AdminUsersIdentity?.getGuruForAdminUser) {
+      const matched = global.AdminUsersIdentity.getGuruForAdminUser(user, guruList, value => getHomeGuruByKode(guruList, value));
+      if (matched) return matched;
+    }
+
+    const userAliases = [
+      user?.username,
+      user?.id,
+      user?.nama
+    ]
+      .map(value => normalizeHomeIdentity(value))
+      .filter(Boolean);
+
+    if (!userAliases.length) return null;
+
+    return guruList.find(guru => {
+      const guruAliases = [
+        guru?.kode_guru,
+        guru?.nip,
+        global.AdminUsersIdentity?.makeGuruUsername ? global.AdminUsersIdentity.makeGuruUsername(guru) : "",
+        global.AdminUsersIdentity?.getGuruName ? global.AdminUsersIdentity.getGuruName(guru) : guru?.nama,
+        global.AdminUsersIdentity?.getGuruUsernameName ? global.AdminUsersIdentity.getGuruUsernameName(guru) : guru?.nama
+      ]
+        .map(value => normalizeHomeIdentity(value))
+        .filter(Boolean);
+
+      return guruAliases.some(alias => userAliases.includes(alias));
+    }) || null;
+  }
+
+  function getHomeResolvedContext(context = {}, guruList = []) {
+    if (context.kodeGuru || !Boolean(context.isAdmin || context.role === "superadmin")) return context;
+    const matchedGuru = resolveHomeGuruFromUser(context.user, guruList);
+    if (!matchedGuru?.kode_guru) return context;
+    return {
+      ...context,
+      kodeGuru: String(matchedGuru.kode_guru || "").trim(),
+      resolvedGuruNama: formatGuruName(matchedGuru, context.user),
+      isGuruAdmin: true
+    };
+  }
+
+  function getHomeInputScopeContext(context = {}) {
+    const shouldUseGuruScope = Boolean(context.kodeGuru) && (context.isAdmin || context.role === "superadmin");
+    if (!shouldUseGuruScope) return context;
+    const coordinatorLevels = Array.isArray(context.coordinatorLevels) ? context.coordinatorLevels : [];
+    const hasCoordinatorAccess = coordinatorLevels.length > 0;
+    return {
+      ...context,
+      isAdmin: false,
+      isGuru: true,
+      isKoordinator: hasCoordinatorAccess,
+      hasCoordinatorAccess,
+      isGuruAdmin: false,
+      inputScopeLabel: hasCoordinatorAccess ? "Guru + Koordinator" : "Guru"
+    };
   }
 
   function getHomeHeroTitle(context) {
@@ -941,9 +1018,11 @@
         .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
         .slice(0, 10);
 
-      const roleAssignments = getHomeVisibleAssignments(context, { mengajarBayangan, kelas });
-      const roleAssignmentsAsli = getHomeVisibleAssignments(context, { mengajarBayangan: mengajarAsli, kelas });
-      const summaryRows = getHomeSummaryRows(context, { mengajarBayangan, siswa, mapelBayangan, nilai, kelas });
+      const resolvedContext = getHomeResolvedContext(context, guru);
+      const inputScopeContext = getHomeInputScopeContext(resolvedContext);
+      const roleAssignments = getHomeVisibleAssignments(inputScopeContext, { mengajarBayangan, kelas });
+      const roleAssignmentsAsli = getHomeVisibleAssignments(inputScopeContext, { mengajarBayangan: mengajarAsli, kelas });
+      const summaryRows = getHomeSummaryRows(inputScopeContext, { mengajarBayangan, siswa, mapelBayangan, nilai, kelas });
       const teachingRows = buildTeachingComparisonRows(roleAssignmentsAsli, mapelAsli, roleAssignments, mapelBayangan);
       const siswaByLevel = { 7: 0, 8: 0, 9: 0, lain: 0 };
       siswa.forEach(item => {
@@ -952,18 +1031,18 @@
         else siswaByLevel.lain += 1;
       });
 
-      const waliRows = kelas.filter(item => String(item.kode_guru || "").trim() === context.kodeGuru);
+      const waliRows = kelas.filter(item => String(item.kode_guru || "").trim() === resolvedContext.kodeGuru);
       const waliClassSet = new Set(
         waliRows
           .map(item => getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas)
           .filter(Boolean)
       );
 
-      if (context.isAdmin || context.isGuruAdmin) {
+      if (context.isAdmin || resolvedContext.isGuruAdmin) {
         setText("homeHeroStat1", `${guru.length}`);
         setText("homeHeroStat2", `${kelas.length}`);
         setText("homeHeroStat3", `${onlineUsers.length} user`);
-      } else if (context.isKoordinator) {
+      } else if (resolvedContext.isKoordinator) {
         setText("homeHeroStat1", context.coordinatorLevels.length ? context.coordinatorLevels.join(", ") : "-");
         setText("homeHeroStat2", `${waliClassSet.size} kelas`);
         setText("homeHeroStat3", `${siswa.length} siswa`);
@@ -972,15 +1051,16 @@
         setText("homeHeroStat2", `${roleAssignments.length} pembagian`);
         setText("homeHeroStat3", `${waliClassSet.size} kelas`);
       }
-      setText("homeUpdatedAt", `Data dimuat ${new Date().toLocaleString("id-ID")}`);
+      setText("homeUpdatedAt", `Data dimuat ${global.AppUtils?.formatDateTimeId ? global.AppUtils.formatDateTimeId(new Date()) : new Date().toLocaleString("id-ID")}`);
       setText("homeInputSummaryTitle", summaryRows.length ? `${summaryRows.length} pembagian ditampilkan` : "Belum ada pembagian yang bisa ditampilkan");
         global.AppDom?.setHtml?.("homeInputSummaryNote", `
+          ${resolvedContext !== inputScopeContext ? `<span class="home-panel-legend-item"><strong>Scope</strong><b>${escapeHtml(inputScopeContext.inputScopeLabel || "Guru")}</b></span>` : ""}
           <span class="home-panel-legend-item"><span class="home-panel-legend-box home-panel-legend-box--empty"></span>kosong</span>
           <span class="home-panel-legend-item"><span class="home-panel-legend-box home-panel-legend-box--partial"></span>tidak lengkap</span>
           <span class="home-panel-legend-item"><span class="home-panel-legend-box home-panel-legend-box--full"></span>lengkap</span>
         `);
       global.AppDom?.setHtml?.("homeInputSummaryTable", renderSummaryTable(summaryRows));
-      if ((context.isGuruAdmin || context.isKoordinator) && document.getElementById("homeTeachingTable")) {
+      if ((resolvedContext.isGuruAdmin || resolvedContext.isKoordinator) && document.getElementById("homeTeachingTable")) {
         setText("homeTeachingTitle", `${teachingRows.length} mapel diajar`);
         global.AppDom?.setHtml?.("homeTeachingTable", renderTeachingTable(teachingRows, "Belum ada tugas mengajar yang bisa ditampilkan."));
       }
@@ -988,7 +1068,7 @@
       if (context.isAdmin) {
         setText("homeAdminCleanTitle", "Dashboard admin dibersihkan");
         setText("homeAdminCleanText", `Ringkasan utama menampilkan ${summaryRows.length} kelas-mapel aktif dan ${onlineUsers.length} user online.`);
-      } else if (context.isGuruAdmin) {
+      } else if (resolvedContext.isGuruAdmin) {
         setText("homeRoleCardTitle1", `${onlineUsers.length} pengguna aktif`);
         setText("homeRoleCardTitle2", `${guru.length} guru, ${kelas.length} kelas, ${mapelBayangan.length} mapel`);
         setText("homeRoleCardTitle3", "Fokus guru yang menyatu dengan admin");
@@ -1037,7 +1117,7 @@
           roleAssignments,
           mapelBayangan
         );
-        const tugasGuruSnap = context.kodeGuru ? await documentsApi.collection("guru_tugas_tambahan").doc(context.kodeGuru).get() : null;
+        const tugasGuruSnap = resolvedContext.kodeGuru ? await documentsApi.collection("guru_tugas_tambahan").doc(resolvedContext.kodeGuru).get() : null;
         const tugasGuru = tugasGuruSnap?.exists ? { id: tugasGuruSnap.id, ...tugasGuruSnap.data() } : {};
         const tugasNames = getTugasNames(tugasGuru, tugas);
         const waliClass = [...waliClassSet][0] || "";

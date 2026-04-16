@@ -66,19 +66,30 @@ Fitur ini sekarang menjadi **Generator Prompt Soal** yang menyusun prompt siap p
 File function ada di:
 
 - `supabase/functions/generate-soal-ai/index.ts`
+- `supabase/functions/supabase-quota/index.ts`
 
 Secret yang perlu disiapkan di Supabase:
 
 - `OPENAI_API_KEY`
 - opsional: `OPENAI_MODEL`
+- `SUPABASE_MANAGEMENT_TOKEN` untuk membaca quota resmi project dari Management API
+- opsional: `SUPABASE_PROJECT_REF` bila ingin mengunci function quota ke satu project
 
 Contoh deploy:
 
 ```bash
 supabase functions deploy generate-soal-ai
+supabase functions deploy supabase-quota
 supabase secrets set OPENAI_API_KEY=your_key_here
 supabase secrets set OPENAI_MODEL=gpt-4.1-mini
+supabase secrets set SUPABASE_MANAGEMENT_TOKEN=your_personal_access_token
+supabase secrets set SUPABASE_PROJECT_REF=your_project_ref
 ```
+
+Catatan keamanan:
+
+- Function `supabase-quota` menyimpan token management di server-side Supabase, jadi token tidak tampil di browser.
+- Namun aplikasi ini belum memakai Supabase Auth admin, jadi endpoint quota tetap sebaiknya dianggap endpoint internal sampai autentikasi admin dimigrasikan ke server-side/Auth yang lebih kuat.
 
 ## Login Default
 

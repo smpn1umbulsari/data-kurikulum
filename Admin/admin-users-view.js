@@ -84,6 +84,7 @@
           </div>
           <div class="kelas-bayangan-actions">
             <button class="btn-secondary" onclick="syncGuruUsers()">Tambah dari Data Guru</button>
+            <button class="btn-secondary" onclick="relinkManualUsersToGuru()">Sambungkan User Manual</button>
             <button class="btn-primary" onclick="resetAllUserPasswords()">Reset Password</button>
           </div>
         </div>
@@ -120,7 +121,7 @@
             <div>
               <span class="dashboard-eyebrow">Tambah User</span>
               <h2>Tambah Manual</h2>
-              <p>Pilih sumber data atau isi manual untuk menambahkan akun baru.</p>
+              <p>Pilih sumber data atau isi manual. Jika username berisi NIP guru atau nama cocok, akun akan otomatis disambungkan ke data guru.</p>
             </div>
           </div>
 

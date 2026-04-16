@@ -42,6 +42,11 @@
         render: () => global.renderPembagianRuangPage(),
         afterEnter: () => global.loadRealtimePembagianRuang()
       },
+      "kepangawasan": {
+        title: "Kepangawasan Asesmen",
+        render: () => global.renderKepangawasanPage(),
+        afterEnter: () => global.loadRealtimeKepangawasan()
+      },
       "admin-user": {
         title: "Admin User",
         render: () => global.renderAdminUserPage(),
@@ -65,6 +70,11 @@
       "admin-backup": {
         title: "Backup dan Restore",
         render: () => global.renderAdminBackupPage()
+      },
+      "admin-quota": {
+        title: "Quota Supabase",
+        render: () => global.renderAdminQuotaPage(),
+        afterEnter: () => global.loadRealtimeAdminQuota()
       },
       "nilai-input-guru": {
         title: "Input Nilai",
@@ -92,6 +102,12 @@
         title: "Cek Kelengkapan Nilai Siswa",
         render: () => global.renderWaliKelengkapanPage(),
         afterEnter: () => global.loadRealtimeWaliKelas("kelengkapan")
+      },
+      "wali-rekap-nilai": {
+        title: "Rekap Nilai Wali Kelas",
+        beforeEnter: () => typeof global.setNilaiAccessMode === "function" && global.setNilaiAccessMode("wali"),
+        render: () => global.renderRekapNilaiPage(),
+        afterEnter: () => global.loadRealtimeRekapNilai()
       },
       "asesmen-administrasi": {
         title: "Administrasi Asesmen",

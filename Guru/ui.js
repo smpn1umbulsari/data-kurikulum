@@ -34,7 +34,7 @@ function renderGuruForm() {
 
             <div class="form-group">
               <label for="statusGuru">Status</label>
-              <select id="statusGuru">
+              <select id="statusGuru" onchange="handleGuruStatusChange()">
                 ${renderGuruStatusOptions("PNS")}
               </select>
             </div>

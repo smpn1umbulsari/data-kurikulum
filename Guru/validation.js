@@ -20,7 +20,12 @@ function validateGuruForm() {
 
   const kodeGuru = document.getElementById("kodeGuru").value.trim();
   const nama = document.getElementById("namaGuru").value.trim();
-  const nip = document.getElementById("nipGuru").value.trim();
+  const status = typeof normalizeGuruStatus === "function"
+    ? normalizeGuruStatus(document.getElementById("statusGuru")?.value || "PNS")
+    : String(document.getElementById("statusGuru")?.value || "PNS").trim().toUpperCase();
+  const nip = typeof normalizeGuruNipValue === "function"
+    ? normalizeGuruNipValue(document.getElementById("nipGuru").value, status)
+    : document.getElementById("nipGuru").value.trim();
   const mapel = document.getElementById("mapelGuru").value.trim();
 
   if (!kodeGuru) {
@@ -52,19 +57,29 @@ function validateGuruForm() {
     setGuruError("namaGuru", "");
   }
 
-  if (!nip) {
-    setGuruError("nipGuru", "NIP wajib diisi");
-    valid = false;
-  } else if (!/^[0-9]+$/.test(nip)) {
-    setGuruError("nipGuru", "NIP harus berupa angka");
-    valid = false;
+  if (status === "GB") {
+    const nipInput = document.getElementById("nipGuru");
+    if (nipInput) nipInput.value = "-";
+    setGuruError("nipGuru", "");
   } else {
-    const exists = semuaDataGuru.some(d => d.nip === nip && d.kode_guru !== currentEditGuru);
-    if (exists) {
-      setGuruError("nipGuru", "NIP sudah digunakan");
+    if (!nip) {
+      setGuruError("nipGuru", "NIP wajib diisi");
+      valid = false;
+    } else if (!/^[0-9]+$/.test(nip)) {
+      setGuruError("nipGuru", "NIP harus berupa angka");
       valid = false;
     } else {
-      setGuruError("nipGuru", "");
+      const exists = semuaDataGuru.some(d =>
+        d.kode_guru !== currentEditGuru &&
+        String(d.nip || "").trim() !== "-" &&
+        d.nip === nip
+      );
+      if (exists) {
+        setGuruError("nipGuru", "NIP sudah digunakan");
+        valid = false;
+      } else {
+        setGuruError("nipGuru", "");
+      }
     }
   }
 

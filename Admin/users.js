@@ -149,7 +149,8 @@ function makeGuruUsername(guru) {
     return window.AdminUsersIdentity.makeGuruUsername(guru);
   }
   const nip = String(guru?.nip || "").trim();
-  return nip || makeUsernameFromName(getAdminGuruUsernameName(guru));
+  const normalizedNip = nip === "-" ? "" : nip;
+  return normalizedNip || makeUsernameFromName(getAdminGuruUsernameName(guru));
 }
 
 function makeUserDocId(username) {
@@ -621,6 +622,94 @@ function prepareSiswaUser(siswa) {
     can_generate_prompt: true,
     updated_at: new Date()
   };
+}
+
+function normalizeAdminUserLookup(value = "") {
+  return makeUsernameFromName(String(value || "").trim());
+}
+
+function resolveGuruForManualUserInput({ name = "", username = "" } = {}) {
+  const normalizedName = normalizeAdminUserLookup(name);
+  const normalizedUsername = normalizeAdminUserLookup(username);
+  const rawUsername = String(username || "").trim();
+  if (!normalizedName && !normalizedUsername && !rawUsername) return null;
+
+  return semuaDataAdminGuru.find(guru => {
+    const guruNip = String(guru?.nip || "").trim();
+    const aliases = [
+      guru?.kode_guru,
+      guruNip,
+      getAdminGuruName(guru),
+      getAdminGuruUsernameName(guru),
+      makeGuruUsername(guru)
+    ]
+      .map(item => normalizeAdminUserLookup(item))
+      .filter(Boolean);
+
+    if (guruNip && rawUsername === guruNip) return true;
+    if (normalizedUsername && aliases.includes(normalizedUsername)) return true;
+    if (normalizedName && aliases.includes(normalizedName)) return true;
+    return false;
+  }) || null;
+}
+
+function buildManualUserPayload({ role = "guru", name = "", username = "", password = DEFAULT_USER_PASSWORD } = {}) {
+  const guru = resolveGuruForManualUserInput({ name, username });
+  if (guru) {
+    const payload = prepareGuruUser(guru, role);
+    return {
+      ...payload,
+      nama: name || payload.nama,
+      username: username || payload.username,
+      password,
+      role,
+      sumber: "manual-guru"
+    };
+  }
+
+  return {
+    nama: name,
+    username,
+    password,
+    role,
+    aktif: true,
+    can_generate_prompt: true,
+    updated_at: new Date(),
+    created_at: new Date()
+  };
+}
+
+async function relinkManualUsersToGuru() {
+  const candidates = semuaDataAdminUser
+    .filter(user => !String(user.kode_guru || "").trim())
+    .map(user => {
+      const guru = resolveGuruForManualUserInput({
+        name: user.nama || "",
+        username: user.username || user.id || ""
+      });
+      if (!guru) return null;
+      return { user, guru };
+    })
+    .filter(Boolean);
+
+  if (!candidates.length) {
+    Swal.fire("Sudah rapi", "Tidak ada user manual yang perlu disambungkan ke data guru.", "info");
+    return;
+  }
+
+  const documentsApi = getAdminUsersDocumentsApi();
+  const batch = documentsApi.batch();
+  candidates.forEach(({ user, guru }) => {
+    const userId = String(user.id || makeUserDocId(user.username)).trim();
+    batch.set(documentsApi.collection("users").doc(userId), {
+      kode_guru: guru.kode_guru || "",
+      nip: guru.nip || "",
+      sumber: user.sumber === "guru" ? user.sumber : "manual-guru",
+      updated_at: new Date()
+    }, { merge: true });
+  });
+  await batch.commit();
+  Swal.fire("Selesai", `${candidates.length} user manual berhasil disambungkan ke data guru.`, "success");
 }
 
 function renderAdminUserPage() {
@@ -1198,10 +1287,19 @@ async function saveUser(userId) {
     const aiPromptEnabled = isSuperadmin
       ? document.getElementById(`userAiPrompt-${userId}`)?.checked !== false
       : canUserAccessAiPrompt(resolved.user || {});
+    const linkedGuru = String(resolved.user?.kode_guru || "").trim()
+      ? null
+      : resolveGuruForManualUserInput({
+          name: resolved.user?.nama || "",
+          username: resolved.user?.username || resolved.user?.id || ""
+        });
     await getAdminUsersDocumentsApi().collection("users").doc(targetId).set({
       ...(resolved.user || {}),
       password,
       role,
+      kode_guru: linkedGuru?.kode_guru || resolved.user?.kode_guru || "",
+      nip: linkedGuru?.nip || resolved.user?.nip || "",
+      sumber: linkedGuru ? "manual-guru" : (resolved.user?.sumber || ""),
       can_generate_prompt: ["admin", "superadmin"].includes(role) ? true : aiPromptEnabled,
       updated_at: new Date()
     }, { merge: true });
@@ -1280,19 +1378,19 @@ async function addHierarchyUser() {
     return;
   }
 
-  const payload = {
-    nama: name,
-    username,
-    password,
+  const payload = buildManualUserPayload({
     role,
-    aktif: true,
-    can_generate_prompt: true,
-    updated_at: new Date(),
-    created_at: new Date()
-  };
+    name,
+    username,
+    password
+  });
 
   await getAdminUsersDocumentsApi().collection("users").doc(makeUserDocId(username)).set(payload, { merge: true });
-  Swal.fire("Tersimpan", "Pengguna sudah ditambahkan.", "success");
+  Swal.fire(
+    "Tersimpan",
+    payload.kode_guru ? "Pengguna sudah ditambahkan dan disambungkan ke data guru." : "Pengguna sudah ditambahkan.",
+    "success"
+  );
 }
 
 async function createUser() {

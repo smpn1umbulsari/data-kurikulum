@@ -256,6 +256,14 @@
   }
 
   function formatDateLabel(dateText = "") {
+    if (global.AppUtils?.formatDateId) {
+      return global.AppUtils.formatDateId(dateText, {
+        weekday: "short",
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }, dateText || "-");
+    }
     if (!dateText) return "-";
     const date = new Date(`${dateText}T00:00:00`);
     if (Number.isNaN(date.getTime())) return dateText;
@@ -276,6 +284,13 @@
   }
 
   function formatShortDateLabel(dateText = "") {
+    if (global.AppUtils?.formatDateId) {
+      return global.AppUtils.formatDateId(dateText, {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }, dateText || "-");
+    }
     if (!dateText) return "-";
     const date = new Date(`${dateText}T00:00:00`);
     if (Number.isNaN(date.getTime())) return dateText;
@@ -287,6 +302,13 @@
   }
 
   function formatDateNoWeekdayLabel(dateText = "") {
+    if (global.AppUtils?.formatDateId) {
+      return global.AppUtils.formatDateId(dateText, {
+        day: "2-digit",
+        month: "long",
+        year: "numeric"
+      }, dateText || "-");
+    }
     if (!dateText) return "-";
     const date = new Date(`${dateText}T00:00:00`);
     if (Number.isNaN(date.getTime())) return dateText;
@@ -323,10 +345,10 @@
     const sameYear = start.getFullYear() === end.getFullYear();
     const sameMonth = sameYear && start.getMonth() === end.getMonth();
     if (sameMonth) {
-      return `${String(start.getDate()).padStart(2, "0")} - ${String(end.getDate()).padStart(2, "0")} ${end.toLocaleDateString("id-ID", {
-        month: "long",
-        year: "numeric"
-      })}`;
+      const monthYear = global.AppUtils?.formatDateId
+        ? global.AppUtils.formatDateId(end, { month: "long", year: "numeric" }, formatDateNoWeekdayLabel(endDate))
+        : end.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+      return `${String(start.getDate()).padStart(2, "0")} - ${String(end.getDate()).padStart(2, "0")} ${monthYear}`;
     }
     return `${formatDateNoWeekdayLabel(startDate)} s.d. ${formatDateNoWeekdayLabel(endDate)}`;
   }

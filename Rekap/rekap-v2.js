@@ -136,6 +136,9 @@ function renderRekapSettingsPanel(settings) {
 
 function formatRekapTanggalTtd(value = "") {
   const text = String(value || "").trim();
+  if (window.AppUtils?.formatDateId) {
+    return window.AppUtils.formatDateId(text, { day: "numeric", month: "long", year: "numeric" }, text || "-");
+  }
   if (!text) return "-";
   const date = new Date(`${text}T00:00:00`);
   if (Number.isNaN(date.getTime())) return text;

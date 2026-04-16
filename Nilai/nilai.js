@@ -45,7 +45,7 @@ function getCurrentNilaiUser() {
 }
 
 function setNilaiAccessMode(mode = "guru") {
-  currentNilaiAccessMode = mode === "koordinator" ? "koordinator" : "guru";
+  currentNilaiAccessMode = ["koordinator", "wali"].includes(mode) ? mode : "guru";
 }
 
 function getNilaiGenderLabel(siswa = {}) {
@@ -113,15 +113,29 @@ function getNilaiCoordinatorWaliClassSet() {
   );
 }
 
+function getNilaiOwnWaliClassSet() {
+  const user = getCurrentNilaiUser();
+  const kodeGuru = String(user.kode_guru || "").trim();
+  if (!kodeGuru) return new Set();
+  return new Set(
+    semuaDataNilaiKelas
+      .filter(item => String(item.kode_guru || "").trim() === kodeGuru)
+      .map(item => getNilaiClassKey(item))
+      .filter(Boolean)
+  );
+}
+
 function getNilaiAccessibleAssignments() {
   const user = getCurrentNilaiUser();
   const role = user.role || "admin";
   const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
   const coordinatorWaliClasses = getNilaiCoordinatorWaliClassSet();
+  const ownWaliClasses = getNilaiOwnWaliClassSet();
   return semuaDataNilaiMengajar
     .filter(item => {
       if (!item.mapel_kode || !item.guru_kode || !item.tingkat || !item.rombel) return false;
+      if (currentNilaiAccessMode === "wali") return ownWaliClasses.has(getNilaiClassKey(item));
       if (role === "admin" || role === "superadmin") return true;
       if (role === "guru" && hasCoordinatorAccess && currentNilaiAccessMode === "koordinator") {
         return coordinatorLevels.includes(String(item.tingkat || "")) || coordinatorWaliClasses.has(getNilaiClassKey(item));
@@ -362,7 +376,9 @@ function renderRekapNilaiPage() {
   const user = getCurrentNilaiUser();
   const role = user.role || "admin";
   const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
-  const roleDescription = role === "guru" && hasCoordinatorAccess && currentNilaiAccessMode === "koordinator"
+  const roleDescription = currentNilaiAccessMode === "wali"
+    ? "Wali kelas hanya melihat rekap nilai untuk kelas yang aktif menjadi tanggung jawab wali."
+    : role === "guru" && hasCoordinatorAccess && currentNilaiAccessMode === "koordinator"
     ? `Koordinator dapat melihat rekap nilai pada jenjang ${((typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : []).join(", ") || "-")}.`
     : role === "guru"
       ? "Guru melihat rekap kelas yang dapat diakses sesuai assignment."
