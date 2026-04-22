@@ -26,6 +26,24 @@ const KOORDINATOR_LEVELS = [
   { key: "kelas_8", label: "Kelas 8" },
   { key: "kelas_9", label: "Kelas 9" }
 ];
+const adminUsersDerivedCache = {
+  userListRef: null,
+  userIndex: null,
+  guruListRef: null,
+  guruIndex: null,
+  siswaListRef: null,
+  siswaIndex: null,
+  presenceListRef: null,
+  presenceIndex: null,
+  onlinePresenceRowsRef: null,
+  onlinePresenceRows: null,
+  sortedUsersRef: null,
+  sortedUsers: null,
+  sortedGuruRef: null,
+  sortedGuru: null,
+  usersByRoleRef: null,
+  usersByRole: null
+};
 
 function getAdminUsersDocumentsApi() {
   return window.SupabaseDocuments;
@@ -160,9 +178,97 @@ function makeUserDocId(username) {
   return makeUsernameFromName(username);
 }
 
+function getAdminUserIndex() {
+  if (adminUsersDerivedCache.userListRef === semuaDataAdminUser && adminUsersDerivedCache.userIndex) {
+    return adminUsersDerivedCache.userIndex;
+  }
+  const byDocId = new Map();
+  const byKodeGuru = new Map();
+  const byAlias = new Map();
+  const byRole = new Map();
+  semuaDataAdminUser.forEach(user => {
+    const docId = String(user.id || makeUserDocId(user.username)).trim();
+    if (docId) byDocId.set(docId, user);
+    const kodeGuru = String(user.kode_guru || "").trim();
+    if (kodeGuru) {
+      if (!byKodeGuru.has(kodeGuru)) byKodeGuru.set(kodeGuru, []);
+      byKodeGuru.get(kodeGuru).push(user);
+      const normalizedKodeGuru = normalizePresenceKey(kodeGuru);
+      if (normalizedKodeGuru && normalizedKodeGuru !== kodeGuru) {
+        if (!byKodeGuru.has(normalizedKodeGuru)) byKodeGuru.set(normalizedKodeGuru, []);
+        byKodeGuru.get(normalizedKodeGuru).push(user);
+      }
+    }
+    [user.id, user.username, user.nama]
+      .map(item => makeUserDocId(item))
+      .filter(Boolean)
+      .forEach(alias => {
+        if (!byAlias.has(alias)) byAlias.set(alias, user);
+      });
+    const role = String(user.role || "").trim();
+    if (role) {
+      if (!byRole.has(role)) byRole.set(role, []);
+      byRole.get(role).push(user);
+    }
+  });
+  adminUsersDerivedCache.userListRef = semuaDataAdminUser;
+  adminUsersDerivedCache.userIndex = { byDocId, byKodeGuru, byAlias, byRole };
+  adminUsersDerivedCache.sortedUsersRef = null;
+  adminUsersDerivedCache.usersByRoleRef = null;
+  return adminUsersDerivedCache.userIndex;
+}
+
+function getAdminGuruIndex() {
+  if (adminUsersDerivedCache.guruListRef === semuaDataAdminGuru && adminUsersDerivedCache.guruIndex) {
+    return adminUsersDerivedCache.guruIndex;
+  }
+  const byKode = new Map();
+  const byId = new Map();
+  semuaDataAdminGuru.forEach(guru => {
+    const kode = String(guru.kode_guru || "").trim();
+    const id = String(guru.id || "").trim();
+    if (kode) byKode.set(kode, guru);
+    if (id) byId.set(id, guru);
+  });
+  adminUsersDerivedCache.guruListRef = semuaDataAdminGuru;
+  adminUsersDerivedCache.guruIndex = { byKode, byId };
+  adminUsersDerivedCache.sortedGuruRef = null;
+  return adminUsersDerivedCache.guruIndex;
+}
+
+function getAdminSiswaIndex() {
+  if (adminUsersDerivedCache.siswaListRef === semuaDataAdminSiswa && adminUsersDerivedCache.siswaIndex) {
+    return adminUsersDerivedCache.siswaIndex;
+  }
+  const byNipd = new Map();
+  const byId = new Map();
+  semuaDataAdminSiswa.forEach(siswa => {
+    const nipd = String(siswa.nipd || "").trim();
+    const id = String(siswa.id || "").trim();
+    if (nipd) byNipd.set(nipd, siswa);
+    if (id) byId.set(id, siswa);
+  });
+  adminUsersDerivedCache.siswaListRef = semuaDataAdminSiswa;
+  adminUsersDerivedCache.siswaIndex = { byNipd, byId };
+  return adminUsersDerivedCache.siswaIndex;
+}
+
+function getAdminSortedUsers() {
+  if (adminUsersDerivedCache.sortedUsersRef === semuaDataAdminUser && adminUsersDerivedCache.sortedUsers) {
+    return adminUsersDerivedCache.sortedUsers;
+  }
+  const rows = [...semuaDataAdminUser].sort((a, b) =>
+    String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" })
+  );
+  adminUsersDerivedCache.sortedUsersRef = semuaDataAdminUser;
+  adminUsersDerivedCache.sortedUsers = rows;
+  return rows;
+}
+
 function getUserByUsername(username) {
   const target = makeUserDocId(username);
-  return semuaDataAdminUser.find(item => makeUserDocId(item.username || item.id) === target) || null;
+  const index = getAdminUserIndex();
+  return index.byAlias.get(target) || index.byDocId.get(target) || null;
 }
 
 function getUserByGuru(guru = {}) {
@@ -171,9 +277,7 @@ function getUserByGuru(guru = {}) {
   }
   const kodeGuru = String(guru?.kode_guru || "").trim();
   if (kodeGuru) {
-    const byKode = semuaDataAdminUser.find(item =>
-      String(item.kode_guru || "").trim() === kodeGuru
-    );
+    const byKode = getAdminUserIndex().byKodeGuru.get(kodeGuru)?.[0] || null;
     if (byKode) return byKode;
   }
 
@@ -185,7 +289,8 @@ function getUserByGuru(guru = {}) {
     .map(value => makeUserDocId(value))
     .filter(Boolean);
 
-  return semuaDataAdminUser.find(item => aliases.includes(makeUserDocId(item.username || item.id))) || null;
+  const index = getAdminUserIndex();
+  return aliases.map(alias => index.byAlias.get(alias) || index.byDocId.get(alias)).find(Boolean) || null;
 }
 
 function getAllUsersForGuru(guru = {}, fallbackUser = null) {
@@ -203,7 +308,8 @@ function getAllUsersForGuru(guru = {}, fallbackUser = null) {
   const fallbackId = makeUserDocId(fallbackUser?.username || fallbackUser?.id || "");
   if (fallbackId) aliasIds.add(fallbackId);
 
-  return semuaDataAdminUser.filter(item => {
+  const source = kodeGuru ? (getAdminUserIndex().byKodeGuru.get(kodeGuru) || semuaDataAdminUser) : semuaDataAdminUser;
+  return source.filter(item => {
     const itemId = String(item.id || makeUserDocId(item.username)).trim();
     if (kodeGuru && String(item.kode_guru || "").trim() === kodeGuru) return true;
     return aliasIds.has(itemId);
@@ -236,7 +342,7 @@ function getGuruForAdminUser(user = {}) {
 
 async function ensureAdminGuruUserIdentity(userOrId) {
   const user = typeof userOrId === "string"
-    ? semuaDataAdminUser.find(item => String(item.id || makeUserDocId(item.username)).trim() === String(userOrId).trim())
+    ? getAdminUserIndex().byDocId.get(String(userOrId).trim())
     : userOrId;
   if (!user) return { userId: String(userOrId || "").trim(), user: null };
 
@@ -291,11 +397,11 @@ async function ensureAdminGuruUserIdentity(userOrId) {
 }
 
 function getGuruByKode(kodeGuru) {
-  return semuaDataAdminGuru.find(item => String(item.kode_guru || "") === String(kodeGuru || "")) || null;
+  return getAdminGuruIndex().byKode.get(String(kodeGuru || "")) || null;
 }
 
 function getSiswaByNipd(nipd) {
-  return semuaDataAdminSiswa.find(item => String(item.nipd || "") === String(nipd || "")) || null;
+  return getAdminSiswaIndex().byNipd.get(String(nipd || "")) || null;
 }
 
 function normalizePresenceKey(value = "") {
@@ -306,6 +412,22 @@ function getPresenceKeysFromRecord(record = {}) {
   return [record.id, record.user_id, record.username, record.kode_guru]
     .map(normalizePresenceKey)
     .filter(Boolean);
+}
+
+function getAdminPresenceIndex() {
+  if (adminUsersDerivedCache.presenceListRef === semuaDataAdminPresence && adminUsersDerivedCache.presenceIndex) {
+    return adminUsersDerivedCache.presenceIndex;
+  }
+  const byKey = new Map();
+  semuaDataAdminPresence.forEach(record => {
+    getPresenceKeysFromRecord(record).forEach(key => {
+      if (!byKey.has(key)) byKey.set(key, record);
+    });
+  });
+  adminUsersDerivedCache.presenceListRef = semuaDataAdminPresence;
+  adminUsersDerivedCache.presenceIndex = { byKey };
+  adminUsersDerivedCache.onlinePresenceRows = null;
+  return adminUsersDerivedCache.presenceIndex;
 }
 
 function isAdminPresenceOnline(record = {}, thresholdMs = PRESENCE_ONLINE_THRESHOLD_MS) {
@@ -323,16 +445,20 @@ function getAdminPresenceForUser(user = {}) {
     kode_guru: user.kode_guru
   });
   if (keys.length === 0) return null;
-  return semuaDataAdminPresence.find(record => {
-    const recordKeys = getPresenceKeysFromRecord(record);
-    return keys.some(key => recordKeys.includes(key));
-  }) || null;
+  const index = getAdminPresenceIndex();
+  return keys.map(key => index.byKey.get(key)).find(Boolean) || null;
 }
 
 function getAdminOnlinePresenceRows() {
-  return [...semuaDataAdminPresence]
+  if (adminUsersDerivedCache.onlinePresenceRowsRef === semuaDataAdminPresence && adminUsersDerivedCache.onlinePresenceRows) {
+    return adminUsersDerivedCache.onlinePresenceRows;
+  }
+  const rows = [...semuaDataAdminPresence]
     .filter(record => isAdminPresenceOnline(record))
     .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime());
+  adminUsersDerivedCache.onlinePresenceRowsRef = semuaDataAdminPresence;
+  adminUsersDerivedCache.onlinePresenceRows = rows;
+  return rows;
 }
 
 function formatAdminPresenceAge(value) {
@@ -354,17 +480,11 @@ function formatAdminPresenceLabel(record = {}) {
 
 function renderAdminPresenceSummaryHtml() {
   const onlineRows = getAdminOnlinePresenceRows();
+  const userIndex = getAdminUserIndex();
   const chips = onlineRows.slice(0, 6).map(record => {
-    const user = semuaDataAdminUser.find(item => {
-      const userKeys = getPresenceKeysFromRecord({
-        id: item.id || makeUserDocId(item.username),
-        user_id: item.id || item.username,
-        username: item.username,
-        kode_guru: item.kode_guru
-      });
-      const recordKeys = getPresenceKeysFromRecord(record);
-      return userKeys.some(key => recordKeys.includes(key));
-    }) || null;
+    const user = getPresenceKeysFromRecord(record)
+      .map(key => userIndex.byAlias.get(key) || userIndex.byDocId.get(key) || userIndex.byKodeGuru.get(key)?.[0])
+      .find(Boolean) || null;
     const label = user ? (getAdminGuruName(user) || user.nama || user.username || "-") : (record.nama || record.username || record.kode_guru || "-");
     const role = user ? String(user.role || "-").trim() : String(record.role || "-").trim();
     return `
@@ -395,13 +515,38 @@ function getKoordinatorDocRef() {
 }
 
 function sortAdminGuruList(list = []) {
-  return [...list].sort((a, b) =>
+  if (list === semuaDataAdminGuru && adminUsersDerivedCache.sortedGuruRef === semuaDataAdminGuru && adminUsersDerivedCache.sortedGuru) {
+    return adminUsersDerivedCache.sortedGuru;
+  }
+  const rows = [...list].sort((a, b) =>
     String(getAdminGuruName(a) || a.kode_guru || "").localeCompare(
       String(getAdminGuruName(b) || b.kode_guru || ""),
       undefined,
       { sensitivity: "base" }
     )
   );
+  if (list === semuaDataAdminGuru) {
+    adminUsersDerivedCache.sortedGuruRef = semuaDataAdminGuru;
+    adminUsersDerivedCache.sortedGuru = rows;
+  }
+  return rows;
+}
+
+function getAdminUsersByRole(role) {
+  if (adminUsersDerivedCache.usersByRoleRef === semuaDataAdminUser && adminUsersDerivedCache.usersByRole) {
+    return adminUsersDerivedCache.usersByRole.get(role) || [];
+  }
+  const index = getAdminUserIndex();
+  const byRole = new Map();
+  USER_ROLES.forEach(item => {
+    const rows = [...(index.byRole.get(item) || [])].sort((a, b) =>
+      String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" })
+    );
+    byRole.set(item, rows);
+  });
+  adminUsersDerivedCache.usersByRoleRef = semuaDataAdminUser;
+  adminUsersDerivedCache.usersByRole = byRole;
+  return byRole.get(role) || [];
 }
 
 function getAdminKoordinatorSnapshot() {
@@ -1050,8 +1195,7 @@ function cancelEditAdminUser() {
 }
 
 function renderAdminHierarchySection(role) {
-  const users = semuaDataAdminUser.filter(item => item.role === role)
-    .sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" }));
+  const users = getAdminUsersByRole(role);
   return `
     <article class="dashboard-card-lite admin-role-summary-card">
       <span class="dashboard-card-label">${escapeAdminHtml(role)}</span>

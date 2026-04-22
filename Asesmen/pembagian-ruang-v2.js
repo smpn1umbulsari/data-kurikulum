@@ -10,6 +10,12 @@ let asesmenSaveStateTimer = null;
 const asesmenStudentLevelCache = new Map();
 const asesmenUnassignedLevelCache = new Map();
 const asesmenOrderedStudentsCache = new Map();
+const asesmenPresensiIndexCache = new Map();
+const asesmenLevelRoomsCache = new Map();
+const asesmenRoomsCache = new Map();
+const asesmenDecoratedRoomsCache = new Map();
+let asesmenRoomUsageCache = null;
+let asesmenCombinedRoomMapCache = null;
 const createAsesmenLevelSettings = asesmenRuangStore?.createLevelSettings || ((mode = "setengah") => ({
   enabled: true,
   mode,
@@ -34,6 +40,16 @@ function invalidateAsesmenStudentCaches() {
   asesmenStudentLevelCache.clear();
   asesmenUnassignedLevelCache.clear();
   asesmenOrderedStudentsCache.clear();
+  asesmenPresensiIndexCache.clear();
+  invalidateAsesmenRoomCaches();
+}
+
+function invalidateAsesmenRoomCaches() {
+  asesmenLevelRoomsCache.clear();
+  asesmenRoomsCache.clear();
+  asesmenDecoratedRoomsCache.clear();
+  asesmenRoomUsageCache = null;
+  asesmenCombinedRoomMapCache = null;
 }
 
 function cloneAsesmenLevelSettings(settings) {
@@ -300,13 +316,39 @@ function isSameAsesmenSiswa(left, right) {
     && String(left?.kelasParts?.kelas || left?.kelas || "") === String(right?.kelasParts?.kelas || right?.kelas || "");
 }
 
+function getAsesmenStudentKey(siswa = {}) {
+  if (siswa.nipd) return `nipd:${String(siswa.nipd)}`;
+  if (siswa.nisn) return `nisn:${String(siswa.nisn)}`;
+  return `nama:${String(siswa.nama || "")}|kelas:${String(siswa.kelasParts?.kelas || siswa.kelas || "")}`;
+}
+
+function getAsesmenPresensiIndexByLevel(level) {
+  const cacheKey = String(level || "");
+  if (asesmenPresensiIndexCache.has(cacheKey)) return asesmenPresensiIndexCache.get(cacheKey);
+
+  const byClass = new Map();
+  getAsesmenStudentsByLevel(level).forEach(siswa => {
+    const kelas = siswa?.kelasParts?.kelas || "";
+    if (!kelas) return;
+    if (!byClass.has(kelas)) byClass.set(kelas, []);
+    byClass.get(kelas).push(siswa);
+  });
+
+  const indexByStudent = new Map();
+  byClass.forEach(students => {
+    [...students]
+      .sort(compareAsesmenSiswaDalamKelas)
+      .forEach((siswa, index) => {
+        indexByStudent.set(getAsesmenStudentKey(siswa), index + 1);
+      });
+  });
+  asesmenPresensiIndexCache.set(cacheKey, indexByStudent);
+  return indexByStudent;
+}
+
 function getAsesmenNomorPresensi(siswa) {
-  const kelas = siswa?.kelasParts?.kelas || "";
-  const classmates = getAsesmenStudentsByLevel(siswa?.kelasParts?.tingkat)
-    .filter(item => item.kelasParts.kelas === kelas)
-    .sort(compareAsesmenSiswaDalamKelas);
-  const index = classmates.findIndex(item => isSameAsesmenSiswa(item, siswa));
-  return String(index >= 0 ? index + 1 : 0).padStart(3, "0");
+  const presensi = getAsesmenPresensiIndexByLevel(siswa?.kelasParts?.tingkat).get(getAsesmenStudentKey(siswa)) || 0;
+  return String(presensi).padStart(3, "0");
 }
 
 function getAsesmenNomorUjian(siswa) {
@@ -377,6 +419,8 @@ function expandAsesmenRange(startValue, endValue) {
 
 function getAsesmenLevelRooms(level) {
   if (!isAsesmenLevelApplied(level)) return [];
+  const cacheKey = String(level);
+  if (asesmenLevelRoomsCache.has(cacheKey)) return asesmenLevelRoomsCache.get(cacheKey);
 
   const seen = new Set();
   const rooms = [];
@@ -388,10 +432,12 @@ function getAsesmenLevelRooms(level) {
       }
     });
   });
+  asesmenLevelRoomsCache.set(cacheKey, rooms);
   return rooms;
 }
 
 function getAsesmenRoomUsage() {
+  if (asesmenRoomUsageCache) return asesmenRoomUsageCache;
   const usage = new Map();
   [7, 8, 9].forEach(level => {
     getAsesmenLevelRooms(level).forEach(roomNumber => {
@@ -399,6 +445,7 @@ function getAsesmenRoomUsage() {
       usage.get(roomNumber).push(String(level));
     });
   });
+  asesmenRoomUsageCache = usage;
   return usage;
 }
 
@@ -464,18 +511,29 @@ function buildManualAsesmenRooms(level) {
 
 function getAsesmenRooms(level) {
   if (!isAsesmenLevelApplied(level)) return [];
+  const cacheKey = String(level);
+  if (asesmenRoomsCache.has(cacheKey)) return asesmenRoomsCache.get(cacheKey);
 
   const settings = asesmenLevelSettings[level];
-  if (settings.mode === "manual") return buildManualAsesmenRooms(level);
-  if (settings.mode === "20siswa") return buildTwentyStudentsAsesmenRooms(level);
-  return buildSetengahAsesmenRooms(level);
+  const rooms = settings.mode === "manual"
+    ? buildManualAsesmenRooms(level)
+    : settings.mode === "20siswa"
+      ? buildTwentyStudentsAsesmenRooms(level)
+      : buildSetengahAsesmenRooms(level);
+  asesmenRoomsCache.set(cacheKey, rooms);
+  return rooms;
 }
 
 function getDecoratedAsesmenRoomsByLevel(level) {
-  return decorateAsesmenRooms(level, getAsesmenRooms(level));
+  const cacheKey = String(level);
+  if (asesmenDecoratedRoomsCache.has(cacheKey)) return asesmenDecoratedRoomsCache.get(cacheKey);
+  const rooms = decorateAsesmenRooms(level, getAsesmenRooms(level));
+  asesmenDecoratedRoomsCache.set(cacheKey, rooms);
+  return rooms;
 }
 
 function getCombinedAsesmenRoomMap() {
+  if (asesmenCombinedRoomMapCache) return asesmenCombinedRoomMapCache;
   const roomMap = new Map();
   [7, 8, 9].forEach(level => {
     getDecoratedAsesmenRoomsByLevel(level).forEach(room => {
@@ -483,7 +541,8 @@ function getCombinedAsesmenRoomMap() {
       roomMap.get(room.roomNumber).push(room);
     });
   });
-  return new Map(Array.from(roomMap.entries()).sort((a, b) => Number(a[0]) - Number(b[0])));
+  asesmenCombinedRoomMapCache = new Map(Array.from(roomMap.entries()).sort((a, b) => Number(a[0]) - Number(b[0])));
+  return asesmenCombinedRoomMapCache;
 }
 
 function setJumlahRuangUjian(value) {
@@ -508,6 +567,7 @@ function applyJumlahRuangUjian() {
     syncAsesmenManualCountLength(asesmenLevelSettings[level]);
     syncAsesmenManualCountLength(draftAsesmenLevelSettings[level]);
   });
+  invalidateAsesmenRoomCaches();
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
   if (typeof showFloatingToast === "function") showFloatingToast("Pengaturan telah diset");
@@ -519,6 +579,7 @@ function setAsesmenLevelEnabled(level, enabled) {
   draftAsesmenLevelSettings[normalizedLevel].enabled = safeEnabled;
   asesmenLevelSettings[normalizedLevel].enabled = safeEnabled;
   if (!safeEnabled) appliedAsesmenLevels.delete(normalizedLevel);
+  invalidateAsesmenRoomCaches();
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
   if (typeof showFloatingToast === "function") {
@@ -585,7 +646,7 @@ function openAsesmenManualCountDialog(level) {
   }).then(result => {
     if (!result.isConfirmed || !Array.isArray(result.value)) return;
     draftAsesmenLevelSettings[levelKey].manualCounts = result.value;
-    invalidateAsesmenStudentCaches();
+    invalidateAsesmenRoomCaches();
     saveAsesmenPembagianRuangState();
     renderPembagianRuangState();
   });
@@ -594,6 +655,7 @@ function openAsesmenManualCountDialog(level) {
 function applyAsesmenLevelSettings(level) {
   if (draftAsesmenLevelSettings[level].enabled === false) {
     appliedAsesmenLevels.delete(String(level));
+    invalidateAsesmenRoomCaches();
     saveAsesmenPembagianRuangState();
     renderPembagianRuangState();
     return;
@@ -602,6 +664,7 @@ function applyAsesmenLevelSettings(level) {
   draftAsesmenLevelSettings[level].mode = pembagianKelasAsesmen;
   asesmenLevelSettings[level] = cloneAsesmenLevelSettings(draftAsesmenLevelSettings[level]);
   appliedAsesmenLevels.add(String(level));
+  invalidateAsesmenRoomCaches();
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
 }
@@ -1900,7 +1963,7 @@ function renderAsesmenRoomArrangement() {
   container.innerHTML = `
     <div class="asesmen-combined-room-list">
       ${Array.from(roomMap.entries()).map(([roomNumber, entries]) => {
-        const sortedEntries = entries.sort((a, b) => Number(b.level) - Number(a.level));
+        const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
         const warning = sortedEntries.length > 2
           ? `<div class="asesmen-warning">Ruang ini dipakai ${sortedEntries.length} jenjang. Maksimal dua jenjang.</div>`
           : "";

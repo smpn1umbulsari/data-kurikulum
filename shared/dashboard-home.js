@@ -86,6 +86,9 @@
   }
 
   async function loadRecentPresenceRows(limit = 25) {
+    if (global.DashboardHomeData?.loadPresenceRows) {
+      return global.DashboardHomeData.loadPresenceRows(limit);
+    }
     const documentsApi = getDocumentsApi();
     if (documentsApi?.client?.from && documentsApi.table) {
       const { data, error } = await documentsApi.client
@@ -312,7 +315,7 @@
         ? onlineUsers.map(item => `
             <span class="dashboard-online-chip">
               <strong>${escapeHtml(getPresenceUserLabel(item))}</strong>
-              <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} · ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
+              <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} - ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
             </span>
           `).join("")
         : "<span>Belum ada user yang sedang online.</span>");
@@ -992,28 +995,45 @@
     const setText = (id, value) => global.AppDom?.setText?.(id, value);
     try {
       const documentsApi = getDocumentsApi();
-      const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
-      const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiSnap, tugasSnap, presenceRows] = await Promise.all([
-        documentsApi.collection("guru").get(),
-        getQuery("siswa").get(),
-        getQuery("kelas").get(),
-        documentsApi.collection("mapel").get(),
-        documentsApi.collection("mengajar").get(),
-        documentsApi.collection("mapel_bayangan").get(),
-        documentsApi.collection("mengajar_bayangan").get(),
-        documentsApi.collection("nilai").get(),
-        documentsApi.collection("tugas_tambahan").get(),
-        loadRecentPresenceRows(25)
-      ]);
-      const guru = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const kelas = kelasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mapelAsli = mapelAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mengajarAsli = mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mapelBayangan = mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mengajarBayangan = mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const nilai = nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
-      const tugas = tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = global.DashboardHomeData?.loadHomeCollections
+        ? await global.DashboardHomeData.loadHomeCollections({ context, getCollectionQuery: options.getCollectionQuery })
+        : await (async () => {
+            const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
+            const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiSnap, tugasSnap, presenceRows] = await Promise.all([
+              documentsApi.collection("guru").get(),
+              getQuery("siswa").get(),
+              getQuery("kelas").get(),
+              documentsApi.collection("mapel").get(),
+              documentsApi.collection("mengajar").get(),
+              documentsApi.collection("mapel_bayangan").get(),
+              documentsApi.collection("mengajar_bayangan").get(),
+              documentsApi.collection("nilai").get(),
+              documentsApi.collection("tugas_tambahan").get(),
+              loadRecentPresenceRows(25)
+            ]);
+            return {
+              guru: guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              siswa: siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              kelas: kelasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              mapelAsli: mapelAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              mengajarAsli: mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              mapelBayangan: mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              mengajarBayangan: mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              nilai: nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              tugas: tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+              presenceRows
+            };
+          })();
+      const guru = data.guru || [];
+      const siswa = data.siswa || [];
+      const kelas = data.kelas || [];
+      const mapelAsli = data.mapelAsli || [];
+      const mengajarAsli = data.mengajarAsli || [];
+      const mapelBayangan = data.mapelBayangan || [];
+      const mengajarBayangan = data.mengajarBayangan || [];
+      const nilai = (data.nilai || []).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
+      const tugas = data.tugas || [];
+      const presenceRows = data.presenceRows || [];
       const onlineUsers = presenceRows
         .filter(item => isPresenceOnline(item))
         .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
@@ -1077,7 +1097,7 @@
           ? onlineUsers.map(item => `
               <span class="dashboard-online-chip">
                 <strong>${escapeHtml(getPresenceUserLabel(item))}</strong>
-                <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} · ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
+                <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} - ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
               </span>
             `).join("")
           : "<span>Belum ada user yang sedang online.</span>");
