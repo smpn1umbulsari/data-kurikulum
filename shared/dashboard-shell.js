@@ -1,5 +1,23 @@
 (function initDashboardShell(global) {
   const shell = global.DashboardShell || {};
+  const WALI_PAGE_IDS = ["nilai-rapor", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan"];
+
+  shell.setWaliAccessState = function setWaliAccessState(hasAccess, classes = []) {
+    global.GuruSpenturiWaliAccess = {
+      hasAccess: Boolean(hasAccess),
+      classes: Array.isArray(classes) ? classes.filter(Boolean) : [],
+      updatedAt: Date.now()
+    };
+    global.document?.documentElement?.classList.toggle("guru-has-wali", Boolean(hasAccess));
+    global.document?.querySelectorAll?.(".home-wali-action").forEach(button => {
+      button.hidden = !hasAccess;
+      button.style.display = hasAccess ? "" : "none";
+    });
+  };
+
+  shell.hasWaliAccess = function hasWaliAccess() {
+    return Boolean(global.GuruSpenturiWaliAccess?.hasAccess);
+  };
   const storage = global.AppUtils || {};
   let presenceHeartbeatTimer = null;
   let presenceVisibilityHandler = null;
@@ -289,11 +307,12 @@
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (shell.canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
       }
-      return ["nilai-input-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "wali-rekap-nilai", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+      if (WALI_PAGE_IDS.includes(page)) return shell.hasWaliAccess();
+      return ["nilai-input-guru", "nilai-input-semester-guru", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     }
-    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-guru", "rekap-nilai", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     return false;
   };
@@ -307,6 +326,7 @@
 
     const waliMenu = doc.getElementById("menuWaliKelas");
     const nilaiMenu = doc.getElementById("menuNilaiGuru");
+    const nilaiGuruInputBtn = doc.getElementById("menuNilaiGuruInputBtn");
     const siswaKoordinatorMenu = doc.getElementById("menuSiswaKoordinator");
     const kurikulumKoordinatorMenu = doc.getElementById("menuKurikulumKoordinator");
     const setMenuDisplay = (menu, shouldShow) => setDisplay(menu, shouldShow);
@@ -318,6 +338,7 @@
 
     if (!waliMenu) return Promise.resolve();
     if (["admin", "superadmin"].includes(role)) {
+      shell.setWaliAccessState(true);
       setMenuDisplay(waliMenu, true);
       return Promise.resolve();
     }
@@ -332,33 +353,48 @@
         ownWaliPromise
       ])
         .then(([levels, waliSnapshot]) => {
-          setMenuDisplay(waliMenu, levels.length > 0 || !waliSnapshot.empty);
+          const hasWaliMenuAccess = levels.length > 0 || !waliSnapshot.empty;
+          shell.setWaliAccessState(hasWaliMenuAccess);
+          setMenuDisplay(waliMenu, hasWaliMenuAccess);
         })
         .catch(() => {
+          shell.setWaliAccessState(false);
           setMenuDisplay(waliMenu, false);
         });
     }
 
+    shell.setWaliAccessState(false);
     setMenuDisplay(waliMenu, false);
     if (role === "guru") {
       const getCollectionQuery = options.getCollectionQuery;
       const kodeGuru = String((typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser()).kode_guru || "").trim();
-      if (!kodeGuru || typeof getCollectionQuery !== "function") return Promise.resolve();
+      if (!kodeGuru || typeof getCollectionQuery !== "function") {
+        shell.setWaliAccessState(false);
+        return Promise.resolve();
+      }
 
       return Promise.all([
         getCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get(),
-        shell.refreshCoordinatorLevels()
+        shell.refreshCoordinatorLevels(),
+        typeof global.loadGuruNilaiInputAccessSetting === "function"
+          ? global.loadGuruNilaiInputAccessSetting(true)
+          : Promise.resolve(typeof global.isGuruPtsInputActive === "function" ? global.isGuruPtsInputActive() : true)
       ])
         .then(([snapshot, coordinatorLevels]) => {
           const hasCoordinatorAccess = Array.isArray(coordinatorLevels) && coordinatorLevels.length > 0;
-          setMenuDisplay(waliMenu, !snapshot.empty || hasCoordinatorAccess);
+          const hasWaliAccess = !snapshot.empty;
+          shell.setWaliAccessState(hasWaliAccess || hasCoordinatorAccess);
+          setMenuDisplay(waliMenu, hasWaliAccess || hasCoordinatorAccess);
           setMenuDisplay(nilaiMenu, true);
+          setMenuDisplay(nilaiGuruInputBtn, true);
           setMenuDisplay(siswaKoordinatorMenu, hasCoordinatorAccess);
           setMenuDisplay(kurikulumKoordinatorMenu, hasCoordinatorAccess);
         })
         .catch(() => {
+          shell.setWaliAccessState(false);
           setMenuDisplay(waliMenu, false);
           setMenuDisplay(nilaiMenu, true);
+          setMenuDisplay(nilaiGuruInputBtn, true);
           setMenuDisplay(siswaKoordinatorMenu, false);
           setMenuDisplay(kurikulumKoordinatorMenu, false);
         });

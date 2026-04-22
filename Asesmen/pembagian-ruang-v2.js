@@ -29,6 +29,27 @@ const draftAsesmenLevelSettings = {
 };
 const appliedAsesmenLevels = new Set();
 const ASESMEN_STORAGE_KEY = "asesmenPembagianRuangV2";
+const ASESMEN_PAGE_TAB_KEY = "asesmenKepersetaanTab";
+const ASESMEN_PAGE_TABS = [
+  { key: "pembagian-ruang", label: "Pembagian Ruang" },
+  { key: "administrasi", label: "Administrasi" }
+];
+let asesmenPageTab = normalizeAsesmenPageTab(localStorage.getItem(ASESMEN_PAGE_TAB_KEY) || "pembagian-ruang");
+
+function normalizeAsesmenPageTab(tab) {
+  return ASESMEN_PAGE_TABS.some(item => item.key === tab) ? tab : "pembagian-ruang";
+}
+
+function setAsesmenPageTab(tab, options = {}) {
+  asesmenPageTab = normalizeAsesmenPageTab(tab);
+  localStorage.setItem(ASESMEN_PAGE_TAB_KEY, asesmenPageTab);
+  if (options.skipReload) return;
+  if (asesmenPageTab === "administrasi") {
+    loadRealtimeAdministrasiAsesmen();
+    return;
+  }
+  loadRealtimePembagianRuang();
+}
 
 function invalidateAsesmenStudentCaches() {
   asesmenStudentLevelCache.clear();
@@ -650,14 +671,14 @@ function loadRealtimeAdministrasiAsesmen() {
 function renderPembagianRuangState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderPembagianRuangPage();
-  renderAllAsesmenPreviews();
+  content.innerHTML = renderKepersetaanPage();
+  if (asesmenPageTab === "pembagian-ruang") renderAllAsesmenPreviews();
 }
 
 function renderAdministrasiAsesmenState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderAdministrasiAsesmenPage();
+  content.innerHTML = renderKepersetaanPage();
 }
 
 function setAdministrasiAsesmenSetting(key, value) {
@@ -781,6 +802,27 @@ function renderAdministrasiAsesmenPage() {
 function renderAllAsesmenPreviews() {
   [7, 8, 9].forEach(level => renderAsesmenPreview(level));
   renderAsesmenRoomArrangement();
+}
+
+function renderKepersetaanPage() {
+  const isAdministrasi = asesmenPageTab === "administrasi";
+  return `
+    <div class="kepangawasan-page">
+      <div class="kepangawasan-tabbar" role="tablist" aria-label="Menu Kepersetaan">
+        ${ASESMEN_PAGE_TABS.map(item => `
+          <button
+            type="button"
+            class="kepangawasan-tab ${item.key === asesmenPageTab ? "active" : ""}"
+            aria-selected="${item.key === asesmenPageTab ? "true" : "false"}"
+            onclick="setAsesmenPageTab('${item.key}')"
+          >
+            ${item.label}
+          </button>
+        `).join("")}
+      </div>
+      ${isAdministrasi ? renderAdministrasiAsesmenPage() : renderPembagianRuangPage()}
+    </div>
+  `;
 }
 
 function renderAsesmenManualInputs(level) {
@@ -1144,6 +1186,25 @@ function getDenahSeatData(entries = [], seatNumber) {
   }));
 }
 
+function getKepangawasanExamType() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem("kepangawasanAsesmenState") || "{}");
+    const examType = String(parsed?.examType || "").trim();
+    return examType || "Asesmen Sumatif";
+  } catch {
+    return "Asesmen Sumatif";
+  }
+}
+
+function getActiveSchoolYearLabel() {
+  if (typeof window.getActiveSemesterContext === "function") {
+    const active = window.getActiveSemesterContext() || {};
+    const tahun = String(active?.tahun || "").trim();
+    if (tahun) return tahun;
+  }
+  return "2024/2025";
+}
+
 function renderDenahSeat(entryData, seatNumber, direction) {
   const topEntry = entryData[0] || { level: "", student: null };
   const bottomEntry = entryData[1] || { level: "", student: null };
@@ -1153,9 +1214,9 @@ function renderDenahSeat(entryData, seatNumber, direction) {
   const bottomLabel = bottomName ? bottomName : "&nbsp;";
   const seatModifier = !topName && !bottomName ? " denah-seat-empty" : "";
   const arrowMap = {
-    left: "←",
-    right: "→",
-    up: "↑",
+    left: "\u2190",
+    right: "\u2192",
+    up: "\u2191",
     start: "AWAL"
   };
   const arrowText = arrowMap[direction] || "";
@@ -1195,28 +1256,30 @@ function renderDenahGrid(entries = []) {
 }
 
 function renderDenahLegend(entries = []) {
-  const sortedLevels = [...new Set(entries.map(entry => String(entry.level || "")).filter(Boolean))].sort();
-  const firstLevel = sortedLevels[0] || "7";
-  const secondLevel = sortedLevels[1] || "8";
+  const sortedLevels = [...new Set(entries.map(entry => String(entry.level || "").trim()).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a));
+  const firstLevel = sortedLevels[0] || "";
+  const secondLevel = sortedLevels[1] || "";
   return `
     <div class="denah-legend">
       <strong>Ket:</strong>
       <div class="denah-legend-row">
-        <span class="denah-legend-box denah-legend-top"></span>
-        <span>: KELAS ${escapeAsesmenHtml(firstLevel)}</span>
-      </div>
-      <div class="denah-legend-row">
-        <span class="denah-legend-box denah-legend-bottom"></span>
-        <span>: KELAS ${escapeAsesmenHtml(secondLevel)}</span>
+        <span class="denah-legend-stack">
+          <span class="denah-legend-box denah-legend-top"></span>
+          <span class="denah-legend-box denah-legend-bottom"></span>
+        </span>
+        <span class="denah-legend-labels">
+          <span>${firstLevel ? `: KELAS ${escapeAsesmenHtml(firstLevel)}` : "&nbsp;"}</span>
+          <span>${secondLevel ? `: KELAS ${escapeAsesmenHtml(secondLevel)}` : "&nbsp;"}</span>
+        </span>
       </div>
     </div>
   `;
 }
 
 function renderDenahPesertaPage(roomNumber, entries) {
-  const judul = getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "Asesmen Sumatif";
-  const keterangan = getAdministrasiAsesmenSetting("Keterangan", "Akhir Semester") || "Akhir Semester";
-  const tahunPelajaran = getAdministrasiAsesmenSetting("TahunPelajaran", "2024/2025") || "2024/2025";
+  const jenisUjian = getKepangawasanExamType();
+  const tahunPelajaran = getActiveSchoolYearLabel();
   const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
   return `
@@ -1227,8 +1290,7 @@ function renderDenahPesertaPage(roomNumber, entries) {
             <img src="${escapeAsesmenHtml(logoSekolahUrl)}" alt="Logo Sekolah">
             <div class="denah-side-title">
               <strong>DENAH DUDUK PESERTA</strong>
-              <strong>${escapeAsesmenHtml(judul)}</strong>
-              <strong>${escapeAsesmenHtml(keterangan)}</strong>
+              <strong>${escapeAsesmenHtml(jenisUjian)}</strong>
               <strong>${escapeAsesmenHtml(tahunPelajaran)}</strong>
             </div>
           </div>
@@ -1270,122 +1332,146 @@ function getDenahPesertaPrintHtml() {
         .denah-page:last-child { page-break-after: auto; break-after: auto; }
         .denah-sheet {
           height: calc(210mm - 12mm);
-          border: 1.2px solid #3f3f46;
+          border: 1.3px solid #111827;
           display: grid;
-          grid-template-columns: 30% 70%;
+          grid-template-columns: 27.5% 72.5%;
           overflow: hidden;
+          background: #ffffff;
         }
         .denah-side {
-          border-right: 1.2px solid #3f3f46;
-          padding: 5mm 4mm 4mm;
+          border-right: 1.3px solid #111827;
+          padding: 4.2mm 3.6mm 3.4mm;
           display: grid;
           grid-template-rows: auto 1fr auto;
-          gap: 4mm;
+          gap: 3.1mm;
         }
         .denah-side-head {
           display: grid;
-          grid-template-columns: 54px minmax(0, 1fr);
-          gap: 10px;
+          grid-template-columns: 50px minmax(0, 1fr);
+          gap: 8px;
           align-items: start;
         }
         .denah-side-head img {
-          width: 48px;
-          height: 48px;
+          width: 42px;
+          height: 42px;
           object-fit: contain;
+          margin-top: 4px;
         }
         .denah-side-title {
           display: grid;
-          gap: 2px;
-          padding-left: 10px;
-          border-left: 2px solid #111827;
-          font-size: 9.8px;
-          line-height: 1.25;
+          gap: 4px;
+          padding: 4px 0 0 9px;
+          border-left: 2.2px solid #111827;
+          font-size: 15px;
+          line-height: 1.2;
+          text-transform: uppercase;
+        }
+        .denah-side-title strong:first-child {
+          font-size: 18px;
         }
         .denah-room-panel {
           width: 100%;
-          border: 1.2px solid #3f3f46;
+          border: 1.3px solid #111827;
           display: grid;
           grid-template-rows: auto 1fr;
           align-self: center;
           overflow: hidden;
         }
         .denah-room-label {
-          padding: 5mm 3mm 4mm;
-          border-bottom: 1.2px solid #3f3f46;
+          padding: 6mm 3mm 5mm;
+          border-bottom: 1.3px solid #111827;
           text-align: center;
-          font-size: 12px;
+          font-size: 24px;
           font-weight: 800;
         }
         .denah-room-value {
-          min-height: 65mm;
+          min-height: 66mm;
           display: grid;
           place-items: center;
-          font-size: 148px;
+          font-size: 150px;
           font-weight: 900;
-          line-height: 0.82;
-          letter-spacing: -6px;
-          padding: 0 1mm 2mm;
+          line-height: 0.8;
+          letter-spacing: -5px;
+          padding: 2mm 1mm 2mm;
           overflow: hidden;
         }
         .denah-legend {
           display: grid;
-          gap: 3mm;
-          font-size: 9px;
+          gap: 2mm;
+          font-size: 18px;
           font-weight: 700;
+        }
+        .denah-legend > strong {
+          font-size: 18px;
         }
         .denah-legend-row {
           display: flex;
-          align-items: center;
-          gap: 8px;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .denah-legend-stack {
+          display: grid;
+          width: 78px;
+          border: 1px solid #111827;
         }
         .denah-legend-box {
-          width: 58px;
+          width: 100%;
           height: 18px;
-          border: 1px solid #3f3f46;
           display: inline-block;
         }
         .denah-legend-top { background: #ffffff; }
-        .denah-legend-bottom { background: #e7e7e7; }
+        .denah-legend-bottom {
+          background: #e1e1e1;
+          border-top: 1px solid #111827;
+        }
+        .denah-legend-labels {
+          display: grid;
+          gap: 12px;
+          padding-top: 2px;
+          font-size: 18px;
+          line-height: 1;
+        }
         .denah-main {
-          padding: 4mm 4mm 3mm;
+          padding: 3.4mm 3.4mm 3mm;
           display: grid;
         }
         .denah-grid {
           display: grid;
           grid-template-rows: repeat(5, 1fr) auto;
-          gap: 2.6mm;
+          gap: 2.35mm;
           height: 100%;
         }
         .denah-grid-row {
           display: grid;
           grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 2.5mm;
+          gap: 2.35mm;
           align-items: center;
         }
         .denah-seat-wrap {
           display: grid;
-          gap: 0.8mm;
+          gap: 0.55mm;
           justify-items: center;
         }
         .denah-seat {
           width: 100%;
           min-width: 0;
-          border: 1.1px solid #3f3f46;
+          border: 1.25px solid #111827;
           display: grid;
-          grid-template-columns: 30px minmax(0, 1fr);
+          grid-template-columns: 26px minmax(0, 1fr);
           background: #ffffff;
           overflow: hidden;
-          height: 31mm;
+          height: 28.2mm;
         }
         .denah-seat-empty {
-          opacity: 0.45;
+          opacity: 1;
         }
         .denah-seat-number {
-          border-right: 1.1px solid #3f3f46;
+          border-right: 1.25px solid #111827;
           display: grid;
           place-items: center;
-          font-size: 11.5px;
-          font-weight: 800;
+          font-size: 11px;
+          font-weight: 900;
+          background: #ffffff;
         }
         .denah-seat-body {
           display: grid;
@@ -1398,9 +1484,9 @@ function getDenahPesertaPrintHtml() {
           align-content: center;
           align-items: center;
           justify-items: center;
-          padding: 3px 5px;
+          padding: 3px 4px;
           text-align: center;
-          line-height: 1.1;
+          line-height: 1.04;
           min-height: 0;
           overflow: hidden;
         }
@@ -1410,49 +1496,51 @@ function getDenahPesertaPrintHtml() {
           max-height: 100%;
           overflow: hidden;
           align-self: center;
-          font-size: 13.2px;
+          font-size: 4.35mm;
           font-weight: 800;
           text-transform: uppercase;
-          line-height: 0.98;
+          line-height: 1.03;
           word-break: break-word;
           overflow-wrap: anywhere;
           -webkit-box-orient: vertical;
-          -webkit-line-clamp: 4;
+          -webkit-line-clamp: 3;
         }
         .denah-seat-top {
           background: #ffffff;
-          border-bottom: 1px solid #3f3f46;
+          border-bottom: 1.1px solid #111827;
         }
         .denah-seat-bottom {
-          background: #e7e7e7;
+          background: #e1e1e1;
         }
         .denah-arrow {
-          min-height: 14px;
-          color: #f97316;
-          font-size: 18px;
+          min-height: 15px;
+          color: #fb923c;
+          font-size: 22px;
           font-weight: 900;
-          line-height: 1;
+          line-height: 0.9;
           text-align: center;
+          text-shadow: 0 0 0 #c2410c;
         }
         .denah-arrow-start {
-          min-width: 48px;
-          padding: 2px 8px;
+          min-width: 58px;
+          padding: 2px 10px;
           border: 1px solid #c2410c;
           background: #fb923c;
           color: #ffffff;
-          font-size: 9px;
-          border-radius: 999px;
+          font-size: 10px;
+          border-radius: 0;
           letter-spacing: 0.3px;
         }
         .denah-board {
-          width: 62%;
+          width: 66%;
           margin: 0 auto;
-          border: 1.1px solid #3f3f46;
+          border: 1.2px solid #111827;
           background: #d4d4d4;
           text-align: center;
-          font-size: 10px;
+          font-size: 10.2px;
           font-weight: 800;
-          padding: 2px 0;
+          padding: 1px 0;
+          letter-spacing: 0.3px;
         }
         @page {
           size: A4 landscape;
@@ -1588,9 +1676,8 @@ function renderTempelKacaPage(roomNumber, entries) {
   const highEntry = sortedEntries[0] || null;
   const lowEntry = sortedEntries[1] || null;
   const singleEntryClass = lowEntry ? "" : " tempel-kaca-page-single";
-  const judul = getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "Asesmen Sumatif";
-  const keterangan = getAdministrasiAsesmenSetting("Keterangan", "Akhir Semester") || "Akhir Semester";
-  const tahunPelajaran = getAdministrasiAsesmenSetting("TahunPelajaran", "2024/2025") || "2024/2025";
+  const jenisUjian = getKepangawasanExamType();
+  const tahunPelajaran = getActiveSchoolYearLabel();
   const logoPemdaUrl = new URL("img/logo_pemda.png", window.location.href).href;
   const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
@@ -1610,8 +1697,7 @@ function renderTempelKacaPage(roomNumber, entries) {
           <div class="tempel-kop-divider"></div>
           <div class="tempel-kop-title">
             <span>DAFTAR PESERTA</span>
-            <span>${escapeAsesmenHtml(judul)}</span>
-            <span>${escapeAsesmenHtml(keterangan)}</span>
+            <span>${escapeAsesmenHtml(jenisUjian)}</span>
             <span>TAHUN PELAJARAN ${escapeAsesmenHtml(tahunPelajaran)}</span>
           </div>
         </div>
@@ -1667,111 +1753,181 @@ function getTempelKacaPrintHtml() {
           width: 100%;
           min-height: calc(210mm - 10mm);
           display: grid;
-          grid-template-columns: 42% 29% 29%;
-          gap: 8px;
-          border: 1.5px solid #4b5563;
+          grid-template-columns: 42.5% 28.75% 28.75%;
+          gap: 10px;
+          border: 1.2px solid #111827;
           padding: 10px;
           page-break-after: always;
           break-after: page;
           overflow: hidden;
+          background: #ffffff;
         }
         .tempel-kaca-page-single {
-          grid-template-columns: 42% 58%;
+          grid-template-columns: 42.5% 57.5%;
         }
         .tempel-kaca-page:last-child { page-break-after: auto; break-after: auto; }
         .tempel-room-id-panel,
         .tempel-student-panel {
           min-width: 0;
-          border: 1.5px solid #4b5563;
+          border: 1px solid #1f2937;
+          border-radius: 10px;
           overflow: hidden;
           background: #ffffff;
+          box-shadow: inset 0 0 0 0.45px rgba(148, 163, 184, 0.55);
         }
         .tempel-room-id-panel {
           display: grid;
           grid-template-rows: auto auto 1fr;
-          padding: 10px;
+          padding: 10px 14px 12px;
+          background:
+            linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 1) 18%);
         }
         .tempel-kop {
           display: grid;
-          gap: 10px;
+          gap: 12px;
           text-align: center;
+          font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
         }
         .tempel-kop-head {
           display: grid;
-          grid-template-columns: 72px minmax(0, 1fr) 72px;
+          grid-template-columns: 58px minmax(0, 1fr) 58px;
           gap: 8px;
           align-items: center;
         }
         .tempel-kop-head img {
-          width: 64px;
-          height: 64px;
+          width: 52px;
+          height: 52px;
           object-fit: contain;
           justify-self: center;
         }
         .tempel-kop-text {
           display: grid;
-          gap: 5px;
+          gap: 4px;
           text-align: center;
-          line-height: 1.18;
+          line-height: 1.14;
         }
         .tempel-kop-top {
-          font-size: 11px;
+          font-size: 10px;
           font-weight: 700;
-          letter-spacing: 0.4px;
+          letter-spacing: 0.35px;
+          color: #1f2937;
         }
         .tempel-kop-text strong {
-          font-size: 13px;
+          font-size: 16px;
           font-weight: 800;
+          letter-spacing: 0.25px;
         }
         .tempel-kop-text small {
-          font-size: 9px;
-          font-weight: 500;
+          font-size: 8px;
+          font-weight: 600;
+          color: #475569;
         }
         .tempel-kop-divider {
-          height: 2px;
-          background: #6b7280;
+          height: 1.5px;
+          background: linear-gradient(90deg, #0f172a 0%, #334155 48%, #0f172a 100%);
         }
         .tempel-kop-title {
           display: grid;
           gap: 8px;
           justify-items: center;
-          padding: 12px 8px 4px;
+          padding: 16px 8px 24px;
           text-align: center;
-          line-height: 1.24;
+          line-height: 1.2;
         }
         .tempel-kop-title span {
-          font-size: 12px;
+          font-size: 18px;
           font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.45px;
+          color: #111827;
+        }
+        .tempel-kop-title span:first-child {
+          font-size: 26px;
+          margin-bottom: 4px;
+          letter-spacing: 0.65px;
+        }
+        .tempel-kop-title span:nth-child(2),
+        .tempel-kop-title span:nth-child(3) {
+          font-size: 18px;
         }
         .tempel-room-label {
-          padding: 8px 0 12px;
+          padding: 6px 0 6px;
           text-align: center;
-          font-size: 16px;
+          font-size: 34px;
           font-weight: 800;
+          letter-spacing: 0.5px;
+          color: #0f172a;
         }
         .tempel-room-box {
           align-self: center;
           margin: 0 auto;
           width: 100%;
-          min-height: 330px;
+          min-height: 290px;
+          display: grid;
           place-items: center;
-          border: 1.5px solid #111827;
+          border: 1.15px solid #1f2937;
+          border-radius: 12px;
           text-align: center;
           padding: 12px;
+          background:
+            linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+          box-shadow: inset 0 0 0 0.8px rgba(148, 163, 184, 0.28);
         }
         .tempel-room-box strong {
           display: block;
-          font-size: 130px;
+          font-size: 190px;
           line-height: 0.9;
           font-weight: 900;
+          color: #020617;
+          letter-spacing: -2px;
         }
-        table { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; font-size: 11px; }
-        th, td { border: 1px solid #6b7280; padding: 2px 6px; vertical-align: middle; }
-        th { font-size: 10px; background: #ffffff; color: #111827; font-weight: 800; text-transform: uppercase; }
-        tbody tr { height: 5%; }
-        .tempel-no { width: 34px; text-align: center; }
-        .tempel-kelas { width: 58px; text-align: center; font-weight: 400; white-space: nowrap; }
-        .tempel-nama { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+        table {
+          width: 100%;
+          height: 100%;
+          border-collapse: collapse;
+          table-layout: fixed;
+          font-size: 12px;
+          font-family: "Segoe UI", "Trebuchet MS", Arial, sans-serif;
+        }
+        th, td {
+          border: 1px solid #334155;
+          padding: 3px 7px;
+          vertical-align: middle;
+        }
+        th {
+          font-size: 10px;
+          background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+          color: #0f172a;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.35px;
+          height: 28px;
+        }
+        tbody tr {
+          height: 24px;
+          background: #ffffff;
+        }
+        tbody tr:nth-child(even) {
+          background: #fbfdff;
+        }
+        .tempel-no { width: 26px; text-align: center; }
+        .tempel-kelas {
+          width: 40px;
+          text-align: center;
+          font-weight: 800;
+          font-size: 12px;
+          color: #1e3a8a;
+          white-space: nowrap;
+        }
+        .tempel-nama {
+          text-align: left;
+          font-size: 12px;
+          font-weight: 700;
+          color: #111827;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: clip;
+        }
         .tempel-empty { text-align: center; color: #6b7280; }
         .tempel-student-panel-empty { background: #ffffff; border-color: transparent; }
         @page { size: A4 landscape; margin: 5mm; }
@@ -1922,3 +2078,8 @@ function renderAsesmenRoomArrangement() {
 }
 
 window.setAsesmenLevelEnabled = setAsesmenLevelEnabled;
+window.setAsesmenPageTab = setAsesmenPageTab;
+window.renderKepersetaanPage = renderKepersetaanPage;
+window.exportTempelKacaPDF = exportTempelKacaPDF;
+window.exportDataMapPDF = exportDataMapPDF;
+window.exportDenahPesertaPDF = exportDenahPesertaPDF;

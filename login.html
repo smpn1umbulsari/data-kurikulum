@@ -2,12 +2,13 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Login Aplikasi Siswa</title>
+  <title>Login Guru Spenturi</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
-  <script src="shared/supabase-documents.js?v=20260414c"></script>
+  <script src="shared/supabase-documents.js?v=20260421d"></script>
   <script src="shared/maintenance-mode.js?v=20260411b"></script>
+  <link rel="stylesheet" href="mobile-redesign.css?v=20260422i">
 
   <style>
     body {
@@ -504,6 +505,81 @@
       .login-intro-shine {
         transition: none;
         animation: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        overflow-y: auto;
+        background:
+          radial-gradient(circle at 18% 0%, rgba(20, 184, 166, 0.22), transparent 36%),
+          radial-gradient(circle at 100% 8%, rgba(59, 130, 246, 0.18), transparent 34%),
+          linear-gradient(180deg, #f8fafc 0%, #ecfdf5 52%, #e0f2fe 100%);
+      }
+
+      .login-page {
+        min-height: 100dvh;
+        align-items: stretch;
+        padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .login-intro {
+        border-radius: 0 0 30px 30px;
+      }
+
+      .login-intro-panel {
+        width: min(100%, 420px);
+        padding: 32px 18px;
+      }
+
+      .login-intro-title {
+        font-size: clamp(32px, 10vw, 44px);
+      }
+
+      .login-intro-subtitle {
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .login-box {
+        align-self: center;
+        width: 100%;
+        max-width: 430px;
+        padding: 24px 18px 20px;
+        border-radius: 28px;
+        box-shadow: 0 24px 56px rgba(15, 23, 42, 0.16);
+      }
+
+      .login-form-logo {
+        width: 76px;
+      }
+
+      h2 {
+        font-size: 28px;
+      }
+
+      .login-subtitle {
+        margin-bottom: 18px;
+        line-height: 1.45;
+      }
+
+      input,
+      select,
+      button {
+        min-height: 50px;
+        border-radius: 16px;
+        font-size: 16px;
+      }
+
+      button {
+        font-weight: 800;
+        background: linear-gradient(135deg, #0f766e, #0891b2);
+        box-shadow: 0 16px 28px rgba(8, 145, 178, 0.24);
+      }
+
+      .password-toggle {
+        min-height: 36px;
+        border-radius: 12px;
       }
     }
   </style>

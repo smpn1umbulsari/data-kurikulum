@@ -9,7 +9,6 @@
       mengajar: false,
       guru: false,
       nilai: false,
-      kehadiran: false,
       rekap: false
     };
   }
@@ -75,14 +74,6 @@
           .filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
         options.onNilai?.(rows);
         options.markReady?.("nilai");
-        scheduleRender();
-      }),
-      kehadiran: documentsApi.collection("kehadiran_siswa").onSnapshot(snapshot => {
-        const rows = snapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
-        options.onKehadiran?.(rows);
-        options.markReady?.("kehadiran");
         scheduleRender();
       }),
       rekap: documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {

@@ -3,9 +3,11 @@ let semesterAdminState = {
   live_id: "20252026_genap",
   semester: "GENAP",
   tahun: "2025/2026",
+  guru_pts_input_active: true,
   list: []
 };
 let unsubscribeAdminSemesterSettings = null;
+const GURU_NILAI_INPUT_MODE_KEY = "guruNilaiInputMode";
 
 function getSemesterDocumentsApi() {
   return window.SupabaseDocuments;
@@ -104,6 +106,62 @@ function getSemesterSettingsList(settings = semesterAdminState) {
   return [getDefaultSemesterContext()];
 }
 
+function normalizeGuruNilaiInputActive(value) {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") return value !== "false";
+  return true;
+}
+
+function getStoredGuruNilaiInputMode() {
+  try {
+    return localStorage.getItem(GURU_NILAI_INPUT_MODE_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function storeGuruNilaiInputMode(mode) {
+  try {
+    localStorage.setItem(GURU_NILAI_INPUT_MODE_KEY, mode === "semester" ? "semester" : "pts");
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function getGuruNilaiInputMode(settings = semesterAdminState) {
+  const storedMode = getStoredGuruNilaiInputMode();
+  if (storedMode === "semester" || storedMode === "pts") return storedMode;
+  return normalizeGuruNilaiInputActive(settings?.guru_pts_input_active) ? "pts" : "semester";
+}
+
+function isGuruPtsInputActive(settings = semesterAdminState) {
+  return getGuruNilaiInputMode(settings) === "pts";
+}
+
+function syncSemesterFeatureFlags(data = {}) {
+  const guruPtsInputActive = normalizeGuruNilaiInputActive(data.guru_pts_input_active);
+  semesterAdminState = {
+    ...semesterAdminState,
+    ...data,
+    guru_pts_input_active: guruPtsInputActive
+  };
+  storeGuruNilaiInputMode(guruPtsInputActive ? "pts" : "semester");
+  return semesterAdminState;
+}
+
+async function loadGuruNilaiInputAccessSetting(force = false) {
+  if (!force && (getStoredGuruNilaiInputMode() === "pts" || getStoredGuruNilaiInputMode() === "semester")) {
+    return isGuruPtsInputActive();
+  }
+  try {
+    const snapshot = await getSemesterDocumentsApi().collection("settings").doc("semester").get();
+    syncSemesterFeatureFlags(snapshot.exists ? snapshot.data() : {});
+  } catch (error) {
+    console.warn("loadGuruNilaiInputAccessSetting failed", error);
+  }
+  return isGuruPtsInputActive();
+}
+
 function getNextSemesterContext(current = semesterAdminState) {
   const semester = normalizeSemesterText(current.semester);
   const tahun = normalizeTahunPelajaran(current.tahun || "2025/2026");
@@ -188,6 +246,23 @@ function renderAdminSemesterPage() {
           <h3>Data Per Semester</h3>
           <p>Siswa dan kelas disimpan di jalur semester masing-masing. Semester lama tidak ikut berubah saat semester baru dibuat.</p>
         </section>
+
+        <section class="semester-admin-panel">
+          <span class="dashboard-eyebrow">Akses Guru</span>
+          <h3>Input Nilai PTS</h3>
+          <p>Toggle ini khusus untuk role guru. Saat aktif, menu guru hanya menampilkan Input Nilai PTS. Saat nonaktif, menu guru hanya menampilkan Input Nilai Semester.</p>
+          <label class="kepangawasan-toggle" style="margin-top:8px;">
+            <input
+              type="checkbox"
+              id="guruPtsInputToggle"
+              ${isGuruPtsInputActive() ? "checked" : ""}
+              onchange="setGuruPtsInputActive(this.checked)"
+            >
+            <span class="kepangawasan-toggle-track"></span>
+            <span class="kepangawasan-toggle-label">Input Nilai PTS ${isGuruPtsInputActive() ? "Aktif" : "Nonaktif"}</span>
+          </label>
+          <small class="field-help-text">${isGuruPtsInputActive() ? "Guru membuka panel input PTS." : "Guru membuka panel input semester."}</small>
+        </section>
       </div>
 
       <div class="table-container mapel-table-container">
@@ -239,17 +314,55 @@ function loadRealtimeAdminSemester() {
   clearAdminSemesterListeners();
   unsubscribeAdminSemesterSettings = getSemesterDocumentsApi().collection("settings").doc("semester").onSnapshot(snapshot => {
     const data = snapshot.exists ? snapshot.data() : {};
-    semesterAdminState = {
-      ...semesterAdminState,
+    syncSemesterFeatureFlags({
       ...data,
       list: getSemesterSettingsList(data)
-    };
+    });
     if (!semesterAdminState.live_id) {
       semesterAdminState.live_id = getLiveSemesterId(semesterAdminState);
     }
     const content = document.getElementById("content");
     if (content) content.innerHTML = renderAdminSemesterPage();
   });
+}
+
+async function setGuruPtsInputActive(isActive) {
+  const nextValue = Boolean(isActive);
+  await getSemesterDocumentsApi().collection("settings").doc("semester").set({
+    guru_pts_input_active: nextValue,
+    updated_at: new Date()
+  }, { merge: true });
+  syncSemesterFeatureFlags({ guru_pts_input_active: nextValue });
+  const label = nextValue ? "Input Nilai PTS aktif untuk guru." : "Input Nilai Semester aktif untuk guru.";
+  const toggleLabel = document.querySelector("#guruPtsInputToggle + .kepangawasan-toggle-track + .kepangawasan-toggle-label");
+  if (toggleLabel) toggleLabel.textContent = `Input Nilai PTS ${nextValue ? "Aktif" : "Nonaktif"}`;
+  if (window.DashboardShell?.applyRoleAccess) {
+    window.DashboardShell.applyRoleAccess({
+      document,
+      getRole: () => {
+        try {
+          return JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
+        } catch {
+          return "";
+        }
+      },
+      getUser: () => {
+        try {
+          return JSON.parse(localStorage.getItem("appUser") || "{}");
+        } catch {
+          return {};
+        }
+      },
+      getCollectionQuery: typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery : undefined
+    });
+  }
+  if (typeof window.renderNilaiTableState === "function") {
+    window.renderNilaiTableState();
+  }
+  if (typeof window.renderNilaiPageState === "function") {
+    window.renderNilaiPageState();
+  }
+  Swal.fire("Disimpan", label, "success");
 }
 
 function clearAdminSemesterListeners() {
@@ -892,3 +1005,9 @@ async function clearAllWaliKelas() {
     await batch.commit();
   }
 }
+
+window.isGuruPtsInputActive = isGuruPtsInputActive;
+window.getGuruNilaiInputMode = getGuruNilaiInputMode;
+window.loadGuruNilaiInputAccessSetting = loadGuruNilaiInputAccessSetting;
+window.setGuruPtsInputActive = setGuruPtsInputActive;
+window.getActiveSemesterContext = getActiveSemesterContext;

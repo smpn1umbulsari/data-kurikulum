@@ -1,0 +1,23 @@
+{
+  "name": "guru-spenturi",
+  "version": "1.0.0",
+  "private": true,
+  "description": "APK Android Guru Spenturi untuk aplikasi kurikulum sekolah.",
+  "scripts": {
+    "prepare:web": "node scripts/prepare-capacitor-web.js",
+    "android:add": "npx cap add android",
+    "android:sync": "npm run prepare:web && npx cap sync android",
+    "android:open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.1.8",
+    "@supabase/supabase-js": "^2.104.0",
+    "sweetalert2": "^11.26.24"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

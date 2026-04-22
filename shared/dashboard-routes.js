@@ -38,8 +38,9 @@
         afterEnter: () => global.loadRealtimeKalenderPendidikan()
       },
       "pembagian-ruang": {
-        title: "Pembagian Ruang Ujian",
-        render: () => global.renderPembagianRuangPage(),
+        title: "Kepersetaan",
+        beforeEnter: () => typeof global.setAsesmenPageTab === "function" && global.setAsesmenPageTab("pembagian-ruang", { skipReload: true }),
+        render: () => global.renderKepersetaanPage(),
         afterEnter: () => global.loadRealtimePembagianRuang()
       },
       "kepangawasan": {
@@ -71,6 +72,14 @@
         title: "Backup dan Restore",
         render: () => global.renderAdminBackupPage()
       },
+      "admin-data-health": {
+        title: "Validasi Data",
+        render: () => global.renderDataHealthPage()
+      },
+      "admin-audit-log": {
+        title: "Riwayat Perubahan Data",
+        render: () => global.renderAdminAuditLogPage()
+      },
       "admin-quota": {
         title: "Quota Supabase",
         render: () => global.renderAdminQuotaPage(),
@@ -78,13 +87,77 @@
       },
       "nilai-input-guru": {
         title: "Input Nilai",
-        beforeEnter: () => typeof global.setNilaiAccessMode === "function" && global.setNilaiAccessMode("guru"),
+        beforeEnter: () => {
+          if (typeof global.setNilaiAccessMode === "function") global.setNilaiAccessMode("guru");
+          if (typeof global.setNilaiInputMode === "function") {
+            const guruInputMode = typeof global.getGuruNilaiInputMode === "function"
+              ? global.getGuruNilaiInputMode()
+              : "pts";
+            global.setNilaiInputMode(guruInputMode === "semester" ? "semester" : "pts");
+          }
+        },
         render: () => global.renderInputNilaiPage(),
         afterEnter: () => global.loadRealtimeInputNilai()
       },
       "nilai-input": {
         title: "Input Nilai",
-        beforeEnter: () => typeof global.setNilaiAccessMode === "function" && global.setNilaiAccessMode("koordinator"),
+        beforeEnter: () => {
+          if (typeof global.setNilaiAccessMode === "function") {
+            const role = typeof global.DashboardShell?.getCurrentAppRole === "function"
+              ? global.DashboardShell.getCurrentAppRole()
+              : "admin";
+            const canCoordinatorAccess = typeof global.DashboardShell?.canUseCoordinatorAccess === "function"
+              ? global.DashboardShell.canUseCoordinatorAccess()
+              : false;
+            global.setNilaiAccessMode(
+              role === "koordinator" || (role === "guru" && canCoordinatorAccess)
+                ? "koordinator"
+                : "admin"
+            );
+          }
+          if (typeof global.setNilaiInputMode === "function") {
+            const nextMode = typeof global.resolveNilaiInputModeForCurrentRole === "function"
+              ? global.resolveNilaiInputModeForCurrentRole()
+              : "pts";
+            global.setNilaiInputMode(nextMode === "semester" ? "semester" : "pts");
+          }
+        },
+        render: () => global.renderInputNilaiPage(),
+        afterEnter: () => global.loadRealtimeInputNilai()
+      },
+      "nilai-input-semester-guru": {
+        title: "Input Nilai",
+        beforeEnter: () => {
+          if (typeof global.setNilaiAccessMode === "function") global.setNilaiAccessMode("guru");
+          if (typeof global.setNilaiInputMode === "function") {
+            const guruInputMode = typeof global.getGuruNilaiInputMode === "function"
+              ? global.getGuruNilaiInputMode()
+              : "semester";
+            global.setNilaiInputMode(guruInputMode === "semester" ? "semester" : "pts");
+          }
+        },
+        render: () => global.renderInputNilaiPage(),
+        afterEnter: () => global.loadRealtimeInputNilai()
+      },
+      "nilai-input-semester": {
+        title: "Input Nilai",
+        beforeEnter: () => {
+          if (typeof global.setNilaiAccessMode === "function") {
+            const role = typeof global.DashboardShell?.getCurrentAppRole === "function"
+              ? global.DashboardShell.getCurrentAppRole()
+              : "admin";
+            const canCoordinatorAccess = typeof global.DashboardShell?.canUseCoordinatorAccess === "function"
+              ? global.DashboardShell.canUseCoordinatorAccess()
+              : false;
+            global.setNilaiAccessMode(
+              role === "koordinator" || (role === "guru" && canCoordinatorAccess)
+                ? "koordinator"
+                : "admin"
+            );
+          }
+          if (typeof global.setNilaiInputMode === "function") global.setNilaiInputMode("semester");
+          if (typeof global.storeNilaiUiMode === "function") global.storeNilaiUiMode("semester");
+        },
         render: () => global.renderInputNilaiPage(),
         afterEnter: () => global.loadRealtimeInputNilai()
       },
@@ -110,8 +183,9 @@
         afterEnter: () => global.loadRealtimeRekapNilai()
       },
       "asesmen-administrasi": {
-        title: "Administrasi Asesmen",
-        render: () => global.renderAdministrasiAsesmenPage(),
+        title: "Kepersetaan",
+        beforeEnter: () => typeof global.setAsesmenPageTab === "function" && global.setAsesmenPageTab("administrasi", { skipReload: true }),
+        render: () => global.renderKepersetaanPage(),
         afterEnter: () => global.loadRealtimeAdministrasiAsesmen()
       },
       "generate-perangkat-pembelajaran": {

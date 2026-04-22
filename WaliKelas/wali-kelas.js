@@ -4,7 +4,6 @@ let semuaDataWaliMapel = [];
 let semuaDataWaliMengajar = [];
 let semuaDataWaliGuru = [];
 let semuaDataWaliNilai = [];
-let semuaDataWaliKehadiran = [];
 let semuaDataWaliKehadiranRekap = [];
 let unsubscribeWaliSiswa = null;
 let unsubscribeWaliKelas = null;
@@ -12,7 +11,6 @@ let unsubscribeWaliMapel = null;
 let unsubscribeWaliMengajar = null;
 let unsubscribeWaliGuru = null;
 let unsubscribeWaliNilai = null;
-let unsubscribeWaliKehadiran = null;
 let unsubscribeWaliKehadiranRekap = null;
 let unsubscribeWaliKelasBayanganSource = null;
 let waliKelasBayanganSourceByLevel = {};
@@ -24,7 +22,6 @@ let waliInitialReady = {
   mengajar: false,
   guru: false,
   nilai: false,
-  kehadiran: false,
   rekap: false
 };
 
@@ -266,9 +263,6 @@ function loadRealtimeWaliKelas(page) {
       onNilai: rows => {
         semuaDataWaliNilai = rows;
       },
-      onKehadiran: rows => {
-        semuaDataWaliKehadiran = rows;
-      },
       onRekap: rows => {
         semuaDataWaliKehadiranRekap = rows;
       },
@@ -291,7 +285,6 @@ function loadRealtimeWaliKelas(page) {
     unsubscribeWaliMengajar = unsubs.mengajar || null;
     unsubscribeWaliGuru = unsubs.guru || null;
     unsubscribeWaliNilai = unsubs.nilai || null;
-    unsubscribeWaliKehadiran = unsubs.kehadiran || null;
     unsubscribeWaliKehadiranRekap = unsubs.rekap || null;
     unsubscribeWaliKelasBayanganSource = unsubs.source || null;
     return;
@@ -305,7 +298,6 @@ function loadRealtimeWaliKelas(page) {
     mengajar: false,
     guru: false,
     nilai: false,
-    kehadiran: false,
     rekap: false
   };
   renderWaliKelasLoadingState();
@@ -345,13 +337,6 @@ function loadRealtimeWaliKelas(page) {
     waliInitialReady.nilai = true;
     render();
   });
-  unsubscribeWaliKehadiran = documentsApi.collection("kehadiran_siswa").onSnapshot(snapshot => {
-    semuaDataWaliKehadiran = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
-    waliInitialReady.kehadiran = true;
-    render();
-  });
   unsubscribeWaliKehadiranRekap = documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
     semuaDataWaliKehadiranRekap = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
@@ -373,7 +358,7 @@ function loadRealtimeWaliKelas(page) {
 }
 
 function clearWaliKelasListeners() {
-  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliGuru, unsubscribeWaliNilai, unsubscribeWaliKehadiran, unsubscribeWaliKehadiranRekap, unsubscribeWaliKelasBayanganSource].forEach(unsub => {
+  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliGuru, unsubscribeWaliNilai, unsubscribeWaliKehadiranRekap, unsubscribeWaliKelasBayanganSource].forEach(unsub => {
     if (unsub) unsub();
   });
   unsubscribeWaliSiswa = null;
@@ -382,14 +367,13 @@ function clearWaliKelasListeners() {
   unsubscribeWaliMengajar = null;
   unsubscribeWaliGuru = null;
   unsubscribeWaliNilai = null;
-  unsubscribeWaliKehadiran = null;
   unsubscribeWaliKehadiranRekap = null;
   unsubscribeWaliKelasBayanganSource = null;
 }
 
 function isWaliInitialDataReady(page = currentWaliKelasPage) {
   if (page === "kehadiran") {
-    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.kehadiran && waliInitialReady.rekap;
+    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.rekap;
   }
   if (page === "kelengkapan") {
     return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.mapel && waliInitialReady.mengajar && waliInitialReady.guru && waliInitialReady.nilai;
@@ -483,16 +467,6 @@ function renderWaliKelasActivePage(page) {
   }
 }
 
-function getWaliKehadiranDate() {
-  return document.getElementById("waliTanggalKehadiran")?.value || new Date().toISOString().slice(0, 10);
-}
-
-function makeWaliKehadiranDocId(date, kelas, nipd) {
-  const baseId = [date, kelas.replace(/\s+/g, ""), nipd].join("_");
-  const termId = typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
-  return termId === "legacy" ? baseId : `${termId}_${baseId}`;
-}
-
 function makeWaliKehadiranRekapDocId(kelas, nipd) {
   const baseId = [kelas.replace(/\s+/g, ""), String(nipd || "").trim()].join("_");
   const termId = typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
@@ -506,11 +480,6 @@ function getWaliActiveTermPayload() {
     semester: term.semester || "",
     tahun_pelajaran: term.tahun || ""
   };
-}
-
-function getWaliKehadiranStatus(date, kelas, nipd) {
-  const docId = makeWaliKehadiranDocId(date, kelas, nipd);
-  return semuaDataWaliKehadiran.find(item => item.id === docId)?.status || "";
 }
 
 function normalizeWaliRekapCount(value) {
@@ -533,15 +502,7 @@ function getWaliKehadiranCounts(kelas, nipd) {
       A: normalizeWaliRekapCount(rekap.a ?? rekap.A)
     };
   }
-  return semuaDataWaliKehadiran.reduce((result, item) => {
-    const itemKelas = getWaliKelasParts(item.kelas).kelas;
-    const itemNipd = String(item.nipd || "").trim();
-    const status = String(item.status || "").trim().toUpperCase();
-    if (itemKelas === targetKelas && itemNipd === targetNipd && ["S", "I", "A"].includes(status)) {
-      result[status] += 1;
-    }
-    return result;
-  }, { S: 0, I: 0, A: 0 });
+  return { S: 0, I: 0, A: 0 };
 }
 
 function getWaliRekapInput(rowIndex, field) {
@@ -669,53 +630,6 @@ async function saveWaliKehadiranRekap() {
     console.error(error);
     setWaliSavingState(false);
     Swal.fire("Gagal menyimpan", "Rekap kehadiran siswa belum berhasil disimpan.", "error");
-  }
-}
-
-function setWaliKehadiranDraft(nipd, status) {
-  const kelas = getSelectedWaliClass().kelas;
-  const date = getWaliKehadiranDate();
-  const docId = makeWaliKehadiranDocId(date, kelas, nipd);
-  const existingIndex = semuaDataWaliKehadiran.findIndex(item => item.id === docId);
-  const payload = { id: docId, tanggal: date, kelas, nipd, status };
-  if (existingIndex >= 0) semuaDataWaliKehadiran[existingIndex] = { ...semuaDataWaliKehadiran[existingIndex], ...payload };
-  else semuaDataWaliKehadiran.push(payload);
-  renderWaliKehadiranTable();
-}
-
-async function saveWaliKehadiran() {
-  const kelas = getSelectedWaliClass().kelas;
-  const date = getWaliKehadiranDate();
-  const students = getWaliStudentsByClass(kelas);
-  if (!kelas || students.length === 0) {
-    Swal.fire("Tidak ada siswa", "", "warning");
-    return;
-  }
-  try {
-    setWaliSavingState(true, "Menyimpan kehadiran...");
-    const documentsApi = getWaliDocumentsApi();
-    const batch = documentsApi.batch();
-    students.forEach(siswa => {
-      const status = getWaliKehadiranStatus(date, kelas, siswa.nipd);
-      if (!status) return;
-      batch.set(documentsApi.collection("kehadiran_siswa").doc(makeWaliKehadiranDocId(date, kelas, siswa.nipd)), {
-        ...getWaliActiveTermPayload(),
-        tanggal: date,
-        kelas,
-        nipd: siswa.nipd || "",
-        nama_siswa: siswa.nama || "",
-        status,
-        updated_by: getCurrentWaliUser().username || "",
-        updated_at: new Date()
-      }, { merge: true });
-    });
-    await batch.commit();
-    setWaliSavingState(false);
-    Swal.fire("Tersimpan", "Kehadiran siswa sudah disimpan.", "success");
-  } catch (error) {
-    console.error(error);
-    setWaliSavingState(false);
-    Swal.fire("Gagal menyimpan", "Kehadiran siswa belum berhasil disimpan.", "error");
   }
 }
 

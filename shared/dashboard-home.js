@@ -1,8 +1,78 @@
 (function initDashboardHome(global) {
   if (global.DashboardHome) return;
 
+  const HOME_CACHE_PREFIX = "guruSpenturiHomeSnapshot:v3";
+  let lastHomeLoadOptions = null;
+  let homeRefreshInFlight = null;
+
   function getDocumentsApi() {
     return global.SupabaseDocuments;
+  }
+
+  function getHomeCacheKey(context = {}) {
+    return [
+      HOME_CACHE_PREFIX,
+      String(context.role || "dashboard").toLowerCase(),
+      context.isKoordinator ? "koordinator" : context.isGuru ? "guru" : context.isAdmin ? "admin" : "other",
+      String(context.kodeGuru || "none").toLowerCase(),
+      Array.isArray(context.coordinatorLevels) ? context.coordinatorLevels.join("-") : ""
+    ].join(":");
+  }
+
+  function readHomeSnapshot(context = {}) {
+    try {
+      return JSON.parse(global.localStorage.getItem(getHomeCacheKey(context)) || "null");
+    } catch {
+      return null;
+    }
+  }
+
+  function captureHomeSnapshot(context = {}) {
+    try {
+      const nodes = [...global.document.querySelectorAll("[id^='home'], [id^='guruHome']")];
+      const values = nodes
+        .filter(node => node.id)
+        .map(node => ({
+          id: node.id,
+          html: node.innerHTML,
+          hidden: Boolean(node.hidden),
+          className: node.className || ""
+        }));
+      global.localStorage.setItem(getHomeCacheKey(context), JSON.stringify({
+        savedAt: new Date().toISOString(),
+        values
+      }));
+    } catch {
+      // Cache tampilan hanya optimasi; jangan ganggu dashboard kalau storage penuh.
+    }
+  }
+
+  function applyHomeSnapshot(context = {}) {
+    const snapshot = readHomeSnapshot(context);
+    if (!snapshot?.values?.length) return false;
+    snapshot.values.forEach(item => {
+      const node = global.document.getElementById(item.id);
+      if (!node) return;
+      node.innerHTML = item.html || "";
+      node.hidden = Boolean(item.hidden);
+      if (typeof item.className === "string") node.className = item.className;
+    });
+    const statusNode = global.document.getElementById("homeUpdatedAt");
+    if (statusNode && snapshot.savedAt) {
+      const savedAt = global.AppUtils?.formatDateTimeId
+        ? global.AppUtils.formatDateTimeId(snapshot.savedAt)
+        : new Date(snapshot.savedAt).toLocaleString("id-ID");
+      statusNode.innerHTML = `${statusNode.innerHTML} <span class="home-cache-badge">cache ${escapeHtml(savedAt)}</span>`;
+    }
+    return true;
+  }
+
+  function setHomeRefreshState(isRefreshing = false) {
+    global.document?.body?.classList.toggle("home-refreshing", Boolean(isRefreshing));
+    global.document?.querySelectorAll?.(".home-refresh-btn").forEach(button => {
+      button.disabled = Boolean(isRefreshing);
+      button.textContent = isRefreshing ? "Menyegarkan..." : "Refresh";
+    });
   }
 
   function escapeHtml(value) {
@@ -39,6 +109,94 @@
   function formatGuruName(guru, fallbackUser = {}) {
     if (guru && typeof global.formatNamaGuru === "function") return global.formatNamaGuru(guru);
     return guru?.nama || fallbackUser.nama || fallbackUser.guru_nama || fallbackUser.username || "Guru";
+  }
+
+  function getHomeActiveTermContext() {
+    if (typeof global.getActiveSemesterContext === "function") {
+      const context = global.getActiveSemesterContext() || {};
+      return {
+        id: String(context?.id || "legacy").trim() || "legacy",
+        semester: String(context?.semester || "").trim(),
+        tahun: String(context?.tahun || "").trim()
+      };
+    }
+    const stored = global.AppUtils?.getStorageJson
+      ? global.AppUtils.getStorageJson("appSemester", {})
+      : {};
+    return {
+      id: String(stored?.id || "legacy").trim() || "legacy",
+      semester: String(stored?.semester || "").trim(),
+      tahun: String(stored?.tahun || "").trim()
+    };
+  }
+
+  function normalizeHomeInvigilationDocPart(value = "") {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "x";
+  }
+
+  function getHomeInvigilationCardDocId(kodeGuru = "", termId = "") {
+    return `${normalizeHomeInvigilationDocPart(termId || "legacy")}__${normalizeHomeInvigilationDocPart(kodeGuru || "guru")}`;
+  }
+
+  async function loadHomeInvigilationCard(documentsApi, kodeGuru = "") {
+    const kode = String(kodeGuru || "").trim();
+    if (!kode || !documentsApi?.collection) return null;
+    const termContext = getHomeActiveTermContext();
+    const docId = getHomeInvigilationCardDocId(kode, termContext.id);
+    const snapshot = await documentsApi.collection("kepangawasan_kartu_guru").doc(docId).get();
+    if (!snapshot?.exists) return null;
+    const data = snapshot.data() || {};
+    if (String(data?.type || "").trim() !== "kartu_pengawas") return null;
+    return { id: snapshot.id, ...data };
+  }
+
+  function renderHomeInvigilationCard(card = null) {
+    if (!card) {
+      return `<div class="empty-panel">Admin belum mengirim kartu pengawas untuk semester aktif.</div>`;
+    }
+
+    const rows = Array.isArray(card.rows) ? card.rows : [];
+    const tableRows = rows.length
+      ? rows.map(row => `
+          <tr>
+            <td class="home-invigilator-day">${escapeHtml(String(row.hari || "-").toUpperCase())}</td>
+            <td class="home-invigilator-time">${escapeHtml(row.time_label || "-")}</td>
+            <td class="home-invigilator-mapel">${escapeHtml(row.mapel_short || row.mapel || "-")}</td>
+            <td class="home-invigilator-room">${escapeHtml(row.ruang_label || "-")}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="4" class="empty-cell">Belum ada jadwal pengawasan yang tersimpan.</td></tr>`;
+
+    return `
+      <div class="home-invigilator-meta">
+        <span><strong>Jenis Ujian</strong><b>${escapeHtml(String(card.exam_type || "-").toUpperCase())}</b></span>
+        <span><strong>Tahun Pelajaran</strong><b>${escapeHtml(card.tahun || "-")}</b></span>
+        <span><strong>Jadwal Aktif</strong><b>${escapeHtml(String(card.active_row_count || 0))}</b></span>
+      </div>
+      <div class="table-container home-invigilator-table-wrap">
+        <table class="mapel-table home-invigilator-table">
+          <thead>
+            <tr>
+              <th class="home-invigilator-day">Hari</th>
+              <th class="home-invigilator-time">Waktu</th>
+              <th class="home-invigilator-mapel">MAPEL</th>
+              <th class="home-invigilator-room">R</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function setHomeInvigilationHeroVisibility(hasCard = false) {
+    const panel = global.document?.getElementById("homeHeroInvigilationPanel");
+    if (!panel) return;
+    panel.classList.toggle("is-hidden", !hasCard);
   }
 
   function getTugasNames(assignment, tugasList) {
@@ -104,6 +262,17 @@
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
+  async function loadHomeNilaiRows(documentsApi, options = {}) {
+    if (!options.force && typeof documentsApi?.getPersistedCollectionRowsAsync === "function") {
+      const cachedRows = await documentsApi.getPersistedCollectionRowsAsync("nilai");
+      if (cachedRows.length) {
+        return cachedRows.map(row => ({ id: row.id, ...(row.data || {}) }));
+      }
+    }
+    const nilaiSnap = await documentsApi.collection("nilai").get();
+    return nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  }
+
   function renderMainHome() {
     return `
       <section class="dashboard-hero">
@@ -146,6 +315,7 @@
           <p id="guruHomeUpdatedAt">Memuat tugas mengajar, tugas tambahan, dan kelas wali.</p>
           <div class="dashboard-hero-actions">
             <button class="btn-secondary" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
+            <button class="btn-secondary home-offline-cta" data-native-only hidden onclick="prepareGuruOfflineData()">Siapkan Offline</button>
             <button class="btn-secondary" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
             <button class="btn-secondary" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
           </div>
@@ -157,6 +327,15 @@
         </div>
       </section>
       <section class="dashboard-grid">
+        <article class="dashboard-card-lite home-mobile-focus-card">
+          <span class="dashboard-card-label">Mode Smartphone</span>
+          <h3>Kerja cepat di HP</h3>
+          <div class="dashboard-mini-list">
+            <span><strong>1. Siapkan Offline</strong><b>saat internet aktif</b></span>
+            <span><strong>2. Input Nilai</strong><b>simpan draft saat offline</b></span>
+            <span><strong>3. Sinkronkan</strong><b>ketika online kembali</b></span>
+          </div>
+        </article>
         <article class="dashboard-card-lite home-teaching-panel">
           <div class="home-panel-head">
             <div>
@@ -169,7 +348,6 @@
         </article>
         <article class="dashboard-card-lite"><span class="dashboard-card-label">Tugas Tambahan</span><h3 id="guruHomeTugasCardCount">0 tugas</h3><div id="guruHomeTugasList" class="dashboard-mini-list"><span>Memuat tugas tambahan...</span></div></article>
         <article class="dashboard-card-lite"><span class="dashboard-card-label">Informasi Wali Kelas</span><h3 id="guruHomeWaliSummary">Bukan wali kelas</h3><div id="guruHomeWaliInfo" class="dashboard-mini-list"><span>Data wali kelas akan tampil jika tersedia.</span></div></article>
-        <article class="dashboard-card-lite"><span class="dashboard-card-label">Akses Cepat</span><div class="dashboard-mini-list"><span><strong>Nilai</strong><b>UH1, UH2, UH3, PTS</b></span><span><strong>Kehadiran</strong><b>S, I, A</b></span><span><strong>Kelengkapan</strong><b>per mapel</b></span></div></article>
       </section>
     `;
   }
@@ -360,6 +538,7 @@
       const tugasNames = getTugasNames(tugasGuru, tugas);
       const waliRows = kelas.filter(item => String(item.kode_guru || "").trim() === kodeGuru);
       const teachingRows = buildTeachingComparisonRows(myAssignments, mapelAsli, myAssignmentsBayangan, mapel);
+      global.DashboardShell?.setWaliAccessState?.(Boolean(waliRows.length), waliRows.map(item => getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas).filter(Boolean));
 
       setText("guruHomeName", formatGuruName(guru, user));
       setText("guruHomeMengajarCountLabel", `${teachingRows.length} mapel diajar`);
@@ -495,18 +674,21 @@
   }
 
   function getHomeInputScopeContext(context = {}) {
-    const shouldUseGuruScope = Boolean(context.kodeGuru) && (context.isAdmin || context.role === "superadmin");
+    const shouldUseGuruScope = Boolean(context.kodeGuru) && (
+      context.isAdmin
+      || context.role === "superadmin"
+      || context.isKoordinator
+      || context.isGuruAdmin
+    );
     if (!shouldUseGuruScope) return context;
-    const coordinatorLevels = Array.isArray(context.coordinatorLevels) ? context.coordinatorLevels : [];
-    const hasCoordinatorAccess = coordinatorLevels.length > 0;
     return {
       ...context,
       isAdmin: false,
       isGuru: true,
-      isKoordinator: hasCoordinatorAccess,
-      hasCoordinatorAccess,
+      isKoordinator: false,
+      hasCoordinatorAccess: false,
       isGuruAdmin: false,
-      inputScopeLabel: hasCoordinatorAccess ? "Guru + Koordinator" : "Guru"
+      inputScopeLabel: "Guru"
     };
   }
 
@@ -551,9 +733,9 @@
     if (context.isGuru) {
       return `
         <button class="btn-secondary" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
-        <button class="btn-secondary" onclick="loadPage('wali-rekap-nilai')">Rekap Nilai Wali</button>
-        <button class="btn-secondary" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
-        <button class="btn-secondary" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
+        <button class="btn-secondary home-wali-action" onclick="loadPage('wali-rekap-nilai')">Rekap Nilai Wali</button>
+        <button class="btn-secondary home-wali-action" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
+        <button class="btn-secondary home-wali-action" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
       `;
     }
     return `
@@ -578,21 +760,18 @@
     if (context.isGuruAdmin) {
       return [
         { label: "User Online" },
-        { label: "Sebaran Data" },
-        { label: "Akses Guru" }
+        { label: "Sebaran Data" }
       ];
     }
     if (context.isKoordinator) {
       return [
         { label: "Jangkauan Koordinator" },
-        { label: "Kelas Wali" },
-        { label: "Akses Cepat" }
+        { label: "Kelas Wali" }
       ];
     }
     return [
       { label: "Tugas Mengajar" },
-      { label: "Wali Kelas" },
-      { label: "Tugas Tambahan" }
+      { label: "Wali Kelas" }
     ];
   }
 
@@ -616,6 +795,11 @@
     const assignmentKey = getHomeAssignmentKey(assignment);
     const itemKey = getHomeAssignmentKey(item);
     if (assignmentKey === itemKey) return true;
+    const assignmentGuru = String(assignment.guru_kode || "").trim();
+    const itemGuru = String(item.guru_kode || "").trim();
+    if (assignmentGuru || itemGuru) {
+      return false;
+    }
     const itemClass = getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas;
     const assignmentClass = getHomeAssignmentClassKey(assignment);
     return itemClass === assignmentClass
@@ -672,9 +856,48 @@
     return [];
   }
 
+  function getHomeNilaiInputMode() {
+    if (typeof global.resolveNilaiInputModeForCurrentRole === "function") {
+      return global.resolveNilaiInputModeForCurrentRole() === "semester" ? "semester" : "pts";
+    }
+    if (typeof global.getGuruNilaiInputMode === "function") {
+      return global.getGuruNilaiInputMode() === "semester" ? "semester" : "pts";
+    }
+    return "pts";
+  }
+
+  function getHomeSummaryFieldConfigs(mode = "pts") {
+    if (mode === "semester") {
+      return [
+        { key: "uh_1", label: "UH 1", fallback: "nilai" },
+        { key: "uh_2", label: "UH 2" },
+        { key: "uh_3", label: "UH 3" },
+        { key: "uh_4", label: "UH 4" },
+        { key: "uh_5", label: "UH 5" },
+        { key: "pts", label: "PTS" },
+        { key: "semester", label: "Smstr" },
+        { key: "rapor", label: "Rapor" }
+      ];
+    }
+    return [
+      { key: "uh_1", label: "UH 1", fallback: "nilai" },
+      { key: "uh_2", label: "UH 2" },
+      { key: "uh_3", label: "UH 3" },
+      { key: "pts", label: "PTS" }
+    ];
+  }
+
+  function isHomeFilledScoreValue(value) {
+    const raw = String(value ?? "").trim();
+    if (!raw) return false;
+    const numeric = Number(raw);
+    return Number.isFinite(numeric) && numeric >= 0 && numeric <= 100;
+  }
+
   function getHomeSummaryRows(context, data = {}) {
     const assignments = getHomeVisibleAssignments(context, data);
     const limit = context.isAdmin || context.isGuruAdmin ? 10 : 8;
+    const fieldConfigs = getHomeSummaryFieldConfigs(getHomeNilaiInputMode());
     const rows = assignments.map(assignment => {
       const students = getHomeStudentsForAssignment(assignment, data.siswa || [], data.mapelBayangan || []);
       const total = students.length;
@@ -689,18 +912,20 @@
         }
       });
 
-      const fields = [
-        { key: "uh_1", label: "UH 1", fallback: "nilai" },
-        { key: "uh_2", label: "UH 2" },
-        { key: "uh_3", label: "UH 3" },
-        { key: "pts", label: "PTS I" }
-      ].map(field => {
+      const fields = fieldConfigs.map(field => {
         const filled = students.reduce((count, student) => {
           const nilaiDoc = nilaiBucket.get(String(student.nipd || "").trim());
-          const value = field.fallback === "nilai"
+          const semesterValue = nilaiDoc?.semester ?? "";
+          const rawValue = field.fallback === "nilai"
             ? (nilaiDoc?.uh_1 ?? nilaiDoc?.nilai ?? "")
             : (nilaiDoc?.[field.key] ?? "");
-          return count + (String(value || "").trim() ? 1 : 0);
+          const value = field.key === "rapor" && !String(semesterValue || "").trim()
+            ? ""
+            : rawValue;
+          if (field.key === "rapor") {
+            return count + (isHomeFilledScoreValue(semesterValue) && isHomeFilledScoreValue(value) ? 1 : 0);
+          }
+          return count + (isHomeFilledScoreValue(value) ? 1 : 0);
         }, 0);
         const value = total === 0 || filled === 0 ? "" : `${filled}`;
         const status = total === 0 || filled === 0 ? "empty" : filled === total ? "full" : "partial";
@@ -832,6 +1057,13 @@
     return `
       <div class="table-container home-teaching-table-wrap">
         <table class="mapel-table home-teaching-table">
+          <colgroup>
+            <col style="width: 80px;">
+            <col style="width: 80px;">
+            <col style="width: 80px;">
+            <col style="width: 80px;">
+            <col style="width: 80px;">
+          </colgroup>
           <thead>
             <tr>
               <th>Kode Mapel</th>
@@ -859,17 +1091,62 @@
     `;
   }
 
+  function renderTeachingSimpleTable(title = "", rows = [], emptyMessage = "Belum ada data.") {
+    const tableRows = rows.length
+      ? rows.map(row => `
+          <tr>
+            <td class="home-summary-label"><strong>${escapeHtml(row.kode || "-")}</strong></td>
+            <td>${escapeHtml(row.kelas || "-")}</td>
+            <td>${escapeHtml(String(row.totalJp || 0))}</td>
+          </tr>
+        `).join("")
+      : `<tr><td colspan="3" class="empty-cell">${escapeHtml(emptyMessage)}</td></tr>`;
+    return `
+      <div class="home-teaching-simple-block">
+        <div class="home-teaching-simple-title">${escapeHtml(title)}</div>
+        <div class="table-container home-teaching-table-wrap">
+          <table class="mapel-table home-teaching-table home-teaching-table--simple">
+            <colgroup>
+              <col style="width: 80px;">
+              <col style="width: 80px;">
+              <col style="width: 80px;">
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Mapel</th>
+                <th>Kelas</th>
+                <th>JP</th>
+              </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderTeachingDualTable(dapodikRows = [], realRows = []) {
+    return `
+      <div class="home-teaching-dual">
+        ${renderTeachingSimpleTable("DAPODIK", dapodikRows, "Belum ada tugas mengajar Dapodik.")}
+        ${renderTeachingSimpleTable("REAL", realRows, "Belum ada tugas mengajar Real.")}
+      </div>
+    `;
+  }
+
   function renderSummaryTable(rows = []) {
     if (!rows.length) return `<div class="empty-panel">Belum ada pembagian mengajar yang bisa ditampilkan.</div>`;
+    const fields = rows[0]?.fields || getHomeSummaryFieldConfigs(getHomeNilaiInputMode());
     return `
-      <table class="mapel-table home-summary-table">
+      <table class="mapel-table home-summary-table plain-mobile-table">
+        <colgroup>
+          <col style="width: 100px;">
+          ${fields.map(() => `<col style="width: 60px;">`).join("")}
+        </colgroup>
         <thead>
           <tr>
             <th>Kelas Mapel</th>
-            <th>UH 1</th>
-            <th>UH 2</th>
-            <th>UH 3</th>
-            <th>PTS I</th>
+            ${fields.map(field => `<th>${escapeHtml(field.label || "-")}</th>`).join("")}
           </tr>
         </thead>
         <tbody>
@@ -889,22 +1166,59 @@
 
   function renderHomePageShell(context) {
     const cards = getHomeRoleCards(context);
+    const shouldUseGuruHero = context.isGuru || context.isKoordinator;
     return `
       <section class="dashboard-hero dashboard-home-hero">
-        <div class="dashboard-hero-copy">
-          <span class="dashboard-eyebrow">${escapeHtml(context.label)}</span>
-          <h2>${escapeHtml(getHomeHeroTitle(context))}</h2>
-          <p id="homeUpdatedAt">${escapeHtml(getHomeHeroDescription(context))}</p>
-          <div class="dashboard-hero-actions">
-            ${getHomeQuickActions(context)}
+          <div class="dashboard-hero-copy">
+            ${shouldUseGuruHero ? `
+              <span class="dashboard-eyebrow">${escapeHtml(context.label)}</span>
+              <div class="home-guru-hero-meta">
+                <span id="homeUpdatedAt">${escapeHtml(getHomeHeroDescription(context))}</span>
+              </div>
+            ` : `
+              <span class="dashboard-eyebrow">${escapeHtml(context.label)}</span>
+              <h2>${escapeHtml(getHomeHeroTitle(context))}</h2>
+              <p id="homeUpdatedAt">${escapeHtml(getHomeHeroDescription(context))}</p>
+            `}
+            <div class="dashboard-hero-actions">
+              ${getHomeQuickActions(context)}
+              <button type="button" class="btn-secondary home-refresh-btn" onclick="window.DashboardHome?.refreshHome?.()">Refresh</button>
+            </div>
           </div>
-        </div>
-        <div class="dashboard-hero-panel home-hero-panel">
-          <div class="dashboard-stat"><span>${escapeHtml(getHomeSummaryStatLabel(context, 0))}</span><strong id="homeHeroStat1">...</strong></div>
-          <div class="dashboard-stat"><span>${escapeHtml(getHomeSummaryStatLabel(context, 1))}</span><strong id="homeHeroStat2">...</strong></div>
-          <div class="dashboard-stat"><span>${escapeHtml(getHomeSummaryStatLabel(context, 2))}</span><strong id="homeHeroStat3">...</strong></div>
-        </div>
+        ${shouldUseGuruHero ? `
+          <div id="homeHeroTaskPanel" class="dashboard-hero-panel home-hero-panel home-hero-panel--task">
+            <div class="home-panel-head home-hero-panel-head">
+              <div>
+                <span class="dashboard-card-label">Tugas Tambahan</span>
+                <h3 id="homeHeroTaskTitle">Belum ada tugas tambahan</h3>
+              </div>
+            </div>
+            <div id="homeHeroTaskContent" class="dashboard-mini-list home-hero-task-list">
+              <span>Memuat tugas tambahan...</span>
+            </div>
+          </div>
+        ` : `
+          <div class="dashboard-hero-panel home-hero-panel">
+            <div class="dashboard-stat"><span>${escapeHtml(getHomeSummaryStatLabel(context, 0))}</span><strong id="homeHeroStat1">...</strong></div>
+            <div class="dashboard-stat"><span>${escapeHtml(getHomeSummaryStatLabel(context, 1))}</span><strong id="homeHeroStat2">...</strong></div>
+            <div class="dashboard-stat"><span>${escapeHtml(getHomeSummaryStatLabel(context, 2))}</span><strong id="homeHeroStat3">...</strong></div>
+          </div>
+        `}
       </section>
+      ${shouldUseGuruHero ? `
+        <section id="homeHeroInvigilationPanel" class="dashboard-card-lite home-invigilator-panel is-hidden">
+          <div class="home-panel-head">
+            <div>
+              <span class="dashboard-card-label">Kartu Pengawas</span>
+              <h3 id="homeInvigilationTitle">Belum ada kartu pengawas</h3>
+            </div>
+            <div id="homeInvigilationMeta" class="home-panel-note">Kartu pengawas akan muncul setelah admin atau superadmin menekan tombol kirim.</div>
+          </div>
+          <div id="homeInvigilationContent" class="home-invigilator-content">
+            <div class="empty-panel">Memuat kartu pengawas...</div>
+          </div>
+        </section>
+      ` : ""}
       <section class="dashboard-card-lite home-summary-panel">
         <div class="home-panel-head">
           <div>
@@ -921,7 +1235,7 @@
           <div class="empty-panel">Memuat rangkuman input...</div>
         </div>
       </section>
-      ${cards.length ? `
+      ${(context.isGuru || context.isKoordinator) && cards.length ? `
         <section class="dashboard-grid home-role-grid">
           ${cards.map((card, index) => `
             <article class="dashboard-card-lite home-role-card">
@@ -931,13 +1245,24 @@
             </article>
           `).join("")}
         </section>
-      ` : `
+      ` : ""}
+      ${(!(context.isGuru || context.isKoordinator) && cards.length) ? `
+        <section class="dashboard-grid home-role-grid">
+          ${cards.map((card, index) => `
+            <article class="dashboard-card-lite home-role-card">
+              <span class="dashboard-card-label">${escapeHtml(card.label)}</span>
+              <h3 id="homeRoleCardTitle${index + 1}">Memuat...</h3>
+              <div id="homeRoleCardList${index + 1}" class="dashboard-mini-list"><span>Memuat data...</span></div>
+            </article>
+          `).join("")}
+        </section>
+      ` : (!cards.length ? `
         <section class="dashboard-card-lite home-admin-clean-card">
           <span class="dashboard-card-label">Rangkuman Admin</span>
           <h3 id="homeAdminCleanTitle">Dashboard dibersihkan</h3>
           <p id="homeAdminCleanText">Beranda admin dan superadmin hanya menampilkan ringkasan utama dan rangkuman input.</p>
         </section>
-      `}
+      ` : "")}
       ${(context.isGuruAdmin || context.isKoordinator) ? `
         <section class="dashboard-card-lite home-teaching-panel">
           <div class="home-panel-head">
@@ -969,31 +1294,39 @@
     const context = getHomeRoleContext(options);
     if (options.pageTitle) options.pageTitle.innerText = context.isKoordinator ? "Beranda Koordinator" : "Beranda Guru";
     if (options.content) options.content.innerHTML = renderHomePageShell(context);
-    options.loadHomeStats?.({ ...context, getCollectionQuery: options.getCollectionQuery });
+    const loadOptions = { ...context, getCollectionQuery: options.getCollectionQuery };
+    lastHomeLoadOptions = loadOptions;
+    if (!applyHomeSnapshot(context)) options.loadHomeStats?.(loadOptions);
   }
 
   function renderKoordinatorHomePage(options = {}) {
     const context = getHomeRoleContext({ ...options, role: "guru", hasCoordinatorAccess: true });
     if (options.pageTitle) options.pageTitle.innerText = "Beranda Koordinator";
     if (options.content) options.content.innerHTML = renderHomePageShell(context);
-    options.loadHomeStats?.({ ...context, getCollectionQuery: options.getCollectionQuery });
+    const loadOptions = { ...context, getCollectionQuery: options.getCollectionQuery };
+    lastHomeLoadOptions = loadOptions;
+    if (!applyHomeSnapshot(context)) options.loadHomeStats?.(loadOptions);
   }
 
   function renderHomePage(options = {}) {
     const context = getHomeRoleContext(options);
     if (options.pageTitle) options.pageTitle.innerText = context.isKoordinator ? "Beranda Koordinator" : context.isGuru ? "Beranda Guru" : "Beranda Dashboard";
     if (options.content) options.content.innerHTML = renderHomePageShell(context);
-    options.loadHomeStats?.({ ...context, getCollectionQuery: options.getCollectionQuery });
+    const loadOptions = { ...context, getCollectionQuery: options.getCollectionQuery };
+    lastHomeLoadOptions = loadOptions;
+    if (!applyHomeSnapshot(context)) options.loadHomeStats?.(loadOptions);
     return context.isKoordinator ? "koordinator" : context.isGuru ? "guru" : "dashboard";
   }
 
   async function loadHomeStats(options = {}) {
     const context = options.label ? options : getHomeRoleContext(options);
     const setText = (id, value) => global.AppDom?.setText?.(id, value);
+    lastHomeLoadOptions = { ...options, ...context };
+    setHomeRefreshState(true);
     try {
       const documentsApi = getDocumentsApi();
       const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
-      const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiSnap, tugasSnap, presenceRows] = await Promise.all([
+      const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiRows, tugasSnap, presenceRows] = await Promise.all([
         documentsApi.collection("guru").get(),
         getQuery("siswa").get(),
         getQuery("kelas").get(),
@@ -1001,7 +1334,7 @@
         documentsApi.collection("mengajar").get(),
         documentsApi.collection("mapel_bayangan").get(),
         documentsApi.collection("mengajar_bayangan").get(),
-        documentsApi.collection("nilai").get(),
+        loadHomeNilaiRows(documentsApi, options),
         documentsApi.collection("tugas_tambahan").get(),
         loadRecentPresenceRows(25)
       ]);
@@ -1012,7 +1345,7 @@
       const mengajarAsli = mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const mapelBayangan = mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const mengajarBayangan = mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const nilai = nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
+      const nilai = nilaiRows.filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
       const tugas = tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const onlineUsers = presenceRows
         .filter(item => isPresenceOnline(item))
@@ -1021,10 +1354,18 @@
 
       const resolvedContext = getHomeResolvedContext(context, guru);
       const inputScopeContext = getHomeInputScopeContext(resolvedContext);
+      const invigilationCard = (resolvedContext.isGuru || resolvedContext.isKoordinator) && resolvedContext.kodeGuru
+        ? await loadHomeInvigilationCard(documentsApi, resolvedContext.kodeGuru)
+        : null;
+      const tugasGuruSnap = resolvedContext.kodeGuru ? await documentsApi.collection("guru_tugas_tambahan").doc(resolvedContext.kodeGuru).get() : null;
+      const tugasGuru = tugasGuruSnap?.exists ? { id: tugasGuruSnap.id, ...tugasGuruSnap.data() } : {};
+      const tugasNames = getTugasNames(tugasGuru, tugas);
       const roleAssignments = getHomeVisibleAssignments(inputScopeContext, { mengajarBayangan, kelas });
       const roleAssignmentsAsli = getHomeVisibleAssignments(inputScopeContext, { mengajarBayangan: mengajarAsli, kelas });
       const summaryRows = getHomeSummaryRows(inputScopeContext, { mengajarBayangan, siswa, mapelBayangan, nilai, kelas });
       const teachingRows = buildTeachingComparisonRows(roleAssignmentsAsli, mapelAsli, roleAssignments, mapelBayangan);
+      const teachingRowsDapodik = buildTeachingRows(roleAssignmentsAsli, mapelAsli);
+      const teachingRowsReal = buildTeachingRows(roleAssignments, mapelBayangan);
       const siswaByLevel = { 7: 0, 8: 0, 9: 0, lain: 0 };
       siswa.forEach(item => {
         const level = getKelasParts(item.kelas).tingkat;
@@ -1037,6 +1378,10 @@
         waliRows
           .map(item => getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas)
           .filter(Boolean)
+      );
+      global.DashboardShell?.setWaliAccessState?.(
+        Boolean(resolvedContext.isKoordinator || resolvedContext.isGuruAdmin || waliClassSet.size),
+        [...waliClassSet]
       );
 
       if (context.isAdmin || resolvedContext.isGuruAdmin) {
@@ -1063,7 +1408,7 @@
       global.AppDom?.setHtml?.("homeInputSummaryTable", renderSummaryTable(summaryRows));
       if ((resolvedContext.isGuruAdmin || resolvedContext.isKoordinator) && document.getElementById("homeTeachingTable")) {
         setText("homeTeachingTitle", `${teachingRows.length} mapel diajar`);
-        global.AppDom?.setHtml?.("homeTeachingTable", renderTeachingTable(teachingRows, "Belum ada tugas mengajar yang bisa ditampilkan."));
+        global.AppDom?.setHtml?.("homeTeachingTable", renderTeachingDualTable(teachingRowsDapodik, teachingRowsReal));
       }
 
       if (context.isAdmin) {
@@ -1096,6 +1441,18 @@
         setText("homeRoleCardTitle1", `${context.coordinatorLevels.length ? context.coordinatorLevels.join(", ") : "-"} aktif`);
         setText("homeRoleCardTitle2", `${waliClassSet.size} kelas wali`);
         setText("homeRoleCardTitle3", "Pintasan kerja utama");
+        setText("homeInvigilationTitle", invigilationCard?.exam_type ? String(invigilationCard.exam_type || "").toUpperCase() : "Belum ada kartu pengawas");
+        setText(
+          "homeInvigilationMeta",
+          invigilationCard?.sent_at
+            ? `Dikirim ${global.AppUtils?.formatDateTimeId ? global.AppUtils.formatDateTimeId(invigilationCard.sent_at) : new Date(invigilationCard.sent_at).toLocaleString("id-ID")}`
+            : "Kartu pengawas akan muncul setelah admin atau superadmin menekan tombol kirim."
+        );
+        setHomeInvigilationHeroVisibility(Boolean(invigilationCard));
+        setText("homeHeroTaskTitle", tugasNames.length ? `${tugasNames.length} tugas tambahan` : "Belum ada tugas tambahan");
+        global.AppDom?.setHtml?.("homeHeroTaskContent", tugasNames.length
+          ? tugasNames.map(name => `<span><strong>${escapeHtml(name)}</strong><b>aktif</b></span>`).join("")
+          : "<span>Belum ada tugas tambahan.</span>");
         global.AppDom?.setHtml?.("homeRoleCardList1", `
           <span><strong>Jenjang</strong><b>${context.coordinatorLevels.length ? context.coordinatorLevels.join(", ") : "-"}</b></span>
           <span><strong>Pembagian</strong><b>${summaryRows.length} kelas-mapel</b></span>
@@ -1111,6 +1468,7 @@
           <span><strong>Nilai</strong><b>Masuk ke input nilai</b></span>
           <span><strong>Wali Kelas</strong><b>Cek kelengkapan</b></span>
         `);
+        global.AppDom?.setHtml?.("homeInvigilationContent", renderHomeInvigilationCard(invigilationCard));
       } else {
         const teachingRowsGuru = buildTeachingComparisonRows(
           getHomeVisibleAssignments(context, { mengajarBayangan: mengajarAsli, kelas }),
@@ -1118,9 +1476,14 @@
           roleAssignments,
           mapelBayangan
         );
-        const tugasGuruSnap = resolvedContext.kodeGuru ? await documentsApi.collection("guru_tugas_tambahan").doc(resolvedContext.kodeGuru).get() : null;
-        const tugasGuru = tugasGuruSnap?.exists ? { id: tugasGuruSnap.id, ...tugasGuruSnap.data() } : {};
-        const tugasNames = getTugasNames(tugasGuru, tugas);
+        const teachingRowsGuruDapodik = buildTeachingRows(
+          getHomeVisibleAssignments(context, { mengajarBayangan: mengajarAsli, kelas }),
+          mapelAsli
+        );
+        const teachingRowsGuruReal = buildTeachingRows(
+          roleAssignments,
+          mapelBayangan
+        );
         const waliClass = [...waliClassSet][0] || "";
         const waliStudents = waliClass
           ? siswa.map(item => ({ ...item, kelasBayanganParts: getSiswaKelasBayanganParts(item) })).filter(item => item.kelasBayanganParts.kelas === waliClass)
@@ -1134,8 +1497,19 @@
         }, { L: 0, P: 0, lain: 0 });
         setText("homeRoleCardTitle1", teachingRowsGuru.length ? `${teachingRowsGuru.length} mapel diajar` : "Belum ada tugas mengajar");
         setText("homeRoleCardTitle2", waliClass ? `Kelas ${waliClass}` : "Belum menjadi wali kelas");
-        setText("homeRoleCardTitle3", tugasNames.length ? `${tugasNames.length} tugas tambahan` : "Belum ada tugas tambahan");
-        global.AppDom?.setHtml?.("homeRoleCardList1", renderTeachingTable(teachingRowsGuru, "Belum ada tugas mengajar kelas real."));
+        setText("homeInvigilationTitle", invigilationCard?.exam_type ? String(invigilationCard.exam_type || "").toUpperCase() : "Belum ada kartu pengawas");
+        setText(
+          "homeInvigilationMeta",
+          invigilationCard?.sent_at
+            ? `Dikirim ${global.AppUtils?.formatDateTimeId ? global.AppUtils.formatDateTimeId(invigilationCard.sent_at) : new Date(invigilationCard.sent_at).toLocaleString("id-ID")}`
+            : "Kartu pengawas akan muncul setelah admin atau superadmin menekan tombol kirim."
+        );
+        setHomeInvigilationHeroVisibility(Boolean(invigilationCard));
+        setText("homeHeroTaskTitle", tugasNames.length ? `${tugasNames.length} tugas tambahan` : "Belum ada tugas tambahan");
+        global.AppDom?.setHtml?.("homeHeroTaskContent", tugasNames.length
+          ? tugasNames.map(name => `<span><strong>${escapeHtml(name)}</strong><b>aktif</b></span>`).join("")
+          : "<span>Belum ada tugas tambahan.</span>");
+        global.AppDom?.setHtml?.("homeRoleCardList1", renderTeachingDualTable(teachingRowsGuruDapodik, teachingRowsGuruReal));
         global.AppDom?.setHtml?.("homeRoleCardList2", waliClass
           ? `
             <span><strong>Jumlah siswa</strong><b>${waliStudents.length}</b></span>
@@ -1144,20 +1518,32 @@
             <span><strong>Belum valid</strong><b>${genderCounts.lain}</b></span>
           `
           : "<span>Belum menjadi wali kelas.</span>");
-        global.AppDom?.setHtml?.("homeRoleCardList3", tugasNames.length
-          ? tugasNames.map(name => `<span><strong>${escapeHtml(name)}</strong><b>aktif</b></span>`).join("")
-          : "<span>Belum ada tugas tambahan.</span>");
+        global.AppDom?.setHtml?.("homeInvigilationContent", renderHomeInvigilationCard(invigilationCard));
       }
+      captureHomeSnapshot(context);
     } catch (error) {
       console.error(error);
       setText("homeUpdatedAt", "Ringkasan belum berhasil dimuat.");
       setText("homeInputSummaryTitle", "Rangkuman input belum berhasil dimuat.");
+      setHomeInvigilationHeroVisibility(false);
       global.AppDom?.setHtml?.("homeInputSummaryTable", `<div class="empty-panel">Data rangkuman input belum berhasil dimuat.</div>`);
+    } finally {
+      setHomeRefreshState(false);
     }
   }
 
   async function loadGuruHomeStats(options = {}) {
     return loadHomeStats({ ...options, role: "guru" });
+  }
+
+  async function refreshHome() {
+    if (homeRefreshInFlight) return homeRefreshInFlight;
+    const options = lastHomeLoadOptions || getHomeRoleContext({});
+    homeRefreshInFlight = loadHomeStats({ ...options, force: true })
+      .finally(() => {
+        homeRefreshInFlight = null;
+      });
+    return homeRefreshInFlight;
   }
 
   global.DashboardHome = {
@@ -1178,6 +1564,7 @@
     renderGuruHomePage,
     renderKoordinatorHomePage,
     loadHomeStats,
-    loadGuruHomeStats
+    loadGuruHomeStats,
+    refreshHome
   };
 })(window);

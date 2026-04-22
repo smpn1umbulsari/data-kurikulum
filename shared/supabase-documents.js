@@ -7,8 +7,13 @@
     : null);
   const TABLE = config.documentsTable || "app_documents";
   const COLLECTION_CACHE_TTL_MS = 1200;
+  const PERSISTED_CACHE_PREFIX = "supabaseDocumentsCache:";
+  const IDB_NAME = "guru_spenturi_offline_v1";
+  const IDB_VERSION = 1;
+  const IDB_COLLECTION_STORE = "collections";
   const collectionCache = new Map();
   const collectionFetches = new Map();
+  let idbPromise = null;
 
   function makeChannelName(prefix, path) {
     const randomId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -45,6 +50,90 @@
     }));
   }
 
+  function getPersistedCollectionKey(collectionPath) {
+    return `${PERSISTED_CACHE_PREFIX}${getCollectionCacheKey(collectionPath)}`;
+  }
+
+  function canUseIndexedDb() {
+    return Boolean(global.indexedDB);
+  }
+
+  function openOfflineDb() {
+    if (!canUseIndexedDb()) return Promise.resolve(null);
+    if (idbPromise) return idbPromise;
+    idbPromise = new Promise(resolve => {
+      const request = global.indexedDB.open(IDB_NAME, IDB_VERSION);
+      request.onupgradeneeded = event => {
+        const db = event.target.result;
+        if (!db.objectStoreNames.contains(IDB_COLLECTION_STORE)) {
+          db.createObjectStore(IDB_COLLECTION_STORE, { keyPath: "collectionPath" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => resolve(null);
+      request.onblocked = () => resolve(null);
+    });
+    return idbPromise;
+  }
+
+  async function readIndexedCollectionRows(collectionPath) {
+    const db = await openOfflineDb();
+    if (!db) return null;
+    return new Promise(resolve => {
+      const transaction = db.transaction(IDB_COLLECTION_STORE, "readonly");
+      const store = transaction.objectStore(IDB_COLLECTION_STORE);
+      const request = store.get(getCollectionCacheKey(collectionPath));
+      request.onsuccess = () => {
+        const record = request.result;
+        resolve(record && Array.isArray(record.rows) ? cloneCollectionRows(record.rows) : null);
+      };
+      request.onerror = () => resolve(null);
+    });
+  }
+
+  async function writeIndexedCollectionRows(collectionPath, rows) {
+    const db = await openOfflineDb();
+    if (!db) return false;
+    return new Promise(resolve => {
+      const transaction = db.transaction(IDB_COLLECTION_STORE, "readwrite");
+      const store = transaction.objectStore(IDB_COLLECTION_STORE);
+      const request = store.put({
+        collectionPath: getCollectionCacheKey(collectionPath),
+        cachedAt: new Date().toISOString(),
+        rows: cloneCollectionRows(rows)
+      });
+      request.onsuccess = () => resolve(true);
+      request.onerror = () => resolve(false);
+    });
+  }
+
+  function readPersistedCollectionRows(collectionPath) {
+    try {
+      const parsed = JSON.parse(global.localStorage.getItem(getPersistedCollectionKey(collectionPath)) || "null");
+      if (!parsed || !Array.isArray(parsed.rows)) return null;
+      return cloneCollectionRows(parsed.rows);
+    } catch {
+      return null;
+    }
+  }
+
+  function writePersistedCollectionRows(collectionPath, rows) {
+    try {
+      global.localStorage.setItem(getPersistedCollectionKey(collectionPath), JSON.stringify({
+        cachedAt: new Date().toISOString(),
+        rows: cloneCollectionRows(rows)
+      }));
+    } catch {
+      // Storage can be full or unavailable in some WebView modes.
+    }
+  }
+
+  async function readPersistedCollectionRowsAsync(collectionPath) {
+    const indexedRows = await readIndexedCollectionRows(collectionPath);
+    if (indexedRows) return indexedRows;
+    return readPersistedCollectionRows(collectionPath);
+  }
+
   function getCachedCollectionRows(collectionPath) {
     const cache = collectionCache.get(getCollectionCacheKey(collectionPath));
     if (!cache) return null;
@@ -52,11 +141,13 @@
     return cloneCollectionRows(cache.rows);
   }
 
-  function setCachedCollectionRows(collectionPath, rows) {
+  async function setCachedCollectionRows(collectionPath, rows) {
     collectionCache.set(getCollectionCacheKey(collectionPath), {
       fetchedAt: Date.now(),
       rows: cloneCollectionRows(rows)
     });
+    writePersistedCollectionRows(collectionPath, rows);
+    await writeIndexedCollectionRows(collectionPath, rows);
   }
 
   function invalidateCollectionCache(collectionPath) {
@@ -65,8 +156,17 @@
     collectionFetches.delete(key);
   }
 
+  function shouldUseOfflineCacheFirst() {
+    return Boolean(global.GuruOffline?.isOnline && global.GuruOffline.isOnline() === false);
+  }
+
   async function fetchAllCollectionRows(collectionPath, options = {}) {
-    if (!client?.from) throw new Error("Supabase client belum siap");
+    const persistedRows = await readPersistedCollectionRowsAsync(collectionPath);
+    if (persistedRows && shouldUseOfflineCacheFirst()) return persistedRows;
+    if (!client?.from) {
+      if (persistedRows) return persistedRows;
+      throw new Error("Supabase client belum siap");
+    }
     const key = getCollectionCacheKey(collectionPath);
     if (options.useCache !== false) {
       const cached = getCachedCollectionRows(collectionPath);
@@ -79,23 +179,29 @@
     let offset = 0;
     const rows = [];
     const fetchPromise = (async () => {
-      while (true) {
-        const { data, error } = await client
-          .from(TABLE)
-          .select("id,data")
-          .eq("collection_path", collectionPath)
-          .range(offset, offset + pageSize - 1);
+      try {
+        while (true) {
+          const { data, error } = await client
+            .from(TABLE)
+            .select("id,data")
+            .eq("collection_path", collectionPath)
+            .range(offset, offset + pageSize - 1);
 
-        if (error) throw error;
+          if (error) throw error;
 
-        const page = data || [];
-        rows.push(...page);
-        if (page.length < pageSize) break;
-        offset += pageSize;
+          const page = data || [];
+          rows.push(...page);
+          if (page.length < pageSize) break;
+          offset += pageSize;
+        }
+
+        await setCachedCollectionRows(collectionPath, rows);
+        return cloneCollectionRows(rows);
+      } catch (error) {
+        global.GuruOffline?.markOffline?.();
+        if (persistedRows) return persistedRows;
+        throw error;
       }
-
-      setCachedCollectionRows(collectionPath, rows);
-      return cloneCollectionRows(rows);
     })();
 
     if (options.useCache !== false) {
@@ -197,7 +303,6 @@
     }
 
     onSnapshot(callback, onError) {
-      if (!client?.channel) throw new Error("Supabase realtime belum siap");
       let active = true;
       let refreshTimer = null;
       let refreshInFlight = false;
@@ -232,6 +337,10 @@
       };
 
       refresh();
+      if (!client?.channel) return () => {
+        active = false;
+        if (refreshTimer) global.clearTimeout(refreshTimer);
+      };
       const channel = client
         .channel(makeChannelName("app-documents-native", this.collectionPath))
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
@@ -260,20 +369,35 @@
     }
 
     async get() {
-      if (!client?.from) throw new Error("Supabase client belum siap");
       const cachedRows = getCachedCollectionRows(this.collectionPath);
       const cachedRow = cachedRows?.find(row => row.id === this.id);
       if (cachedRow) return new DocumentSnapshot(this, cachedRow);
+      const persistedRows = await readPersistedCollectionRowsAsync(this.collectionPath);
+      if (global.GuruOffline?.isOnline?.() === false) {
+        const persistedRow = persistedRows?.find(row => row.id === this.id);
+        return new DocumentSnapshot(this, persistedRow || null);
+      }
+      if (!client?.from) {
+        const persistedRow = persistedRows?.find(row => row.id === this.id);
+        return new DocumentSnapshot(this, persistedRow || null);
+      }
 
-      const { data, error } = await client
-        .from(TABLE)
-        .select("id,data")
-        .eq("collection_path", this.collectionPath)
-        .eq("id", this.id)
-        .maybeSingle();
+      try {
+        const { data, error } = await client
+          .from(TABLE)
+          .select("id,data")
+          .eq("collection_path", this.collectionPath)
+          .eq("id", this.id)
+          .maybeSingle();
 
-      if (error) throw error;
-      return new DocumentSnapshot(this, data);
+        if (error) throw error;
+        return new DocumentSnapshot(this, data);
+      } catch (error) {
+        global.GuruOffline?.markOffline?.();
+        const persistedRow = persistedRows?.find(row => row.id === this.id);
+        if (persistedRow) return new DocumentSnapshot(this, persistedRow);
+        throw error;
+      }
     }
 
     async set(data, options = {}) {
@@ -316,7 +440,6 @@
     }
 
     onSnapshot(callback, onError) {
-      if (!client?.channel) throw new Error("Supabase realtime belum siap");
       let active = true;
       let refreshTimer = null;
       const refresh = async () => {
@@ -338,6 +461,10 @@
       };
 
       refresh();
+      if (!client?.channel) return () => {
+        active = false;
+        if (refreshTimer) global.clearTimeout(refreshTimer);
+      };
       const channel = client
         .channel(makeChannelName("app-document-native", this.path))
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
@@ -401,6 +528,12 @@
     },
     batch() {
       return new Batch();
+    },
+    getPersistedCollectionRows(collectionPath) {
+      return readPersistedCollectionRows(collectionPath) || [];
+    },
+    async getPersistedCollectionRowsAsync(collectionPath) {
+      return (await readPersistedCollectionRowsAsync(collectionPath)) || [];
     },
     Timestamp: {
       fromDate(date) {

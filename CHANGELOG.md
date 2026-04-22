@@ -4,20 +4,107 @@ Dokumen ini dipakai sebagai catatan versi aplikasi dan perubahan yang dilakukan.
 
 ## Aturan Versi
 
-- `1.00` = versi stable baseline
+- `1.20` = versi stable baseline baru
 - Perubahan fungsi tanpa penambahan menu baru:
-  - `1.01a`
-  - `1.01b`
-  - `1.01c`
+  - `1.20a`
+  - `1.20b`
 - Optimasi performa, render, query, atau load awal:
-  - gunakan turunan angka paling belakang dari versi terakhir, misalnya `1.01g.1`, `1.01g.2`
+  - gunakan turunan angka paling belakang dari versi terakhir, misalnya `1.20a.1`, `1.20a.2`
 - Styling/tampilan tanpa perubahan fungsi atau menu:
-  - gunakan turunan angka paling belakang dari versi terakhir, misalnya `1.01c.1`, `1.01c.2`
+  - gunakan turunan angka paling belakang dari versi terakhir, misalnya `1.20b.1`, `1.20b.2`
 - Penambahan menu baru:
-  - `1.02a`
-  - `1.02b`
+  - `1.21a`
+  - `1.21b`
+- Refactor atau perubahan besar yang mengubah struktur fungsi secara besar-besaran:
+  - gunakan versi mayor seperti `2.00`
 - Jika perubahan menyentuh fungsi dan menambah menu baru, pakai versi yang mengikuti penambahan menu.
 - Jika perubahan hanya optimasi atau styling, cukup naikkan angka paling belakang tanpa mengubah kelompok versi utamanya.
+
+## Versi 1.20
+
+Status: active baseline
+
+Tanggal: 2026-04-21
+
+Perubahan:
+- Mereset baseline perhitungan versi aplikasi ke `1.20`.
+- Menetapkan ulang aturan versi untuk patch, optimasi, styling, penambahan menu, dan refactor besar.
+- Menjadikan `2.00` sebagai jalur khusus untuk refactor besar yang mengubah struktur fungsi secara signifikan.
+
+Catatan:
+- Versi-versi lama sebelum `1.20` tetap disimpan sebagai histori.
+- Mulai setelah titik ini, penomoran baru mengikuti baseline `1.20`.
+
+## Versi 1.20a
+
+Status: draft
+
+Tanggal: 2026-04-21
+
+Perubahan:
+- Memperbarui fitur `Backup dan Restore` agar sesuai dengan struktur aplikasi terbaru.
+- Menambahkan koleksi baru ke backup: `rapor_catatan_wali`, `kepangawasan_kartu_guru`, `informasi_urusan`, dan `user_presence`.
+- Menghapus `kehadiran_siswa` dari isi backup aktif karena aplikasi sekarang memakai `kehadiran_rekap_siswa`.
+- Tetap memasukkan `kehadiran_siswa` sebagai koleksi legacy yang dibersihkan saat `Reset Semua Data`.
+- Menambahkan backup dan restore untuk local storage penting, termasuk state `kepangawasanAsesmenState` dan pengaturan administrasi asesmen.
+- Menaikkan format file backup ke `version: 2`.
+
+## Versi 1.21a
+
+Status: draft
+
+Tanggal: 2026-04-22
+
+Perubahan:
+- Menambahkan menu admin `Validasi Data` untuk mendeteksi guru tanpa kode, siswa tanpa kelas/NIPD, mapel tanpa kode, assignment ganda, kelas bayangan tidak sinkron, dan nilai lama yang berpotensi tidak sesuai struktur aktif.
+- Menambahkan menu admin `Riwayat Perubahan` untuk mencatat aksi penting seperti simpan/import/sinkron nilai, generate pembagian ruang, publish/unpublish kartu pengawas, backup, restore, dan reset data.
+- Memperkuat `Backup dan Restore` dengan preview isi file, validasi versi backup, pilihan restore sebagian, dan restore local storage/data semester secara opsional.
+- Menambahkan `riwayat_perubahan` ke daftar koleksi backup dan reset data.
+- Mengekspos `NilaiEngine` sebagai satu pintu helper mode nilai, kalkulasi rapor, kelas bayangan, pencarian siswa assignment, dan export rapor agar fitur lain tidak membuat ulang logika sendiri.
+
+Catatan:
+- Restore backup sekarang tidak langsung menulis semua bagian file. Admin dapat memilih collection, data semester, dan local storage sebelum memasukkan password.
+- `Validasi Data` bersifat diagnostik dulu; perbaikan data tetap dilakukan melalui menu asal masing-masing.
+
+## Versi 1.21b
+
+Status: draft
+
+Tanggal: 2026-04-22
+
+Perubahan:
+- Menambahkan `Panel Perbaikan Otomatis` di menu `Validasi Data` untuk mengisi kode guru dari username/nama, menghapus assignment ganda, dan menyinkronkan kelas bayangan yang aman diperbaiki otomatis.
+- Menambahkan fitur `Preview Migrasi Nilai Lama` untuk menyalin nilai legacy tanpa `term_id` ke format semester aktif tanpa menghapus dokumen sumber.
+- Memperkuat restore backup dengan estimasi dampak sebelum eksekusi, termasuk jumlah dokumen masuk, yang akan menimpa data lama, dan data baru.
+- Menambahkan opsi backup otomatis sebelum restore. Opsi ini aktif secara default agar admin punya titik aman sebelum data ditimpa.
+- Menambahkan snapshot ringan untuk perubahan nilai ke koleksi `nilai_snapshots`, lalu menampilkan tombol `Rollback Nilai` pada riwayat perubahan yang memiliki snapshot.
+- Menambahkan `nilai_snapshots` ke daftar koleksi backup.
+
+Catatan:
+- Rollback nilai mengembalikan dokumen nilai ke kondisi sebelum aksi simpan/import/sinkron. Jika sebelumnya belum ada dokumen nilai, dokumen hasil aksi akan dihapus.
+- Migrasi nilai lama bersifat salin/merge ke format baru, sehingga dokumen legacy tetap ada sebagai jejak data lama.
+
+Catatan:
+- Tidak ada menu baru.
+- Restore tetap kompatibel dengan file backup lama selama struktur `collections` masih tersedia.
+- Jika terjadi regresi, rollback difokuskan pada [Admin/backup.js](/D:/KURIKULUM/Data%20Kurikulum/Admin/backup.js) dan versi assetnya di [dashboard.html](/D:/KURIKULUM/Data%20Kurikulum/dashboard.html).
+
+## Versi 1.01l.30
+
+Status: draft
+
+Tanggal: 2026-04-18
+
+Perubahan:
+- Memulihkan fungsi tombol `Export PDF` pada panel `Administrasi` di menu `Kepersetaan`.
+- Mengekspos kembali handler `exportTempelKacaPDF`, `exportDataMapPDF`, dan `exportDenahPesertaPDF` ke `window` agar tombol inline kembali bisa dipanggil setelah halaman dibungkus dalam tab `Kepersetaan`.
+- Menambahkan pembaruan versi asset `pembagian-ruang-v2.js` di `dashboard.html` agar browser tidak memakai cache script lama.
+- Me-rollback desain `Denah Peserta` ke versi sebelum redesign karena template print terindikasi bercampur dengan blok layout lain dan mengganggu alur export PDF panel `Administrasi`.
+
+Catatan:
+- Tidak ada menu baru.
+- Perubahan ini adalah perbaikan regresi setelah restrukturisasi halaman `Kepersetaan`.
+- Jika regresi serupa muncul lagi, rollback cukup difokuskan pada [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js).
 
 ## Versi 1.01l.21
 

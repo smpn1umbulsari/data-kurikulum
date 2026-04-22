@@ -27,7 +27,15 @@ function renderMapelPage() {
       </div>
 
       <div class="table-container mapel-table-container">
-        <table class="mapel-table">
+        <table class="mapel-table mapel-master-table">
+          <colgroup>
+            <col class="mapel-master-col-map">
+            <col class="mapel-master-col-induk">
+            <col class="mapel-master-col-kode">
+            <col class="mapel-master-col-nama">
+            <col class="mapel-master-col-jp">
+            <col class="mapel-master-col-aksi">
+          </colgroup>
           <thead>
             <tr>
               ${renderSortableHeader("No", "mapping", mapelSortField, mapelSortDirection, "setMapelSort")}
