@@ -987,10 +987,31 @@
     return context.isKoordinator ? "koordinator" : context.isGuru ? "guru" : "dashboard";
   }
 
-  async function loadHomeStats(options = {}) {
-    const context = options.label ? options : getHomeRoleContext(options);
-    const setText = (id, value) => global.AppDom?.setText?.(id, value);
-    try {
+  const HOME_STATS_CACHE_TTL_MS = 15000;
+  const homeStatsCache = new Map();
+  const homeStatsInFlight = new Map();
+
+  function getHomeStatsCacheKey(context = {}) {
+    return JSON.stringify({
+      role: String(context.role || ""),
+      label: String(context.label || ""),
+      kodeGuru: String(context.kodeGuru || ""),
+      coordinatorLevels: Array.isArray(context.coordinatorLevels) ? context.coordinatorLevels : [],
+      termId: typeof global.getActiveTermId === "function" ? global.getActiveTermId() : "legacy"
+    });
+  }
+
+  async function fetchHomeStatsData(context = {}, options = {}) {
+    const cacheKey = getHomeStatsCacheKey(context);
+    const cached = homeStatsCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt <= HOME_STATS_CACHE_TTL_MS) {
+      return cached.data;
+    }
+
+    const inflight = homeStatsInFlight.get(cacheKey);
+    if (inflight) return inflight;
+
+    const fetchPromise = (async () => {
       const documentsApi = getDocumentsApi();
       const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
       const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiSnap, tugasSnap, presenceRows] = await Promise.all([
@@ -1005,19 +1026,52 @@
         documentsApi.collection("tugas_tambahan").get(),
         loadRecentPresenceRows(25)
       ]);
-      const guru = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const kelas = kelasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mapelAsli = mapelAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mengajarAsli = mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mapelBayangan = mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mengajarBayangan = mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const nilai = nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
-      const tugas = tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const onlineUsers = presenceRows
-        .filter(item => isPresenceOnline(item))
-        .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
-        .slice(0, 10);
+      const data = {
+        guru: guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        siswa: siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        kelas: kelasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        mapelAsli: mapelAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        mengajarAsli: mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        mapelBayangan: mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        mengajarBayangan: mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        nilai: nilaiSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true),
+        tugas: tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        onlineUsers: presenceRows
+          .filter(item => isPresenceOnline(item))
+          .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
+          .slice(0, 10)
+      };
+      homeStatsCache.set(cacheKey, { fetchedAt: Date.now(), data });
+      return data;
+    })();
+
+    homeStatsInFlight.set(cacheKey, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      homeStatsInFlight.delete(cacheKey);
+    }
+  }
+
+  async function loadHomeStats(options = {}) {
+    const context = options.label ? options : getHomeRoleContext(options);
+    const setText = (id, value) => global.AppDom?.setText?.(id, value);
+    try {
+      const documentsApi = getDocumentsApi();
+      const {
+        guru,
+        siswa,
+        kelas,
+        mapelAsli,
+        mengajarAsli,
+        mapelBayangan,
+        mengajarBayangan,
+        nilai,
+        tugas,
+        onlineUsers
+      } = await fetchHomeStatsData(context, options);
 
       const resolvedContext = getHomeResolvedContext(context, guru);
       const inputScopeContext = getHomeInputScopeContext(resolvedContext);

@@ -17,6 +17,8 @@ let unsubscribeWaliKehadiranRekap = null;
 let unsubscribeWaliKelasBayanganSource = null;
 let waliKelasBayanganSourceByLevel = {};
 let currentWaliKelasPage = "";
+let lastWaliKehadiranTableHtml = "";
+let lastWaliKelengkapanTableHtml = "";
 let waliInitialReady = {
   siswa: false,
   kelas: false,
@@ -447,6 +449,8 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
       <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
       ${renderWaliSavingOverlay()}
     `;
+    lastWaliKehadiranTableHtml = "";
+    lastWaliKelengkapanTableHtml = "";
     return true;
   }
 
@@ -454,6 +458,8 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
     ${renderWaliKelasHeader("Cek Kelengkapan Nilai Siswa", "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.", "")}
     <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
   `;
+  lastWaliKehadiranTableHtml = "";
+  lastWaliKelengkapanTableHtml = "";
   return true;
 }
 
@@ -588,17 +594,22 @@ function renderWaliKehadiranTable() {
   if (!container) return;
   const kelas = getSelectedWaliClass().kelas;
   const students = getWaliStudentsByClass(kelas);
+  let nextHtml = "";
   if (window.WaliKelasView?.renderKehadiranTable) {
-    container.innerHTML = window.WaliKelasView.renderKehadiranTable({
+    nextHtml = window.WaliKelasView.renderKehadiranTable({
       kelas,
       students,
       getCounts: getWaliKehadiranCounts,
       escape: escapeWaliHtml
     });
-    setupWaliRekapInputs();
+    if (nextHtml !== lastWaliKehadiranTableHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastWaliKehadiranTableHtml = nextHtml;
+      setupWaliRekapInputs();
+    }
     return;
   }
-  container.innerHTML = `
+  nextHtml = `
         <table class="mapel-table wali-kehadiran-table">
           <colgroup>
             <col class="wali-col-no">
@@ -632,7 +643,11 @@ function renderWaliKehadiranTable() {
       </tbody>
     </table>
   `;
-  setupWaliRekapInputs();
+  if (nextHtml !== lastWaliKehadiranTableHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastWaliKehadiranTableHtml = nextHtml;
+    setupWaliRekapInputs();
+  }
 }
 
 async function saveWaliKehadiranRekap() {
@@ -921,8 +936,9 @@ function renderWaliKelengkapanTable() {
   if (!container) return;
   const kelas = getSelectedWaliClass().kelas;
   const assignments = getWaliClassAssignments(kelas);
+  let nextHtml = "";
   if (window.WaliKelasView?.renderKelengkapanTable) {
-    container.innerHTML = window.WaliKelasView.renderKelengkapanTable({
+    nextHtml = window.WaliKelasView.renderKelengkapanTable({
       kelas,
       assignments,
       escape: escapeWaliHtml,
@@ -932,9 +948,13 @@ function renderWaliKelengkapanTable() {
       getCompletenessClass: getWaliCompletenessClass,
       formatCompletenessText: formatWaliCompletenessText
     });
+    if (nextHtml !== lastWaliKelengkapanTableHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastWaliKelengkapanTableHtml = nextHtml;
+    }
     return;
   }
-  container.innerHTML = `
+  nextHtml = `
     <table class="mapel-table wali-completeness-table">
       <colgroup>
         <col class="wali-col-mapel">
@@ -971,4 +991,8 @@ function renderWaliKelengkapanTable() {
       </tbody>
     </table>
   `;
+  if (nextHtml !== lastWaliKelengkapanTableHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastWaliKelengkapanTableHtml = nextHtml;
+  }
 }

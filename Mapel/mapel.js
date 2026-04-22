@@ -8,6 +8,7 @@ let currentEditMapel = null;
 let mapelSortField = "mapping";
 let mapelSortDirection = "asc";
 let isSyncingMapelBayangan = false;
+let lastMapelTableRenderKey = "";
 const INDUK_MAPEL_OPTIONS = [
   { kode: "PABP", nama: "Pendidikan Agama dan Budi Pekerti" },
   { kode: "PP", nama: "Pendidikan Pancasila" },
@@ -164,7 +165,23 @@ function setMapelSort(field) {
 function renderMapelTableState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderMapelPage();
+  const tbody = document.getElementById("tbodyMapel");
+  if (!tbody) {
+    content.innerHTML = renderMapelPage();
+    lastMapelTableRenderKey = "";
+  } else {
+    const theadRow = tbody.closest("table")?.querySelector("thead tr");
+    if (theadRow) {
+      theadRow.innerHTML = `
+        ${renderSortableHeader("No", "mapping", mapelSortField, mapelSortDirection, "setMapelSort")}
+        ${renderSortableHeader("Induk", "induk_mapel", mapelSortField, mapelSortDirection, "setMapelSort")}
+        ${renderSortableHeader("Kode Mapel", "kode_mapel", mapelSortField, mapelSortDirection, "setMapelSort")}
+        ${renderSortableHeader("Nama Mapel", "nama_mapel", mapelSortField, mapelSortDirection, "setMapelSort")}
+        ${renderSortableHeader("JP", "jp", mapelSortField, mapelSortDirection, "setMapelSort")}
+        <th>Aksi</th>
+      `;
+    }
+  }
   renderMapelFiltered();
 }
 
@@ -465,10 +482,28 @@ function renderMapelFiltered() {
 
   if (!tbody) return;
 
-  tbody.innerHTML = [
+  const rowsHtml = [
     isMapelBayanganMode() ? "" : renderMapelInputRow(),
     ...hasil.map(d => renderMapelRow(d))
   ].join("");
+  const renderKey = JSON.stringify({
+    mode: isMapelBayanganMode() ? "bayangan" : "utama",
+    currentEditMapel: currentEditMapel || "",
+    rows: hasil.map(item => [
+      item.kode_mapel,
+      item.nama_mapel,
+      item.mapping,
+      item.induk_mapel,
+      item.agama,
+      item.jp,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|")),
+    total: hasil.length
+  });
+  if (renderKey !== lastMapelTableRenderKey || !tbody.children.length) {
+    tbody.innerHTML = rowsHtml;
+    lastMapelTableRenderKey = renderKey;
+  }
 
   if (empty) {
     empty.style.display = hasil.length === 0 ? "block" : "none";

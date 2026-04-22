@@ -2,6 +2,7 @@ let semuaDataSiswaLulus = [];
 let unsubscribeSiswaLulus = null;
 let siswaLulusSearch = "";
 let siswaLulusTahun = "";
+let lastSiswaLulusPageHtml = "";
 
 function normalizeSiswaLulusTahun(value) {
   return String(value || "").trim().replace(/\s+/g, "");
@@ -129,7 +130,12 @@ function renderSiswaLulusRows() {
 
 function renderSiswaLulusState() {
   const content = document.getElementById("content");
-  if (content) content.innerHTML = renderSiswaLulusPage();
+  if (!content) return;
+  const nextHtml = renderSiswaLulusPage();
+  if (nextHtml !== lastSiswaLulusPageHtml || !content.children.length) {
+    content.innerHTML = nextHtml;
+    lastSiswaLulusPageHtml = nextHtml;
+  }
 }
 
 function setSiswaLulusSearch(value) {

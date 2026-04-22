@@ -9,6 +9,7 @@
   const COLLECTION_CACHE_TTL_MS = 1200;
   const collectionCache = new Map();
   const collectionFetches = new Map();
+  const queryFetches = new Map();
 
   function makeChannelName(prefix, path) {
     const randomId = global.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -38,6 +39,15 @@
     return String(collectionPath || "");
   }
 
+  function getQueryCacheKey(collectionPath, where = [], order = null, limit = null) {
+    return JSON.stringify({
+      collectionPath: String(collectionPath || ""),
+      where,
+      order,
+      limit: limit === null ? null : Number(limit)
+    });
+  }
+
   function cloneCollectionRows(rows = []) {
     return rows.map(row => ({
       id: row.id,
@@ -59,10 +69,78 @@
     });
   }
 
+  function invalidateRelatedQueryFetches(collectionPath) {
+    for (const queryKey of queryFetches.keys()) {
+      if (queryKey.includes(`"collectionPath":"${String(collectionPath || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"`)) {
+        queryFetches.delete(queryKey);
+      }
+    }
+  }
+
   function invalidateCollectionCache(collectionPath) {
     const key = getCollectionCacheKey(collectionPath);
     collectionCache.delete(key);
     collectionFetches.delete(key);
+    invalidateRelatedQueryFetches(collectionPath);
+  }
+
+  function applyRealtimePayloadToCache(collectionPath, payload = {}) {
+    const cachedRows = getCachedCollectionRows(collectionPath);
+    invalidateRelatedQueryFetches(collectionPath);
+    if (!cachedRows) return;
+
+    const eventType = String(payload.eventType || payload.event || "").toUpperCase();
+    const newPath = payload.new?.collection_path;
+    const oldPath = payload.old?.collection_path;
+    const targetPath = newPath || oldPath;
+    if (targetPath !== collectionPath) return;
+
+    const nextRows = [...cachedRows];
+    const oldId = String(payload.old?.id || "");
+    const newId = String(payload.new?.id || "");
+
+    if (eventType === "DELETE") {
+      setCachedCollectionRows(collectionPath, nextRows.filter(row => row.id !== oldId));
+      return;
+    }
+
+    const nextRow = {
+      id: newId || oldId,
+      data: { ...(payload.new?.data || {}) }
+    };
+    const existingIndex = nextRows.findIndex(row => row.id === nextRow.id);
+    if (existingIndex >= 0) nextRows[existingIndex] = nextRow;
+    else nextRows.push(nextRow);
+    setCachedCollectionRows(collectionPath, nextRows);
+  }
+
+  function escapeFilterValue(value) {
+    return String(value ?? "").replace(/\\/g, "\\\\").replace(/,/g, "\\,").replace(/\)/g, "\\)");
+  }
+
+  function getServerFilterValue(value) {
+    if (value === undefined || value === null) return "";
+    return value instanceof Date ? value.toISOString() : String(value);
+  }
+
+  function isServerFilterSupported(filter) {
+    return Boolean(filter?.field) && ["==", "!=", "in"].includes(String(filter?.op || ""));
+  }
+
+  function canUseServerQuery(where = []) {
+    return client?.from && where.length > 0 && where.every(isServerFilterSupported);
+  }
+
+  function applyServerFilter(builder, filter) {
+    const fieldPath = `data->>${filter.field}`;
+    if (filter.op === "==") return builder.filter(fieldPath, "eq", getServerFilterValue(filter.value));
+    if (filter.op === "!=") return builder.filter(fieldPath, "neq", getServerFilterValue(filter.value));
+    if (filter.op === "in") {
+      if (!Array.isArray(filter.value) || filter.value.length === 0) return builder.filter(fieldPath, "in", "(\"\")");
+      const values = filter.value.map(item => `"${escapeFilterValue(getServerFilterValue(item))}"`).join(",");
+      return builder.filter(fieldPath, "in", `(${values})`);
+    }
+    return builder;
   }
 
   async function fetchAllCollectionRows(collectionPath, options = {}) {
@@ -104,6 +182,55 @@
         return await fetchPromise;
       } finally {
         collectionFetches.delete(key);
+      }
+    }
+
+    return fetchPromise;
+  }
+
+  async function fetchServerFilteredRows(collectionPath, queryOptions = {}, fetchOptions = {}) {
+    if (!client?.from) throw new Error("Supabase client belum siap");
+    const queryKey = getQueryCacheKey(collectionPath, queryOptions.where, queryOptions.order, queryOptions.limit);
+    if (fetchOptions.useCache !== false) {
+      const existingFetch = queryFetches.get(queryKey);
+      if (existingFetch) return existingFetch;
+    }
+
+    const pageSize = Math.max(1, Math.min(Number(queryOptions.limit) || 1000, 1000));
+    let offset = 0;
+    const rows = [];
+    const fetchPromise = (async () => {
+      while (true) {
+        let request = client
+          .from(TABLE)
+          .select("id,data")
+          .eq("collection_path", collectionPath)
+          .range(offset, offset + pageSize - 1);
+
+        queryOptions.where.forEach(filter => {
+          request = applyServerFilter(request, filter);
+        });
+
+        const { data, error } = await request;
+        if (error) throw error;
+
+        const page = data || [];
+        rows.push(...page);
+        if (page.length < pageSize || (queryOptions.limit !== null && rows.length >= Number(queryOptions.limit))) break;
+        offset += pageSize;
+      }
+
+      return cloneCollectionRows(
+        queryOptions.limit !== null ? rows.slice(0, Number(queryOptions.limit) || 0) : rows
+      );
+    })();
+
+    if (fetchOptions.useCache !== false) {
+      queryFetches.set(queryKey, fetchPromise);
+      try {
+        return await fetchPromise;
+      } finally {
+        queryFetches.delete(queryKey);
       }
     }
 
@@ -180,8 +307,14 @@
     }
 
     async get() {
-      let rows = (await fetchAllCollectionRows(this.collectionPath))
-        .filter(row => this._where.every(filter => matchesFilter(row, filter)));
+      let rows = canUseServerQuery(this._where)
+        ? await fetchServerFilteredRows(this.collectionPath, {
+            where: this._where,
+            order: this._order,
+            limit: this._limit
+          })
+        : (await fetchAllCollectionRows(this.collectionPath))
+            .filter(row => this._where.every(filter => matchesFilter(row, filter)));
       if (this._order) {
         const { field, direction } = this._order;
         rows = [...rows].sort((a, b) => {
@@ -236,7 +369,10 @@
         .channel(makeChannelName("app-documents-native", this.collectionPath))
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
           const path = payload.new?.collection_path || payload.old?.collection_path;
-          if (path === this.collectionPath) scheduleRefresh();
+          if (path === this.collectionPath) {
+            applyRealtimePayloadToCache(this.collectionPath, payload);
+            scheduleRefresh();
+          }
         })
         .subscribe();
 
@@ -343,7 +479,10 @@
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, payload => {
           const path = payload.new?.collection_path || payload.old?.collection_path;
           const id = payload.new?.id || payload.old?.id;
-          if (path === this.collectionPath && id === this.id) scheduleRefresh();
+          if (path === this.collectionPath && id === this.id) {
+            applyRealtimePayloadToCache(this.collectionPath, payload);
+            scheduleRefresh();
+          }
         })
         .subscribe();
 

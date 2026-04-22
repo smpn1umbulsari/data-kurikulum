@@ -14,6 +14,9 @@ let isNormalizingSiswaKelas = false;
 let hasNormalizedSiswaKelas = false;
 let isNormalizingSiswaNama = false;
 let hasNormalizedSiswaNama = false;
+let lastSiswaTableRenderKey = "";
+let lastSiswaPaginationRenderKey = "";
+let lastSiswaFilterKelasOptionsHtml = "";
 
 function getSiswaAccessibleLevels() {
   if (typeof canUseCoordinatorAccess !== "function" || !canUseCoordinatorAccess()) return [];
@@ -96,7 +99,25 @@ function renderTableState() {
   const jkValue = document.getElementById("filterJK")?.value || "";
   const agamaValue = document.getElementById("filterAgama")?.value || "";
   const rowsValue = String(rowsPerPage);
-  content.innerHTML = renderTable();
+  const tbody = document.getElementById("tbody");
+  if (!tbody) {
+    content.innerHTML = renderTable();
+    lastSiswaTableRenderKey = "";
+    lastSiswaPaginationRenderKey = "";
+  } else {
+    const theadRow = tbody.closest("table")?.querySelector("thead tr");
+    if (theadRow) {
+      theadRow.innerHTML = `
+        <th class="sortable-header siswa-col-nipd ${siswaSortField === "nipd" ? "active" : ""}" onclick="setSiswaSort('nipd')">NIPD${siswaSortField === "nipd" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+        <th class="sortable-header siswa-col-nisn ${siswaSortField === "nisn" ? "active" : ""}" onclick="setSiswaSort('nisn')">NISN${siswaSortField === "nisn" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+        <th class="sortable-header siswa-col-nama ${siswaSortField === "nama" ? "active" : ""}" onclick="setSiswaSort('nama')">Nama${siswaSortField === "nama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+        <th class="sortable-header siswa-col-jk ${siswaSortField === "jk" ? "active" : ""}" onclick="setSiswaSort('jk')">JK${siswaSortField === "jk" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+        <th class="sortable-header siswa-col-agama ${siswaSortField === "agama" ? "active" : ""}" onclick="setSiswaSort('agama')">Agama${siswaSortField === "agama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+        <th class="sortable-header siswa-col-kelas ${siswaSortField === "kelas" ? "active" : ""}" onclick="setSiswaSort('kelas')">Kelas${siswaSortField === "kelas" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+        <th class="siswa-col-aksi">Aksi</th>
+      `;
+    }
+  }
   const search = document.getElementById("search");
   const filterTingkat = document.getElementById("filterTingkat");
   const filterKelas = document.getElementById("filterKelas");
@@ -172,7 +193,11 @@ function populateSiswaFilterKelasOptions(selectedTingkat = "", selectedValue = "
     options.push(`<option value="${selectedValue}" selected>${selectedValue}</option>`);
   }
 
-  select.innerHTML = options.join("");
+  const nextOptionsHtml = options.join("");
+  if (nextOptionsHtml !== lastSiswaFilterKelasOptionsHtml || !select.options.length) {
+    select.innerHTML = nextOptionsHtml;
+    lastSiswaFilterKelasOptionsHtml = nextOptionsHtml;
+  }
 }
 
 function setSiswaKelasFilterValue(value = "") {
@@ -215,40 +240,29 @@ function renderPagination(containerId, current, total, onPageChange) {
   if (!container) return;
 
   if (total <= 1) {
-    container.innerHTML = "";
+    if (lastSiswaPaginationRenderKey !== "__empty__") {
+      container.innerHTML = "";
+      lastSiswaPaginationRenderKey = "__empty__";
+    }
     return;
   }
 
-  container.innerHTML = `
+  const nextHtml = `
     <div class="pagination">
       <button class="btn-secondary" onclick="${onPageChange}(${current - 1})" ${current === 1 ? "disabled" : ""}>Prev</button>
       <span>Halaman ${current} dari ${total}</span>
       <button class="btn-secondary" onclick="${onPageChange}(${current + 1})" ${current === total ? "disabled" : ""}>Next</button>
     </div>
   `;
+  const renderKey = `${current}|${total}`;
+  if (renderKey !== lastSiswaPaginationRenderKey || !container.innerHTML) {
+    container.innerHTML = nextHtml;
+    lastSiswaPaginationRenderKey = renderKey;
+  }
 }
 
 function setPage(page) {
-  const keyword = document.getElementById("search")?.value?.toLowerCase() || "";
-  const levels = getSiswaAccessibleLevels();
-  const tingkat = document.getElementById("filterTingkat")?.value || (levels.length === 1 ? levels[0] : "");
-  const kelas = document.getElementById("filterKelas")?.value || "";
-  const jk = document.getElementById("filterJK")?.value || "";
-  const agama = document.getElementById("filterAgama")?.value || "";
-
-  const hasil = getSiswaVisibleData().filter(d =>
-    (
-      (d.nama || "").toLowerCase().includes(keyword) ||
-      (d.nipd || "").toLowerCase().includes(keyword) ||
-      (d.nisn || "").toLowerCase().includes(keyword)
-    ) &&
-    (!tingkat || getSiswaTingkatFromKelas(d.kelas) === tingkat) &&
-    (!kelas || normalizeSiswaKelasFilterValue(d.kelas) === normalizeSiswaKelasFilterValue(kelas)) &&
-    (!jk || (d.jk || "").toUpperCase() === jk) &&
-    (!agama || (d.agama || "").toLowerCase() === agama.toLowerCase())
-  );
-
-  const totalPages = Math.max(1, Math.ceil(hasil.length / getRowsPerPageValue()));
+  const totalPages = Math.max(1, Math.ceil(getFilteredSiswaRows().length / getRowsPerPageValue()));
   currentPage = Math.min(Math.max(1, page), totalPages);
   renderFiltered();
 }
@@ -260,6 +274,32 @@ function applyFilters() {
 
 function getRowsPerPageValue() {
   return rowsPerPage === "all" ? Number.MAX_SAFE_INTEGER : Number(rowsPerPage);
+}
+
+function getSiswaFilterState() {
+  const levels = getSiswaAccessibleLevels();
+  return {
+    keyword: document.getElementById("search")?.value?.toLowerCase() || "",
+    tingkat: document.getElementById("filterTingkat")?.value || (levels.length === 1 ? levels[0] : ""),
+    kelas: document.getElementById("filterKelas")?.value || "",
+    jk: document.getElementById("filterJK")?.value || "",
+    agama: document.getElementById("filterAgama")?.value || ""
+  };
+}
+
+function getFilteredSiswaRows() {
+  const state = getSiswaFilterState();
+  return sortSiswaData(getSiswaVisibleData().filter(d =>
+    (
+      (d.nama || "").toLowerCase().includes(state.keyword) ||
+      (d.nipd || "").toLowerCase().includes(state.keyword) ||
+      (d.nisn || "").toLowerCase().includes(state.keyword)
+    ) &&
+    (!state.tingkat || getSiswaTingkatFromKelas(d.kelas) === state.tingkat) &&
+    (!state.kelas || normalizeSiswaKelasFilterValue(d.kelas) === normalizeSiswaKelasFilterValue(state.kelas)) &&
+    (!state.jk || (d.jk || "").toUpperCase() === state.jk) &&
+    (!state.agama || (d.agama || "").toLowerCase() === state.agama.toLowerCase())
+  ));
 }
 
 function setRowsPerPage(value) {
@@ -360,27 +400,8 @@ async function ensureNormalizedSiswaKelasData(data = []) {
 
 // ================= FILTER =================
 function renderFiltered() {
-
-  const keyword = document.getElementById("search")?.value?.toLowerCase() || "";
-  const tingkat = document.getElementById("filterTingkat")?.value || "";
-  const kelas = document.getElementById("filterKelas")?.value || "";
-  const jk = document.getElementById("filterJK")?.value || "";
-  const agama = document.getElementById("filterAgama")?.value || "";
-
-  const levels = getSiswaAccessibleLevels();
-  const tingkatFilter = document.getElementById("filterTingkat")?.value || (levels.length === 1 ? levels[0] : "");
-  const hasil = sortSiswaData(getSiswaVisibleData().filter(d =>
-    (
-      (d.nama || "").toLowerCase().includes(keyword) ||
-      (d.nipd || "").toLowerCase().includes(keyword) ||
-      (d.nisn || "").toLowerCase().includes(keyword)
-    ) &&
-    (!tingkatFilter || getSiswaTingkatFromKelas(d.kelas) === tingkatFilter) &&
-    (!kelas || normalizeSiswaKelasFilterValue(d.kelas) === normalizeSiswaKelasFilterValue(kelas)) &&
-    (!jk || (d.jk || "").toUpperCase() === jk) &&
-    (!agama || (d.agama || "").toLowerCase() === agama.toLowerCase())
-  ));
-
+  const state = getSiswaFilterState();
+  const hasil = getFilteredSiswaRows();
   const tbody = document.getElementById("tbody");
   const empty = document.getElementById("emptyState");
   const effectiveRowsPerPage = getRowsPerPageValue();
@@ -394,8 +415,27 @@ function renderFiltered() {
 
   const startIndex = (currentPage - 1) * effectiveRowsPerPage;
   const pagedData = hasil.slice(startIndex, startIndex + effectiveRowsPerPage);
-
-  tbody.innerHTML = pagedData.map(renderRow).join("");
+  const renderKey = JSON.stringify({
+    currentPage,
+    effectiveRowsPerPage,
+    currentEdit: currentEdit || "",
+    state,
+    rows: pagedData.map(item => [
+      item.nipd,
+      item.nisn,
+      item.nama,
+      item.jk,
+      item.agama,
+      item.kelas,
+      item.kelas_bayangan,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|")),
+    total: hasil.length
+  });
+  if (renderKey !== lastSiswaTableRenderKey || !tbody.children.length) {
+    tbody.innerHTML = pagedData.map(renderRow).join("");
+    lastSiswaTableRenderKey = renderKey;
+  }
 
   // 🔥 EMPTY STATE
   if (empty) {

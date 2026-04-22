@@ -29,6 +29,10 @@ const draftAsesmenLevelSettings = {
 };
 const appliedAsesmenLevels = new Set();
 const ASESMEN_STORAGE_KEY = "asesmenPembagianRuangV2";
+let lastPembagianRuangPageHtml = "";
+let lastAdministrasiAsesmenPageHtml = "";
+let lastAsesmenRoomArrangementHtml = "";
+const lastAsesmenPreviewHtmlByLevel = {};
 
 function invalidateAsesmenStudentCaches() {
   asesmenStudentLevelCache.clear();
@@ -650,14 +654,26 @@ function loadRealtimeAdministrasiAsesmen() {
 function renderPembagianRuangState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderPembagianRuangPage();
+  const nextHtml = renderPembagianRuangPage();
+  if (nextHtml !== lastPembagianRuangPageHtml || !document.getElementById("asesmenRoomArrangement")) {
+    content.innerHTML = nextHtml;
+    lastPembagianRuangPageHtml = nextHtml;
+    lastAsesmenRoomArrangementHtml = "";
+    Object.keys(lastAsesmenPreviewHtmlByLevel).forEach(key => {
+      lastAsesmenPreviewHtmlByLevel[key] = "";
+    });
+  }
   renderAllAsesmenPreviews();
 }
 
 function renderAdministrasiAsesmenState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderAdministrasiAsesmenPage();
+  const nextHtml = renderAdministrasiAsesmenPage();
+  if (nextHtml !== lastAdministrasiAsesmenPageHtml || !content.children.length) {
+    content.innerHTML = nextHtml;
+    lastAdministrasiAsesmenPageHtml = nextHtml;
+  }
 }
 
 function setAdministrasiAsesmenSetting(key, value) {
@@ -980,12 +996,20 @@ function renderAsesmenPreview(level) {
     const message = belumBayangan > 0
       ? `${belumBayangan} siswa kelas ${level} belum memiliki kelas bayangan.`
       : `Belum ada siswa kelas ${level}.`;
-    container.innerHTML = `<div class="empty-panel">${escapeAsesmenHtml(message)}</div>`;
+    const nextHtml = `<div class="empty-panel">${escapeAsesmenHtml(message)}</div>`;
+    if (nextHtml !== lastAsesmenPreviewHtmlByLevel[level] || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastAsesmenPreviewHtmlByLevel[level] = nextHtml;
+    }
     return;
   }
 
   if (!isAsesmenLevelApplied(level)) {
-    container.innerHTML = `<div class="empty-panel">Panel kelas ${escapeAsesmenHtml(level)} belum di-set.</div>`;
+    const nextHtml = `<div class="empty-panel">Panel kelas ${escapeAsesmenHtml(level)} belum di-set.</div>`;
+    if (nextHtml !== lastAsesmenPreviewHtmlByLevel[level] || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastAsesmenPreviewHtmlByLevel[level] = nextHtml;
+    }
     return;
   }
 
@@ -995,7 +1019,7 @@ function renderAsesmenPreview(level) {
   if (missingPhysicalCount > 0) warnings.push(`${missingPhysicalCount} bagian belum mendapat nomor ruang fisik.`);
   conflictMessages.forEach(message => warnings.push(message));
 
-  container.innerHTML = `
+  const nextHtml = `
     ${warnings.map(message => `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`).join("")}
     <div class="asesmen-level-summary">
       <span>${decoratedRooms.length} bagian</span>
@@ -1004,6 +1028,10 @@ function renderAsesmenPreview(level) {
       <span>${assigned}/${totalSiswa} siswa</span>
     </div>
   `;
+  if (nextHtml !== lastAsesmenPreviewHtmlByLevel[level] || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastAsesmenPreviewHtmlByLevel[level] = nextHtml;
+  }
 }
 
 function renderAsesmenStudentColumn(entry) {
@@ -1893,11 +1921,15 @@ function renderAsesmenRoomArrangement() {
 
   const roomMap = getCombinedAsesmenRoomMap();
   if (roomMap.size === 0) {
-    container.innerHTML = `<div class="empty-panel">Isi ruang yang digunakan untuk melihat susunan ruang.</div>`;
+    const nextHtml = `<div class="empty-panel">Isi ruang yang digunakan untuk melihat susunan ruang.</div>`;
+    if (nextHtml !== lastAsesmenRoomArrangementHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastAsesmenRoomArrangementHtml = nextHtml;
+    }
     return;
   }
 
-  container.innerHTML = `
+  const nextHtml = `
     <div class="asesmen-combined-room-list">
       ${Array.from(roomMap.entries()).map(([roomNumber, entries]) => {
         const sortedEntries = entries.sort((a, b) => Number(b.level) - Number(a.level));
@@ -1919,6 +1951,10 @@ function renderAsesmenRoomArrangement() {
       }).join("")}
     </div>
   `;
+  if (nextHtml !== lastAsesmenRoomArrangementHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastAsesmenRoomArrangementHtml = nextHtml;
+  }
 }
 
 window.setAsesmenLevelEnabled = setAsesmenLevelEnabled;

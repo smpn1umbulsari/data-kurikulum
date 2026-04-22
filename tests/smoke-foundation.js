@@ -82,6 +82,12 @@ function createWindowMock() {
       }
     },
     addEventListener() {},
+    requestAnimationFrame(callback) {
+      return setTimeout(callback, 0);
+    },
+    cancelAnimationFrame(id) {
+      clearTimeout(id);
+    },
     getComputedStyle() {
       return { display: "none" };
     },
@@ -125,6 +131,69 @@ function createWindowMock() {
   };
 
   window.window = window;
+  window.SupabaseDocuments = {
+    collection() {
+      return {
+        orderBy() {
+          return this;
+        },
+        where() {
+          return this;
+        },
+        limit() {
+          return this;
+        },
+        get() {
+          return Promise.resolve({
+            docs: [{ id: "1", data: () => ({ nama: "A" }) }],
+            empty: false
+          });
+        },
+        onSnapshot(callback) {
+          callback({
+            docs: [{ id: "1", data: () => ({ nama: "A" }) }],
+            empty: false
+          });
+          return () => {};
+        },
+        doc() {
+          return {
+            get() {
+              return Promise.resolve({
+                exists: true,
+                id: "doc1",
+                data: () => ({ kelas_7: "G001", kelas_8: "", kelas_9: "" })
+              });
+            },
+            onSnapshot(callback) {
+              callback({
+                exists: true,
+                id: "doc1",
+                data: () => ({ kelas_7: "G001", kelas_8: "", kelas_9: "" })
+              });
+              return () => {};
+            }
+          };
+        }
+      };
+    },
+    batch() {
+      return {
+        set() {
+          return this;
+        },
+        update() {
+          return this;
+        },
+        delete() {
+          return this;
+        },
+        commit() {
+          return Promise.resolve();
+        }
+      };
+    }
+  };
   window.db = {
     collection() {
       return {
@@ -184,6 +253,16 @@ function runFileInContext(context, relativePath) {
   vm.runInContext(code, context, { filename: relativePath });
 }
 
+function readContextValue(context, expression) {
+  return vm.runInContext(expression, context);
+}
+
+function writeContextValue(context, name, value) {
+  context.__codexTempValue = value;
+  vm.runInContext(`${name} = __codexTempValue`, context);
+  delete context.__codexTempValue;
+}
+
 async function main() {
   const window = createWindowMock();
   const context = vm.createContext(window);
@@ -205,8 +284,11 @@ async function main() {
     "Asesmen/administrasi-settings.js",
     "Asesmen/pembagian-ruang-service.js",
     "Asesmen/pembagian-ruang-view.js",
+    "Nilai/nilai.js",
+    "Nilai/rapor.js",
     "WaliKelas/wali-kelas-service.js",
-    "WaliKelas/wali-kelas-view.js"
+    "WaliKelas/wali-kelas-view.js",
+    "WaliKelas/wali-kelas.js"
   ];
 
   files.forEach(file => runFileInContext(context, file));
@@ -277,9 +359,9 @@ async function main() {
   assert(bootstrapRendered === 1, "DashboardShell.bootstrap failed");
 
   assert(typeof window.DashboardHome?.renderMainHome === "function", "DashboardHome.renderMainHome missing");
-  assert(/Ringkasan Data/.test(window.DashboardHome.renderMainHome()), "DashboardHome.renderMainHome failed");
-  assert(/Ringkasan Guru/.test(window.DashboardHome.renderGuruHome()), "DashboardHome.renderGuruHome failed");
-  assert(/Koordinator/.test(window.DashboardHome.renderKoordinatorHome(["7", "8"])), "DashboardHome.renderKoordinatorHome failed");
+  assert(/Rangkuman Input/.test(window.DashboardHome.renderMainHome()), "DashboardHome.renderMainHome failed");
+  assert(/Tugas Mengajar/.test(window.DashboardHome.renderGuruHome()), "DashboardHome.renderGuruHome failed");
+  assert(/Guru \+ Koordinator|Koordinator/.test(window.DashboardHome.renderKoordinatorHome(["7", "8"])), "DashboardHome.renderKoordinatorHome failed");
   assert(/Rekap Nilai/.test(window.DashboardHome.renderRekapNilaiPlaceholder(["7"])), "DashboardHome.renderRekapNilaiPlaceholder failed");
   assert(typeof window.DashboardHome.renderHomePage === "function", "DashboardHome.renderHomePage missing");
   const homeContent = { innerHTML: "" };
@@ -294,7 +376,7 @@ async function main() {
       homeStatsLoaded += 1;
     }
   });
-  assert(/Ringkasan Data/.test(homeContent.innerHTML), "DashboardHome.renderHomePage failed");
+  assert(/Rangkuman Input/.test(homeContent.innerHTML), "DashboardHome.renderHomePage failed");
   assert(homeStatsLoaded === 1, "DashboardHome.renderHomePage did not load stats");
 
   assert(typeof window.AsesmenRuangStore?.save === "function", "AsesmenRuangStore.save missing");
@@ -438,6 +520,7 @@ async function main() {
     markReady() {}
   });
   assert(typeof waliRealtime.siswa === "function", "WaliKelasService subscriber missing");
+  await new Promise(resolve => setTimeout(resolve, 0));
   assert(waliRenderCount > 0, "WaliKelasService render callback failed");
   assert(typeof window.WaliKelasView?.renderPageShell === "function", "WaliKelasView.renderPageShell missing");
   assert(/Memuat data wali kelas/.test(window.WaliKelasView.renderPageShell()), "WaliKelasView.renderPageShell failed");
@@ -467,37 +550,37 @@ async function main() {
     formatCompletenessText: (count, total) => `${count}/${total}`
   });
   assert(/Matematika/.test(waliKelengkapanHtml), "WaliKelasView.renderKelengkapanTable missing mapel");
-  const prevWaliSiswa = typeof semuaDataWaliSiswa !== "undefined" ? semuaDataWaliSiswa : null;
-  const prevWaliMapel = typeof semuaDataWaliMapel !== "undefined" ? semuaDataWaliMapel : null;
-  const prevWaliNilai = typeof semuaDataWaliNilai !== "undefined" ? semuaDataWaliNilai : null;
+  const prevWaliSiswa = readContextValue(context, "typeof semuaDataWaliSiswa !== 'undefined' ? semuaDataWaliSiswa : null");
+  const prevWaliMapel = readContextValue(context, "typeof semuaDataWaliMapel !== 'undefined' ? semuaDataWaliMapel : null");
+  const prevWaliNilai = readContextValue(context, "typeof semuaDataWaliNilai !== 'undefined' ? semuaDataWaliNilai : null");
   try {
-    semuaDataWaliSiswa = [{
+    writeContextValue(context, "semuaDataWaliSiswa", [{
       nipd: "001",
       nama: "Ani",
       kelas: "7 A",
       kelas_bayangan: "7 A",
       agama: "islam"
-    }];
-    semuaDataWaliMapel = [{
+    }]);
+    writeContextValue(context, "semuaDataWaliMapel", [{
       kode_mapel: "PAI",
       nama_mapel: "Pendidikan Agama",
       induk_mapel: "PABP",
       agama: "islam"
-    }];
-    semuaDataWaliNilai = [{
+    }]);
+    writeContextValue(context, "semuaDataWaliNilai", [{
       id: "legacy-001",
       term_id: typeof getActiveTermId === "function" ? getActiveTermId() : "legacy",
       kelas: "7 A",
       nipd: "001",
       mapel_kode: "PAI",
       nilai: 88
-    }];
+    }]);
     const waliCount = window.getWaliNilaiCount("7 A", "PAI", "uh_1");
     assert(waliCount.count === 1, "getWaliNilaiCount should count legacy nilai for UH 1");
   } finally {
-    if (prevWaliSiswa !== null) semuaDataWaliSiswa = prevWaliSiswa;
-    if (prevWaliMapel !== null) semuaDataWaliMapel = prevWaliMapel;
-    if (prevWaliNilai !== null) semuaDataWaliNilai = prevWaliNilai;
+    writeContextValue(context, "semuaDataWaliSiswa", prevWaliSiswa || []);
+    writeContextValue(context, "semuaDataWaliMapel", prevWaliMapel || []);
+    writeContextValue(context, "semuaDataWaliNilai", prevWaliNilai || []);
   }
   assert(
     window.makeNilaiAssignmentHydrationKey({ tingkat: "7", rombel: "A", mapel_kode: "PAI", guru_kode: "G001" }) !==
@@ -505,59 +588,59 @@ async function main() {
     "makeNilaiAssignmentHydrationKey should include guru_kode"
   );
 
-  const prevRaporSiswa = typeof semuaDataRaporSiswa !== "undefined" ? semuaDataRaporSiswa : null;
-  const prevRaporKelas = typeof semuaDataRaporKelas !== "undefined" ? semuaDataRaporKelas : null;
-  const prevNilaiSiswa = typeof semuaDataNilaiSiswa !== "undefined" ? semuaDataNilaiSiswa : null;
-  const prevNilaiMapel = typeof semuaDataNilaiMapel !== "undefined" ? semuaDataNilaiMapel : null;
-  const prevNilaiMengajar = typeof semuaDataNilaiMengajar !== "undefined" ? semuaDataNilaiMengajar : null;
-  const prevNilaiKelas = typeof semuaDataNilaiKelas !== "undefined" ? semuaDataNilaiKelas : null;
+  const prevRaporSiswa = readContextValue(context, "typeof semuaDataRaporSiswa !== 'undefined' ? semuaDataRaporSiswa : null");
+  const prevRaporKelas = readContextValue(context, "typeof semuaDataRaporKelas !== 'undefined' ? semuaDataRaporKelas : null");
+  const prevNilaiSiswa = readContextValue(context, "typeof semuaDataNilaiSiswa !== 'undefined' ? semuaDataNilaiSiswa : null");
+  const prevNilaiMapel = readContextValue(context, "typeof semuaDataNilaiMapel !== 'undefined' ? semuaDataNilaiMapel : null");
+  const prevNilaiMengajar = readContextValue(context, "typeof semuaDataNilaiMengajar !== 'undefined' ? semuaDataNilaiMengajar : null");
+  const prevNilaiKelas = readContextValue(context, "typeof semuaDataNilaiKelas !== 'undefined' ? semuaDataNilaiKelas : null");
   const prevAppUser = window.localStorage.getItem("appUser");
   const prevCoordinatorLevels = window.localStorage.getItem("appKoordinatorLevels");
   try {
     window.localStorage.setItem("appUser", JSON.stringify({ role: "koordinator", kode_guru: "G009" }));
     window.localStorage.setItem("appKoordinatorLevels", JSON.stringify(["9"]));
-    semuaDataRaporSiswa = [{
+    writeContextValue(context, "semuaDataRaporSiswa", [{
       nipd: "002",
       nama: "Budi",
       kelas: "7 B",
       kelas_bayangan: "7 B",
       agama: "islam"
-    }];
-    semuaDataRaporKelas = [{
+    }]);
+    writeContextValue(context, "semuaDataRaporKelas", [{
       kelas: "7 B",
       kode_guru: "G009"
-    }];
+    }]);
     assert(window.getRaporKelasList().includes("7 B"), "getRaporKelasList should include wali class for coordinator");
 
-    semuaDataNilaiSiswa = [{
+    writeContextValue(context, "semuaDataNilaiSiswa", [{
       nipd: "002",
       nama: "Budi",
       kelas: "7 B",
       kelas_bayangan: "7 B",
       agama: "islam"
-    }];
-    semuaDataNilaiMapel = [{
+    }]);
+    writeContextValue(context, "semuaDataNilaiMapel", [{
       kode_mapel: "MTK",
       nama_mapel: "Matematika"
-    }];
-    semuaDataNilaiMengajar = [{
+    }]);
+    writeContextValue(context, "semuaDataNilaiMengajar", [{
       tingkat: "7",
       rombel: "B",
       mapel_kode: "MTK",
       guru_kode: "G777"
-    }];
-    semuaDataNilaiKelas = [{
+    }]);
+    writeContextValue(context, "semuaDataNilaiKelas", [{
       kelas: "7 B",
       kode_guru: "G009"
-    }];
+    }]);
     assert(window.getNilaiAssignmentsForClass("7", "B").length === 1, "getNilaiAssignmentsForClass should include wali class for coordinator");
   } finally {
-    if (prevRaporSiswa !== null) semuaDataRaporSiswa = prevRaporSiswa;
-    if (prevRaporKelas !== null) semuaDataRaporKelas = prevRaporKelas;
-    if (prevNilaiSiswa !== null) semuaDataNilaiSiswa = prevNilaiSiswa;
-    if (prevNilaiMapel !== null) semuaDataNilaiMapel = prevNilaiMapel;
-    if (prevNilaiMengajar !== null) semuaDataNilaiMengajar = prevNilaiMengajar;
-    if (prevNilaiKelas !== null) semuaDataNilaiKelas = prevNilaiKelas;
+    writeContextValue(context, "semuaDataRaporSiswa", prevRaporSiswa || []);
+    writeContextValue(context, "semuaDataRaporKelas", prevRaporKelas || []);
+    writeContextValue(context, "semuaDataNilaiSiswa", prevNilaiSiswa || []);
+    writeContextValue(context, "semuaDataNilaiMapel", prevNilaiMapel || []);
+    writeContextValue(context, "semuaDataNilaiMengajar", prevNilaiMengajar || []);
+    writeContextValue(context, "semuaDataNilaiKelas", prevNilaiKelas || []);
     if (prevAppUser === null) window.localStorage.removeItem("appUser");
     else window.localStorage.setItem("appUser", prevAppUser);
     if (prevCoordinatorLevels === null) window.localStorage.removeItem("appKoordinatorLevels");
@@ -574,18 +657,10 @@ async function main() {
     "shared/app-router.js",
     "shared/dashboard-shell.js",
     "shared/dashboard-data.js",
+    "shared/dashboard-module-loader.js",
     "shared/dashboard-home.js",
     "shared/dashboard-routes.js",
-    "Admin/admin-users-identity.js",
-    "Admin/admin-users-service.js",
-    "Admin/admin-users-view.js",
-    "Asesmen/pembagian-ruang-store.js",
-    "Asesmen/administrasi-settings.js",
-    "Asesmen/pembagian-ruang-service.js",
-    "Asesmen/pembagian-ruang-view.js",
-    "Asesmen/pembagian-ruang-v2.js",
-    "WaliKelas/wali-kelas-service.js",
-    "WaliKelas/wali-kelas-view.js"
+    "Semester/semester.js"
   ];
   requiredScripts.forEach(item => {
     assert(dashboardHtml.includes(item), `dashboard.html missing script ${item}`);

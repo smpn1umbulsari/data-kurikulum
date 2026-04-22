@@ -243,53 +243,13 @@
 <script src="shared/app-router.js?v=20260410a"></script>
 <script src="shared/dashboard-shell.js?v=20260413n"></script>
 <script src="shared/dashboard-data.js?v=20260410a"></script>
+<script src="shared/dashboard-module-loader.js?v=20260422a"></script>
 <script src="shared/network-traffic.js?v=20260415a"></script>
 <script src="shared/dashboard-home.js?v=20260414m"></script>
 <script src="shared/dashboard-routes.js?v=20260413l"></script>
 <script src="inline-notification.js?v=20260409a"></script>
 <script src="ttd-ks.js?v=20260409b"></script>
 <script src="Semester/semester.js?v=20260411b"></script>
-<script src="Siswa/validation.js"></script>
-<script src="Siswa/crud.js?v=20260408b"></script>
-<script src="Siswa/excel.js?v=20260409b"></script>
-<script src="Siswa/murid.js?v=20260409e"></script>
-<script src="Siswa/ui.js?v=20260411b"></script>
-<script src="Siswa/kelas-bayangan.js?v=20260409b"></script>
-<script src="Siswa/siswa-lulus.js?v=20260409a"></script>
-<script src="Guru/validation.js"></script>
-<script src="Guru/crud.js"></script>
-<script src="Guru/guru.js?v=20260409a"></script>
-<script src="Guru/ui.js"></script>
-<script src="Admin/admin-users-identity.js?v=20260410a"></script>
-<script src="Admin/admin-users-service.js?v=20260413a"></script>
-<script src="Admin/admin-users-view.js?v=20260414c"></script>
-<script src="Admin/users.js?v=20260414c"></script>
-<script src="Admin/backup.js?v=20260408d"></script>
-<script src="Admin/quota.js?v=20260415a"></script>
-<script src="Mapel/crud.js?v=20260407c"></script>
-<script src="Mapel/mapel.js?v=20260408h"></script>
-<script src="Mapel/ui.js?v=20260408e"></script>
-<script src="Kelas/crud.js?v=20260408b"></script>
-<script src="Kelas/kelas.js?v=20260414c"></script>
-<script src="Kelas/ui.js?v=20260410a"></script>
-<script src="Mengajar/crud.js?v=20260406c"></script>
-<script src="Mengajar/mengajar.js?v=20260414e"></script>
-<script src="Mengajar/ui.js?v=20260414h"></script>
-<script src="TugasTambahan/tugas-tambahan.js?v=20260409i"></script>
-<script src="Kurikulum/kalender-pendidikan.js?v=20260412a"></script>
-<script src="Rekap/rekap-v2.js?v=20260409j"></script>
-<script src="Asesmen/pembagian-ruang-store.js?v=20260414a"></script>
-<script src="Asesmen/administrasi-settings.js?v=20260410a"></script>
-<script src="Asesmen/pembagian-ruang-service.js?v=20260410a"></script>
-<script src="Asesmen/pembagian-ruang-view.js?v=20260414a"></script>
-<script src="Asesmen/pembagian-ruang-v2.js?v=20260414a"></script>
-<script src="Asesmen/kepangawasan.js?v=20260416a"></script>
-<script src="Asesmen/soal-ai.js?v=20260413m"></script>
-<script src="Nilai/nilai.js?v=20260414d"></script>
-<script src="Nilai/rapor.js?v=20260414f"></script>
-<script src="WaliKelas/wali-kelas-service.js?v=20260414b"></script>
-<script src="WaliKelas/wali-kelas-view.js?v=20260410a"></script>
-<script src="WaliKelas/wali-kelas.js?v=20260411c"></script>
 
 <script>
   if (localStorage.getItem("login") !== "true") {
@@ -835,7 +795,9 @@
     }
   }
 
-  function loadPage(page) {
+  let pendingPageNavigationToken = 0;
+
+  async function loadPage(page) {
     const content = document.getElementById("content");
     const pageTitle = document.getElementById("pageTitle");
 
@@ -848,9 +810,35 @@
       window.AppLifecycle.clearPageSubscriptions();
     }
 
-    if (!window.AppRouter?.navigate?.(page, { content, pageTitle, page })) {
-      Swal.fire("Menu belum siap", "Route halaman ini belum terdaftar di router baru.", "info");
+    const navigationToken = ++pendingPageNavigationToken;
+    const loadingTitle = pageTitle?.innerText || "Memuat menu";
+
+    try {
+      if (window.AppLoading?.set) {
+        window.AppLoading.set("route-navigation", true, {
+          title: "Memuat menu...",
+          message: `Menyiapkan halaman ${loadingTitle}.`
+        });
+      }
+
+      if (window.DashboardRoutes?.ensureLoaded) {
+        await window.DashboardRoutes.ensureLoaded(page);
+      }
+
+      if (navigationToken !== pendingPageNavigationToken) return;
+
+      if (!window.AppRouter?.navigate?.(page, { content, pageTitle, page })) {
+        Swal.fire("Menu belum siap", "Route halaman ini belum terdaftar di router baru.", "info");
+        return;
+      }
+    } catch (error) {
+      console.error(error);
+      Swal.fire("Gagal memuat menu", "Script halaman belum berhasil dimuat sepenuhnya.", "error");
       return;
+    } finally {
+      if (navigationToken === pendingPageNavigationToken && window.AppLoading?.set) {
+        window.AppLoading.set("route-navigation", false, {});
+      }
     }
 
     if (window.DashboardShell?.syncResponsiveSidebar) {
