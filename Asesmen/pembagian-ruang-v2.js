@@ -60,6 +60,10 @@ function setAsesmenPageTab(tab, options = {}) {
   loadRealtimePembagianRuang();
 }
 
+function setAsesmenHtmlIfChanged(element, html) {
+  if (element.innerHTML !== html) element.innerHTML = html;
+}
+
 function invalidateAsesmenStudentCaches() {
   asesmenStudentLevelCache.clear();
   asesmenUnassignedLevelCache.clear();

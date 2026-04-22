@@ -26,9 +26,49 @@ let waliInitialReady = {
   nilai: false,
   rekap: false
 };
+let accessibleWaliClassesCache = null;
+const waliStudentsByClassCache = new Map();
+const waliClassAssignmentsCache = new Map();
+const waliMapelByCodeCache = new Map();
+const waliGuruByCodeCache = new Map();
+const waliKehadiranStatusCache = new Map();
+const waliKehadiranCountsCache = new Map();
+const waliNilaiCountCache = new Map();
 
 function getWaliDocumentsApi() {
   return window.SupabaseDocuments;
+}
+
+function resetWaliClassCaches() {
+  accessibleWaliClassesCache = null;
+  waliStudentsByClassCache.clear();
+  waliClassAssignmentsCache.clear();
+  waliKehadiranCountsCache.clear();
+  waliNilaiCountCache.clear();
+}
+
+function resetWaliLookupCaches() {
+  waliMapelByCodeCache.clear();
+  waliGuruByCodeCache.clear();
+  waliClassAssignmentsCache.clear();
+  waliNilaiCountCache.clear();
+}
+
+function resetWaliAttendanceCaches() {
+  waliKehadiranStatusCache.clear();
+  waliKehadiranCountsCache.clear();
+}
+
+function resetWaliNilaiCaches() {
+  waliNilaiCountCache.clear();
+}
+
+function rebuildWaliAttendanceStatusCache() {
+  resetWaliAttendanceCaches();
+  semuaDataWaliKehadiran.forEach(item => {
+    if (!item?.id) return;
+    waliKehadiranStatusCache.set(String(item.id), String(item.status || ""));
+  });
 }
 
 function escapeWaliHtml(value) {
@@ -97,9 +137,15 @@ function mergeWaliClassRows(rows = []) {
 }
 
   function getAccessibleWaliClasses() {
+    if (accessibleWaliClassesCache) {
+      return accessibleWaliClassesCache.map(item => ({ ...item }));
+    }
     const user = getCurrentWaliUser();
+    let rows = [];
     if (["admin", "superadmin"].includes(String(user.role || "admin").trim().toLowerCase())) {
-      return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
+      rows = sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
+      accessibleWaliClassesCache = rows.map(item => ({ ...item }));
+      return rows;
     }
     if ((user.role || "") === "koordinator" || ((user.role || "") === "guru" && typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess())) {
       const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
@@ -109,12 +155,16 @@ function mergeWaliClassRows(rows = []) {
       return levels.includes(parts.tingkat);
     });
     const ownWaliClasses = semuaDataWaliKelas.filter(item => String(item.kode_guru || "").trim() === kodeGuru);
-    return sortWaliClasses(filterWaliSelectableClasses(mergeWaliClassRows([
+    rows = sortWaliClasses(filterWaliSelectableClasses(mergeWaliClassRows([
       ...levelClasses,
       ...ownWaliClasses
     ])));
+    accessibleWaliClassesCache = rows.map(item => ({ ...item }));
+    return rows;
   }
-  return sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => String(item.kode_guru || "") === String(user.kode_guru || ""))));
+  rows = sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => String(item.kode_guru || "") === String(user.kode_guru || ""))));
+  accessibleWaliClassesCache = rows.map(item => ({ ...item }));
+  return rows;
 }
 
 function sortWaliClasses(rows) {
@@ -147,13 +197,18 @@ function getPreferredWaliClass() {
 
 function getWaliStudentsByClass(kelasValue) {
   const target = getWaliKelasParts(kelasValue).kelas;
-  return semuaDataWaliSiswa
+  if (waliStudentsByClassCache.has(target)) {
+    return waliStudentsByClassCache.get(target).map(item => ({ ...item, kelasBayanganParts: { ...(item.kelasBayanganParts || {}) } }));
+  }
+  const rows = semuaDataWaliSiswa
     .map(siswa => ({ ...siswa, kelasBayanganParts: getWaliSiswaKelasBayanganParts(siswa) }))
     .filter(siswa => siswa.kelasBayanganParts.kelas === target)
     .sort((a, b) => {
       if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
       return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
     });
+  waliStudentsByClassCache.set(target, rows.map(item => ({ ...item, kelasBayanganParts: { ...(item.kelasBayanganParts || {}) } })));
+  return rows;
 }
 
 function renderWaliKelasSelect() {
@@ -249,24 +304,32 @@ function loadRealtimeWaliKelas(page) {
       renderActivePage: nextPage => renderWaliKelasActivePage(nextPage),
       onSiswa: rows => {
         semuaDataWaliSiswa = rows;
+        resetWaliClassCaches();
       },
       onKelas: rows => {
         semuaDataWaliKelas = rows;
+        resetWaliClassCaches();
       },
       onMapel: rows => {
         semuaDataWaliMapel = rows;
+        resetWaliLookupCaches();
       },
       onMengajar: rows => {
         semuaDataWaliMengajar = rows;
+        waliClassAssignmentsCache.clear();
+        waliNilaiCountCache.clear();
       },
       onGuru: rows => {
         semuaDataWaliGuru = rows;
+        waliGuruByCodeCache.clear();
       },
       onNilai: rows => {
         semuaDataWaliNilai = rows;
+        resetWaliNilaiCaches();
       },
       onRekap: rows => {
         semuaDataWaliKehadiranRekap = rows;
+        waliKehadiranCountsCache.clear();
       },
       onSource: data => {
         waliKelasBayanganSourceByLevel = data?.levels && typeof data.levels === "object" && !Array.isArray(data.levels)
@@ -276,6 +339,7 @@ function loadRealtimeWaliKelas(page) {
                 .filter(([level, kelas]) => level && kelas)
             )
           : {};
+        resetWaliClassCaches();
       },
       markReady: key => {
         waliInitialReady[key] = true;
@@ -309,26 +373,32 @@ function loadRealtimeWaliKelas(page) {
   const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : documentsApi.collection("kelas");
   unsubscribeWaliSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataWaliSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetWaliClassCaches();
     waliInitialReady.siswa = true;
     render();
   });
   unsubscribeWaliKelas = kelasQuery.onSnapshot(snapshot => {
     semuaDataWaliKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetWaliClassCaches();
     waliInitialReady.kelas = true;
     render();
   });
   unsubscribeWaliMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataWaliMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetWaliLookupCaches();
     waliInitialReady.mapel = true;
     render();
   });
   unsubscribeWaliMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataWaliMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliClassAssignmentsCache.clear();
+    waliNilaiCountCache.clear();
     waliInitialReady.mengajar = true;
     render();
   });
   unsubscribeWaliGuru = documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
     semuaDataWaliGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliGuruByCodeCache.clear();
     waliInitialReady.guru = true;
     render();
   });
@@ -336,6 +406,7 @@ function loadRealtimeWaliKelas(page) {
     semuaDataWaliNilai = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    resetWaliNilaiCaches();
     waliInitialReady.nilai = true;
     render();
   });
@@ -343,6 +414,7 @@ function loadRealtimeWaliKelas(page) {
     semuaDataWaliKehadiranRekap = snapshot.docs
       .map(doc => ({ id: doc.id, ...doc.data() }))
       .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    waliKehadiranCountsCache.clear();
     waliInitialReady.rekap = true;
     render();
   });
@@ -355,6 +427,7 @@ function loadRealtimeWaliKelas(page) {
             .filter(([level, kelas]) => level && kelas)
         )
       : {};
+    resetWaliClassCaches();
     render();
   });
 }
@@ -497,16 +570,22 @@ function normalizeWaliRekapCount(value) {
 function getWaliKehadiranCounts(kelas, nipd) {
   const targetKelas = getWaliKelasParts(kelas).kelas;
   const targetNipd = String(nipd || "").trim();
+  const cacheKey = `${targetKelas}|${targetNipd}`;
+  if (waliKehadiranCountsCache.has(cacheKey)) {
+    return { ...waliKehadiranCountsCache.get(cacheKey) };
+  }
   const rekap = semuaDataWaliKehadiranRekap.find(item =>
     item.id === makeWaliKehadiranRekapDocId(targetKelas, targetNipd) ||
     (getWaliKelasParts(item.kelas).kelas === targetKelas && String(item.nipd || "").trim() === targetNipd)
   );
   if (rekap) {
-    return {
+    const counts = {
       S: normalizeWaliRekapCount(rekap.s ?? rekap.S),
       I: normalizeWaliRekapCount(rekap.i ?? rekap.I),
       A: normalizeWaliRekapCount(rekap.a ?? rekap.A)
     };
+    waliKehadiranCountsCache.set(cacheKey, counts);
+    return { ...counts };
   }
   return { S: 0, I: 0, A: 0 };
 }
@@ -648,6 +727,42 @@ async function saveWaliKehadiranRekap() {
   }
 }
 
+async function saveWaliKehadiran() {
+  const kelas = getSelectedWaliClass().kelas;
+  const date = getWaliKehadiranDate();
+  const students = getWaliStudentsByClass(kelas);
+  if (!kelas || students.length === 0) {
+    Swal.fire("Tidak ada siswa", "", "warning");
+    return;
+  }
+  try {
+    setWaliSavingState(true, "Menyimpan kehadiran...");
+    const documentsApi = getWaliDocumentsApi();
+    const batch = documentsApi.batch();
+    students.forEach(siswa => {
+      const status = getWaliKehadiranStatus(date, kelas, siswa.nipd);
+      if (!status) return;
+      batch.set(documentsApi.collection("kehadiran_siswa").doc(makeWaliKehadiranDocId(date, kelas, siswa.nipd)), {
+        ...getWaliActiveTermPayload(),
+        tanggal: date,
+        kelas,
+        nipd: siswa.nipd || "",
+        nama_siswa: siswa.nama || "",
+        status,
+        updated_by: getCurrentWaliUser().username || "",
+        updated_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    setWaliSavingState(false);
+    Swal.fire("Tersimpan", "Kehadiran siswa sudah disimpan.", "success");
+  } catch (error) {
+    console.error(error);
+    setWaliSavingState(false);
+    Swal.fire("Gagal menyimpan", "Kehadiran siswa belum berhasil disimpan.", "error");
+  }
+}
+
 async function downloadWaliKehadiranTemplate() {
   await ensureSpreadsheetLibraries();
   const kelas = getSelectedWaliClass().kelas;
@@ -707,6 +822,7 @@ async function importWaliKehadiranExcel(event) {
         const existingIndex = semuaDataWaliKehadiranRekap.findIndex(item => item.id === rekap.id);
         if (existingIndex >= 0) semuaDataWaliKehadiranRekap[existingIndex] = { ...semuaDataWaliKehadiranRekap[existingIndex], ...rekap };
         else semuaDataWaliKehadiranRekap.push(rekap);
+        waliKehadiranCountsCache.delete(`${getWaliKelasParts(kelas).kelas}|${nipd}`);
         count++;
       });
       event.target.value = "";
@@ -721,6 +837,10 @@ async function importWaliKehadiranExcel(event) {
 }
 
 function getWaliClassAssignments(kelas) {
+  const classKey = getWaliKelasParts(kelas).kelas;
+  if (waliClassAssignmentsCache.has(classKey)) {
+    return waliClassAssignmentsCache.get(classKey).map(item => ({ ...item }));
+  }
   const parts = getWaliKelasParts(kelas);
   const mapelIndex = new Map(semuaDataWaliMapel.map((item, index) => [
     String(item.kode_mapel || item.id || "").trim().toUpperCase(),
@@ -731,7 +851,7 @@ function getWaliClassAssignments(kelas) {
     }
   ]));
   const seen = new Set();
-  return semuaDataWaliMengajar
+  const rows = semuaDataWaliMengajar
     .filter(item => String(item.tingkat || "") === parts.tingkat && String(item.rombel || "").toUpperCase() === parts.rombel)
     .filter(item => {
       const kode = String(item.mapel_kode || "").toUpperCase();
@@ -748,17 +868,23 @@ function getWaliClassAssignments(kelas) {
       if (aInfo.index !== bInfo.index) return aInfo.index - bInfo.index;
       return aInfo.kode.localeCompare(bInfo.kode, undefined, { sensitivity: "base" });
     });
+  waliClassAssignmentsCache.set(classKey, rows.map(item => ({ ...item })));
+  return rows;
 }
 
 function getWaliMapelName(mapelKode) {
   const target = String(mapelKode || "").toUpperCase();
-  const mapel = semuaDataWaliMapel.find(item => String(item.kode_mapel || item.id || "").toUpperCase() === target);
+  const mapel = getWaliMapelByKode(target);
   return mapel?.nama_mapel || mapelKode || "-";
 }
 
 function getWaliMapelByKode(mapelKode) {
   const target = String(mapelKode || "").trim().toUpperCase();
-  return semuaDataWaliMapel.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target) || null;
+  if (!target) return null;
+  if (waliMapelByCodeCache.has(target)) return waliMapelByCodeCache.get(target);
+  const mapel = semuaDataWaliMapel.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target) || null;
+  waliMapelByCodeCache.set(target, mapel);
+  return mapel;
 }
 
 function normalizeWaliAgama(value = "") {
@@ -782,7 +908,12 @@ function getWaliGuruPengajarName(assignment = {}) {
   const directName = String(assignment.guru_nama || assignment.nama_guru || assignment.guru || "").trim();
   if (directName) return directName;
   const kodeGuru = String(assignment.guru_kode || assignment.kode_guru || "").trim();
-  const guru = semuaDataWaliGuru.find(item => String(item.kode_guru || item.id || "").trim() === kodeGuru);
+  let guru = null;
+  if (waliGuruByCodeCache.has(kodeGuru)) guru = waliGuruByCodeCache.get(kodeGuru);
+  else {
+    guru = semuaDataWaliGuru.find(item => String(item.kode_guru || item.id || "").trim() === kodeGuru) || null;
+    waliGuruByCodeCache.set(kodeGuru, guru);
+  }
   if (guru && typeof formatNamaGuru === "function") return formatNamaGuru(guru) || kodeGuru || "-";
   if (guru) return [guru.gelar_depan, guru.nama, guru.gelar_belakang].filter(Boolean).join(" ") || kodeGuru || "-";
   return kodeGuru || "-";
@@ -800,6 +931,10 @@ function isWaliNilaiInActiveTerm(item = {}) {
 }
 
 function getWaliNilaiCount(kelas, mapelKode, field) {
+  const cacheKey = `${getWaliKelasParts(kelas).kelas}|${String(mapelKode || "").trim().toUpperCase()}|${String(field || "").trim().toLowerCase()}`;
+  if (waliNilaiCountCache.has(cacheKey)) {
+    return { ...waliNilaiCountCache.get(cacheKey) };
+  }
   const mapel = getWaliMapelByKode(mapelKode);
   const students = getWaliStudentsByClass(kelas).filter(item => isWaliStudentEligibleForMapel(item, mapel));
   const studentIds = new Set(students.map(item => String(item.nipd || "")));
@@ -831,7 +966,9 @@ function getWaliNilaiCount(kelas, mapelKode, field) {
       .map(item => String(item.nipd || ""))
       .filter(Boolean)
   );
-  return { count: completedStudentIds.size, total: students.length };
+  const result = { count: completedStudentIds.size, total: students.length };
+  waliNilaiCountCache.set(cacheKey, result);
+  return { ...result };
 }
 
 function getWaliCompletenessClass(count, total) {

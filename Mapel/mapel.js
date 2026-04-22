@@ -511,11 +511,12 @@ function renderMapelFiltered() {
 
   const info = document.getElementById("jumlahDataMapel");
   if (info) {
-    info.innerText = `${hasil.length} mapel`;
+    const nextInfo = `${hasil.length} mapel`;
+    if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
   const pagination = document.getElementById("tablePaginationMapel");
-  if (pagination) pagination.innerHTML = "";
+  if (pagination && pagination.innerHTML !== "") pagination.innerHTML = "";
 }
 
 function renderMapelRow(d) {

@@ -8,6 +8,10 @@ const asesmenLevelSettings = {
   9: { mode: "setengah", order: "az", roomText: "", manualCounts: [] }
 };
 
+function setAsesmenHtmlIfChanged(element, html) {
+  if (element.innerHTML !== html) element.innerHTML = html;
+}
+
 function escapeAsesmenHtml(value) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
@@ -217,7 +221,7 @@ function loadRealtimePembagianRuang() {
 function renderPembagianRuangState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderPembagianRuangPage();
+  setAsesmenHtmlIfChanged(content, renderPembagianRuangPage());
   [7, 8, 9].forEach(level => renderAsesmenPreview(level));
 }
 
@@ -338,12 +342,12 @@ function renderAsesmenPreview(level) {
   const conflictMessages = getAsesmenRoomConflictMessages(level);
 
   if (totalSiswa === 0) {
-    container.innerHTML = `<div class="empty-panel">Belum ada siswa kelas ${level}.</div>`;
+    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">Belum ada siswa kelas ${level}.</div>`);
     return;
   }
 
   if (rooms.length === 0) {
-    container.innerHTML = `<div class="empty-panel">Isi jumlah siswa per ruang untuk melihat preview.</div>`;
+    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">Isi jumlah siswa per ruang untuk melihat preview.</div>`);
     return;
   }
 
@@ -364,7 +368,7 @@ function renderAsesmenPreview(level) {
 
   const warning = warnings.map(message => `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`).join("");
 
-  container.innerHTML = `
+  setAsesmenHtmlIfChanged(container, `
     ${warning}
     <div class="asesmen-room-list">
       ${decoratedRooms.map((room, index) => `
@@ -381,5 +385,5 @@ function renderAsesmenPreview(level) {
         </div>
       `).join("")}
     </div>
-  `;
+  `);
 }

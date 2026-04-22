@@ -23,9 +23,59 @@ let acakWaliKelasDraft = null;
 let acakWaliKelasUndo = JSON.parse(localStorage.getItem("acakWaliKelasUndo") || "null");
 let lastKelasTableRenderKey = "";
 let lastKelasCreateFormRenderKey = "";
+const kelasByNameCache = new Map();
+const guruKelasByKodeCache = new Map();
+const siswaCountByKelasCache = new Map();
+const mengajarGuruCodesByKelasCache = new Map();
+const usedWaliCodesCache = new Map();
 
 function isKelasCoordinatorViewOnly() {
   return typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+}
+
+function normalizeKelasCacheKey(value = "") {
+  return getStoredKelasParts({ kelas: value }).kelas.toUpperCase();
+}
+
+function rebuildKelasDataCaches() {
+  kelasByNameCache.clear();
+  usedWaliCodesCache.clear();
+  semuaDataKelas.forEach(item => {
+    const key = getStoredKelasParts(item).kelas.toUpperCase();
+    if (key) kelasByNameCache.set(key, item);
+  });
+}
+
+function rebuildKelasGuruCaches() {
+  guruKelasByKodeCache.clear();
+  daftarGuruKelas.forEach(guru => {
+    const kode = String(guru?.kode_guru || "").trim();
+    if (kode) guruKelasByKodeCache.set(kode, guru);
+  });
+}
+
+function rebuildKelasSiswaCaches() {
+  siswaCountByKelasCache.clear();
+  daftarSiswaKelas.forEach(siswa => {
+    const kelas = getSiswaKelasValue(siswa);
+    if (!kelas) return;
+    siswaCountByKelasCache.set(kelas, (siswaCountByKelasCache.get(kelas) || 0) + 1);
+  });
+}
+
+function rebuildKelasMengajarCaches() {
+  mengajarGuruCodesByKelasCache.clear();
+  daftarMengajarKelas.forEach(item => {
+    const kelas = getStoredKelasParts({
+      kelas: item.kelas || buildKelasName(item.tingkat, item.rombel),
+      tingkat: item.tingkat,
+      rombel: item.rombel
+    }).kelas.toUpperCase();
+    const kode = String(item.guru_kode || "").trim();
+    if (!kelas || !kode) return;
+    if (!mengajarGuruCodesByKelasCache.has(kelas)) mengajarGuruCodesByKelasCache.set(kelas, new Set());
+    mengajarGuruCodesByKelasCache.get(kelas).add(kode);
+  });
 }
 
 function getKelasAccessibleLevels() {
@@ -101,7 +151,7 @@ function findGuruForKelasImport(kodeGuru, waliKelasText) {
   const waliText = String(waliKelasText || "").trim().toLowerCase();
 
   if (kode) {
-    const guruByCode = daftarGuruKelas.find(item => item.kode_guru === kode);
+    const guruByCode = getGuruKelasByKode(kode);
     if (guruByCode) return guruByCode;
   }
 
@@ -189,37 +239,27 @@ function syncEditKelasAutoField(kelasLama) {
 }
 
 function formatWaliKelasLabel(kodeGuru) {
-  const guru = daftarGuruKelas.find(item => item.kode_guru === kodeGuru);
+  const guru = getGuruKelasByKode(kodeGuru);
   return guru ? formatNamaGuru(guru) : "-";
 }
 
 function getUsedWaliKelasCodes(excludeKelas = "") {
   const excludeValue = String(excludeKelas || "").trim().toUpperCase();
-  return new Set(
+  if (usedWaliCodesCache.has(excludeValue)) return new Set(usedWaliCodesCache.get(excludeValue));
+  const result = new Set(
     semuaDataKelas
       .filter(item => getStoredKelasParts(item).kelas.toUpperCase() !== excludeValue)
       .map(item => String(item.kode_guru || "").trim())
       .filter(Boolean)
   );
+  usedWaliCodesCache.set(excludeValue, result);
+  return new Set(result);
 }
 
 function getMengajarGuruCodesForKelas(namaKelas = "") {
   const targetKelas = getStoredKelasParts({ kelas: namaKelas }).kelas.toUpperCase();
   if (!targetKelas) return new Set();
-
-  return new Set(
-    daftarMengajarKelas
-      .filter(item => {
-        const kelasMengajar = getStoredKelasParts({
-          kelas: item.kelas || buildKelasName(item.tingkat, item.rombel),
-          tingkat: item.tingkat,
-          rombel: item.rombel
-        }).kelas.toUpperCase();
-        return kelasMengajar === targetKelas;
-      })
-      .map(item => String(item.guru_kode || "").trim())
-      .filter(Boolean)
-  );
+  return new Set(mengajarGuruCodesByKelasCache.get(targetKelas) || []);
 }
 
 function guruMengajarDiKelas(kodeGuru = "", namaKelas = "") {
@@ -256,7 +296,7 @@ function getGuruOptionsKelas(selectedValue = "", selectedKelas = "") {
 }
 
 function getGuruKelasByKode(kodeGuru = "") {
-  return daftarGuruKelas.find(item => String(item.kode_guru || "").trim() === String(kodeGuru || "").trim()) || null;
+  return guruKelasByKodeCache.get(String(kodeGuru || "").trim()) || null;
 }
 
 function getKelasWaliByLevel(level) {
@@ -301,7 +341,7 @@ function validateWaliKelasValues(namaKelas, kodeGuru) {
     return "Kelas wajib dipilih";
   }
 
-  const selectedKelas = semuaDataKelas.find(item => getStoredKelasParts(item).kelas.toUpperCase() === kelasValue);
+  const selectedKelas = kelasByNameCache.get(kelasValue);
   if (!selectedKelas) {
     return "Kelas tidak ditemukan";
   }
@@ -310,7 +350,7 @@ function validateWaliKelasValues(namaKelas, kodeGuru) {
     return "Wali kelas wajib dipilih";
   }
 
-  const selectedGuru = daftarGuruKelas.find(item => String(item.kode_guru || "").trim() === waliValue);
+  const selectedGuru = getGuruKelasByKode(waliValue);
   if (!selectedGuru || (typeof isGuruStatusGB === "function" ? isGuruStatusGB(selectedGuru) : String(selectedGuru.status || "").trim().toUpperCase() === "GB")) {
     return "Wali kelas tidak boleh guru berstatus GB";
   }
@@ -439,6 +479,8 @@ async function loadRealtimeKelas() {
     ]);
     semuaDataKelas = kelasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     daftarSiswaKelas = siswaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    rebuildKelasDataCaches();
+    rebuildKelasSiswaCaches();
     renderKelasFiltered();
     loadKelasSupportData(loadToken);
   } catch (error) {
@@ -458,6 +500,8 @@ async function loadKelasSupportData(loadToken = kelasSupportLoadToken) {
     if (loadToken !== kelasSupportLoadToken) return;
     daftarGuruKelas = guruSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     daftarMengajarKelas = mengajarSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    rebuildKelasGuruCaches();
+    rebuildKelasMengajarCaches();
     renderKelasFiltered();
   } catch (error) {
     console.error(error);
@@ -474,11 +518,13 @@ function upsertLocalKelasCache(item) {
   } else {
     semuaDataKelas.push(item);
   }
+  rebuildKelasDataCaches();
 }
 
 function removeLocalKelasCache(namaKelas) {
   const key = getStoredKelasParts({ kelas: namaKelas }).kelas || String(namaKelas || "");
   semuaDataKelas = semuaDataKelas.filter(item => getStoredKelasParts(item).kelas !== key && item.kelas !== key);
+  rebuildKelasDataCaches();
 }
 
 function updateLocalSiswaKelasCache(nipd, payload) {
@@ -486,6 +532,7 @@ function updateLocalSiswaKelasCache(nipd, payload) {
   const index = daftarSiswaKelas.findIndex(item => String(item.nipd || "").trim() === key);
   if (index >= 0) {
     daftarSiswaKelas[index] = { ...daftarSiswaKelas[index], ...payload };
+    rebuildKelasSiswaCaches();
   }
 }
 
@@ -551,7 +598,8 @@ function renderKelasFiltered() {
 
   const info = document.getElementById("jumlahDataKelas");
   if (info) {
-    info.innerText = `${sortedData.length} kelas`;
+    const nextInfo = `${sortedData.length} kelas`;
+    if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
   renderPagination("tablePaginationKelas", currentPageKelas, totalPages, "setKelasPage");
@@ -602,7 +650,7 @@ function getKelasOptionsForWali(selectedValue = "") {
 }
 
 function renderWaliKelasForm() {
-  const selectedKelas = semuaDataKelas.find(item => getStoredKelasParts(item).kelas === draftWaliKelasTarget);
+  const selectedKelas = kelasByNameCache.get(normalizeKelasCacheKey(draftWaliKelasTarget));
   const selectedGuru = selectedKelas?.kode_guru || draftKelasWali;
   const guruReady = daftarGuruKelas.length > 0;
   const kelasReady = semuaDataKelas.length > 0;
@@ -790,7 +838,7 @@ async function importKelasExcel(event) {
       }).filter(item => item.kelas || item.kode_guru || item.wali_kelas);
 
       const validRows = parsed.filter(item => {
-        const existing = semuaDataKelas.find(kelas => kelas.kelas === item.kelas);
+        const existing = kelasByNameCache.get(normalizeKelasCacheKey(item.kelas));
         return !validateKelasValues(item.tingkat, item.rombel, existing?.kelas || "");
       });
       const invalidRows = parsed.length - validRows.length;
@@ -825,7 +873,7 @@ async function importKelasExcel(event) {
 
       for (const item of validRows) {
         try {
-          const existing = semuaDataKelas.find(kelas => kelas.kelas === item.kelas);
+          const existing = kelasByNameCache.get(normalizeKelasCacheKey(item.kelas));
           const kelasRef = typeof getSemesterDocRef === "function"
             ? getSemesterDocRef("kelas", item.kelas)
             : getKelasPageDocumentsApi().collection("kelas").doc(item.kelas);
@@ -925,14 +973,14 @@ async function simpanKelasData() {
 
 function handleWaliKelasTargetChange(namaKelas) {
   draftWaliKelasTarget = namaKelas || "";
-  const selectedKelas = semuaDataKelas.find(item => getStoredKelasParts(item).kelas === draftWaliKelasTarget);
+  const selectedKelas = kelasByNameCache.get(normalizeKelasCacheKey(draftWaliKelasTarget));
   draftKelasWali = selectedKelas?.kode_guru || "";
   renderKelasFiltered();
 }
 
 async function startPilihWaliKelas(namaKelas) {
   const kelasValue = getStoredKelasParts({ kelas: namaKelas }).kelas;
-  const existing = semuaDataKelas.find(item => getStoredKelasParts(item).kelas === kelasValue);
+  const existing = kelasByNameCache.get(normalizeKelasCacheKey(kelasValue));
   const selectedGuru = existing?.kode_guru || "";
   const eligible = getEligibleWaliGuruKelas(selectedGuru, kelasValue);
   if (!existing) {
@@ -999,7 +1047,7 @@ function getSiswaKelasValue(siswa) {
 function getJumlahAnggotaKelasAsli(namaKelas) {
   const targetKelas = parseKelasParts(namaKelas || "").kelas.toUpperCase();
   if (!targetKelas) return 0;
-  return daftarSiswaKelas.filter(siswa => getSiswaKelasValue(siswa) === targetKelas).length;
+  return siswaCountByKelasCache.get(targetKelas) || 0;
 }
 
 function getAnggotaKelasDraftLists() {
@@ -1527,7 +1575,7 @@ async function undoAcakWaliKelas() {
     const batch = documentsApi.batch();
     const localPayloads = [];
     acakWaliKelasUndo.items.forEach(item => {
-      const kelas = semuaDataKelas.find(entry => getStoredKelasParts(entry).kelas === item.kelas);
+      const kelas = kelasByNameCache.get(normalizeKelasCacheKey(item.kelas));
       if (!kelas) return;
       const payload = {
         ...kelas,
@@ -1574,8 +1622,8 @@ async function simpanWaliKelasData(namaKelasArg = "", kodeGuruArg = "", options 
     return;
   }
 
-  const existing = semuaDataKelas.find(item => getStoredKelasParts(item).kelas === namaKelas);
-  const guru = daftarGuruKelas.find(item => item.kode_guru === kodeGuru);
+  const existing = kelasByNameCache.get(normalizeKelasCacheKey(namaKelas));
+  const guru = getGuruKelasByKode(kodeGuru);
 
   try {
     if (btn) {
@@ -1666,8 +1714,8 @@ async function saveEditKelas(kelasLama) {
     return;
   }
 
-  const existing = semuaDataKelas.find(item => getStoredKelasParts(item).kelas === kelasLama || item.kelas === kelasLama) || {};
-  const guru = kodeGuru ? daftarGuruKelas.find(item => String(item.kode_guru || "").trim() === kodeGuru) : null;
+  const existing = kelasByNameCache.get(normalizeKelasCacheKey(kelasLama)) || {};
+  const guru = kodeGuru ? getGuruKelasByKode(kodeGuru) : null;
 
   try {
     const payload = {

@@ -226,7 +226,8 @@ function renderGuruMapelOptions(selectedValue = "") {
 function populateGuruMapelSelect(selectedValue = "") {
   const select = document.getElementById("mapelGuru");
   if (!select) return;
-  select.innerHTML = renderGuruMapelOptions(selectedValue);
+  const nextOptions = renderGuruMapelOptions(selectedValue);
+  if (select.innerHTML !== nextOptions) select.innerHTML = nextOptions;
 }
 
 function loadGuruMapelOptions() {
@@ -563,7 +564,8 @@ function renderGuruFiltered() {
 
   const info = document.getElementById("jumlahDataGuru");
   if (info) {
-    info.innerText = `${hasil.length} guru`;
+    const nextInfo = `${hasil.length} guru`;
+    if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
   renderPagination("tablePaginationGuru", currentPageGuru, totalPages, "setGuruPage");

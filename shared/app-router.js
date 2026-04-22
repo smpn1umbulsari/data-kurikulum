@@ -27,10 +27,15 @@
 
     route.beforeEnter?.(context);
     if (context.pageTitle && route.title) {
-      context.pageTitle.innerText = route.title;
+      if (context.pageTitle.innerText !== route.title) {
+        context.pageTitle.innerText = route.title;
+      }
     }
     if (context.content) {
-      context.content.innerHTML = route.render(context);
+      const nextHtml = String(route.render(context) ?? "");
+      if (context.content.innerHTML !== nextHtml) {
+        context.content.innerHTML = nextHtml;
+      }
     }
     route.afterEnter?.(context);
     return true;
