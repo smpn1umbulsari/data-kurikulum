@@ -5,6 +5,75 @@
     return global.SupabaseDocuments;
   }
 
+  const DASHBOARD_FETCH_TTL_MS = 15000;
+  const dashboardFetchCache = new Map();
+
+  function cloneRows(rows = []) {
+    return rows.map(row => ({ ...(row || {}) }));
+  }
+
+  function readDashboardFetchCache(key) {
+    const cached = dashboardFetchCache.get(key);
+    if (!cached) return null;
+    if (Date.now() - cached.fetchedAt > DASHBOARD_FETCH_TTL_MS) {
+      dashboardFetchCache.delete(key);
+      return null;
+    }
+    return cached;
+  }
+
+  async function withDashboardFetchCache(key, loader) {
+    const cached = readDashboardFetchCache(key);
+    if (cached?.value) {
+      if (Array.isArray(cached.value)) return cloneRows(cached.value);
+      return cached.value;
+    }
+    if (cached?.promise) {
+      const data = await cached.promise;
+      return Array.isArray(data) ? cloneRows(data) : data;
+    }
+
+    const pending = Promise.resolve()
+      .then(loader)
+      .then(data => {
+        dashboardFetchCache.set(key, {
+          fetchedAt: Date.now(),
+          value: Array.isArray(data) ? cloneRows(data) : data,
+          promise: null
+        });
+        return data;
+      })
+      .catch(error => {
+        dashboardFetchCache.delete(key);
+        throw error;
+      });
+
+    dashboardFetchCache.set(key, {
+      fetchedAt: Date.now(),
+      value: null,
+      promise: pending
+    });
+
+    const data = await pending;
+    return Array.isArray(data) ? cloneRows(data) : data;
+  }
+
+  async function getCachedCollectionRows(collectionName, queryFactory = null) {
+    return withDashboardFetchCache(`collection:${collectionName}`, async () => {
+      const documentsApi = getDocumentsApi();
+      const query = typeof queryFactory === "function" ? queryFactory() : documentsApi.collection(collectionName);
+      const snapshot = await query.get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    });
+  }
+
+  async function getCachedDocumentRow(collectionName, docId) {
+    return withDashboardFetchCache(`document:${collectionName}:${docId}`, async () => {
+      const snapshot = await getDocumentsApi().collection(collectionName).doc(docId).get();
+      return snapshot.exists ? { id: snapshot.id, ...snapshot.data() } : null;
+    });
+  }
+
   function escapeHtml(value) {
     return global.AppUtils?.escapeHtml ? global.AppUtils.escapeHtml(value) : String(value ?? "");
   }
@@ -86,22 +155,24 @@
   }
 
   async function loadRecentPresenceRows(limit = 25) {
-    const documentsApi = getDocumentsApi();
-    if (documentsApi?.client?.from && documentsApi.table) {
-      const { data, error } = await documentsApi.client
-        .from(documentsApi.table)
-        .select("id,data,updated_at")
-        .eq("collection_path", "user_presence")
-        .order("updated_at", { ascending: false })
-        .limit(limit);
+    return withDashboardFetchCache(`presence:${limit}`, async () => {
+      const documentsApi = getDocumentsApi();
+      if (documentsApi?.client?.from && documentsApi.table) {
+        const { data, error } = await documentsApi.client
+          .from(documentsApi.table)
+          .select("id,data,updated_at")
+          .eq("collection_path", "user_presence")
+          .order("updated_at", { ascending: false })
+          .limit(limit);
 
-      if (!error) {
-        return (data || []).map(row => ({ id: row.id, ...row.data }));
+        if (!error) {
+          return (data || []).map(row => ({ id: row.id, ...row.data }));
+        }
       }
-    }
 
-    const snapshot = await documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").limit(limit).get();
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const snapshot = await documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").limit(limit).get();
+      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    });
   }
 
   function renderMainHome() {
@@ -993,27 +1064,19 @@
     try {
       const documentsApi = getDocumentsApi();
       const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
-      const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiSnap, tugasSnap, presenceRows] = await Promise.all([
-        documentsApi.collection("guru").get(),
-        getQuery("siswa").get(),
-        getQuery("kelas").get(),
-        documentsApi.collection("mapel").get(),
-        documentsApi.collection("mengajar").get(),
-        documentsApi.collection("mapel_bayangan").get(),
-        documentsApi.collection("mengajar_bayangan").get(),
-        documentsApi.collection("nilai").get(),
-        documentsApi.collection("tugas_tambahan").get(),
+      const [guru, siswa, kelas, mapelAsli, mengajarAsli, mapelBayangan, mengajarBayangan, nilaiRows, tugas, presenceRows] = await Promise.all([
+        getCachedCollectionRows("guru"),
+        getCachedCollectionRows("siswa", () => getQuery("siswa")),
+        getCachedCollectionRows("kelas", () => getQuery("kelas")),
+        getCachedCollectionRows("mapel"),
+        getCachedCollectionRows("mengajar"),
+        getCachedCollectionRows("mapel_bayangan"),
+        getCachedCollectionRows("mengajar_bayangan"),
+        getCachedCollectionRows("nilai"),
+        getCachedCollectionRows("tugas_tambahan"),
         loadRecentPresenceRows(25)
       ]);
-      const guru = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const kelas = kelasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mapelAsli = mapelAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mengajarAsli = mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mapelBayangan = mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const mengajarBayangan = mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const nilai = nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
-      const tugas = tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const nilai = nilaiRows.filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
       const onlineUsers = presenceRows
         .filter(item => isPresenceOnline(item))
         .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
@@ -1118,8 +1181,9 @@
           roleAssignments,
           mapelBayangan
         );
-        const tugasGuruSnap = resolvedContext.kodeGuru ? await documentsApi.collection("guru_tugas_tambahan").doc(resolvedContext.kodeGuru).get() : null;
-        const tugasGuru = tugasGuruSnap?.exists ? { id: tugasGuruSnap.id, ...tugasGuruSnap.data() } : {};
+        const tugasGuru = resolvedContext.kodeGuru
+          ? (await getCachedDocumentRow("guru_tugas_tambahan", resolvedContext.kodeGuru)) || {}
+          : {};
         const tugasNames = getTugasNames(tugasGuru, tugas);
         const waliClass = [...waliClassSet][0] || "";
         const waliStudents = waliClass

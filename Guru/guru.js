@@ -168,7 +168,8 @@ function renderGuruTableState() {
   if (!content) return;
   const searchValue = document.getElementById("searchGuru")?.value || "";
   const rowsValue = String(rowsPerPageGuru);
-  content.innerHTML = renderGuruTable();
+  const nextHtml = renderGuruTable();
+  if (content.innerHTML !== nextHtml) content.innerHTML = nextHtml;
   const search = document.getElementById("searchGuru");
   const rows = document.getElementById("rowsPerPageGuru");
   if (search) search.value = searchValue;
@@ -207,7 +208,8 @@ function renderGuruMapelOptions(selectedValue = "") {
 function populateGuruMapelSelect(selectedValue = "") {
   const select = document.getElementById("mapelGuru");
   if (!select) return;
-  select.innerHTML = renderGuruMapelOptions(selectedValue);
+  const nextOptions = renderGuruMapelOptions(selectedValue);
+  if (select.innerHTML !== nextOptions) select.innerHTML = nextOptions;
 }
 
 function loadGuruMapelOptions() {
@@ -516,7 +518,8 @@ function renderGuruFiltered() {
   const startIndex = (currentPageGuru - 1) * effectiveRowsPerPage;
   const pagedData = hasil.slice(startIndex, startIndex + effectiveRowsPerPage);
 
-  tbody.innerHTML = pagedData.map(renderGuruRow).join("");
+  const nextRowsHtml = pagedData.map(renderGuruRow).join("");
+  if (tbody.innerHTML !== nextRowsHtml) tbody.innerHTML = nextRowsHtml;
 
   if (empty) {
     empty.style.display = hasil.length === 0 ? "block" : "none";
@@ -524,7 +527,8 @@ function renderGuruFiltered() {
 
   const info = document.getElementById("jumlahDataGuru");
   if (info) {
-    info.innerText = `${hasil.length} guru`;
+    const nextInfo = `${hasil.length} guru`;
+    if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
   renderPagination("tablePaginationGuru", currentPageGuru, totalPages, "setGuruPage");

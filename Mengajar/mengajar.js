@@ -21,6 +21,59 @@ const MENGAJAR_GREEN_MAX_JP = 28;
 const MENGAJAR_WARN_MIN_JP = 29;
 const MENGAJAR_WARN_MAX_JP = 36;
 const MENGAJAR_DANGER_MIN_JP = 37;
+let mengajarSortedGuruCache = null;
+const mengajarGuruByKodeCache = new Map();
+const mengajarMapelByKodeCache = new Map();
+const mengajarAssignmentCache = new Map();
+const mengajarAgamaByKelasCache = new Map();
+
+function getMengajarMapelKey(kode = "") {
+  return String(kode || "").trim().toUpperCase();
+}
+
+function getMengajarGuruKey(kode = "") {
+  return String(kode || "").trim();
+}
+
+function rebuildMengajarGuruCaches() {
+  mengajarSortedGuruCache = null;
+  mengajarGuruByKodeCache.clear();
+  semuaDataGuru.forEach(guru => {
+    const kode = getMengajarGuruKey(guru.kode_guru);
+    if (kode) mengajarGuruByKodeCache.set(kode, guru);
+  });
+}
+
+function ensureMengajarGuruCaches() {
+  if (mengajarGuruByKodeCache.size === 0 && semuaDataGuru.length > 0) rebuildMengajarGuruCaches();
+}
+
+function rebuildMengajarMapelCaches() {
+  mengajarMapelByKodeCache.clear();
+  semuaDataMapel.forEach(mapel => {
+    const kode = getMengajarMapelKey(mapel.kode_mapel);
+    if (kode) mengajarMapelByKodeCache.set(kode, mapel);
+  });
+}
+
+function ensureMengajarMapelCaches() {
+  if (mengajarMapelByKodeCache.size === 0 && semuaDataMapel.length > 0) rebuildMengajarMapelCaches();
+}
+
+function rebuildMengajarAssignmentCaches() {
+  mengajarAssignmentCache.clear();
+  semuaDataMengajar.forEach(item => {
+    mengajarAssignmentCache.set(makeMengajarDocId(item.tingkat, item.rombel, item.mapel_kode), item);
+  });
+}
+
+function ensureMengajarAssignmentCaches() {
+  if (mengajarAssignmentCache.size === 0 && semuaDataMengajar.length > 0) rebuildMengajarAssignmentCaches();
+}
+
+function invalidateMengajarSiswaCaches() {
+  mengajarAgamaByKelasCache.clear();
+}
 
 function sortMapelUntukMengajar(data) {
   return [...data].sort((a, b) => {
@@ -89,6 +142,7 @@ function isMengajarMapelPabp(mapel = {}) {
 
 function getMengajarAgamaSetForClass(tingkat, rombel) {
   const targetKelas = normalizeMengajarKelasValue(buildKelasName(tingkat, rombel));
+  if (mengajarAgamaByKelasCache.has(targetKelas)) return mengajarAgamaByKelasCache.get(targetKelas);
   const result = new Set();
 
   semuaDataSiswaMengajar.forEach(siswa => {
@@ -98,6 +152,7 @@ function getMengajarAgamaSetForClass(tingkat, rombel) {
     if (agama) result.add(agama);
   });
 
+  mengajarAgamaByKelasCache.set(targetKelas, result);
   return result;
 }
 
@@ -117,20 +172,19 @@ function getMengajarMapelDisabledReason(mapel, tingkat, rombel) {
 }
 
 function getMengajarGurus() {
-  return [...semuaDataGuru]
-    .sort((a, b) => {
+  if (!mengajarSortedGuruCache) {
+    mengajarSortedGuruCache = [...semuaDataGuru].sort((a, b) => {
       const left = typeof getGuruSortName === "function" ? getGuruSortName(a) : formatNamaGuru(a);
       const right = typeof getGuruSortName === "function" ? getGuruSortName(b) : formatNamaGuru(b);
       return compareValues(left, right, "asc") || compareValues(formatNamaGuru(a), formatNamaGuru(b), "asc");
     });
+  }
+  return mengajarSortedGuruCache;
 }
 
 function getMengajarAssignment(tingkat, rombel, mapelKode) {
-  return semuaDataMengajar.find(item =>
-    String(item.tingkat || "") === String(tingkat || "") &&
-    String(item.rombel || "").toUpperCase() === String(rombel || "").toUpperCase() &&
-    String(item.mapel_kode || "").toUpperCase() === String(mapelKode || "").toUpperCase()
-  ) || null;
+  ensureMengajarAssignmentCaches();
+  return mengajarAssignmentCache.get(makeMengajarDocId(tingkat, rombel, mapelKode)) || null;
 }
 
 function getMengajarSelectValue(tingkat, rombel, mapelKode) {
@@ -171,7 +225,8 @@ function matchesMengajarGuruSearch(guruKode = "", query = "") {
 }
 
 function getMengajarSearchGuruName(guruKode = "") {
-  const guru = semuaDataGuru.find(item => String(item.kode_guru || "").trim() === String(guruKode || "").trim());
+  ensureMengajarGuruCaches();
+  const guru = mengajarGuruByKodeCache.get(getMengajarGuruKey(guruKode));
   return guru ? getMengajarSearchGuruLabel(guru) : guruKode || "-";
 }
 
@@ -189,14 +244,16 @@ function updateMengajarSearchStatus() {
   if (!info) return;
 
   if (!mengajarSearchQuery) {
-    info.innerText = "Cari nama atau kode guru untuk menyorot posisi di matriks.";
+    const nextInfo = "Cari nama atau kode guru untuk menyorot posisi di matriks.";
+    if (info.innerText !== nextInfo) info.innerText = nextInfo;
     return;
   }
 
   const count = getMengajarSearchMatchCount();
-  info.innerText = count > 0
+  const nextInfo = count > 0
     ? `${count} posisi ditemukan untuk ${getMengajarSearchGuruName(mengajarSearchQuery)}.`
     : `Tidak ada posisi untuk ${getMengajarSearchGuruName(mengajarSearchQuery)}.`;
+  if (info.innerText !== nextInfo) info.innerText = nextInfo;
 }
 
 function focusFirstMengajarSearchMatch() {
@@ -233,6 +290,7 @@ function clearMengajarSearch() {
 }
 
 function resolveGuruInput(value) {
+  ensureMengajarGuruCaches();
   const input = normalizeGuruLookupText(value);
   if (!input) return null;
 
@@ -255,7 +313,8 @@ function renderGuruOptionsMengajar(selectedValue = "") {
 
 function getMengajarGuruTitle(guruKode = "") {
   if (!guruKode) return "Belum dipilih";
-  const guru = semuaDataGuru.find(item => item.kode_guru === guruKode);
+  ensureMengajarGuruCaches();
+  const guru = mengajarGuruByKodeCache.get(getMengajarGuruKey(guruKode));
   if (!guru) return guruKode;
   return `${guru.kode_guru || ""} - ${formatNamaGuru(guru)}`.trim();
 }
@@ -265,22 +324,26 @@ function updateMengajarInfo() {
   const kelasCount = getMengajarRombels().length;
   const info = document.getElementById("jumlahMengajarInfo");
   const pending = document.getElementById("pendingMengajarInfo");
-  if (info) info.innerText = `${mapelCount} mapel x ${kelasCount} kelas`;
-  if (pending) pending.innerText = `${Object.keys(pendingMengajarChanges).length} perubahan belum disimpan`;
+  const nextInfo = `${mapelCount} mapel x ${kelasCount} kelas`;
+  const nextPending = `${Object.keys(pendingMengajarChanges).length} perubahan belum disimpan`;
+  if (info && info.innerText !== nextInfo) info.innerText = nextInfo;
+  if (pending && pending.innerText !== nextPending) pending.innerText = nextPending;
 }
 
 function getProjectedMengajarAssignments() {
+  ensureMengajarMapelCaches();
   const prepared = Object.values(pendingMengajarChanges).map(item =>
     buildMengajarPayload(item.tingkat, item.rombel, item.mapel_kode, item.guru_input)
   );
   return projectMengajarAssignments(prepared.filter(item => !item.__error))
     .filter(item => {
-      const mapel = semuaDataMapel.find(entry => String(entry.kode_mapel || "").trim().toUpperCase() === String(item.mapel_kode || "").trim().toUpperCase());
+      const mapel = mengajarMapelByKodeCache.get(getMengajarMapelKey(item.mapel_kode));
       return !mapel || isMengajarMapelApplicableForClass(mapel, item.tingkat, item.rombel);
     });
 }
 
 function getProjectedGuruJPTotals(assignments = getProjectedMengajarAssignments()) {
+  ensureMengajarMapelCaches();
   const totals = new Map();
 
   assignments.forEach(item => {
@@ -288,7 +351,7 @@ function getProjectedGuruJPTotals(assignments = getProjectedMengajarAssignments(
     const mapelKode = String(item.mapel_kode || "").trim().toUpperCase();
     if (!guruKode || !mapelKode) return;
 
-    const mapel = semuaDataMapel.find(entry => String(entry.kode_mapel || "").trim().toUpperCase() === mapelKode);
+    const mapel = mengajarMapelByKodeCache.get(mapelKode);
     if (mapel && !isMengajarMapelApplicableForClass(mapel, item.tingkat, item.rombel)) return;
     const jp = Number(mapel?.jp || 0);
     totals.set(guruKode, (totals.get(guruKode) || 0) + jp);
@@ -314,6 +377,8 @@ function getGuruTugasTambahanJPTotals() {
 }
 
 function getProjectedGuruOwnMapelJPTotals(assignments = getProjectedMengajarAssignments()) {
+  ensureMengajarGuruCaches();
+  ensureMengajarMapelCaches();
   const totals = new Map();
 
   assignments.forEach(item => {
@@ -321,8 +386,8 @@ function getProjectedGuruOwnMapelJPTotals(assignments = getProjectedMengajarAssi
     const mapelKode = String(item.mapel_kode || "").trim().toUpperCase();
     if (!guruKode || !mapelKode) return;
 
-    const guru = semuaDataGuru.find(entry => String(entry.kode_guru || "").trim() === guruKode);
-    const mapel = semuaDataMapel.find(entry => String(entry.kode_mapel || "").trim().toUpperCase() === mapelKode);
+    const guru = mengajarGuruByKodeCache.get(guruKode);
+    const mapel = mengajarMapelByKodeCache.get(mapelKode);
     const guruMapel = String(guru?.mata_pelajaran || "").trim().toLowerCase();
     const isOwnMapel = guruMapel && (
       guruMapel === mapelKode.toLowerCase() ||
@@ -455,18 +520,20 @@ function renderMengajarMatrix() {
   const summaryHtml = buildMengajarSummaryHtml(projectedAssignments);
 
   if (rombels.length === 0) {
-    container.innerHTML = `
+    const nextHtml = `
       <div class="empty-panel">Belum ada kelas untuk tingkat ${mengajarSelectedTingkat}.</div>
       ${summaryHtml}
     `;
+    if (container.innerHTML !== nextHtml) container.innerHTML = nextHtml;
     return;
   }
 
   if (mapels.length === 0) {
-    container.innerHTML = `
+    const nextHtml = `
       <div class="empty-panel">Belum ada data mapel.</div>
       ${summaryHtml}
     `;
+    if (container.innerHTML !== nextHtml) container.innerHTML = nextHtml;
     return;
   }
 
@@ -511,7 +578,7 @@ function renderMengajarMatrix() {
     `;
   }).join("");
 
-  container.innerHTML = `
+  const nextHtml = `
     <div class="table-container matrix-table-wrap">
       <table class="matrix-table">
         <thead>
@@ -527,6 +594,7 @@ function renderMengajarMatrix() {
     </div>
     ${summaryHtml}
   `;
+  if (container.innerHTML !== nextHtml) container.innerHTML = nextHtml;
   updateMengajarSearchStatus();
 }
 
@@ -546,11 +614,13 @@ function loadRealtimeMengajar() {
 
   unsubscribeMengajar = listenMengajar(data => {
     semuaDataMengajar = data;
+    rebuildMengajarAssignmentCaches();
     renderMengajarMatrix();
   });
 
   unsubscribeMengajarMapel = listenMapel(data => {
     semuaDataMapel = data;
+    rebuildMengajarMapelCaches();
     renderMengajarMatrix();
   });
 
@@ -561,6 +631,7 @@ function loadRealtimeMengajar() {
 
   unsubscribeMengajarGuru = listenGuru(data => {
     semuaDataGuru = data;
+    rebuildMengajarGuruCaches();
     renderMengajarMatrix();
   });
 
@@ -580,6 +651,7 @@ async function loadMengajarSupportData(loadToken = mengajarSupportLoadToken, sis
     if (loadToken !== mengajarSupportLoadToken) return;
     semuaDataSiswaMengajar = siswaSnapshot.docs ? siswaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) : siswaSnapshot;
     isMengajarSiswaLoaded = true;
+    invalidateMengajarSiswaCaches();
     renderMengajarMatrix();
     if (siswaQuery) {
       window.setTimeout(() => {
@@ -588,6 +660,7 @@ async function loadMengajarSupportData(loadToken = mengajarSupportLoadToken, sis
           if (loadToken !== mengajarSupportLoadToken) return;
           semuaDataSiswaMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           isMengajarSiswaLoaded = true;
+          invalidateMengajarSiswaCaches();
           renderMengajarMatrix();
         });
       }, 0);
@@ -605,7 +678,8 @@ function setMengajarTingkat(value) {
 function renderMengajarPageState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderMengajarPage();
+  const nextHtml = renderMengajarPage();
+  if (content.innerHTML !== nextHtml) content.innerHTML = nextHtml;
   renderMengajarMatrix();
 }
 
@@ -702,11 +776,13 @@ async function syncMengajarAsliFromBayangan() {
 }
 
 function handleMengajarSelectChange(tingkat, rombel, mapelKode, guruKode) {
-  const mapel = semuaDataMapel.find(item => String(item.kode_mapel || "").trim().toUpperCase() === String(mapelKode || "").trim().toUpperCase());
+  ensureMengajarMapelCaches();
+  ensureMengajarGuruCaches();
+  const mapel = mengajarMapelByKodeCache.get(getMengajarMapelKey(mapelKode));
   if (mapel && !isMengajarMapelApplicableForClass(mapel, tingkat, rombel)) return;
 
   const docId = makeMengajarDocId(tingkat, rombel, mapelKode);
-  const guru = semuaDataGuru.find(item => item.kode_guru === guruKode);
+  const guru = mengajarGuruByKodeCache.get(getMengajarGuruKey(guruKode));
   pendingMengajarChanges[docId] = {
     tingkat,
     rombel,
@@ -718,7 +794,8 @@ function handleMengajarSelectChange(tingkat, rombel, mapelKode, guruKode) {
 }
 
 function buildMengajarPayload(tingkat, rombel, mapelKode, rawInput) {
-  const mapel = semuaDataMapel.find(item => item.kode_mapel === mapelKode);
+  ensureMengajarMapelCaches();
+  const mapel = mengajarMapelByKodeCache.get(getMengajarMapelKey(mapelKode));
   const guru = resolveGuruInput(rawInput);
   const cleanInput = String(rawInput || "").trim();
 
@@ -775,6 +852,7 @@ function projectMengajarAssignments(preparedChanges = []) {
 }
 
 async function syncGuruJPFromAssignments(assignments = semuaDataMengajar) {
+  ensureMengajarMapelCaches();
   const totals = new Map();
 
   assignments.forEach(item => {
@@ -782,7 +860,7 @@ async function syncGuruJPFromAssignments(assignments = semuaDataMengajar) {
     const mapelKode = String(item.mapel_kode || "").trim().toUpperCase();
     if (!guruKode || !mapelKode) return;
 
-    const mapel = semuaDataMapel.find(entry => String(entry.kode_mapel || "").trim().toUpperCase() === mapelKode);
+    const mapel = mengajarMapelByKodeCache.get(mapelKode);
     if (mapel && !isMengajarMapelApplicableForClass(mapel, item.tingkat, item.rombel)) return;
     const jp = Number(mapel?.jp || 0);
     totals.set(guruKode, (totals.get(guruKode) || 0) + jp);
@@ -922,14 +1000,16 @@ async function importMengajarExcel(event) {
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(sheet);
+      ensureMengajarMapelCaches();
+      ensureMengajarGuruCaches();
 
       const parsed = json.map(row => {
         const tingkat = String(getMengajarCellValue(row, ["TINGKAT"])).trim();
         const rombel = String(getMengajarCellValue(row, ["ROMBEL", "KELAS"])).trim().toUpperCase();
         const mapelKode = String(getMengajarCellValue(row, ["MAPEL_KODE", "KODE_MAPEL"])).trim().toUpperCase();
         const guruKode = String(getMengajarCellValue(row, ["GURU_KODE", "KODE_GURU"])).trim();
-        const mapel = semuaDataMapel.find(item => item.kode_mapel === mapelKode);
-        const guru = semuaDataGuru.find(item => item.kode_guru === guruKode);
+        const mapel = mengajarMapelByKodeCache.get(mapelKode);
+        const guru = mengajarGuruByKodeCache.get(guruKode);
         const kelas = buildKelasName(tingkat, rombel);
         const kelasExists = semuaDataKelas.some(item => getStoredKelasParts(item).kelas === kelas);
         const mapelApplicable = mapel ? isMengajarMapelApplicableForClass(mapel, tingkat, rombel) : false;

@@ -30,6 +30,10 @@ const draftAsesmenLevelSettings = {
 const appliedAsesmenLevels = new Set();
 const ASESMEN_STORAGE_KEY = "asesmenPembagianRuangV2";
 
+function setAsesmenHtmlIfChanged(element, html) {
+  if (element.innerHTML !== html) element.innerHTML = html;
+}
+
 function invalidateAsesmenStudentCaches() {
   asesmenStudentLevelCache.clear();
   asesmenUnassignedLevelCache.clear();
@@ -650,14 +654,14 @@ function loadRealtimeAdministrasiAsesmen() {
 function renderPembagianRuangState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderPembagianRuangPage();
+  setAsesmenHtmlIfChanged(content, renderPembagianRuangPage());
   renderAllAsesmenPreviews();
 }
 
 function renderAdministrasiAsesmenState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderAdministrasiAsesmenPage();
+  setAsesmenHtmlIfChanged(content, renderAdministrasiAsesmenPage());
 }
 
 function setAdministrasiAsesmenSetting(key, value) {
@@ -980,12 +984,12 @@ function renderAsesmenPreview(level) {
     const message = belumBayangan > 0
       ? `${belumBayangan} siswa kelas ${level} belum memiliki kelas bayangan.`
       : `Belum ada siswa kelas ${level}.`;
-    container.innerHTML = `<div class="empty-panel">${escapeAsesmenHtml(message)}</div>`;
+    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">${escapeAsesmenHtml(message)}</div>`);
     return;
   }
 
   if (!isAsesmenLevelApplied(level)) {
-    container.innerHTML = `<div class="empty-panel">Panel kelas ${escapeAsesmenHtml(level)} belum di-set.</div>`;
+    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">Panel kelas ${escapeAsesmenHtml(level)} belum di-set.</div>`);
     return;
   }
 
@@ -995,7 +999,7 @@ function renderAsesmenPreview(level) {
   if (missingPhysicalCount > 0) warnings.push(`${missingPhysicalCount} bagian belum mendapat nomor ruang fisik.`);
   conflictMessages.forEach(message => warnings.push(message));
 
-  container.innerHTML = `
+  setAsesmenHtmlIfChanged(container, `
     ${warnings.map(message => `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`).join("")}
     <div class="asesmen-level-summary">
       <span>${decoratedRooms.length} bagian</span>
@@ -1003,7 +1007,7 @@ function renderAsesmenPreview(level) {
       <span>A-H dari kelas bayangan</span>
       <span>${assigned}/${totalSiswa} siswa</span>
     </div>
-  `;
+  `);
 }
 
 function renderAsesmenStudentColumn(entry) {
@@ -1893,11 +1897,11 @@ function renderAsesmenRoomArrangement() {
 
   const roomMap = getCombinedAsesmenRoomMap();
   if (roomMap.size === 0) {
-    container.innerHTML = `<div class="empty-panel">Isi ruang yang digunakan untuk melihat susunan ruang.</div>`;
+    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">Isi ruang yang digunakan untuk melihat susunan ruang.</div>`);
     return;
   }
 
-  container.innerHTML = `
+  setAsesmenHtmlIfChanged(container, `
     <div class="asesmen-combined-room-list">
       ${Array.from(roomMap.entries()).map(([roomNumber, entries]) => {
         const sortedEntries = entries.sort((a, b) => Number(b.level) - Number(a.level));
@@ -1918,7 +1922,7 @@ function renderAsesmenRoomArrangement() {
         `;
       }).join("")}
     </div>
-  `;
+  `);
 }
 
 window.setAsesmenLevelEnabled = setAsesmenLevelEnabled;

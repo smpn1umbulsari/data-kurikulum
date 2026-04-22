@@ -8,21 +8,27 @@
   AppDom.setText = function setText(idOrElement, value) {
     const element = typeof idOrElement === "string" ? AppDom.byId(idOrElement) : idOrElement;
     if (!element) return null;
-    element.innerText = value;
+    const nextValue = String(value ?? "");
+    if (element.innerText === nextValue) return element;
+    element.innerText = nextValue;
     return element;
   };
 
   AppDom.setHtml = function setHtml(idOrElement, value) {
     const element = typeof idOrElement === "string" ? AppDom.byId(idOrElement) : idOrElement;
     if (!element) return null;
-    element.innerHTML = value;
+    const nextValue = String(value ?? "");
+    if (element.innerHTML === nextValue) return element;
+    element.innerHTML = nextValue;
     return element;
   };
 
   AppDom.toggleDisplay = function toggleDisplay(idOrElement, shouldShow, displayValue = "") {
     const element = typeof idOrElement === "string" ? AppDom.byId(idOrElement) : idOrElement;
     if (!element) return null;
-    element.style.display = shouldShow ? displayValue : "none";
+    const nextValue = shouldShow ? displayValue : "none";
+    if (element.style.display === nextValue) return element;
+    element.style.display = nextValue;
     return element;
   };
 

@@ -164,7 +164,8 @@ function setMapelSort(field) {
 function renderMapelTableState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderMapelPage();
+  const nextHtml = renderMapelPage();
+  if (content.innerHTML !== nextHtml) content.innerHTML = nextHtml;
   renderMapelFiltered();
 }
 
@@ -465,10 +466,11 @@ function renderMapelFiltered() {
 
   if (!tbody) return;
 
-  tbody.innerHTML = [
+  const nextRowsHtml = [
     isMapelBayanganMode() ? "" : renderMapelInputRow(),
     ...hasil.map(d => renderMapelRow(d))
   ].join("");
+  if (tbody.innerHTML !== nextRowsHtml) tbody.innerHTML = nextRowsHtml;
 
   if (empty) {
     empty.style.display = hasil.length === 0 ? "block" : "none";
@@ -476,11 +478,12 @@ function renderMapelFiltered() {
 
   const info = document.getElementById("jumlahDataMapel");
   if (info) {
-    info.innerText = `${hasil.length} mapel`;
+    const nextInfo = `${hasil.length} mapel`;
+    if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
   const pagination = document.getElementById("tablePaginationMapel");
-  if (pagination) pagination.innerHTML = "";
+  if (pagination && pagination.innerHTML !== "") pagination.innerHTML = "";
 }
 
 function renderMapelRow(d) {

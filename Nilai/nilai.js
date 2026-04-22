@@ -22,9 +22,55 @@ let nilaiRenderFrameId = 0;
 let nilaiRekapRenderFrameId = 0;
 let currentNilaiAssignmentId = "";
 let currentNilaiAssignmentRows = [];
+const nilaiMapelCache = new Map();
+const nilaiStudentsByAssignmentCache = new Map();
+const nilaiAssignmentsByClassCache = new Map();
+const nilaiRowsByAssignmentCache = new Map();
+const nilaiDocByIdCache = new Map();
+let nilaiAccessibleAssignmentsCache = null;
 
 function getNilaiDocumentsApi() {
   return window.SupabaseDocuments;
+}
+
+function resetNilaiAccessCaches() {
+  nilaiAccessibleAssignmentsCache = null;
+  nilaiAssignmentsByClassCache.clear();
+}
+
+function resetNilaiMapelCaches() {
+  nilaiMapelCache.clear();
+  nilaiStudentsByAssignmentCache.clear();
+  resetNilaiAccessCaches();
+}
+
+function resetNilaiStudentCaches() {
+  nilaiStudentsByAssignmentCache.clear();
+  resetNilaiAccessCaches();
+}
+
+function resetNilaiDataCaches() {
+  nilaiRowsByAssignmentCache.clear();
+  nilaiDocByIdCache.clear();
+}
+
+function getNilaiAssignmentCacheKey(assignment = {}) {
+  return [
+    getNilaiActiveTermId(),
+    String(assignment.tingkat || "").trim(),
+    String(assignment.rombel || "").trim().toUpperCase(),
+    String(assignment.mapel_kode || "").trim().toUpperCase()
+  ].join("|");
+}
+
+function rebuildNilaiDataCaches() {
+  resetNilaiDataCaches();
+  semuaDataNilai.forEach(item => {
+    if (item?.id) nilaiDocByIdCache.set(item.id, item);
+    const key = getNilaiAssignmentCacheKey(item);
+    if (!nilaiRowsByAssignmentCache.has(key)) nilaiRowsByAssignmentCache.set(key, []);
+    nilaiRowsByAssignmentCache.get(key).push(item);
+  });
 }
 
 function escapeNilaiHtml(value) {
@@ -46,6 +92,7 @@ function getCurrentNilaiUser() {
 
 function setNilaiAccessMode(mode = "guru") {
   currentNilaiAccessMode = ["koordinator", "wali"].includes(mode) ? mode : "guru";
+  resetNilaiAccessCaches();
 }
 
 function getNilaiGenderLabel(siswa = {}) {
@@ -75,9 +122,13 @@ function getNilaiKelasBayanganParts(siswa) {
 
 function getNilaiMapel(mapelKode) {
   const target = String(mapelKode || "").toUpperCase();
-  return semuaDataNilaiMapel.find(item =>
+  if (!target) return null;
+  if (nilaiMapelCache.has(target)) return nilaiMapelCache.get(target);
+  const mapel = semuaDataNilaiMapel.find(item =>
     String(item.kode_mapel || item.id || "").toUpperCase() === target
   ) || null;
+  nilaiMapelCache.set(target, mapel);
+  return mapel;
 }
 
 function getNilaiClassKey(item = {}) {
@@ -126,13 +177,16 @@ function getNilaiOwnWaliClassSet() {
 }
 
 function getNilaiAccessibleAssignments() {
+  if (nilaiAccessibleAssignmentsCache) {
+    return nilaiAccessibleAssignmentsCache.map(item => ({ ...item }));
+  }
   const user = getCurrentNilaiUser();
   const role = user.role || "admin";
   const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
   const coordinatorWaliClasses = getNilaiCoordinatorWaliClassSet();
   const ownWaliClasses = getNilaiOwnWaliClassSet();
-  return semuaDataNilaiMengajar
+  const rows = semuaDataNilaiMengajar
     .filter(item => {
       if (!item.mapel_kode || !item.guru_kode || !item.tingkat || !item.rombel) return false;
       if (currentNilaiAccessMode === "wali") return ownWaliClasses.has(getNilaiClassKey(item));
@@ -152,6 +206,8 @@ function getNilaiAccessibleAssignments() {
       if (kelasResult !== 0) return kelasResult;
       return String(a.mapel_kode || "").localeCompare(String(b.mapel_kode || ""), undefined, { sensitivity: "base" });
     });
+  nilaiAccessibleAssignmentsCache = rows.map(item => ({ ...item }));
+  return rows;
 }
 
 function makeNilaiAssignmentId(item) {
@@ -186,6 +242,7 @@ function setSemuaDataNilai(items = []) {
     }
   });
   semuaDataNilai = Array.from(byId.values());
+  rebuildNilaiDataCaches();
 }
 
 function getNilaiItemTimestamp(item) {
@@ -221,7 +278,7 @@ function isNilaiDocMatchingAssignment(item = {}, assignment = {}) {
 
 function getNilaiRowsFromCacheForAssignment(assignment) {
   if (!assignment?.mapel_kode) return [];
-  return semuaDataNilai.filter(item => isNilaiDocMatchingAssignment(item, assignment));
+  return [...(nilaiRowsByAssignmentCache.get(getNilaiAssignmentCacheKey(assignment)) || [])];
 }
 
 function syncCurrentNilaiAssignmentRows(assignment) {
@@ -248,16 +305,7 @@ function getNilaiForStudent(assignment, nipd) {
   for (let index = currentNilaiAssignmentRows.length - 1; index >= 0; index -= 1) {
     if (currentNilaiAssignmentRows[index]?.id === docId) return currentNilaiAssignmentRows[index];
   }
-  for (let index = semuaDataNilai.length - 1; index >= 0; index -= 1) {
-    if (semuaDataNilai[index]?.id === docId) return semuaDataNilai[index];
-  }
-  const matchesStudent = item => String(item?.nipd || "") === String(nipd || "");
-  const candidates = [
-    ...currentNilaiAssignmentRows.filter(item => matchesStudent(item) && isNilaiDocMatchingAssignment(item, assignment)),
-    ...semuaDataNilai.filter(item => matchesStudent(item) && isNilaiDocMatchingAssignment(item, assignment))
-  ];
-  if (!candidates.length) return null;
-  return [...candidates].sort((a, b) => getNilaiItemTimestamp(b) - getNilaiItemTimestamp(a))[0] || null;
+  return nilaiDocByIdCache.get(docId) || null;
 }
 
 function getNilaiActiveTermPayload() {
@@ -303,8 +351,12 @@ function makeNilaiAssignmentHydrationKey(assignment) {
 }
 
 function getNilaiStudentsForAssignment(assignment) {
+  const cacheKey = makeNilaiAssignmentId(assignment);
+  if (nilaiStudentsByAssignmentCache.has(cacheKey)) {
+    return nilaiStudentsByAssignmentCache.get(cacheKey).map(item => ({ ...item, kelasNilaiParts: { ...(item.kelasNilaiParts || {}) } }));
+  }
   const mapel = getNilaiMapel(assignment.mapel_kode);
-  return semuaDataNilaiSiswa
+  const students = semuaDataNilaiSiswa
     .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
     .filter(siswa =>
       siswa.kelasNilaiParts.tingkat === String(assignment.tingkat || "") &&
@@ -315,6 +367,33 @@ function getNilaiStudentsForAssignment(assignment) {
       if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
       return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
     });
+  nilaiStudentsByAssignmentCache.set(cacheKey, students.map(item => ({ ...item, kelasNilaiParts: { ...(item.kelasNilaiParts || {}) } })));
+  return students;
+}
+
+function getNilaiStudentsForClass(tingkat = "", rombel = "") {
+  const assignment = {
+    tingkat,
+    rombel,
+    mapel_kode: "__all__",
+    guru_kode: "__all__"
+  };
+  const cacheKey = `class:${makeNilaiAssignmentId(assignment)}`;
+  if (nilaiStudentsByAssignmentCache.has(cacheKey)) {
+    return nilaiStudentsByAssignmentCache.get(cacheKey).map(item => ({ ...item, kelasNilaiParts: { ...(item.kelasNilaiParts || {}) } }));
+  }
+  const students = semuaDataNilaiSiswa
+    .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
+    .filter(siswa =>
+      siswa.kelasNilaiParts.tingkat === String(tingkat || "") &&
+      siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
+    )
+    .sort((a, b) => {
+      if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    });
+  nilaiStudentsByAssignmentCache.set(cacheKey, students.map(item => ({ ...item, kelasNilaiParts: { ...(item.kelasNilaiParts || {}) } })));
+  return students;
 }
 
 function renderInputNilaiPage() {
@@ -453,24 +532,29 @@ function loadRealtimeInputNilai() {
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetNilaiStudentCaches();
     scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetNilaiMapelCaches();
     scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetNilaiAccessCaches();
     scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
     ? getSemesterCollectionQuery("kelas")
       .onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        resetNilaiAccessCaches();
         scheduleNilaiPageStateRender();
       })
     : documentsApi.collection("kelas").onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        resetNilaiAccessCaches();
         scheduleNilaiPageStateRender();
       });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
@@ -492,24 +576,29 @@ function loadRealtimeRekapNilai() {
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetNilaiStudentCaches();
     scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetNilaiMapelCaches();
     scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetNilaiAccessCaches();
     scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
     ? getSemesterCollectionQuery("kelas")
       .onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        resetNilaiAccessCaches();
         scheduleRekapNilaiStateRender();
       })
     : documentsApi.collection("kelas").onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        resetNilaiAccessCaches();
         scheduleRekapNilaiStateRender();
       });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
@@ -578,7 +667,11 @@ function renderNilaiRekapClassOptions() {
 
 function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
   const targetClassKey = getNilaiKelasParts(`${tingkat || ""}${rombel || ""}`).kelas;
-  return getNilaiAccessibleAssignments()
+  const cacheKey = `${tingkat}|${String(rombel || "").toUpperCase()}`;
+  if (nilaiAssignmentsByClassCache.has(cacheKey)) {
+    return nilaiAssignmentsByClassCache.get(cacheKey).map(item => ({ ...item }));
+  }
+  const assignments = getNilaiAccessibleAssignments()
     .filter(item =>
       getNilaiClassKey(item) === targetClassKey
     )
@@ -593,6 +686,8 @@ function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
       const kodeB = String(b.mapel_kode || "").toUpperCase();
       return kodeA.localeCompare(kodeB, undefined, { sensitivity: "base" });
     });
+  nilaiAssignmentsByClassCache.set(cacheKey, assignments.map(item => ({ ...item })));
+  return assignments;
 }
 
 function renderRekapNilaiInfo(tingkat = "", rombel = "", assignments = [], students = []) {
@@ -618,18 +713,7 @@ function renderRekapNilaiState() {
   storeNilaiRekapClassKey(select.value || "");
   const { tingkat, rombel } = getSelectedNilaiRekapClass();
   const assignments = getNilaiAssignmentsForClass(tingkat, rombel);
-  const students = tingkat && rombel
-    ? semuaDataNilaiSiswa
-      .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
-      .filter(siswa =>
-        siswa.kelasNilaiParts.tingkat === String(tingkat || "")
-        && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
-      )
-      .sort((a, b) => {
-        if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
-        return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
-      })
-    : [];
+  const students = tingkat && rombel ? getNilaiStudentsForClass(tingkat, rombel) : [];
 
   renderRekapNilaiInfo(tingkat, rombel, assignments, students);
 
@@ -703,18 +787,7 @@ function renderRekapNilaiState() {
 function getCurrentRekapNilaiDataset() {
   const { tingkat, rombel } = getSelectedNilaiRekapClass();
   const assignments = getNilaiAssignmentsForClass(tingkat, rombel);
-  const students = tingkat && rombel
-    ? semuaDataNilaiSiswa
-      .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
-      .filter(siswa =>
-        siswa.kelasNilaiParts.tingkat === String(tingkat || "")
-        && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
-      )
-      .sort((a, b) => {
-        if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
-        return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
-      })
-    : [];
+  const students = tingkat && rombel ? getNilaiStudentsForClass(tingkat, rombel) : [];
 
   return { tingkat, rombel, assignments, students };
 }
