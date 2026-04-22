@@ -29,6 +29,7 @@
   let kepangawasanMapelOptions = [];
   let kepangawasanGuruOptions = [];
   let kepangawasanState = loadKepangawasanState();
+  let lastKepangawasanPageHtml = "";
 
   function escapeHtml(value) {
     if (global.AppUtils?.escapeHtml) return global.AppUtils.escapeHtml(value);
@@ -1847,7 +1848,11 @@
   function renderKepangawasanState() {
     const content = global.document.getElementById("content");
     if (!content) return;
-    content.innerHTML = renderKepangawasanPage();
+    const nextHtml = renderKepangawasanPage();
+    if (nextHtml !== lastKepangawasanPageHtml || !content.children.length) {
+      content.innerHTML = nextHtml;
+      lastKepangawasanPageHtml = nextHtml;
+    }
   }
 
   function setKepangawasanTab(tab) {

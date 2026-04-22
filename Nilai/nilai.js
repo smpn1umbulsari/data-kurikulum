@@ -39,6 +39,11 @@ const nilaiDerivedCache = {
   nilaiDocumentIndexKey: "",
   nilaiDocumentIndex: new Map()
 };
+let lastNilaiAssignmentInfoKey = "";
+let lastNilaiTableRenderKey = "";
+let lastNilaiRekapClassOptionsKey = "";
+let lastNilaiRekapInfoKey = "";
+let lastNilaiRekapRenderKey = "";
 function getNilaiDocumentsApi() {
   if (window.NilaiData?.getDocumentsApi) return window.NilaiData.getDocumentsApi();
   return window.SupabaseDocuments;
@@ -1115,9 +1120,13 @@ function renderNilaiRekapClassOptions() {
   if (!select) return;
   const classes = getNilaiAccessibleClasses();
   const currentValue = select.value || getStoredNilaiRekapClassKey();
-  select.innerHTML = classes.length
+  const nextOptions = classes.length
     ? classes.map(item => `<option value="${escapeNilaiHtml(`${item.tingkat}|${item.rombel}`)}">${escapeNilaiHtml(item.label)}</option>`).join("")
     : `<option value="">Tidak ada kelas yang bisa diakses</option>`;
+  if (nextOptions !== lastNilaiRekapClassOptionsKey || !select.children.length) {
+    select.innerHTML = nextOptions;
+    lastNilaiRekapClassOptionsKey = nextOptions;
+  }
   if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) {
     select.value = currentValue;
   }
@@ -1153,15 +1162,23 @@ function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
 function renderRekapNilaiInfo(tingkat = "", rombel = "", assignments = [], students = []) {
   const info = document.getElementById("nilaiRekapInfo");
   if (!info) return;
+  const nextInfoKey = JSON.stringify({ tingkat, rombel, assignments: assignments.length, students: students.length });
   if (!tingkat || !rombel) {
-    info.innerHTML = "Pilih kelas untuk melihat rekap nilai.";
+    if (lastNilaiRekapInfoKey !== nextInfoKey || !info.innerHTML) {
+      info.innerHTML = "Pilih kelas untuk melihat rekap nilai.";
+      lastNilaiRekapInfoKey = nextInfoKey;
+    }
     return;
   }
-  info.innerHTML = `
+  const nextHtml = `
     <span><strong>Kelas</strong>${escapeNilaiHtml(`${tingkat} ${rombel}`)}</span>
     <span><strong>Mapel</strong>${assignments.length}</span>
     <span><strong>Siswa</strong>${students.length}</span>
   `;
+  if (nextInfoKey !== lastNilaiRekapInfoKey || info.innerHTML !== nextHtml) {
+    info.innerHTML = nextHtml;
+    lastNilaiRekapInfoKey = nextInfoKey;
+  }
 }
 
 function renderRekapNilaiState() {
@@ -1193,7 +1210,7 @@ function renderRekapNilaiState() {
     return;
   }
 
-  container.innerHTML = `
+  const nextMarkup = `
     <table class="mapel-table nilai-table nilai-rekap-table">
       <thead>
         <tr>
@@ -1243,6 +1260,20 @@ function renderRekapNilaiState() {
       </tbody>
     </table>
   `;
+  const renderKey = JSON.stringify({
+    tingkat,
+    rombel,
+    assignmentIds: assignments.map(item => makeNilaiAssignmentId(item)),
+    students: students.map(item => [item.nipd, item.nama, item.kelas, item.kelas_bayangan, item.updated_at || item.created_at || ""].map(value => String(value ?? "")).join("|")),
+    nilaiRows: assignments.flatMap(assignment => students.map(student => {
+      const nilaiDoc = getNilaiForStudent(assignment, student.nipd);
+      return [makeNilaiAssignmentId(assignment), student.nipd, getNilaiFieldValue(nilaiDoc, "uh_1", ""), getNilaiFieldValue(nilaiDoc, "uh_2", ""), getNilaiFieldValue(nilaiDoc, "uh_3", ""), getNilaiFieldValue(nilaiDoc, "pts", ""), getNilaiItemTimestamp(nilaiDoc)].map(value => String(value ?? "")).join(":");
+    }))
+  });
+  if (renderKey !== lastNilaiRekapRenderKey || !container.querySelector("table")) {
+    container.innerHTML = nextMarkup;
+    lastNilaiRekapRenderKey = renderKey;
+  }
 }
 
 function getNilaiRoleDescription(modeRules = getNilaiModeRules()) {
@@ -1629,7 +1660,7 @@ function renderNilaiTableState() {
     return;
   }
 
-  container.innerHTML = `
+  const nextMarkup = `
     <table class="mapel-table nilai-table">
       <thead>
         <tr>
@@ -1676,10 +1707,27 @@ function renderNilaiTableState() {
       </tbody>
     </table>
   `;
+  const renderKey = JSON.stringify({
+    assignmentId: makeNilaiAssignmentId(assignment),
+    mode: currentNilaiInputMode,
+    quickFilter: nilaiQuickFilter,
+    fields: headerFieldConfigs.map(field => field.key),
+    students: students.map(item => [item.nipd, item.nama, item.kelas, item.kelas_bayangan, item.updated_at || item.created_at || ""].map(value => String(value ?? "")).join("|")),
+    nilaiRows: students.map(student => {
+      const draftDoc = getNilaiOfflineDraftDocForStudent(assignment, student.nipd);
+      const nilaiDoc = draftDoc || getNilaiForStudent(assignment, student.nipd);
+      const values = getNilaiUiValues(nilaiDoc);
+      return [student.nipd, values.uh1, values.uh2, values.uh3, values.pts, values.rapor, Boolean(draftDoc), getNilaiItemTimestamp(nilaiDoc)].map(value => String(value ?? "")).join(":");
+    })
+  });
+  if (renderKey !== lastNilaiTableRenderKey || !container.querySelector("table")) {
+    container.innerHTML = nextMarkup;
+    lastNilaiTableRenderKey = renderKey;
+    setupNilaiTableInputs();
+    window.ResponsiveTables?.enhanceAll?.();
+  }
   applyNilaiTableColumnVisibility(container);
-  setupNilaiTableInputs();
   renderNilaiQuickFilterState();
-  window.ResponsiveTables?.enhanceAll?.();
 }
 
 function renderNilaiLoadStatus(assignment) {
@@ -2027,11 +2075,15 @@ function renderNilaiAssignmentInfo(assignment) {
   }
   const mapel = getNilaiMapel(assignment.mapel_kode);
   const siswaCount = getNilaiStudentsForAssignment(assignment).length;
-  info.innerHTML = `
+  const nextHtml = `
     <span><strong>Kelas</strong>${escapeNilaiHtml(`${assignment.tingkat} ${assignment.rombel}`)}</span>
     <span><strong>Mapel</strong>${escapeNilaiHtml(mapel?.nama_mapel || assignment.mapel_kode)}</span>
     <span><strong>Siswa</strong>${siswaCount}</span>
   `;
+  if (infoKey !== lastNilaiAssignmentInfoKey || info.innerHTML !== nextHtml) {
+    info.innerHTML = nextHtml;
+    lastNilaiAssignmentInfoKey = infoKey;
+  }
 }
 
 function getNilaiRowCompletionStatus(values = {}, fieldConfigs = getNilaiInputFieldConfigs(values)) {

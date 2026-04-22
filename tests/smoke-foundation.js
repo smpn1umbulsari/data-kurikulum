@@ -206,6 +206,7 @@ async function main() {
     "shared/app-router.js",
     "shared/dashboard-shell.js",
     "shared/dashboard-data.js",
+    "shared/dashboard-module-loader.js",
     "shared/dashboard-home-data.js",
     "shared/dashboard-home.js",
     "shared/dashboard-routes.js",
@@ -503,22 +504,13 @@ async function main() {
     "shared/app-router.js",
     "shared/dashboard-shell.js",
     "shared/dashboard-data.js",
+    "shared/dashboard-module-loader.js",
     "shared/dashboard-home-data.js",
     "shared/dashboard-home.js",
     "shared/dashboard-routes.js",
-    "Admin/admin-users-identity.js",
-    "Admin/admin-users-service.js",
-    "Admin/admin-users-view.js",
-    "Asesmen/pembagian-ruang-store.js",
-    "Asesmen/administrasi-settings.js",
-    "Asesmen/pembagian-ruang-service.js",
-    "Asesmen/pembagian-ruang-view.js",
-    "Asesmen/pembagian-ruang-v2.js",
-    "Nilai/nilai-data.js",
-    "Nilai/nilai.js",
-    "Nilai/rapor.js",
-    "WaliKelas/wali-kelas-service.js",
-    "WaliKelas/wali-kelas-view.js"
+    "inline-notification.js",
+    "ttd-ks.js",
+    "Semester/semester.js"
   ];
   requiredScripts.forEach(item => {
     assert(dashboardHtml.includes(item), `dashboard.html missing script ${item}`);

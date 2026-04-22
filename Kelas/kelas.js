@@ -21,6 +21,8 @@ let anggotaKelasDraft = null;
 let acakWaliKelasState = JSON.parse(localStorage.getItem("acakWaliKelasState") || "{\"excluded\":{}}");
 let acakWaliKelasDraft = null;
 let acakWaliKelasUndo = JSON.parse(localStorage.getItem("acakWaliKelasUndo") || "null");
+let lastKelasTableRenderKey = "";
+let lastKelasCreateFormRenderKey = "";
 
 function isKelasCoordinatorViewOnly() {
   return typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
@@ -360,7 +362,24 @@ function renderKelasTableState() {
   const content = document.getElementById("content");
   if (!content) return;
   const rowsValue = String(rowsPerPageKelas);
-  content.innerHTML = renderKelasPage();
+  const tbody = document.getElementById("tbodyKelas");
+  if (!tbody) {
+    content.innerHTML = renderKelasPage();
+    lastKelasTableRenderKey = "";
+    lastKelasCreateFormRenderKey = "";
+  } else {
+    const theadRow = tbody.closest("table")?.querySelector("thead tr");
+    const isKoordinator = isKelasCoordinatorViewOnly();
+    if (theadRow) {
+      theadRow.innerHTML = `
+        ${renderSortableHeader("Tingkat", "tingkat", kelasSortField, kelasSortDirection, "setKelasSort")}
+        ${renderSortableHeader("Kelas", "rombel", kelasSortField, kelasSortDirection, "setKelasSort")}
+        ${renderSortableHeader("Wali Kelas", "wali_kelas", kelasSortField, kelasSortDirection, "setKelasSort")}
+        <th>Jumlah Anggota</th>
+        <th>${isKoordinator ? "Detail" : "Aksi"}</th>
+      `;
+    }
+  }
   const rows = document.getElementById("rowsPerPageKelas");
   if (rows) rows.value = rowsValue;
   renderKelasFiltered();
@@ -478,7 +497,13 @@ function renderKelasFiltered() {
   const effectiveRowsPerPage = getKelasRowsPerPageValue();
   const totalPages = Math.max(1, Math.ceil(sortedData.length / effectiveRowsPerPage));
 
-  if (createForm && !isKelasCoordinatorViewOnly()) createForm.innerHTML = renderKelasCreateForm();
+  if (createForm && !isKelasCoordinatorViewOnly()) {
+    const createFormHtml = renderKelasCreateForm();
+    if (createFormHtml !== lastKelasCreateFormRenderKey || !createForm.innerHTML) {
+      createForm.innerHTML = createFormHtml;
+      lastKelasCreateFormRenderKey = createFormHtml;
+    }
+  }
 
   if (!tbody) return;
 
@@ -488,8 +513,37 @@ function renderKelasFiltered() {
 
   const startIndex = (currentPageKelas - 1) * effectiveRowsPerPage;
   const pagedData = sortedData.slice(startIndex, startIndex + effectiveRowsPerPage);
-
-  tbody.innerHTML = pagedData.map((item, index) => renderKelasRow(item, startIndex + index + 1)).join("");
+  const tableHtml = pagedData.map((item, index) => renderKelasRow(item, startIndex + index + 1)).join("");
+  const renderKey = JSON.stringify({
+    currentPageKelas,
+    effectiveRowsPerPage,
+    currentEditKelas: currentEditKelas || "",
+    rows: pagedData.map(item => [
+      getStoredKelasParts(item).kelas,
+      item.kelas,
+      item.kode_guru,
+      item.wali_kelas,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|")),
+    total: sortedData.length,
+    guruSignature: daftarGuruKelas.map(item => [
+      item.kode_guru,
+      item.nama,
+      item.nama_lengkap,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|")),
+    siswaSignature: daftarSiswaKelas.map(item => [
+      item.nipd,
+      item.nama,
+      item.kelas,
+      item.kelas_bayangan,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|"))
+  });
+  if (renderKey !== lastKelasTableRenderKey || !tbody.children.length) {
+    tbody.innerHTML = tableHtml;
+    lastKelasTableRenderKey = renderKey;
+  }
 
   if (empty) {
     empty.style.display = sortedData.length === 0 ? "block" : "none";

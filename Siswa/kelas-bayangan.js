@@ -22,6 +22,10 @@ let mengajarBayanganSearchQuery = "";
 let pendingMengajarBayanganChanges = {};
 let isCloningMapelBayangan = false;
 let isCloningMengajarBayangan = false;
+let lastKelasBayanganSummaryHtml = "";
+let lastKelasBayanganTableHtml = "";
+let lastKelasBayanganKelasTableHtml = "";
+let lastMengajarBayanganMatrixHtml = "";
 
 function getKelasBayanganDocumentsApi() {
   return window.SupabaseDocuments;
@@ -436,12 +440,16 @@ function renderKelasBayanganSummary(rows) {
   const manualSelesai = rows.filter(siswa => !isRombelBayanganUtama(siswa.kelasAsliParts.rombel) && siswa.kelasBayanganEfektif).length;
   const manualBelum = rows.filter(siswa => siswa.kelasAsliParts.tingkat && !isRombelBayanganUtama(siswa.kelasAsliParts.rombel) && !siswa.kelasBayanganEfektif).length;
 
-  container.innerHTML = `
+  const nextHtml = `
     <span>${rows.length} siswa tampil</span>
     <span>${otomatis} otomatis A-H</span>
     <span>${manualSelesai} manual selesai</span>
     <span>${manualBelum} belum dibagi</span>
   `;
+  if (nextHtml !== lastKelasBayanganSummaryHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastKelasBayanganSummaryHtml = nextHtml;
+  }
 }
 
 function renderKelasBayanganOptions(tingkat, selectedValue = "") {
@@ -509,7 +517,11 @@ function renderKelasBayanganTable() {
   const rows = getFilteredKelasBayanganRows();
   renderKelasBayanganSummary(rows);
 
-  body.innerHTML = rows.map(renderKelasBayanganRow).join("");
+  const nextHtml = rows.map(renderKelasBayanganRow).join("");
+  if (nextHtml !== lastKelasBayanganTableHtml || !body.children.length) {
+    body.innerHTML = nextHtml;
+    lastKelasBayanganTableHtml = nextHtml;
+  }
   if (empty) empty.style.display = rows.length ? "none" : "block";
 }
 
@@ -586,7 +598,7 @@ function renderKelasBayanganKelasTable() {
   if (!body) return;
 
   const rows = sortKelasBayanganItems(semuaDataKelasBayanganKelas);
-  body.innerHTML = rows.map(item => {
+  const nextHtml = rows.map(item => {
     const parts = getKelasBayanganParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
     const kelasValue = parts.kelas;
     const kelasJs = escapeKelasBayanganJs(kelasValue);
@@ -616,6 +628,10 @@ function renderKelasBayanganKelasTable() {
       </tr>
     `;
   }).join("");
+  if (nextHtml !== lastKelasBayanganKelasTableHtml || !body.children.length) {
+    body.innerHTML = nextHtml;
+    lastKelasBayanganKelasTableHtml = nextHtml;
+  }
 
   const info = document.getElementById("jumlahDataKelasBayangan");
   if (info) info.innerText = `${rows.length} kelas`;
@@ -1241,18 +1257,26 @@ function renderMengajarBayanganMatrix() {
   const summaryHtml = buildMengajarBayanganSummaryHtml(projectedAssignments);
 
   if (rombels.length === 0) {
-    container.innerHTML = `
+    const nextHtml = `
       <div class="empty-panel">Belum ada kelas real aktif untuk tingkat ${kelasBayanganMengajarTingkat}.</div>
       ${summaryHtml}
     `;
+    if (nextHtml !== lastMengajarBayanganMatrixHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastMengajarBayanganMatrixHtml = nextHtml;
+    }
     return;
   }
 
   if (mapels.length === 0) {
-    container.innerHTML = `
+    const nextHtml = `
       <div class="empty-panel">Belum ada data mapel.</div>
       ${summaryHtml}
     `;
+    if (nextHtml !== lastMengajarBayanganMatrixHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastMengajarBayanganMatrixHtml = nextHtml;
+    }
     return;
   }
 
@@ -1297,7 +1321,7 @@ function renderMengajarBayanganMatrix() {
     `;
   }).join("");
 
-  container.innerHTML = `
+  const nextHtml = `
     <div class="matrix-toolbar-note">
       ${sourceKelas
         ? `Kelas sumber aktif: ${escapeKelasBayanganHtml(sourceKelas)}. Kelas sumber tidak ditampilkan sebagai kolom mengajar.`
@@ -1316,12 +1340,17 @@ function renderMengajarBayanganMatrix() {
     </div>
     ${summaryHtml}
   `;
+  if (nextHtml !== lastMengajarBayanganMatrixHtml || !container.querySelector("table")) {
+    container.innerHTML = nextHtml;
+    lastMengajarBayanganMatrixHtml = nextHtml;
+  }
   updateMengajarBayanganSearchStatus();
 }
 
 function setMengajarBayanganTingkat(value) {
   kelasBayanganMengajarTingkat = value || "7";
   pendingMengajarBayanganChanges = {};
+  lastMengajarBayanganMatrixHtml = "";
   const content = document.getElementById("content");
   if (content) content.innerHTML = renderKelasBayanganMengajarPage();
   renderMengajarBayanganMatrix();

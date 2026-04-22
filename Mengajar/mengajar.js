@@ -16,6 +16,7 @@ let pendingMengajarChanges = {};
 let currentMengajarRombels = [];
 let currentMengajarMapels = [];
 let mengajarSupportLoadToken = 0;
+let lastMengajarMatrixRenderKey = "";
 const MENGAJAR_GREEN_MIN_JP = 12;
 const MENGAJAR_GREEN_MAX_JP = 28;
 const MENGAJAR_WARN_MIN_JP = 29;
@@ -459,6 +460,7 @@ function renderMengajarMatrix() {
       <div class="empty-panel">Belum ada kelas untuk tingkat ${mengajarSelectedTingkat}.</div>
       ${summaryHtml}
     `;
+    lastMengajarMatrixRenderKey = `__empty:rombels__:${mengajarSelectedTingkat}`;
     return;
   }
 
@@ -467,6 +469,7 @@ function renderMengajarMatrix() {
       <div class="empty-panel">Belum ada data mapel.</div>
       ${summaryHtml}
     `;
+    lastMengajarMatrixRenderKey = `__empty:mapels__:${mengajarSelectedTingkat}`;
     return;
   }
 
@@ -511,7 +514,7 @@ function renderMengajarMatrix() {
     `;
   }).join("");
 
-  container.innerHTML = `
+  const nextHtml = `
     <div class="table-container matrix-table-wrap">
       <table class="matrix-table">
         <thead>
@@ -527,6 +530,32 @@ function renderMengajarMatrix() {
     </div>
     ${summaryHtml}
   `;
+  const renderKey = JSON.stringify({
+    tingkat: mengajarSelectedTingkat,
+    rombels: rombels.map(item => item.kelas),
+    mapels: mapels.map(item => `${item.kode_mapel}|${item.jp}|${String(item.updated_at || item.created_at || "")}`),
+    assignments: projectedAssignments.map(item => `${item.tingkat}|${item.rombel}|${item.mapel_kode}|${item.guru_kode}|${String(item.updated_at || item.created_at || "")}`),
+    pendingChanges: Object.keys(pendingMengajarChanges).sort().map(key => `${key}:${String(pendingMengajarChanges[key] ?? "")}`),
+    search: mengajarSearchQuery,
+    siswaLoaded: isMengajarSiswaLoaded,
+    siswaCount: semuaDataSiswaMengajar.length,
+    guruSignature: semuaDataGuru.map(item => [
+      item.kode_guru,
+      item.nama,
+      item.nama_lengkap,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|")),
+    tugasSignature: semuaDataGuruTugasTambahanMengajar.map(item => [
+      item.kode_guru,
+      item.nama_tugas,
+      item.jp,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|"))
+  });
+  if (renderKey !== lastMengajarMatrixRenderKey || !container.querySelector("table")) {
+    container.innerHTML = nextHtml;
+    lastMengajarMatrixRenderKey = renderKey;
+  }
   updateMengajarSearchStatus();
 }
 
@@ -606,6 +635,7 @@ function renderMengajarPageState() {
   const content = document.getElementById("content");
   if (!content) return;
   content.innerHTML = renderMengajarPage();
+  lastMengajarMatrixRenderKey = "";
   renderMengajarMatrix();
 }
 

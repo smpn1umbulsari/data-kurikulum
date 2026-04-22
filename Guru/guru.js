@@ -16,6 +16,7 @@ let isBackfillingGuruNama = false;
 let hasBackfilledGuruNama = false;
 let pendingGuruRowFocus = null;
 const GURU_STATUS_OPTIONS = ["PNS", "PPPK", "PPPK PW", "GB"];
+let lastGuruTableRenderKey = "";
 
 function escapeGuruHtml(value) {
   return String(value ?? "")
@@ -168,7 +169,25 @@ function renderGuruTableState() {
   if (!content) return;
   const searchValue = document.getElementById("searchGuru")?.value || "";
   const rowsValue = String(rowsPerPageGuru);
-  content.innerHTML = renderGuruTable();
+  const tbody = document.getElementById("tbodyGuru");
+  if (!tbody) {
+    content.innerHTML = renderGuruTable();
+    lastGuruTableRenderKey = "";
+  } else {
+    const table = tbody.closest("table");
+    const theadRow = table?.querySelector("thead tr");
+    if (theadRow) {
+      theadRow.innerHTML = `
+        ${renderSortableHeader("Kode Guru", "kode_guru", guruSortField, guruSortDirection, "setGuruSort")}
+        ${renderSortableHeader("Nama dengan Gelar", "nama_lengkap", guruSortField, guruSortDirection, "setGuruSort")}
+        ${renderSortableHeader("NIP", "nip", guruSortField, guruSortDirection, "setGuruSort")}
+        ${renderSortableHeader("Status", "status", guruSortField, guruSortDirection, "setGuruSort")}
+        ${renderSortableHeader("Mata Pelajaran", "mata_pelajaran", guruSortField, guruSortDirection, "setGuruSort")}
+        ${renderSortableHeader("JP", "jp", guruSortField, guruSortDirection, "setGuruSort")}
+        <th>Aksi</th>
+      `;
+    }
+  }
   const search = document.getElementById("searchGuru");
   const rows = document.getElementById("rowsPerPageGuru");
   if (search) search.value = searchValue;
@@ -515,8 +534,28 @@ function renderGuruFiltered() {
 
   const startIndex = (currentPageGuru - 1) * effectiveRowsPerPage;
   const pagedData = hasil.slice(startIndex, startIndex + effectiveRowsPerPage);
+  const renderKey = JSON.stringify({
+    currentPageGuru,
+    effectiveRowsPerPage,
+    keyword,
+    currentEditGuru: currentEditGuru || "",
+    rows: pagedData.map(item => [
+      item.kode_guru,
+      item.nama,
+      item.nama_lengkap,
+      item.nip,
+      getGuruStatus(item),
+      item.mata_pelajaran,
+      item.jp,
+      item.updated_at || item.created_at || ""
+    ].map(value => String(value ?? "")).join("|")),
+    total: hasil.length
+  });
 
-  tbody.innerHTML = pagedData.map(renderGuruRow).join("");
+  if (renderKey !== lastGuruTableRenderKey || !tbody.children.length) {
+    tbody.innerHTML = pagedData.map(renderGuruRow).join("");
+    lastGuruTableRenderKey = renderKey;
+  }
 
   if (empty) {
     empty.style.display = hasil.length === 0 ? "block" : "none";
