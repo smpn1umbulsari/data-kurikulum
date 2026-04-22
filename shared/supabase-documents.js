@@ -6,7 +6,8 @@
     ? global.supabase.createClient(config.url, config.anonKey)
     : null);
   const TABLE = config.documentsTable || "app_documents";
-  const COLLECTION_CACHE_TTL_MS = 1200;
+  const DEFAULT_COLLECTION_CACHE_TTL_MS = 1200;
+  const collectionCachePolicies = new Map();
   const PERSISTED_CACHE_PREFIX = "supabaseDocumentsCache:";
   const IDB_NAME = "guru_spenturi_offline_v1";
   const IDB_VERSION = 1;
@@ -41,6 +42,12 @@
 
   function getCollectionCacheKey(collectionPath) {
     return String(collectionPath || "");
+  }
+
+  function getCollectionCacheTtl(collectionPath) {
+    const cacheKey = getCollectionCacheKey(collectionPath);
+    const configured = collectionCachePolicies.get(cacheKey);
+    return Math.max(0, Number(configured?.ttlMs ?? DEFAULT_COLLECTION_CACHE_TTL_MS) || DEFAULT_COLLECTION_CACHE_TTL_MS);
   }
 
   function cloneCollectionRows(rows = []) {
@@ -137,7 +144,7 @@
   function getCachedCollectionRows(collectionPath) {
     const cache = collectionCache.get(getCollectionCacheKey(collectionPath));
     if (!cache) return null;
-    if (Date.now() - cache.fetchedAt > COLLECTION_CACHE_TTL_MS) return null;
+    if (Date.now() - cache.fetchedAt > getCollectionCacheTtl(collectionPath)) return null;
     return cloneCollectionRows(cache.rows);
   }
 
@@ -523,6 +530,14 @@
   global.SupabaseDocuments = {
     client,
     table: TABLE,
+    setCollectionCachePolicy(collectionName, policy = {}) {
+      const cacheKey = getCollectionCacheKey(collectionName);
+      collectionCachePolicies.set(cacheKey, {
+        ttlMs: Math.max(0, Number(policy.ttlMs) || DEFAULT_COLLECTION_CACHE_TTL_MS)
+      });
+      invalidateCollectionCache(collectionName);
+      return { ...collectionCachePolicies.get(cacheKey) };
+    },
     collection(name) {
       return new CollectionRef(name);
     },

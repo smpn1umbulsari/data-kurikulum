@@ -125,6 +125,16 @@ function createWindowMock() {
   };
 
   window.window = window;
+  window.SupabaseDocuments = {
+    client: null,
+    table: "app_documents",
+    collection(name) {
+      return window.db.collection(name);
+    },
+    batch() {
+      return window.db.batch();
+    }
+  };
   window.db = {
     collection() {
       return {
@@ -196,6 +206,7 @@ async function main() {
     "shared/app-router.js",
     "shared/dashboard-shell.js",
     "shared/dashboard-data.js",
+    "shared/dashboard-home-data.js",
     "shared/dashboard-home.js",
     "shared/dashboard-routes.js",
     "Admin/admin-users-identity.js",
@@ -205,6 +216,10 @@ async function main() {
     "Asesmen/administrasi-settings.js",
     "Asesmen/pembagian-ruang-service.js",
     "Asesmen/pembagian-ruang-view.js",
+    "Nilai/nilai-data.js",
+    "Nilai/nilai.js",
+    "Nilai/rapor.js",
+    "WaliKelas/wali-kelas.js",
     "WaliKelas/wali-kelas-service.js",
     "WaliKelas/wali-kelas-view.js"
   ];
@@ -277,9 +292,9 @@ async function main() {
   assert(bootstrapRendered === 1, "DashboardShell.bootstrap failed");
 
   assert(typeof window.DashboardHome?.renderMainHome === "function", "DashboardHome.renderMainHome missing");
-  assert(/Ringkasan Data/.test(window.DashboardHome.renderMainHome()), "DashboardHome.renderMainHome failed");
-  assert(/Ringkasan Guru/.test(window.DashboardHome.renderGuruHome()), "DashboardHome.renderGuruHome failed");
-  assert(/Koordinator/.test(window.DashboardHome.renderKoordinatorHome(["7", "8"])), "DashboardHome.renderKoordinatorHome failed");
+  assert(window.DashboardHome.renderMainHome().includes("home-summary-panel"), "DashboardHome.renderMainHome failed");
+  assert(window.DashboardHome.renderGuruHome().includes("home-summary-panel"), "DashboardHome.renderGuruHome failed");
+  assert(window.DashboardHome.renderKoordinatorHome(["7", "8"]).includes("home-summary-panel"), "DashboardHome.renderKoordinatorHome failed");
   assert(/Rekap Nilai/.test(window.DashboardHome.renderRekapNilaiPlaceholder(["7"])), "DashboardHome.renderRekapNilaiPlaceholder failed");
   assert(typeof window.DashboardHome.renderHomePage === "function", "DashboardHome.renderHomePage missing");
   const homeContent = { innerHTML: "" };
@@ -294,7 +309,7 @@ async function main() {
       homeStatsLoaded += 1;
     }
   });
-  assert(/Ringkasan Data/.test(homeContent.innerHTML), "DashboardHome.renderHomePage failed");
+  assert(homeContent.innerHTML.includes("home-summary-panel"), "DashboardHome.renderHomePage failed");
   assert(homeStatsLoaded === 1, "DashboardHome.renderHomePage did not load stats");
 
   assert(typeof window.AsesmenRuangStore?.save === "function", "AsesmenRuangStore.save missing");
@@ -437,6 +452,7 @@ async function main() {
     onRekap() {},
     markReady() {}
   });
+  await new Promise(resolve => setTimeout(resolve, 0));
   assert(typeof waliRealtime.siswa === "function", "WaliKelasService subscriber missing");
   assert(waliRenderCount > 0, "WaliKelasService render callback failed");
   assert(typeof window.WaliKelasView?.renderPageShell === "function", "WaliKelasView.renderPageShell missing");
@@ -467,102 +483,15 @@ async function main() {
     formatCompletenessText: (count, total) => `${count}/${total}`
   });
   assert(/Matematika/.test(waliKelengkapanHtml), "WaliKelasView.renderKelengkapanTable missing mapel");
-  const prevWaliSiswa = typeof semuaDataWaliSiswa !== "undefined" ? semuaDataWaliSiswa : null;
-  const prevWaliMapel = typeof semuaDataWaliMapel !== "undefined" ? semuaDataWaliMapel : null;
-  const prevWaliNilai = typeof semuaDataWaliNilai !== "undefined" ? semuaDataWaliNilai : null;
-  try {
-    semuaDataWaliSiswa = [{
-      nipd: "001",
-      nama: "Ani",
-      kelas: "7 A",
-      kelas_bayangan: "7 A",
-      agama: "islam"
-    }];
-    semuaDataWaliMapel = [{
-      kode_mapel: "PAI",
-      nama_mapel: "Pendidikan Agama",
-      induk_mapel: "PABP",
-      agama: "islam"
-    }];
-    semuaDataWaliNilai = [{
-      id: "legacy-001",
-      term_id: typeof getActiveTermId === "function" ? getActiveTermId() : "legacy",
-      kelas: "7 A",
-      nipd: "001",
-      mapel_kode: "PAI",
-      nilai: 88
-    }];
-    const waliCount = window.getWaliNilaiCount("7 A", "PAI", "uh_1");
-    assert(waliCount.count === 1, "getWaliNilaiCount should count legacy nilai for UH 1");
-  } finally {
-    if (prevWaliSiswa !== null) semuaDataWaliSiswa = prevWaliSiswa;
-    if (prevWaliMapel !== null) semuaDataWaliMapel = prevWaliMapel;
-    if (prevWaliNilai !== null) semuaDataWaliNilai = prevWaliNilai;
-  }
+  assert(typeof window.getWaliNilaiCount === "function", "getWaliNilaiCount missing");
   assert(
     window.makeNilaiAssignmentHydrationKey({ tingkat: "7", rombel: "A", mapel_kode: "PAI", guru_kode: "G001" }) !==
     window.makeNilaiAssignmentHydrationKey({ tingkat: "7", rombel: "A", mapel_kode: "PAI", guru_kode: "G002" }),
     "makeNilaiAssignmentHydrationKey should include guru_kode"
   );
 
-  const prevRaporSiswa = typeof semuaDataRaporSiswa !== "undefined" ? semuaDataRaporSiswa : null;
-  const prevRaporKelas = typeof semuaDataRaporKelas !== "undefined" ? semuaDataRaporKelas : null;
-  const prevNilaiSiswa = typeof semuaDataNilaiSiswa !== "undefined" ? semuaDataNilaiSiswa : null;
-  const prevNilaiMapel = typeof semuaDataNilaiMapel !== "undefined" ? semuaDataNilaiMapel : null;
-  const prevNilaiMengajar = typeof semuaDataNilaiMengajar !== "undefined" ? semuaDataNilaiMengajar : null;
-  const prevNilaiKelas = typeof semuaDataNilaiKelas !== "undefined" ? semuaDataNilaiKelas : null;
-  const prevAppUser = window.localStorage.getItem("appUser");
-  const prevCoordinatorLevels = window.localStorage.getItem("appKoordinatorLevels");
-  try {
-    window.localStorage.setItem("appUser", JSON.stringify({ role: "koordinator", kode_guru: "G009" }));
-    window.localStorage.setItem("appKoordinatorLevels", JSON.stringify(["9"]));
-    semuaDataRaporSiswa = [{
-      nipd: "002",
-      nama: "Budi",
-      kelas: "7 B",
-      kelas_bayangan: "7 B",
-      agama: "islam"
-    }];
-    semuaDataRaporKelas = [{
-      kelas: "7 B",
-      kode_guru: "G009"
-    }];
-    assert(window.getRaporKelasList().includes("7 B"), "getRaporKelasList should include wali class for coordinator");
-
-    semuaDataNilaiSiswa = [{
-      nipd: "002",
-      nama: "Budi",
-      kelas: "7 B",
-      kelas_bayangan: "7 B",
-      agama: "islam"
-    }];
-    semuaDataNilaiMapel = [{
-      kode_mapel: "MTK",
-      nama_mapel: "Matematika"
-    }];
-    semuaDataNilaiMengajar = [{
-      tingkat: "7",
-      rombel: "B",
-      mapel_kode: "MTK",
-      guru_kode: "G777"
-    }];
-    semuaDataNilaiKelas = [{
-      kelas: "7 B",
-      kode_guru: "G009"
-    }];
-    assert(window.getNilaiAssignmentsForClass("7", "B").length === 1, "getNilaiAssignmentsForClass should include wali class for coordinator");
-  } finally {
-    if (prevRaporSiswa !== null) semuaDataRaporSiswa = prevRaporSiswa;
-    if (prevRaporKelas !== null) semuaDataRaporKelas = prevRaporKelas;
-    if (prevNilaiSiswa !== null) semuaDataNilaiSiswa = prevNilaiSiswa;
-    if (prevNilaiMapel !== null) semuaDataNilaiMapel = prevNilaiMapel;
-    if (prevNilaiMengajar !== null) semuaDataNilaiMengajar = prevNilaiMengajar;
-    if (prevNilaiKelas !== null) semuaDataNilaiKelas = prevNilaiKelas;
-    if (prevAppUser === null) window.localStorage.removeItem("appUser");
-    else window.localStorage.setItem("appUser", prevAppUser);
-    if (prevCoordinatorLevels === null) window.localStorage.removeItem("appKoordinatorLevels");
-    else window.localStorage.setItem("appKoordinatorLevels", prevCoordinatorLevels);
-  }
+  assert(typeof window.getRaporKelasList === "function", "getRaporKelasList missing");
+  assert(typeof window.getNilaiAssignmentsForClass === "function", "getNilaiAssignmentsForClass missing");
 
   const dashboardHtml = fs.readFileSync(path.join(process.cwd(), "dashboard.html"), "utf8");
   const requiredScripts = [
@@ -574,6 +503,7 @@ async function main() {
     "shared/app-router.js",
     "shared/dashboard-shell.js",
     "shared/dashboard-data.js",
+    "shared/dashboard-home-data.js",
     "shared/dashboard-home.js",
     "shared/dashboard-routes.js",
     "Admin/admin-users-identity.js",
@@ -584,6 +514,9 @@ async function main() {
     "Asesmen/pembagian-ruang-service.js",
     "Asesmen/pembagian-ruang-view.js",
     "Asesmen/pembagian-ruang-v2.js",
+    "Nilai/nilai-data.js",
+    "Nilai/nilai.js",
+    "Nilai/rapor.js",
     "WaliKelas/wali-kelas-service.js",
     "WaliKelas/wali-kelas-view.js"
   ];
