@@ -2,4 +2,5 @@
 .vscode/
 .idea/
 node_modules/
-www/
+android/app/build/
+*.apk

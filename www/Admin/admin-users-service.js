@@ -1,0 +1,109 @@
+(function initAdminUsersService(global) {
+  if (global.AdminUsersService) return;
+
+  function getDocumentsApi() {
+    return global.SupabaseDocuments;
+  }
+
+  function loadRealtimeUsers(options = {}) {
+    const {
+      includeSiswa = false,
+      onGuruData,
+      onUserData,
+      onSiswaData,
+      onKoordinatorData,
+      onPresenceData,
+      onGuruUpdated,
+      onUserUpdated,
+      onPresenceUpdated,
+      onRender
+    } = options;
+
+    const documentsApi = getDocumentsApi();
+    const unsubs = {
+      guru: documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+        const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onGuruData?.(rows);
+        onGuruUpdated?.();
+        onRender?.();
+      }),
+      user: documentsApi.collection("users").orderBy("role").onSnapshot(snapshot => {
+        const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onUserData?.(rows);
+        onUserUpdated?.();
+        onRender?.();
+      }),
+      presence: documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").onSnapshot(snapshot => {
+        const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onPresenceData?.(rows);
+        onPresenceUpdated?.(rows);
+        onRender?.();
+      }),
+      siswa: null,
+      koordinator: options.getKoordinatorDocRef().onSnapshot(snapshot => {
+        const data = snapshot.exists ? { id: snapshot.id, ...snapshot.data() } : {};
+        onKoordinatorData?.(data);
+      })
+    };
+
+    if (includeSiswa) {
+      const siswaQuery = typeof global.getSemesterCollectionQuery === "function"
+        ? global.getSemesterCollectionQuery("siswa", "nama")
+        : documentsApi.collection("siswa").orderBy("nama");
+      unsubs.siswa = siswaQuery.onSnapshot(snapshot => {
+        const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        onSiswaData?.(rows);
+        onRender?.();
+      });
+    }
+
+    return unsubs;
+  }
+
+  async function syncGuruUsers(options = {}) {
+    const candidates = options.guruList
+      .filter(guru => !options.getUserByGuru(guru))
+      .map(guru => options.prepareGuruUser(guru))
+      .filter(user => user.username);
+
+    if (candidates.length === 0) {
+      return { added: 0 };
+    }
+
+    const documentsApi = getDocumentsApi();
+    const batch = documentsApi.batch();
+    candidates.forEach(user => {
+      batch.set(documentsApi.collection("users").doc(options.makeUserDocId(user.username)), {
+        ...user,
+        created_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    return { added: candidates.length };
+  }
+
+  async function resetAllPasswords(users = [], password = "") {
+    const documentsApi = getDocumentsApi();
+    const batch = documentsApi.batch();
+    users.forEach(user => {
+      batch.update(documentsApi.collection("users").doc(user.id), {
+        password,
+        updated_at: new Date()
+      });
+    });
+    await batch.commit();
+    return { updated: users.length };
+  }
+
+  async function deleteUser(userId) {
+    await getDocumentsApi().collection("users").doc(userId).delete();
+    return true;
+  }
+
+  global.AdminUsersService = {
+    loadRealtimeUsers,
+    syncGuruUsers,
+    resetAllPasswords,
+    deleteUser
+  };
+})(window);

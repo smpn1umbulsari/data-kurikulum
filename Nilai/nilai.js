@@ -20,83 +20,55 @@ const NILAI_LAST_ASSIGNMENT_KEY = "nilaiLastAssignmentId";
 const NILAI_REKAP_LAST_CLASS_KEY = "nilaiRekapLastClass";
 const NILAI_UI_MODE_KEY = "nilaiUnifiedInputMode";
 const nilaiHydratedAssignmentKeys = new Set();
-const nilaiHydratingAssignmentKeys = new Set();
-const nilaiAssignmentLoadState = new Map();
 let nilaiRenderFrameId = 0;
 let nilaiRekapRenderFrameId = 0;
 let currentNilaiAssignmentId = "";
 let currentNilaiAssignmentRows = [];
-let nilaiQuickFilter = "all";
-let nilaiAutosaveTimer = 0;
-let nilaiAutosaveInFlight = false;
-let currentNilaiAssignmentRowMap = new Map();
-const nilaiDerivedCache = {
-  accessibleAssignmentsKey: "",
-  accessibleAssignments: [],
-  assignmentStudents: new Map(),
-  classStudents: new Map(),
-  classAssignments: new Map(),
-  nilaiDocumentIndexKey: "",
-  nilaiDocumentIndex: new Map()
-};
-let lastNilaiAssignmentInfoKey = "";
-let lastNilaiTableRenderKey = "";
-let lastNilaiRekapClassOptionsKey = "";
-let lastNilaiRekapInfoKey = "";
-let lastNilaiRekapRenderKey = "";
-const nilaiMapelCache = new Map();
-const nilaiStudentsByAssignmentCache = new Map();
+let nilaiMapelCacheVersion = 0;
+let nilaiSiswaCacheVersion = 0;
+let nilaiMengajarCacheVersion = 0;
+let nilaiKelasCacheVersion = 0;
+let nilaiRowsCacheVersion = 0;
+const nilaiMapelByKodeCache = new Map();
+const nilaiAccessibleAssignmentsCache = new Map();
 const nilaiAssignmentsByClassCache = new Map();
+const nilaiStudentsByAssignmentCache = new Map();
 const nilaiRowsByAssignmentCache = new Map();
-const nilaiDocByIdCache = new Map();
-let nilaiAccessibleAssignmentsCache = null;
+let nilaiRowsByIdCache = new Map();
+
 function getNilaiDocumentsApi() {
-  if (window.NilaiData?.getDocumentsApi) return window.NilaiData.getDocumentsApi();
   return window.SupabaseDocuments;
 }
 
-function getNilaiSupabaseClient() {
-  return window.supabaseClient || window.SupabaseDocuments?.client || null;
+function invalidateNilaiMapelCaches() {
+  nilaiMapelCacheVersion += 1;
+  nilaiMapelByKodeCache.clear();
+  nilaiAssignmentsByClassCache.clear();
+  nilaiStudentsByAssignmentCache.clear();
 }
 
-function resetNilaiAccessCaches() {
-  nilaiAccessibleAssignmentsCache = null;
+function invalidateNilaiSiswaCaches() {
+  nilaiSiswaCacheVersion += 1;
+  nilaiAccessibleAssignmentsCache.clear();
+  nilaiAssignmentsByClassCache.clear();
+  nilaiStudentsByAssignmentCache.clear();
+}
+
+function invalidateNilaiMengajarCaches() {
+  nilaiMengajarCacheVersion += 1;
+  nilaiAccessibleAssignmentsCache.clear();
   nilaiAssignmentsByClassCache.clear();
 }
 
-function resetNilaiMapelCaches() {
-  nilaiMapelCache.clear();
-  nilaiStudentsByAssignmentCache.clear();
-  resetNilaiAccessCaches();
+function invalidateNilaiKelasCaches() {
+  nilaiKelasCacheVersion += 1;
+  nilaiAccessibleAssignmentsCache.clear();
+  nilaiAssignmentsByClassCache.clear();
 }
 
-function resetNilaiStudentCaches() {
-  nilaiStudentsByAssignmentCache.clear();
-  resetNilaiAccessCaches();
-}
-
-function resetNilaiDataCaches() {
+function invalidateNilaiRowsCaches() {
+  nilaiRowsCacheVersion += 1;
   nilaiRowsByAssignmentCache.clear();
-  nilaiDocByIdCache.clear();
-}
-
-function getNilaiAssignmentCacheKey(assignment = {}) {
-  return [
-    getNilaiActiveTermId(),
-    String(assignment.tingkat || "").trim(),
-    String(assignment.rombel || "").trim().toUpperCase(),
-    String(assignment.mapel_kode || "").trim().toUpperCase()
-  ].join("|");
-}
-
-function rebuildNilaiDataCaches() {
-  resetNilaiDataCaches();
-  semuaDataNilai.forEach(item => {
-    if (item?.id) nilaiDocByIdCache.set(item.id, item);
-    const key = getNilaiAssignmentCacheKey(item);
-    if (!nilaiRowsByAssignmentCache.has(key)) nilaiRowsByAssignmentCache.set(key, []);
-    nilaiRowsByAssignmentCache.get(key).push(item);
-  });
 }
 
 function escapeNilaiHtml(value) {
@@ -118,8 +90,6 @@ function getCurrentNilaiUser() {
 
 function setNilaiAccessMode(mode = "guru") {
   currentNilaiAccessMode = ["admin", "koordinator", "wali"].includes(mode) ? mode : "guru";
-  resetNilaiAccessCaches();
-  if (window.NilaiData?.state) window.NilaiData.state.accessMode = currentNilaiAccessMode;
 }
 
 function setNilaiInputMode(mode = "pts") {
@@ -338,12 +308,13 @@ function getNilaiKelasBayanganParts(siswa) {
 function getNilaiMapel(mapelKode) {
   const target = String(mapelKode || "").toUpperCase();
   if (!target) return null;
-  if (nilaiMapelCache.has(target)) return nilaiMapelCache.get(target);
-  const mapel = semuaDataNilaiMapel.find(item =>
+  const cacheKey = `${nilaiMapelCacheVersion}:${target}`;
+  if (nilaiMapelByKodeCache.has(cacheKey)) return nilaiMapelByKodeCache.get(cacheKey);
+  const value = semuaDataNilaiMapel.find(item =>
     String(item.kode_mapel || item.id || "").toUpperCase() === target
   ) || null;
-  nilaiMapelCache.set(target, mapel);
-  return mapel;
+  nilaiMapelByKodeCache.set(cacheKey, value);
+  return value;
 }
 
 function getNilaiClassKey(item = {}) {
@@ -392,17 +363,26 @@ function getNilaiOwnWaliClassSet() {
 }
 
 function getNilaiAccessibleAssignments() {
-  const cacheKey = getNilaiAccessibleAssignmentsCacheKey();
-  if (nilaiDerivedCache.accessibleAssignmentsKey === cacheKey) {
-    return nilaiDerivedCache.accessibleAssignments;
-  }
   const user = getCurrentNilaiUser();
   const role = user.role || "admin";
   const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
   const coordinatorWaliClasses = getNilaiCoordinatorWaliClassSet();
   const ownWaliClasses = getNilaiOwnWaliClassSet();
-  const rows = semuaDataNilaiMengajar
+  const cacheKey = [
+    nilaiMengajarCacheVersion,
+    nilaiKelasCacheVersion,
+    nilaiSiswaCacheVersion,
+    currentNilaiAccessMode,
+    String(role || "").trim().toLowerCase(),
+    String(user.kode_guru || "").trim(),
+    hasCoordinatorAccess ? "1" : "0",
+    coordinatorLevels.join(","),
+    [...coordinatorWaliClasses].sort().join(","),
+    [...ownWaliClasses].sort().join(",")
+  ].join("|");
+  if (nilaiAccessibleAssignmentsCache.has(cacheKey)) return nilaiAccessibleAssignmentsCache.get(cacheKey);
+  const assignments = semuaDataNilaiMengajar
     .filter(item => {
       if (!item.mapel_kode || !item.guru_kode || !item.tingkat || !item.rombel) return false;
       if (currentNilaiAccessMode === "wali") return ownWaliClasses.has(getNilaiClassKey(item));
@@ -422,9 +402,8 @@ function getNilaiAccessibleAssignments() {
       if (kelasResult !== 0) return kelasResult;
       return String(a.mapel_kode || "").localeCompare(String(b.mapel_kode || ""), undefined, { sensitivity: "base" });
     });
-  nilaiDerivedCache.accessibleAssignmentsKey = cacheKey;
-  nilaiDerivedCache.accessibleAssignments = rows;
-  return rows;
+  nilaiAccessibleAssignmentsCache.set(cacheKey, assignments);
+  return assignments;
 }
 
 function makeNilaiAssignmentId(item) {
@@ -459,13 +438,6 @@ function makeNilaiDocId(assignment, nipd) {
   return termId === "legacy" ? baseId : `${termId}_${baseId}`;
 }
 
-function getNilaiPossibleDocIds(assignment, nipd) {
-  return Array.from(new Set([
-    makeNilaiDocId(assignment, nipd),
-    makeNilaiLegacyDocId(assignment, nipd)
-  ].filter(Boolean)));
-}
-
 function setSemuaDataNilai(items = []) {
   const byId = new Map();
   items.forEach(item => {
@@ -478,118 +450,14 @@ function setSemuaDataNilai(items = []) {
     }
   });
   semuaDataNilai = Array.from(byId.values());
-  rebuildNilaiDataCaches();
-  if (window.NilaiData?.setRows) window.NilaiData.setRows("nilai", semuaDataNilai);
-}
-
-function syncNilaiStateFromStore() {
-  if (!window.NilaiData?.getRows) return;
-  semuaDataNilaiSiswa = window.NilaiData.getRows("siswa");
-  semuaDataNilaiMapel = window.NilaiData.getRows("mapel");
-  semuaDataNilaiMengajar = window.NilaiData.getRows("mengajar");
-  semuaDataNilaiKelas = window.NilaiData.getRows("kelas");
-  semuaDataNilai = window.NilaiData.getRows("nilai");
-}
-
-function syncNilaiUnsubscribersFromStore() {
-  if (!window.NilaiData?.unsubscribers) return;
-  unsubscribeNilaiSiswa = window.NilaiData.unsubscribers.siswa;
-  unsubscribeNilaiMapel = window.NilaiData.unsubscribers.mapel;
-  unsubscribeNilaiMengajar = window.NilaiData.unsubscribers.mengajar;
-  unsubscribeNilaiKelas = window.NilaiData.unsubscribers.kelas;
-  unsubscribeNilaiData = window.NilaiData.unsubscribers.nilai;
-}
-
-function getNilaiDataRevision(key) {
-  return Number(window.NilaiData?.state?.revisions?.[key] || 0);
-}
-
-function getNilaiAccessibleAssignmentsCacheKey() {
-  const user = getCurrentNilaiUser();
-  const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
-  const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
-  return [
-    getNilaiDataRevision("mengajar"),
-    getNilaiDataRevision("kelas"),
-    getNilaiDataRevision("siswa"),
-    getNilaiDataRevision("mapel"),
-    currentNilaiAccessMode,
-    String(user.role || ""),
-    String(user.kode_guru || ""),
-    hasCoordinatorAccess ? "1" : "0",
-    coordinatorLevels.join(",")
-  ].join("|");
-}
-
-function getNilaiStudentsCacheKey(assignment = {}) {
-  return [
-    getNilaiDataRevision("siswa"),
-    getNilaiDataRevision("mapel"),
-    String(assignment.tingkat || ""),
-    String(assignment.rombel || "").toUpperCase(),
-    String(assignment.mapel_kode || "").toUpperCase()
-  ].join("|");
-}
-
-function getNilaiClassStudentsCacheKey(tingkat = "", rombel = "") {
-  return [
-    getNilaiDataRevision("siswa"),
-    String(tingkat || ""),
-    String(rombel || "").toUpperCase()
-  ].join("|");
-}
-
-function getNilaiAssignmentsForClassCacheKey(tingkat = "", rombel = "") {
-  return [
-    getNilaiAccessibleAssignmentsCacheKey(),
-    getNilaiDataRevision("mapel"),
-    String(tingkat || ""),
-    String(rombel || "").toUpperCase()
-  ].join("|");
-}
-
-function buildNilaiStudentListByClass(tingkat = "", rombel = "") {
-  return semuaDataNilaiSiswa
-    .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
-    .filter(siswa =>
-      siswa.kelasNilaiParts.tingkat === String(tingkat || "")
-      && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
-    )
-    .sort((a, b) => {
-      if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
-      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
-    });
-}
-
-function getNilaiStudentsForClass(tingkat = "", rombel = "") {
-  const cacheKey = getNilaiClassStudentsCacheKey(tingkat, rombel);
-  if (nilaiDerivedCache.classStudents.has(cacheKey)) {
-    return nilaiDerivedCache.classStudents.get(cacheKey);
-  }
-  const rows = buildNilaiStudentListByClass(tingkat, rombel);
-  nilaiDerivedCache.classStudents.clear();
-  nilaiDerivedCache.classStudents.set(cacheKey, rows);
-  return rows;
+  nilaiRowsByIdCache = new Map(semuaDataNilai.map(item => [item.id, item]));
+  invalidateNilaiRowsCaches();
 }
 
 function getNilaiItemTimestamp(item) {
   const updatedAt = item?.updated_at || item?.data?.updated_at || "";
   const parsed = Date.parse(updatedAt);
   return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function getNilaiDocumentIndex() {
-  const cacheKey = String(getNilaiDataRevision("nilai"));
-  if (nilaiDerivedCache.nilaiDocumentIndexKey === cacheKey) {
-    return nilaiDerivedCache.nilaiDocumentIndex;
-  }
-  const nextIndex = new Map();
-  semuaDataNilai.forEach(item => {
-    if (item?.id) nextIndex.set(item.id, item);
-  });
-  nilaiDerivedCache.nilaiDocumentIndexKey = cacheKey;
-  nilaiDerivedCache.nilaiDocumentIndex = nextIndex;
-  return nextIndex;
 }
 
 function getNilaiActiveTermId() {
@@ -617,12 +485,16 @@ function isNilaiDocMatchingAssignment(item = {}, assignment = {}) {
   return isNilaiDocInActiveTerm(item)
     && sameClass
     && String(item.mapel_kode || "").trim().toUpperCase() === mapelKode
-    && (!guruKode || !itemGuruKode || itemGuruKode === guruKode);
+    && (!guruKode ? true : itemGuruKode === guruKode);
 }
 
 function getNilaiRowsFromCacheForAssignment(assignment) {
   if (!assignment?.mapel_kode) return [];
-  return [...(nilaiRowsByAssignmentCache.get(getNilaiAssignmentCacheKey(assignment)) || [])];
+  const cacheKey = `${nilaiRowsCacheVersion}:${makeNilaiAssignmentHydrationKey(assignment)}`;
+  if (nilaiRowsByAssignmentCache.has(cacheKey)) return nilaiRowsByAssignmentCache.get(cacheKey);
+  const rows = semuaDataNilai.filter(item => isNilaiDocMatchingAssignment(item, assignment));
+  nilaiRowsByAssignmentCache.set(cacheKey, rows);
+  return rows;
 }
 
 function syncCurrentNilaiAssignmentRows(assignment) {
@@ -642,133 +514,23 @@ function syncCurrentNilaiAssignmentRows(assignment) {
   });
   currentNilaiAssignmentId = assignmentId;
   currentNilaiAssignmentRows = Array.from(byId.values());
-  currentNilaiAssignmentRowMap = new Map(
-    currentNilaiAssignmentRows
-      .filter(item => item?.id)
-      .map(item => [item.id, item])
-  );
-}
-
-function rowsToNilaiCacheItems(rows = [], assignment = {}) {
-  return rows
-    .filter(row => row?.payload || row?.data || row)
-    .map(row => {
-      const payload = cleanNilaiPayloadValue(row.payload || row.data || row);
-      const nipd = row?.siswa?.nipd || payload?.nipd || "";
-      return {
-        id: row.id || makeNilaiDocId(assignment, nipd),
-        ...payload
-      };
-    });
-}
-
-function loadNilaiAssignmentOfflineCache(assignment) {
-  if (!assignment?.mapel_kode || !window.GuruOffline?.loadNilaiAssignmentCache) return [];
-  const cached = window.GuruOffline.loadNilaiAssignmentCache(makeNilaiOfflineAssignmentKey(assignment), getCurrentNilaiUser());
-  const rows = Array.isArray(cached?.rows) ? cached.rows : [];
-  return rowsToNilaiCacheItems(rows, assignment).filter(item => isNilaiDocMatchingAssignment(item, assignment));
-}
-
-async function loadNilaiAssignmentFromPersistedCollection(assignment) {
-  const documentsApi = getNilaiDocumentsApi();
-  const rows = typeof documentsApi?.getPersistedCollectionRowsAsync === "function"
-    ? await documentsApi.getPersistedCollectionRowsAsync("nilai")
-    : typeof documentsApi?.getPersistedCollectionRows === "function"
-    ? documentsApi.getPersistedCollectionRows("nilai")
-    : [];
-  return rows
-    .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item?.data || {}) : true)
-    .filter(item => isNilaiDocMatchingAssignment(item?.data || {}, assignment))
-    .map(item => ({
-      id: item?.id || "",
-      siswa: { nipd: item?.data?.nipd || String(item?.id || "").split("_").at(-1) || "" },
-      payload: { ...(item?.data || {}) }
-    }));
-}
-
-function saveNilaiAssignmentOfflineCache(assignment, rows = []) {
-  if (!assignment?.mapel_kode || !window.GuruOffline?.saveNilaiAssignmentCache) return;
-  window.GuruOffline.saveNilaiAssignmentCache(makeNilaiOfflineAssignmentKey(assignment), {
-    assignment,
-    rows: rowsToNilaiCacheItems(rows, assignment)
-  }, getCurrentNilaiUser());
-}
-
-function getNilaiAssignmentCacheInfo(assignment) {
-  if (!assignment?.mapel_kode || !window.GuruOffline?.loadNilaiAssignmentCache) return null;
-  const cache = window.GuruOffline.loadNilaiAssignmentCache(makeNilaiOfflineAssignmentKey(assignment), getCurrentNilaiUser());
-  const rows = Array.isArray(cache?.rows) ? cache.rows : [];
-  if (!rows.length) return null;
-  return {
-    rows: rows.length,
-    savedAt: cache.savedAt || "",
-    source: cache.source || "cache"
-  };
-}
-
-function getNilaiLoadStateKey(assignment) {
-  return assignment?.mapel_kode ? makeNilaiAssignmentHydrationKey(assignment) : "";
-}
-
-function getNilaiLoadState(assignment) {
-  const key = getNilaiLoadStateKey(assignment);
-  return key ? nilaiAssignmentLoadState.get(key) || {} : {};
-}
-
-function setNilaiLoadState(assignment, patch = {}) {
-  const key = getNilaiLoadStateKey(assignment);
-  if (!key) return;
-  nilaiAssignmentLoadState.set(key, {
-    ...(nilaiAssignmentLoadState.get(key) || {}),
-    ...patch
-  });
-}
-
-function applyNilaiAssignmentLocalCache(assignment) {
-  const cachedRows = loadNilaiAssignmentOfflineCache(assignment);
-  if (!cachedRows.length) return false;
-  currentNilaiAssignmentId = makeNilaiAssignmentId(assignment);
-  currentNilaiAssignmentRows = cachedRows;
-  const rows = cachedRows.map(item => ({
-    id: item.id,
-    siswa: { nipd: item.nipd || String(item.id || "").split("_").at(-1) || "" },
-    payload: item
-  }));
-  mergeSavedNilaiRowsIntoCache(rows, assignment);
-  const cacheInfo = getNilaiAssignmentCacheInfo(assignment);
-  setNilaiLoadState(assignment, {
-    source: "cache",
-    cachedAt: cacheInfo?.savedAt || "",
-    rows: cachedRows.length,
-    error: ""
-  });
-  return true;
 }
 
 function getNilaiForStudent(assignment, nipd) {
   const docId = makeNilaiDocId(assignment, nipd);
   const legacyDocId = makeNilaiLegacyDocId(assignment, nipd);
-  if (currentNilaiAssignmentRowMap.has(docId)) return currentNilaiAssignmentRowMap.get(docId);
-  const documentIndex = getNilaiDocumentIndex();
-  if (documentIndex.has(docId)) return documentIndex.get(docId);
-  if (documentIndex.has(legacyDocId) && isNilaiDocMatchingAssignment(documentIndex.get(legacyDocId), assignment)) {
-    return documentIndex.get(legacyDocId);
-  }
   for (let index = currentNilaiAssignmentRows.length - 1; index >= 0; index -= 1) {
     if (currentNilaiAssignmentRows[index]?.id === docId) return currentNilaiAssignmentRows[index];
   }
-  for (let index = semuaDataNilai.length - 1; index >= 0; index -= 1) {
-    if (semuaDataNilai[index]?.id === docId) return semuaDataNilai[index];
-  }
+  if (nilaiRowsByIdCache.has(docId)) return nilaiRowsByIdCache.get(docId);
   for (let index = currentNilaiAssignmentRows.length - 1; index >= 0; index -= 1) {
     if (currentNilaiAssignmentRows[index]?.id === legacyDocId && isNilaiDocMatchingAssignment(currentNilaiAssignmentRows[index], assignment)) {
       return currentNilaiAssignmentRows[index];
     }
   }
-  for (let index = semuaDataNilai.length - 1; index >= 0; index -= 1) {
-    if (semuaDataNilai[index]?.id === legacyDocId && isNilaiDocMatchingAssignment(semuaDataNilai[index], assignment)) {
-      return semuaDataNilai[index];
-    }
+  if (nilaiRowsByIdCache.has(legacyDocId)) {
+    const legacyItem = nilaiRowsByIdCache.get(legacyDocId);
+    if (isNilaiDocMatchingAssignment(legacyItem, assignment)) return legacyItem;
   }
   const matchesStudent = item => String(item?.nipd || "") === String(nipd || "");
   const candidates = [
@@ -825,33 +587,9 @@ function makeNilaiOfflineAssignmentKey(assignment) {
   return makeNilaiAssignmentHydrationKey(assignment);
 }
 
-function parseNilaiOfflineAssignmentKey(value = "") {
-  const [, tingkat = "", rombel = "", mapelKode = "", guruKode = ""] = String(value || "").split("|");
-  return { tingkat, rombel, mapel_kode: mapelKode, guru_kode: guruKode };
-}
-
 function canUseNilaiOfflineDraft() {
   const user = getCurrentNilaiUser();
   return String(user.role || "").trim().toLowerCase() === "guru" && currentNilaiAccessMode === "guru";
-}
-
-function canSaveNilaiAsOfflineDraft() {
-  return canUseNilaiOfflineDraft() && typeof window.GuruOffline?.saveNilaiDraft === "function";
-}
-
-function shouldSaveNilaiAsOfflineDraft() {
-  if (!canSaveNilaiAsOfflineDraft()) return false;
-  if (window.navigator?.onLine === false) return true;
-  return window.GuruOffline?.isOnline?.() === false;
-}
-
-function isNilaiNetworkSaveError(error) {
-  const message = String(error?.message || error || "").toLowerCase();
-  return message.includes("failed to fetch")
-    || message.includes("networkerror")
-    || message.includes("network request failed")
-    || message.includes("load failed")
-    || message.includes("fetch");
 }
 
 function getNilaiOfflineDraft(assignment) {
@@ -874,19 +612,22 @@ function getNilaiOfflineDraftDocForStudent(assignment, nipd) {
 }
 
 function getNilaiStudentsForAssignment(assignment) {
-  const cacheKey = getNilaiStudentsCacheKey(assignment);
-  if (nilaiDerivedCache.assignmentStudents.has(cacheKey)) {
-    return nilaiDerivedCache.assignmentStudents.get(cacheKey);
-  }
+  const cacheKey = `${nilaiSiswaCacheVersion}:${nilaiMapelCacheVersion}:${makeNilaiAssignmentHydrationKey(assignment)}`;
+  if (nilaiStudentsByAssignmentCache.has(cacheKey)) return nilaiStudentsByAssignmentCache.get(cacheKey);
   const mapel = getNilaiMapel(assignment.mapel_kode);
-  const rows = getNilaiStudentsForClass(assignment.tingkat, assignment.rombel)
+  const students = semuaDataNilaiSiswa
+    .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
     .filter(siswa =>
+      siswa.kelasNilaiParts.tingkat === String(assignment.tingkat || "") &&
+      siswa.kelasNilaiParts.rombel === String(assignment.rombel || "").toUpperCase() &&
       isNilaiSiswaEligibleForMapel(siswa, mapel)
     )
-    .slice();
-  nilaiDerivedCache.assignmentStudents.clear();
-  nilaiDerivedCache.assignmentStudents.set(cacheKey, rows);
-  return rows;
+    .sort((a, b) => {
+      if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    });
+  nilaiStudentsByAssignmentCache.set(cacheKey, students);
+  return students;
 }
 
 function renderInputNilaiPage() {
@@ -894,7 +635,7 @@ function renderInputNilaiPage() {
   const role = user.role || "admin";
   const modeRules = getNilaiModeRules();
   const showModeSelector = String(role || "").trim().toLowerCase() !== "guru";
-  const canUseDraft = canUseNilaiOfflineDraft() && window.isGuruSpenturiNativeApp?.();
+  const showOfflineDraft = canUseNilaiOfflineDraft() && window.isGuruSpenturiNativeApp?.();
   return `
     <div class="card">
       <div class="kelas-bayangan-head nilai-page-head">
@@ -919,25 +660,29 @@ function renderInputNilaiPage() {
           </select>
         </label>` : ""}
         <div class="nilai-control-actions">
-          <button type="button" class="btn-primary nilai-save-action" onclick="saveNilaiAssignment()">Simpan</button>
-          <button type="button" class="btn-secondary" onclick="triggerNilaiImport()">Import</button>
-          <button type="button" class="btn-secondary nilai-download-action" onclick="openNilaiDownloadMenu()">Download</button>
-          <button type="button" class="btn-secondary nilai-refresh-action" onclick="refreshSelectedNilaiAssignment()">Refresh</button>
-          ${canUseDraft ? `<button type="button" class="btn-secondary nilai-sync-action" onclick="syncAllNilaiOfflineDrafts()">Sinkron Draft</button>` : ""}
+          <details class="nilai-download-menu nilai-action-group nilai-action-group-download" id="nilaiDownloadMenu">
+            <summary class="btn-secondary nilai-action-btn nilai-action-download">Download</summary>
+            <div class="nilai-download-menu-panel">
+              <button type="button" class="btn-secondary" onclick="downloadNilaiTemplate()">Template</button>
+              <button type="button" id="nilaiRaporDownloadBtn" class="btn-rapor-download" onclick="promptDownloadNilaiRapor()" ${modeRules.canDownloadRapor ? "" : "hidden"}>Nilai Rapor</button>
+            </div>
+          </details>
+          <button type="button" class="btn-secondary nilai-action-btn nilai-action-import" onclick="triggerNilaiImport()">Import Nilai</button>
+          ${showOfflineDraft ? `
+          <details class="nilai-download-menu nilai-draft-menu nilai-action-group nilai-action-group-draft" id="nilaiDraftMenu">
+            <summary class="btn-secondary nilai-action-btn nilai-action-draft">Draft</summary>
+            <div class="nilai-download-menu-panel">
+              <button type="button" class="btn-secondary" onclick="saveNilaiAssignmentOfflineDraft()">Simpan Draft</button>
+              <button type="button" class="btn-secondary" onclick="syncNilaiAssignmentOfflineDraft()">Sinkronkan</button>
+            </div>
+          </details>` : ""}
+          <button type="button" class="btn-primary nilai-action-btn nilai-action-save" onclick="saveNilaiAssignment()">Simpan Nilai</button>
           <input id="nilaiImportInput" type="file" accept=".xlsx,.xls" onchange="importNilaiExcel(event)" hidden>
         </div>
       </div>
 
       <div id="nilaiAssignmentInfo" class="nilai-assignment-info">Memuat data pembagian mengajar...</div>
-      <div id="nilaiLoadStatus" class="nilai-load-status" hidden></div>
-      <div class="nilai-quick-filter" role="group" aria-label="Filter cepat nilai">
-        <button type="button" data-filter="all" onclick="setNilaiQuickFilter('all')">Semua</button>
-        <button type="button" data-filter="empty" onclick="setNilaiQuickFilter('empty')">Kosong</button>
-        <button type="button" data-filter="partial" onclick="setNilaiQuickFilter('partial')">Belum lengkap</button>
-        <button type="button" data-filter="full" onclick="setNilaiQuickFilter('full')">Lengkap</button>
-      </div>
-      <div id="nilaiAutosaveStatus" class="nilai-autosave-status" hidden></div>
-      ${canUseDraft ? `<div id="nilaiOfflineDraftInfo" class="nilai-offline-note" hidden></div>` : ""}
+      ${showOfflineDraft ? `<div id="nilaiOfflineDraftInfo" class="nilai-offline-note" hidden></div>` : ""}
 
       <div id="nilaiTableContainer" class="table-container mapel-table-container"></div>
 
@@ -1013,10 +758,6 @@ function setNilaiSavingState(isSaving, message = "Menyimpan nilai...") {
 }
 
 function scheduleNilaiPageStateRender() {
-  if (window.NilaiData?.scheduleRender) {
-    window.NilaiData.scheduleRender("renderFrameId", () => renderNilaiPageState());
-    return;
-  }
   if (nilaiRenderFrameId) return;
   nilaiRenderFrameId = window.requestAnimationFrame(() => {
     nilaiRenderFrameId = 0;
@@ -1025,10 +766,6 @@ function scheduleNilaiPageStateRender() {
 }
 
 function scheduleRekapNilaiStateRender() {
-  if (window.NilaiData?.scheduleRender) {
-    window.NilaiData.scheduleRender("rekapRenderFrameId", () => renderRekapNilaiState());
-    return;
-  }
   if (nilaiRekapRenderFrameId) return;
   nilaiRekapRenderFrameId = window.requestAnimationFrame(() => {
     nilaiRekapRenderFrameId = 0;
@@ -1037,12 +774,6 @@ function scheduleRekapNilaiStateRender() {
 }
 
 function loadRealtimeInputNilai() {
-  if (window.NilaiData?.subscribeRealtime) {
-    window.NilaiData.subscribeRealtime("input");
-    syncNilaiStateFromStore();
-    syncNilaiUnsubscribersFromStore();
-    return;
-  }
   if (unsubscribeNilaiSiswa) unsubscribeNilaiSiswa();
   if (unsubscribeNilaiMapel) unsubscribeNilaiMapel();
   if (unsubscribeNilaiMengajar) unsubscribeNilaiMengajar();
@@ -1053,43 +784,40 @@ function loadRealtimeInputNilai() {
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    resetNilaiStudentCaches();
+    invalidateNilaiSiswaCaches();
     scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    resetNilaiMapelCaches();
+    invalidateNilaiMapelCaches();
     scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    resetNilaiAccessCaches();
+    invalidateNilaiMengajarCaches();
     scheduleNilaiPageStateRender();
   });
   unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
     ? getSemesterCollectionQuery("kelas")
       .onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        resetNilaiAccessCaches();
+        invalidateNilaiKelasCaches();
         scheduleNilaiPageStateRender();
       })
     : documentsApi.collection("kelas").onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        resetNilaiAccessCaches();
+        invalidateNilaiKelasCaches();
         scheduleNilaiPageStateRender();
       });
-  // Input nilai cukup memuat data nilai kelas-mapel yang sedang dipilih.
-  // Mengambil seluruh koleksi nilai membuat mode offline sangat lambat di HP.
-  unsubscribeNilaiData = () => {};
+  unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
+    setSemuaDataNilai(snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
+    scheduleNilaiPageStateRender();
+  });
 }
 
 function loadRealtimeRekapNilai() {
-  if (window.NilaiData?.subscribeRealtime) {
-    window.NilaiData.subscribeRealtime("rekap");
-    syncNilaiStateFromStore();
-    syncNilaiUnsubscribersFromStore();
-    return;
-  }
   if (unsubscribeNilaiSiswa) unsubscribeNilaiSiswa();
   if (unsubscribeNilaiMapel) unsubscribeNilaiMapel();
   if (unsubscribeNilaiMengajar) unsubscribeNilaiMengajar();
@@ -1100,29 +828,29 @@ function loadRealtimeRekapNilai() {
   const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
   unsubscribeNilaiSiswa = siswaQuery.onSnapshot(snapshot => {
     semuaDataNilaiSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    resetNilaiStudentCaches();
+    invalidateNilaiSiswaCaches();
     scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
     semuaDataNilaiMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    resetNilaiMapelCaches();
+    invalidateNilaiMapelCaches();
     scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
     semuaDataNilaiMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    resetNilaiAccessCaches();
+    invalidateNilaiMengajarCaches();
     scheduleRekapNilaiStateRender();
   });
   unsubscribeNilaiKelas = typeof getSemesterCollectionQuery === "function"
     ? getSemesterCollectionQuery("kelas")
       .onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        resetNilaiAccessCaches();
+        invalidateNilaiKelasCaches();
         scheduleRekapNilaiStateRender();
       })
     : documentsApi.collection("kelas").onSnapshot(snapshot => {
         semuaDataNilaiKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        resetNilaiAccessCaches();
+        invalidateNilaiKelasCaches();
         scheduleRekapNilaiStateRender();
       });
   unsubscribeNilaiData = documentsApi.collection("nilai").onSnapshot(snapshot => {
@@ -1134,7 +862,6 @@ function loadRealtimeRekapNilai() {
 }
 
 function renderNilaiPageState() {
-  syncNilaiStateFromStore();
   const assignmentSelect = document.getElementById("nilaiAssignmentSelect");
   const isSelectingAssignment = document.activeElement === assignmentSelect;
   const isEditingTable = document.activeElement?.classList?.contains("nilai-input-cell");
@@ -1143,7 +870,6 @@ function renderNilaiPageState() {
   syncCurrentNilaiAssignmentRows(getSelectedNilaiAssignment());
   if (isSelectingAssignment || isEditingTable) return;
   renderNilaiTableState();
-  ensureSelectedNilaiAssignmentHydrated();
 }
 
 function getNilaiAccessibleClasses() {
@@ -1183,13 +909,9 @@ function renderNilaiRekapClassOptions() {
   if (!select) return;
   const classes = getNilaiAccessibleClasses();
   const currentValue = select.value || getStoredNilaiRekapClassKey();
-  const nextOptions = classes.length
+  select.innerHTML = classes.length
     ? classes.map(item => `<option value="${escapeNilaiHtml(`${item.tingkat}|${item.rombel}`)}">${escapeNilaiHtml(item.label)}</option>`).join("")
     : `<option value="">Tidak ada kelas yang bisa diakses</option>`;
-  if (nextOptions !== lastNilaiRekapClassOptionsKey || !select.children.length) {
-    select.innerHTML = nextOptions;
-    lastNilaiRekapClassOptionsKey = nextOptions;
-  }
   if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) {
     select.value = currentValue;
   }
@@ -1197,12 +919,21 @@ function renderNilaiRekapClassOptions() {
 }
 
 function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
-  const cacheKey = getNilaiAssignmentsForClassCacheKey(tingkat, rombel);
-  if (nilaiDerivedCache.classAssignments.has(cacheKey)) {
-    return nilaiDerivedCache.classAssignments.get(cacheKey);
-  }
   const targetClassKey = getNilaiKelasParts(`${tingkat || ""}${rombel || ""}`).kelas;
-  const rows = getNilaiAccessibleAssignments()
+  const cacheKey = [
+    nilaiMengajarCacheVersion,
+    nilaiKelasCacheVersion,
+    nilaiSiswaCacheVersion,
+    nilaiMapelCacheVersion,
+    currentNilaiAccessMode,
+    targetClassKey,
+    String(getCurrentNilaiUser()?.kode_guru || ""),
+    String(getCurrentNilaiUser()?.role || ""),
+    (typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : []).join(","),
+    (typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess()) ? "1" : "0"
+  ].join("|");
+  if (nilaiAssignmentsByClassCache.has(cacheKey)) return nilaiAssignmentsByClassCache.get(cacheKey);
+  const assignments = getNilaiAccessibleAssignments()
     .filter(item =>
       getNilaiClassKey(item) === targetClassKey
     )
@@ -1217,35 +948,25 @@ function getNilaiAssignmentsForClass(tingkat = "", rombel = "") {
       const kodeB = String(b.mapel_kode || "").toUpperCase();
       return kodeA.localeCompare(kodeB, undefined, { sensitivity: "base" });
     });
-  nilaiDerivedCache.classAssignments.clear();
-  nilaiDerivedCache.classAssignments.set(cacheKey, rows);
-  return rows;
+  nilaiAssignmentsByClassCache.set(cacheKey, assignments);
+  return assignments;
 }
 
 function renderRekapNilaiInfo(tingkat = "", rombel = "", assignments = [], students = []) {
   const info = document.getElementById("nilaiRekapInfo");
   if (!info) return;
-  const nextInfoKey = JSON.stringify({ tingkat, rombel, assignments: assignments.length, students: students.length });
   if (!tingkat || !rombel) {
-    if (lastNilaiRekapInfoKey !== nextInfoKey || !info.innerHTML) {
-      info.innerHTML = "Pilih kelas untuk melihat rekap nilai.";
-      lastNilaiRekapInfoKey = nextInfoKey;
-    }
+    info.innerHTML = "Pilih kelas untuk melihat rekap nilai.";
     return;
   }
-  const nextHtml = `
+  info.innerHTML = `
     <span><strong>Kelas</strong>${escapeNilaiHtml(`${tingkat} ${rombel}`)}</span>
     <span><strong>Mapel</strong>${assignments.length}</span>
     <span><strong>Siswa</strong>${students.length}</span>
   `;
-  if (nextInfoKey !== lastNilaiRekapInfoKey || info.innerHTML !== nextHtml) {
-    info.innerHTML = nextHtml;
-    lastNilaiRekapInfoKey = nextInfoKey;
-  }
 }
 
 function renderRekapNilaiState() {
-  syncNilaiStateFromStore();
   renderNilaiRekapClassOptions();
   const container = document.getElementById("nilaiRekapContainer");
   const select = document.getElementById("nilaiRekapClassSelect");
@@ -1254,7 +975,18 @@ function renderRekapNilaiState() {
   storeNilaiRekapClassKey(select.value || "");
   const { tingkat, rombel } = getSelectedNilaiRekapClass();
   const assignments = getNilaiAssignmentsForClass(tingkat, rombel);
-  const students = tingkat && rombel ? getNilaiStudentsForClass(tingkat, rombel) : [];
+  const students = tingkat && rombel
+    ? semuaDataNilaiSiswa
+      .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
+      .filter(siswa =>
+        siswa.kelasNilaiParts.tingkat === String(tingkat || "")
+        && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
+      )
+      .sort((a, b) => {
+        if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+        return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+      })
+    : [];
 
   renderRekapNilaiInfo(tingkat, rombel, assignments, students);
 
@@ -1273,7 +1005,7 @@ function renderRekapNilaiState() {
     return;
   }
 
-  const nextMarkup = `
+  container.innerHTML = `
     <table class="mapel-table nilai-table nilai-rekap-table">
       <thead>
         <tr>
@@ -1323,20 +1055,6 @@ function renderRekapNilaiState() {
       </tbody>
     </table>
   `;
-  const renderKey = JSON.stringify({
-    tingkat,
-    rombel,
-    assignmentIds: assignments.map(item => makeNilaiAssignmentId(item)),
-    students: students.map(item => [item.nipd, item.nama, item.kelas, item.kelas_bayangan, item.updated_at || item.created_at || ""].map(value => String(value ?? "")).join("|")),
-    nilaiRows: assignments.flatMap(assignment => students.map(student => {
-      const nilaiDoc = getNilaiForStudent(assignment, student.nipd);
-      return [makeNilaiAssignmentId(assignment), student.nipd, getNilaiFieldValue(nilaiDoc, "uh_1", ""), getNilaiFieldValue(nilaiDoc, "uh_2", ""), getNilaiFieldValue(nilaiDoc, "uh_3", ""), getNilaiFieldValue(nilaiDoc, "pts", ""), getNilaiItemTimestamp(nilaiDoc)].map(value => String(value ?? "")).join(":");
-    }))
-  });
-  if (renderKey !== lastNilaiRekapRenderKey || !container.querySelector("table")) {
-    container.innerHTML = nextMarkup;
-    lastNilaiRekapRenderKey = renderKey;
-  }
 }
 
 function getNilaiRoleDescription(modeRules = getNilaiModeRules()) {
@@ -1362,17 +1080,11 @@ function renderNilaiInputModeUi() {
   const title = document.getElementById("nilaiModeTitle");
   const description = document.getElementById("nilaiModeDescription");
   const selector = document.getElementById("nilaiModeSelect");
-  const saveButton = document.querySelector(".nilai-save-action");
+  const raporButton = document.getElementById("nilaiRaporDownloadBtn");
   if (title) title.textContent = getNilaiInputModeLabel();
   if (description) description.textContent = getNilaiRoleDescription(modeRules);
   if (selector) selector.value = modeRules.mode;
-  if (saveButton) {
-    const savesToDraft = shouldSaveNilaiAsOfflineDraft();
-    saveButton.textContent = savesToDraft ? "Simpan Draft" : "Simpan";
-    saveButton.title = savesToDraft
-      ? "Perangkat sedang offline. Nilai akan disimpan sebagai draft di perangkat ini."
-      : "Saat online, nilai langsung disimpan ke server.";
-  }
+  if (raporButton) raporButton.hidden = !modeRules.canDownloadRapor;
 }
 
 function handleNilaiModeSelectorChange(event) {
@@ -1386,7 +1098,18 @@ function handleNilaiModeSelectorChange(event) {
 function getCurrentRekapNilaiDataset() {
   const { tingkat, rombel } = getSelectedNilaiRekapClass();
   const assignments = getNilaiAssignmentsForClass(tingkat, rombel);
-  const students = tingkat && rombel ? getNilaiStudentsForClass(tingkat, rombel) : [];
+  const students = tingkat && rombel
+    ? semuaDataNilaiSiswa
+      .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
+      .filter(siswa =>
+        siswa.kelasNilaiParts.tingkat === String(tingkat || "")
+        && siswa.kelasNilaiParts.rombel === String(rombel || "").toUpperCase()
+      )
+      .sort((a, b) => {
+        if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+        return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+      })
+    : [];
 
   return { tingkat, rombel, assignments, students };
 }
@@ -1564,115 +1287,22 @@ async function exportRekapNilaiExcel() {
 
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, `Rekap ${tingkat}${rombel}`);
-  await saveNilaiWorkbookFile(workbook, `rekap-nilai-${tingkat}${rombel}.xlsx`);
+  XLSX.writeFile(workbook, `rekap-nilai-${tingkat}${rombel}.xlsx`);
 }
 
 async function handleNilaiAssignmentChange() {
   const assignment = getSelectedNilaiAssignment();
   syncCurrentNilaiAssignmentRows(assignment);
-  if (assignment?.mapel_kode) {
-    applyNilaiAssignmentLocalCache(assignment);
-  }
   renderNilaiTableState();
   if (!assignment?.mapel_kode) return;
   try {
-    setNilaiLoadState(assignment, { loading: true, error: "" });
-    renderNilaiLoadStatus(assignment);
     const changed = await hydrateNilaiCacheForAssignment(assignment);
     syncCurrentNilaiAssignmentRows(assignment);
-    setNilaiLoadState(assignment, {
-      loading: false,
-      source: window.GuruOffline?.isOnline?.() === false ? "cache" : "server",
-      refreshedAt: new Date().toISOString(),
-      rows: currentNilaiAssignmentRows.length,
-      error: ""
-    });
     if (changed || currentNilaiAssignmentRows.length > 0) {
       renderNilaiTableState();
-    } else {
-      renderNilaiLoadStatus(assignment);
     }
   } catch (error) {
     console.error("hydrate nilai assignment failed", error);
-    setNilaiLoadState(assignment, {
-      loading: false,
-      error: error?.message || "Data belum berhasil diperbarui."
-    });
-    renderNilaiLoadStatus(assignment);
-  }
-}
-
-async function ensureSelectedNilaiAssignmentHydrated() {
-  const assignment = getSelectedNilaiAssignment();
-  if (!assignment?.mapel_kode) return;
-  const key = makeNilaiAssignmentHydrationKey(assignment);
-  if (nilaiHydratedAssignmentKeys.has(key) || nilaiHydratingAssignmentKeys.has(key)) return;
-  nilaiHydratingAssignmentKeys.add(key);
-  try {
-    if (applyNilaiAssignmentLocalCache(assignment)) {
-      renderNilaiTableState();
-    }
-    setNilaiLoadState(assignment, { loading: true, error: "" });
-    renderNilaiLoadStatus(assignment);
-    const changed = await hydrateNilaiCacheForAssignment(assignment);
-    syncCurrentNilaiAssignmentRows(assignment);
-    setNilaiLoadState(assignment, {
-      loading: false,
-      source: window.GuruOffline?.isOnline?.() === false ? "cache" : "server",
-      refreshedAt: new Date().toISOString(),
-      rows: currentNilaiAssignmentRows.length,
-      error: ""
-    });
-    if (changed || currentNilaiAssignmentRows.length > 0) {
-      renderNilaiTableState();
-    } else {
-      renderNilaiLoadStatus(assignment);
-    }
-  } catch (error) {
-    console.error("hydrate selected nilai assignment failed", error);
-    setNilaiLoadState(assignment, {
-      loading: false,
-      error: error?.message || "Data belum berhasil diperbarui."
-    });
-    renderNilaiLoadStatus(assignment);
-  } finally {
-    nilaiHydratingAssignmentKeys.delete(key);
-  }
-}
-
-async function refreshSelectedNilaiAssignment() {
-  const assignment = getSelectedNilaiAssignment();
-  if (!assignment?.mapel_kode) {
-    Swal.fire("Pilih kelas dan mapel", "Refresh membutuhkan kelas dan mapel yang aktif.", "warning");
-    return;
-  }
-  if (window.GuruOffline?.isOnline?.() === false) {
-    applyNilaiAssignmentLocalCache(assignment);
-    renderNilaiTableState();
-    Swal.fire("Masih offline", "Data ditampilkan dari cache perangkat. Hubungkan internet untuk refresh dari server.", "info");
-    return;
-  }
-  try {
-    setNilaiLoadState(assignment, { loading: true, error: "" });
-    renderNilaiLoadStatus(assignment);
-    await hydrateNilaiCacheForAssignment(assignment, { force: true });
-    syncCurrentNilaiAssignmentRows(assignment);
-    setNilaiLoadState(assignment, {
-      loading: false,
-      source: "server",
-      refreshedAt: new Date().toISOString(),
-      rows: currentNilaiAssignmentRows.length,
-      error: ""
-    });
-    renderNilaiTableState();
-  } catch (error) {
-    console.error("refresh nilai assignment failed", error);
-    setNilaiLoadState(assignment, {
-      loading: false,
-      error: error?.message || "Refresh belum berhasil."
-    });
-    renderNilaiLoadStatus(assignment);
-    Swal.fire("Refresh gagal", error?.message || "Data belum berhasil diperbarui.", "error");
   }
 }
 
@@ -1707,9 +1337,7 @@ function renderNilaiTableState() {
   storeNilaiAssignmentId(select.value || "");
   const assignment = parseNilaiAssignmentId(select.value);
   syncCurrentNilaiAssignmentRows(assignment);
-  renderNilaiInputModeUi();
   renderNilaiAssignmentInfo(assignment);
-  renderNilaiLoadStatus(assignment);
   renderNilaiOfflineDraftInfo(assignment);
   if (!assignment.mapel_kode) {
     container.innerHTML = `<div class="empty-panel">Belum ada data pembagian mengajar kelas bayangan.</div>`;
@@ -1723,8 +1351,13 @@ function renderNilaiTableState() {
     return;
   }
 
-  const nextMarkup = `
-    <table class="mapel-table nilai-table">
+  container.innerHTML = `
+    <table class="mapel-table nilai-table nilai-input-table">
+      <colgroup>
+        <col class="nilai-col-no">
+        <col class="nilai-col-student">
+        ${headerFieldConfigs.map(field => `<col class="nilai-col-field" data-field="${escapeNilaiHtml(field.key)}">`).join("")}
+      </colgroup>
       <thead>
         <tr>
           <th>No</th>
@@ -1739,9 +1372,8 @@ function renderNilaiTableState() {
           const values = getNilaiUiValues(nilaiDoc);
           const ptsLockedUpto = getNilaiPtsLockedUpto(nilaiDoc, values);
           const rowFieldConfigs = getNilaiInputFieldConfigs(values, { ptsLockedUpto });
-          const rowStatus = getNilaiRowCompletionStatus(values, rowFieldConfigs);
           return `
-            <tr class="${draftDoc ? "nilai-draft-row" : ""} nilai-row-status-${rowStatus}" data-nilai-status="${rowStatus}">
+            <tr class="${draftDoc ? "nilai-draft-row" : ""}">
               <td>${index + 1}</td>
               <td class="nilai-student-name">${escapeNilaiHtml(siswa.nama || "-")}</td>
               ${rowFieldConfigs.map(field => {
@@ -1770,70 +1402,8 @@ function renderNilaiTableState() {
       </tbody>
     </table>
   `;
-  const renderKey = JSON.stringify({
-    assignmentId: makeNilaiAssignmentId(assignment),
-    mode: currentNilaiInputMode,
-    quickFilter: nilaiQuickFilter,
-    fields: headerFieldConfigs.map(field => field.key),
-    students: students.map(item => [item.nipd, item.nama, item.kelas, item.kelas_bayangan, item.updated_at || item.created_at || ""].map(value => String(value ?? "")).join("|")),
-    nilaiRows: students.map(student => {
-      const draftDoc = getNilaiOfflineDraftDocForStudent(assignment, student.nipd);
-      const nilaiDoc = draftDoc || getNilaiForStudent(assignment, student.nipd);
-      const values = getNilaiUiValues(nilaiDoc);
-      return [student.nipd, values.uh1, values.uh2, values.uh3, values.pts, values.rapor, Boolean(draftDoc), getNilaiItemTimestamp(nilaiDoc)].map(value => String(value ?? "")).join(":");
-    })
-  });
-  if (renderKey !== lastNilaiTableRenderKey || !container.querySelector("table")) {
-    container.innerHTML = nextMarkup;
-    lastNilaiTableRenderKey = renderKey;
-    setupNilaiTableInputs();
-    window.ResponsiveTables?.enhanceAll?.();
-  }
   applyNilaiTableColumnVisibility(container);
-  renderNilaiQuickFilterState();
-}
-
-function renderNilaiLoadStatus(assignment) {
-  const panel = document.getElementById("nilaiLoadStatus");
-  if (!panel) return;
-  if (!assignment?.mapel_kode) {
-    panel.hidden = true;
-    panel.innerHTML = "";
-    return;
-  }
-  const state = getNilaiLoadState(assignment);
-  const cacheInfo = getNilaiAssignmentCacheInfo(assignment);
-  const online = window.GuruOffline?.isOnline?.() !== false;
-  const cacheTime = cacheInfo?.savedAt ? new Date(cacheInfo.savedAt).toLocaleString("id-ID") : "";
-  const refreshTime = state.refreshedAt ? new Date(state.refreshedAt).toLocaleString("id-ID") : "";
-  const saveMode = canSaveNilaiAsOfflineDraft()
-    ? online ? "Simpan langsung ke server" : "Simpan menjadi draft offline"
-    : "Simpan langsung ke server";
-  const statusText = state.loading
-    ? "Memperbarui data nilai..."
-    : state.error
-    ? "Refresh terakhir gagal"
-    : !online
-    ? "Offline, memakai data cache bila tersedia"
-    : state.source === "server"
-    ? "Data sudah diperbarui dari server"
-    : cacheInfo
-    ? "Data cache siap, tekan Refresh untuk mengambil versi terbaru"
-    : "Data siap dimuat, tekan Refresh bila nilai belum muncul";
-  const meta = [
-    saveMode,
-    cacheInfo ? `Cache ${cacheInfo.rows} nilai${cacheTime ? `, ${cacheTime}` : ""}` : "",
-    refreshTime ? `Refresh ${refreshTime}` : "",
-    state.error ? state.error : ""
-  ].filter(Boolean);
-  panel.hidden = false;
-  panel.classList.toggle("is-loading", Boolean(state.loading));
-  panel.classList.toggle("is-offline", !online);
-  panel.classList.toggle("has-error", Boolean(state.error));
-  panel.innerHTML = `
-    <strong>${escapeNilaiHtml(statusText)}</strong>
-    <span>${escapeNilaiHtml(meta.join(" | "))}</span>
-  `;
+  setupNilaiTableInputs();
 }
 
 function applyNilaiTableColumnVisibility(container) {
@@ -1889,7 +1459,7 @@ function cleanNilaiPayloadValue(value) {
 async function upsertNilaiRows(rows, assignment) {
   if (!rows.length) return;
 
-  const supabaseClient = getNilaiSupabaseClient();
+  const supabaseClient = window.supabaseClient;
   const documentsTable = window.supabaseConfig?.documentsTable || "app_documents";
 
   if (supabaseClient?.from) {
@@ -1926,88 +1496,43 @@ function mergeSavedNilaiRowsIntoCache(rows, assignment) {
     ...cleanNilaiPayloadValue(row.payload)
   }));
   setSemuaDataNilai([...semuaDataNilai, ...nextItems]);
-  saveNilaiAssignmentOfflineCache(assignment, getNilaiRowsFromCacheForAssignment(assignment));
   return JSON.stringify(semuaDataNilai) !== previousSerialized;
 }
 
 async function hydrateNilaiCacheForAssignment(assignment, options = {}) {
   if (!assignment?.mapel_kode) return false;
-  const supabaseClient = getNilaiSupabaseClient();
+  const supabaseClient = window.supabaseClient;
   const documentsTable = window.supabaseConfig?.documentsTable || "app_documents";
+  if (!supabaseClient?.from) return false;
+
   const key = makeNilaiAssignmentHydrationKey(assignment);
   if (!options.force && nilaiHydratedAssignmentKeys.has(key)) return false;
 
-  const useOfflineCache = async () => {
-    const cachedRows = loadNilaiAssignmentOfflineCache(assignment);
-    if (cachedRows.length) {
-      nilaiHydratedAssignmentKeys.add(key);
-      currentNilaiAssignmentId = makeNilaiAssignmentId(assignment);
-      currentNilaiAssignmentRows = cachedRows;
-      const rows = cachedRows.map(item => ({
-        id: item.id,
-        siswa: { nipd: item.nipd || String(item.id || "").split("_").at(-1) || "" },
-        payload: item
-      }));
-      return mergeSavedNilaiRowsIntoCache(rows, assignment);
-    }
-    const persistedRows = await loadNilaiAssignmentFromPersistedCollection(assignment);
-    if (!persistedRows.length) return false;
-    nilaiHydratedAssignmentKeys.add(key);
-    currentNilaiAssignmentId = makeNilaiAssignmentId(assignment);
-    currentNilaiAssignmentRows = rowsToNilaiCacheItems(persistedRows, assignment);
-    saveNilaiAssignmentOfflineCache(assignment, persistedRows);
-    return mergeSavedNilaiRowsIntoCache(persistedRows, assignment);
-  };
+  const { data, error } = await supabaseClient
+    .from(documentsTable)
+    .select("id,data")
+    .eq("collection_path", "nilai")
+    .filter("data->>tingkat", "eq", String(assignment.tingkat || ""))
+    .filter("data->>rombel", "eq", String(assignment.rombel || "").toUpperCase())
+    .filter("data->>mapel_kode", "eq", String(assignment.mapel_kode || "").toUpperCase())
+    .filter("data->>guru_kode", "eq", String(assignment.guru_kode || "").toUpperCase());
 
-  if (!supabaseClient?.from || window.GuruOffline?.isOnline?.() === false) {
-    return useOfflineCache();
-  }
+  if (error) throw error;
 
-  try {
-    const { data, error } = await supabaseClient
-      .from(documentsTable)
-      .select("id,data")
-      .eq("collection_path", "nilai")
-      .filter("data->>mapel_kode", "eq", String(assignment.mapel_kode || "").toUpperCase());
-
-    if (error) throw error;
-
-    const students = getNilaiStudentsForAssignment(assignment);
-    const existingIds = new Set((data || []).map(item => item?.id).filter(Boolean));
-    const directIds = students
-      .flatMap(siswa => getNilaiPossibleDocIds(assignment, siswa.nipd))
-      .filter(id => id && !existingIds.has(id));
-    const directRows = [];
-    for (let index = 0; index < directIds.length; index += 150) {
-      const idChunk = directIds.slice(index, index + 150);
-      if (!idChunk.length) continue;
-      const { data: chunkData, error: chunkError } = await supabaseClient
-        .from(documentsTable)
-        .select("id,data")
-        .eq("collection_path", "nilai")
-        .in("id", idChunk);
-      if (chunkError) throw chunkError;
-      directRows.push(...(chunkData || []));
-    }
-
-    nilaiHydratedAssignmentKeys.add(key);
-    const rows = [...(data || []), ...directRows]
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item?.data || {}) : true)
-      .filter(item => isNilaiDocMatchingAssignment(item?.data || {}, assignment))
-      .map(item => ({
-        id: item?.id || "",
-        siswa: { nipd: item?.data?.nipd || String(item?.id || "").split("_").at(-1) || "" },
-        payload: { ...(item?.data || {}) }
-      }));
-    currentNilaiAssignmentId = makeNilaiAssignmentId(assignment);
-    currentNilaiAssignmentRows = rowsToNilaiCacheItems(rows, assignment);
-    saveNilaiAssignmentOfflineCache(assignment, rows);
-    return mergeSavedNilaiRowsIntoCache(rows, assignment);
-  } catch (error) {
-    window.GuruOffline?.markOffline?.();
-    if (await useOfflineCache()) return true;
-    throw error;
-  }
+  nilaiHydratedAssignmentKeys.add(key);
+  const rows = (data || [])
+    .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item?.data || {}) : true)
+    .map(item => ({
+    id: item?.id || "",
+    siswa: { nipd: item?.data?.nipd || String(item?.id || "").split("_").at(-1) || "" },
+    payload: { ...(item?.data || {}) }
+  }));
+  currentNilaiAssignmentId = makeNilaiAssignmentId(assignment);
+  currentNilaiAssignmentRows = rows.map(row => ({
+    id: row.id || makeNilaiDocId(assignment, row.siswa.nipd),
+    ...cleanNilaiPayloadValue(row.payload)
+  }));
+  return mergeSavedNilaiRowsIntoCache(rows, assignment);
 }
 
 function getNilaiTableInput(rowIndex, field) {
@@ -2093,7 +1618,6 @@ function handleNilaiTableInput(event) {
   input.value = normalizeNilaiManualInputValue(input.value);
   const rowIndex = Number(input.dataset.row);
   if (!Number.isNaN(rowIndex)) updateNilaiInputDependencies(rowIndex);
-  scheduleNilaiDraftAutosave();
 }
 
 function handleNilaiTableKeydown(event) {
@@ -2138,78 +1662,11 @@ function renderNilaiAssignmentInfo(assignment) {
   }
   const mapel = getNilaiMapel(assignment.mapel_kode);
   const siswaCount = getNilaiStudentsForAssignment(assignment).length;
-  const nextHtml = `
+  info.innerHTML = `
     <span><strong>Kelas</strong>${escapeNilaiHtml(`${assignment.tingkat} ${assignment.rombel}`)}</span>
     <span><strong>Mapel</strong>${escapeNilaiHtml(mapel?.nama_mapel || assignment.mapel_kode)}</span>
     <span><strong>Siswa</strong>${siswaCount}</span>
   `;
-  if (infoKey !== lastNilaiAssignmentInfoKey || info.innerHTML !== nextHtml) {
-    info.innerHTML = nextHtml;
-    lastNilaiAssignmentInfoKey = infoKey;
-  }
-}
-
-function getNilaiRowCompletionStatus(values = {}, fieldConfigs = getNilaiInputFieldConfigs(values)) {
-  const editableKeys = fieldConfigs
-    .filter(field => !field.readOnly && field.key !== "rapor")
-    .map(field => field.key);
-  const keys = editableKeys.length ? editableKeys : fieldConfigs.map(field => field.key).filter(key => key !== "rapor");
-  const filled = keys.filter(key => String(values[key] ?? "").trim() !== "").length;
-  if (!filled) return "empty";
-  return filled >= keys.length ? "full" : "partial";
-}
-
-function renderNilaiQuickFilterState() {
-  const container = document.getElementById("nilaiTableContainer");
-  if (container) container.dataset.filter = nilaiQuickFilter;
-  document.querySelectorAll(".nilai-quick-filter button").forEach(button => {
-    const active = button.dataset.filter === nilaiQuickFilter;
-    button.classList.toggle("active", active);
-    button.setAttribute("aria-pressed", active ? "true" : "false");
-  });
-}
-
-function setNilaiQuickFilter(filter = "all") {
-  nilaiQuickFilter = ["all", "empty", "partial", "full"].includes(filter) ? filter : "all";
-  renderNilaiQuickFilterState();
-}
-
-function setNilaiAutosaveStatus(message = "", tone = "") {
-  const panel = document.getElementById("nilaiAutosaveStatus");
-  if (!panel) return;
-  panel.hidden = true;
-  panel.textContent = "";
-  panel.className = "nilai-autosave-status";
-}
-
-function showNilaiOperationNotification() {
-  return false;
-}
-
-function scheduleNilaiDraftAutosave() {
-  if (!canSaveNilaiAsOfflineDraft()) return;
-  const assignment = getSelectedNilaiAssignment();
-  if (!assignment?.mapel_kode) return;
-  window.clearTimeout(nilaiAutosaveTimer);
-  nilaiAutosaveTimer = window.setTimeout(async () => {
-    if (nilaiAutosaveInFlight || isNilaiSaving) return;
-    nilaiAutosaveInFlight = true;
-    try {
-      const result = await saveNilaiAssignmentOfflineDraft({
-        automatic: true,
-        silent: true,
-        skipRender: true
-      });
-      if (result?.saved) {
-        setNilaiAutosaveStatus(`Draft otomatis tersimpan (${result.rows.length} perubahan)`, "saved");
-        window.setTimeout(() => setNilaiAutosaveStatus("", ""), 3500);
-      } else if (result?.reason === "no-change") {
-        setNilaiAutosaveStatus("", "");
-      }
-    } finally {
-      nilaiAutosaveInFlight = false;
-    }
-  }, 1800);
 }
 
 function getNilaiTemplateRows(assignment) {
@@ -2306,225 +1763,48 @@ function getNilaiRaporDownloadClassOptions(assignment) {
   const options = new Map();
   students.forEach(siswa => {
     const originalClass = getNilaiKelasParts(siswa.kelas).kelas;
+    const shadowClass = siswa.kelasNilaiParts?.kelas || "";
     if (originalClass) {
       options.set(`asli|${originalClass}`, {
         value: `asli|${originalClass}`,
-        label: `Kelas asli: ${originalClass}`,
+        label: `Kelas asli aktif: ${originalClass}`,
         source: "asli",
         classKey: originalClass
+      });
+    }
+    if (shadowClass) {
+      options.set(`bayangan|${shadowClass}`, {
+        value: `bayangan|${shadowClass}`,
+        label: `Kelas bayangan: ${shadowClass}`,
+        source: "bayangan",
+        classKey: shadowClass
       });
     }
   });
   return [...options.values()].sort((a, b) => a.label.localeCompare(b.label, undefined, { numeric: true, sensitivity: "base" }));
 }
 
-function sortNilaiExportStudents(students = []) {
-  return students.sort((a, b) => {
-    const byName = String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { numeric: true, sensitivity: "base" });
-    if (byName) return byName;
-    return String(a.nipd || "").localeCompare(String(b.nipd || ""), undefined, { numeric: true, sensitivity: "base" });
-  });
-}
-
-function getNilaiStudentsForOriginalClass(classKey = "", assignment = null) {
-  const target = getNilaiKelasParts(classKey).kelas;
-  return sortNilaiExportStudents(semuaDataNilaiSiswa
-    .map(siswa => ({
-      ...siswa,
-      kelasAsliParts: getNilaiKelasParts(siswa.kelas),
-      kelasNilaiParts: getNilaiKelasBayanganParts(siswa)
-    }))
-    .filter(siswa => {
-      if (siswa.kelasAsliParts?.kelas !== target) return false;
-      return true;
-    }));
-}
-
-function getNilaiStudentsForEffectiveClass(classKey = "") {
-  const target = getNilaiKelasParts(classKey).kelas;
-  return sortNilaiExportStudents(semuaDataNilaiSiswa
-    .map(siswa => ({ ...siswa, kelasNilaiParts: getNilaiKelasBayanganParts(siswa) }))
-    .filter(siswa => siswa.kelasNilaiParts?.kelas === target));
-}
-
-function getNilaiRaporExportStudents(assignment, option) {
-  return getNilaiStudentsForOriginalClass(option.classKey, assignment);
-}
-
-function makeNilaiExportAssignmentKey(assignment = {}) {
-  return [
-    assignment.tingkat,
-    String(assignment.rombel || "").toUpperCase(),
-    String(assignment.mapel_kode || "").toUpperCase(),
-    String(assignment.guru_kode || "").toUpperCase()
-  ].join("|");
-}
-
-function getNilaiAssignmentsForExportStudent(baseAssignment = {}, siswa = {}) {
-  const mapelKode = String(baseAssignment.mapel_kode || "").trim().toUpperCase();
-  if (!mapelKode) return [];
-  const kelasCandidates = [
-    getNilaiKelasBayanganParts(siswa),
-    getNilaiKelasParts(siswa.kelas)
-  ].filter(parts => parts?.tingkat && parts?.rombel);
-  return semuaDataNilaiMengajar.filter(item => {
-    if (String(item.mapel_kode || "").trim().toUpperCase() !== mapelKode) return false;
-    return kelasCandidates.some(parts =>
-      String(item.tingkat || "") === String(parts.tingkat || "") &&
-      String(item.rombel || "").trim().toUpperCase() === String(parts.rombel || "").trim().toUpperCase()
-    );
-  });
-}
-
-async function hydrateNilaiCacheForRaporExport(assignment, option) {
-  const students = getNilaiRaporExportStudents(assignment, option);
-  const assignments = new Map();
-  if (assignment?.mapel_kode) assignments.set(makeNilaiExportAssignmentKey(assignment), assignment);
-  students.forEach(siswa => {
-    getNilaiAssignmentsForExportStudent(assignment, siswa).forEach(item => {
-      assignments.set(makeNilaiExportAssignmentKey(item), item);
-    });
-  });
-  for (const item of assignments.values()) {
-    try {
-      await hydrateNilaiCacheForAssignment(item);
-    } catch (error) {
-      console.warn("Gagal memuat nilai untuk export rapor", item, error);
-    }
-  }
-}
-
-function getNilaiForStudentExport(assignment, nipd) {
-  const directValue = getNilaiForStudent(assignment, nipd);
-  if (directValue) return directValue;
-  const mapelKode = String(assignment.mapel_kode || "").trim().toUpperCase();
-  const guruKode = String(assignment.guru_kode || "").trim().toUpperCase();
-  const matchesStudentMapel = item =>
-    String(item?.nipd || "") === String(nipd || "") &&
-    String(item?.mapel_kode || "").trim().toUpperCase() === mapelKode &&
-    isNilaiDocInActiveTerm(item);
-  const candidates = [
-    ...currentNilaiAssignmentRows.filter(matchesStudentMapel),
-    ...semuaDataNilai.filter(matchesStudentMapel)
-  ];
-  if (!candidates.length) return null;
-  return candidates.sort((a, b) => {
-    const aGuru = String(a?.guru_kode || "").trim().toUpperCase();
-    const bGuru = String(b?.guru_kode || "").trim().toUpperCase();
-    const aGuruMatch = guruKode && aGuru === guruKode ? 1 : 0;
-    const bGuruMatch = guruKode && bGuru === guruKode ? 1 : 0;
-    if (aGuruMatch !== bGuruMatch) return bGuruMatch - aGuruMatch;
-    return getNilaiItemTimestamp(b) - getNilaiItemTimestamp(a);
-  })[0] || null;
-}
-
 function getNilaiRaporRowsForExport(assignment, option) {
-  const students = getNilaiRaporExportStudents(assignment, option);
+  const students = getNilaiStudentsForAssignment(assignment).filter(siswa => {
+    const originalClass = getNilaiKelasParts(siswa.kelas).kelas;
+    const shadowClass = siswa.kelasNilaiParts?.kelas || "";
+    if (option.source === "asli") return originalClass === option.classKey;
+    return shadowClass === option.classKey;
+  });
   return students.map((siswa, index) => {
-    const nilaiDoc = getNilaiForStudentExport(assignment, siswa.nipd);
+    const nilaiDoc = getNilaiForStudent(assignment, siswa.nipd);
     const values = getNilaiUiValues(nilaiDoc);
     return {
       NO: index + 1,
       NIPD: siswa.nipd || "",
       NAMA: siswa.nama || "",
-      KELAS: siswa.kelasAsliParts?.kelas || option.classKey,
+      KELAS: option.classKey,
       NILAI_RAPOR: values.rapor
     };
   });
 }
 
-function getNilaiRaporEmptyRows(rows = []) {
-  return rows.filter(row => String(row?.NILAI_RAPOR ?? "").trim() === "");
-}
-
-function makeNilaiDownloadSlug(value = "") {
-  return String(value || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "")
-    .replace(/[^A-Z0-9_-]+/g, "-")
-    .replace(/^-+|-+$/g, "") || "NILAI";
-}
-
-function isNilaiNativeDownloadAvailable() {
-  return Boolean((window.Capacitor?.isNativePlatform?.() || window.isGuruSpenturiNativeApp?.())
-    && window.Capacitor?.Plugins?.Filesystem?.writeFile);
-}
-
-function arrayBufferToNilaiBase64(buffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  const chunkSize = 0x8000;
-  for (let index = 0; index < bytes.length; index += chunkSize) {
-    const chunk = bytes.subarray(index, index + chunkSize);
-    binary += String.fromCharCode.apply(null, chunk);
-  }
-  return btoa(binary);
-}
-
-async function notifyNilaiDownloadFinished(fileName, options = {}) {
-  const native = Boolean(options.native);
-  await Swal.fire({
-    title: native ? "File tersimpan" : "Download dimulai",
-    html: native
-      ? `File <strong>${escapeNilaiHtml(fileName)}</strong> disimpan ke folder <strong>Documents/Dokumen</strong> aplikasi Guru Spenturi. Cek aplikasi <strong>File Manager</strong> atau <strong>Files</strong> di HP.`
-      : `File <strong>${escapeNilaiHtml(fileName)}</strong> dikirim ke download browser. Cek folder <strong>Download/Unduhan</strong>.`,
-    icon: "success",
-    confirmButtonText: "OK"
-  });
-}
-
-async function saveNilaiWorkbookFile(workbook, fileName) {
-  if (isNilaiNativeDownloadAvailable()) {
-    Swal.fire({
-      title: "Menyimpan file...",
-      html: `Menyiapkan <strong>${escapeNilaiHtml(fileName)}</strong>.`,
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
-    const base64 = XLSX.write(workbook, { bookType: "xlsx", type: "base64" });
-    await window.Capacitor.Plugins.Filesystem.writeFile({
-      path: fileName,
-      data: base64,
-      directory: "DOCUMENTS",
-      recursive: true
-    });
-    await notifyNilaiDownloadFinished(fileName, { native: true });
-    return;
-  }
-  XLSX.writeFile(workbook, fileName);
-  await notifyNilaiDownloadFinished(fileName, { native: false });
-}
-
-async function saveNilaiExcelBlobFile(blob, fileName) {
-  if (isNilaiNativeDownloadAvailable()) {
-    Swal.fire({
-      title: "Menyimpan file...",
-      html: `Menyiapkan <strong>${escapeNilaiHtml(fileName)}</strong>.`,
-      allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
-    });
-    const base64 = arrayBufferToNilaiBase64(await blob.arrayBuffer());
-    await window.Capacitor.Plugins.Filesystem.writeFile({
-      path: fileName,
-      data: base64,
-      directory: "DOCUMENTS",
-      recursive: true
-    });
-    await notifyNilaiDownloadFinished(fileName, { native: true });
-    return;
-  }
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(link.href);
-  await notifyNilaiDownloadFinished(fileName, { native: false });
-}
-
-function applyNilaiRaporExportStyles(worksheet, rowCount = 0, headers = ["NO", "NIPD", "NAMA", "KELAS", "NILAI_RAPOR"]) {
+function applyNilaiRaporExportStyles(worksheet, rowCount = 0) {
   if (!window.XLSX?.utils || !worksheet?.["!ref"]) return;
   const range = XLSX.utils.decode_range(worksheet["!ref"]);
   const headerStyle = {
@@ -2558,21 +1838,13 @@ function applyNilaiRaporExportStyles(worksheet, rowCount = 0, headers = ["NO", "
       };
     }
   }
-  const widthMap = {
-    NO: { wch: 6 },
-    NIPD: { wch: 14 },
-    NAMA: { wch: 30 },
-    KELAS: { wch: 10 },
-    UH1: { wch: 9 },
-    UH2: { wch: 9 },
-    UH3: { wch: 9 },
-    UH4: { wch: 9 },
-    UH5: { wch: 9 },
-    PTS: { wch: 9 },
-    SEMESTER: { wch: 12 },
-    NILAI_RAPOR: { wch: 14 }
-  };
-  worksheet["!cols"] = headers.map(header => widthMap[header] || { wch: 12 });
+  worksheet["!cols"] = [
+    { wch: 6 },
+    { wch: 14 },
+    { wch: 30 },
+    { wch: 10 },
+    { wch: 14 }
+  ];
 }
 
 async function downloadNilaiTemplate() {
@@ -2600,37 +1872,7 @@ async function downloadNilaiTemplate() {
   applyNilaiTemplateStyles(worksheet, rows.length);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template Nilai");
-  await saveNilaiWorkbookFile(workbook, `template-nilai-${assignment.tingkat}${assignment.rombel}-${assignment.mapel_kode}.xlsx`);
-}
-
-async function openNilaiDownloadMenu() {
-  const modeRules = getNilaiModeRules();
-  const inputOptions = {
-    template: "Template Input Nilai"
-  };
-  if (modeRules.canDownloadRapor) {
-    inputOptions.rapor = "Nilai Rapor";
-  }
-
-  const result = await Swal.fire({
-    title: "Download",
-    text: modeRules.canDownloadRapor
-      ? "Pilih jenis file yang ingin diunduh."
-      : "Mode PTS hanya menyediakan template input nilai.",
-    input: "select",
-    inputOptions,
-    inputValue: "template",
-    showCancelButton: true,
-    confirmButtonText: "Lanjut",
-    cancelButtonText: "Batal",
-    inputValidator: value => value ? undefined : "Pilih jenis download terlebih dahulu."
-  });
-  if (!result.isConfirmed || !result.value) return;
-  if (result.value === "rapor") {
-    await promptDownloadNilaiRapor();
-    return;
-  }
-  await downloadNilaiTemplate();
+  XLSX.writeFile(workbook, `template-nilai-${assignment.tingkat}${assignment.rombel}-${assignment.mapel_kode}.xlsx`);
 }
 
 async function promptDownloadNilaiRapor() {
@@ -2642,7 +1884,7 @@ async function promptDownloadNilaiRapor() {
   }
   const options = getNilaiRaporDownloadClassOptions(assignment);
   if (!options.length) {
-    Swal.fire("Tidak ada kelas", "Belum ada kelas asli aktif yang bisa dipakai untuk download nilai rapor.", "warning");
+    Swal.fire("Tidak ada kelas", "Belum ada kelas asli atau kelas bayangan yang bisa dipakai untuk download nilai rapor.", "warning");
     return;
   }
   const inputOptions = Object.fromEntries(options.map(option => [option.value, option.label]));
@@ -2670,35 +1912,17 @@ async function downloadNilaiRapor(selectedOption, assignmentOverride = null) {
     Swal.fire("Pilih kelas dan mapel", "Download nilai rapor dibuat dari kelas dan mapel yang sedang dipilih.", "warning");
     return;
   }
-  await hydrateNilaiCacheForRaporExport(assignment, selectedOption);
   const rows = getNilaiRaporRowsForExport(assignment, selectedOption);
   if (!rows.length) {
     Swal.fire("Tidak ada data", "Belum ada siswa pada kelas yang dipilih untuk diunduh.", "warning");
     return;
   }
-  const emptyRows = getNilaiRaporEmptyRows(rows);
-  if (emptyRows.length) {
-    const result = await Swal.fire({
-      title: "Nilai rapor belum lengkap",
-      html: `
-        <p>Ada <strong>${emptyRows.length}</strong> dari <strong>${rows.length}</strong> siswa yang nilai rapornya masih kosong.</p>
-        <p>File tetap bisa diunduh, tetapi baris siswa tersebut akan kosong pada kolom <strong>NILAI_RAPOR</strong>.</p>
-      `,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Tetap download",
-      cancelButtonText: "Batal"
-    });
-    if (!result.isConfirmed) return;
-  }
-  const headers = ["NO", "NIPD", "NAMA", "KELAS", "NILAI_RAPOR"];
-  const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
-  applyNilaiRaporExportStyles(worksheet, rows.length, headers);
+  const worksheet = XLSX.utils.json_to_sheet(rows, { header: ["NO", "NIPD", "NAMA", "KELAS", "NILAI_RAPOR"] });
+  applyNilaiRaporExportStyles(worksheet, rows.length);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, "Nilai Rapor");
-  const kelasSlug = makeNilaiDownloadSlug(selectedOption.classKey);
-  const mapelSlug = makeNilaiDownloadSlug(assignment.mapel_kode);
-  await saveNilaiWorkbookFile(workbook, `${kelasSlug}-${mapelSlug}.xlsx`);
+  const kelasSlug = String(selectedOption.classKey || "").replace(/\s+/g, "");
+  XLSX.writeFile(workbook, `nilai-rapor-${kelasSlug}-${String(assignment.mapel_kode || "").toUpperCase()}.xlsx`);
 }
 
 async function downloadNilaiTemplateExcelJs(rows, assignment) {
@@ -2775,7 +1999,11 @@ async function downloadNilaiTemplateExcelJs(rows, assignment) {
 
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  await saveNilaiExcelBlobFile(blob, `template-nilai-${assignment.tingkat}${assignment.rombel}-${assignment.mapel_kode}.xlsx`);
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `template-nilai-${assignment.tingkat}${assignment.rombel}-${assignment.mapel_kode}.xlsx`;
+  link.click();
+  URL.revokeObjectURL(link.href);
 }
 
 function triggerNilaiImport() {
@@ -3136,46 +2364,18 @@ function renderNilaiPreviewPagination(totalPages) {
 function renderNilaiOfflineDraftInfo(assignment) {
   const panel = document.getElementById("nilaiOfflineDraftInfo");
   if (!panel) return;
-  const user = getCurrentNilaiUser();
-  const allDrafts = canUseNilaiOfflineDraft() && window.GuruOffline?.listNilaiDrafts
-    ? window.GuruOffline.listNilaiDrafts(user)
-    : [];
-  if (!allDrafts.length) {
+  const draft = canUseNilaiOfflineDraft() ? getNilaiOfflineDraft(assignment) : null;
+  if (!draft?.rows?.length) {
     panel.hidden = true;
     panel.innerHTML = "";
     return;
   }
-  const activeKey = assignment?.mapel_kode ? makeNilaiOfflineAssignmentKey(assignment) : "";
-  const totalRows = allDrafts.reduce((total, item) => total + Number(item.rows || 0), 0);
-  const listItems = allDrafts.slice(0, 6).map(item => {
-    const draftAssignment = item.draft?.assignment?.mapel_kode
-      ? item.draft.assignment
-      : parseNilaiOfflineAssignmentKey(item.assignmentKey);
-    const mapel = getNilaiMapel(draftAssignment.mapel_kode);
-    const savedAt = item.savedAt ? new Date(item.savedAt).toLocaleString("id-ID") : "waktu tidak diketahui";
-    const isActive = item.assignmentKey === activeKey;
-    const label = `${draftAssignment.tingkat || "-"} ${String(draftAssignment.rombel || "").toUpperCase()} - ${mapel?.nama_mapel || draftAssignment.mapel_kode || "-"}`;
-    return `
-      <li class="${isActive ? "is-active" : ""}">
-        <strong>${escapeNilaiHtml(label)}</strong>
-        <span>${Number(item.rows || 0)} baris | ${escapeNilaiHtml(savedAt)}${isActive ? " | sedang dibuka" : ""}</span>
-      </li>
-    `;
-  }).join("");
-  const moreCount = Math.max(0, allDrafts.length - 6);
+  const savedAt = draft.savedAt ? new Date(draft.savedAt).toLocaleString("id-ID") : "waktu tidak diketahui";
   panel.hidden = false;
   panel.innerHTML = `
-    <div class="nilai-draft-summary-head">
-      <div>
-        <strong>${allDrafts.length} draft tertunda</strong>
-        <span>${totalRows} baris nilai menunggu sinkron. Baris kuning memakai draft lokal.</span>
-      </div>
-      <button type="button" class="btn-secondary" onclick="syncAllNilaiOfflineDrafts()">Sinkron sekarang</button>
-    </div>
-    <ul class="nilai-draft-summary-list">
-      ${listItems}
-      ${moreCount ? `<li><strong>+${moreCount} draft lain</strong><span>Buka kelas-mapel terkait atau gunakan Sinkron sekarang.</span></li>` : ""}
-    </ul>
+    Ada <strong>${draft.rows.length}</strong> baris draft nilai offline untuk kelas/mapel ini.
+    Disimpan: <strong>${escapeNilaiHtml(savedAt)}</strong>.
+    Baris berwarna kuning memakai nilai dari draft lokal sampai draft disinkronkan atau diperbarui.
   `;
 }
 
@@ -3231,20 +2431,12 @@ async function uploadImportNilai() {
         updated_at: new Date().toISOString()
       }
     }));
-    const snapshotIds = await createNilaiSnapshot(rows, assignment, "nilai_import");
     await upsertNilaiRows(rows, assignment);
     mergeSavedNilaiRowsIntoCache(rows, assignment);
     syncCurrentNilaiAssignmentRows(assignment);
     closeNilaiPreviewModal();
     batalImportNilai(false);
     renderNilaiTableState();
-    recordNilaiAudit("nilai_import", {
-      title: "Import Nilai",
-      ringkasan: `${siapUpload.length} baris nilai diimport untuk ${assignment.tingkat}${assignment.rombel} ${assignment.mapel_kode}.`,
-      rows: siapUpload.length,
-      assignment,
-      snapshot_ids: snapshotIds
-    });
     Swal.fire("Import selesai", `${siapUpload.length} nilai berhasil diupload.`, "success");
   } catch (error) {
     console.error(error);
@@ -3309,25 +2501,6 @@ function buildNilaiRowsFromCurrentInputs(assignment, user = getCurrentNilaiUser(
   });
 }
 
-function getNilaiPayloadComparableValue(value) {
-  if (value === undefined || value === null) return "";
-  return String(value);
-}
-
-function isNilaiRowChanged(row, assignment) {
-  const existing = getNilaiForStudent(assignment, row?.siswa?.nipd || row?.payload?.nipd || "");
-  const payload = cleanNilaiPayloadValue(row?.payload || {});
-  const fields = ["uh_1", "uh_2", "uh_3", "uh_4", "uh_5", "pts", "semester", "rapor", "pts_locked_upto"];
-  if (!existing) {
-    return fields
-      .filter(field => field !== "pts_locked_upto")
-      .some(field => getNilaiPayloadComparableValue(payload[field]) !== "");
-  }
-  return fields.some(field =>
-    getNilaiPayloadComparableValue(payload[field]) !== getNilaiPayloadComparableValue(existing[field])
-  );
-}
-
 function validateNilaiRows(rows) {
   const invalidRow = rows.find(row =>
     ["uh_1", "uh_2", "uh_3", "uh_4", "uh_5", "pts", "semester", "rapor"].some(field => Number.isNaN(row.payload[field]))
@@ -3335,50 +2508,6 @@ function validateNilaiRows(rows) {
   if (invalidRow) {
     throw new Error(`Nilai tidak valid untuk ${invalidRow.siswa?.nama || invalidRow.siswa?.nipd || "siswa"}`);
   }
-}
-
-function makeNilaiSnapshotId(action = "nilai") {
-  return `${Date.now()}_${String(action || "nilai").replace(/[^a-z0-9_-]+/gi, "_")}_${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function createNilaiSnapshot(rows = [], assignment = {}, action = "nilai_save") {
-  if (!rows.length || !window.SupabaseDocuments?.collection) return [];
-  const snapshotIds = [];
-  for (let index = 0; index < rows.length; index += 80) {
-    const chunk = rows.slice(index, index + 80);
-    const snapshotId = makeNilaiSnapshotId(action);
-    const payload = {
-      action,
-      assignment: { ...assignment },
-      created_at: new Date().toISOString(),
-      created_by: getCurrentNilaiUser()?.username || "",
-      rows: chunk.map(row => {
-        const nipd = row?.siswa?.nipd || row?.payload?.nipd || "";
-        const docId = makeNilaiDocId(assignment, nipd);
-        const before = getNilaiForStudent(assignment, nipd);
-        return {
-          doc_id: docId,
-          nipd,
-          nama_siswa: row?.payload?.nama_siswa || before?.nama_siswa || "",
-          before: before ? cleanNilaiPayloadValue(before) : null,
-          after: cleanNilaiPayloadValue(row?.payload || {})
-        };
-      })
-    };
-    await window.SupabaseDocuments.collection("nilai_snapshots").doc(snapshotId).set(payload);
-    snapshotIds.push(snapshotId);
-  }
-  return snapshotIds;
-}
-
-function recordNilaiAudit(action, detail = {}) {
-  window.AuditLog?.record?.(action, {
-    module: "Nilai",
-    ...detail
-  }, {
-    module: "Nilai",
-    title: detail.title || action
-  });
 }
 
 function assertGuruCanSaveNilaiAssignment(user, assignment) {
@@ -3390,46 +2519,34 @@ function assertGuruCanSaveNilaiAssignment(user, assignment) {
   return true;
 }
 
-async function saveNilaiAssignmentOfflineDraft(options = {}) {
+async function saveNilaiAssignmentOfflineDraft() {
   const select = document.getElementById("nilaiAssignmentSelect");
   const assignment = parseNilaiAssignmentId(select?.value || "");
-  const automatic = options?.automatic === true;
-  const silent = options?.silent === true;
   if (!assignment.mapel_kode) {
     Swal.fire("Pilih kelas dan mapel", "", "warning");
-    return { saved: false, reason: "missing-assignment" };
+    return;
   }
   if (!canUseNilaiOfflineDraft() || !window.GuruOffline?.saveNilaiDraft) {
     Swal.fire("Tidak tersedia", "Draft offline hanya tersedia untuk role guru.", "warning");
-    return { saved: false, reason: "unavailable" };
+    return;
   }
 
   const user = getCurrentNilaiUser();
-  if (!assertGuruCanSaveNilaiAssignment(user, assignment)) return { saved: false, reason: "access-denied" };
+  if (!assertGuruCanSaveNilaiAssignment(user, assignment)) return;
 
   try {
-    const allRows = buildNilaiRowsFromCurrentInputs(assignment, user);
-    validateNilaiRows(allRows);
-    const rows = allRows.filter(row => isNilaiRowChanged(row, assignment));
-    if (!rows.length) {
-      return { saved: false, reason: "no-change" };
-    }
-    const assignmentKey = makeNilaiOfflineAssignmentKey(assignment);
-    window.GuruOffline.saveNilaiDraft(assignmentKey, {
+    const rows = buildNilaiRowsFromCurrentInputs(assignment, user);
+    validateNilaiRows(rows);
+    window.GuruOffline.saveNilaiDraft(makeNilaiOfflineAssignmentKey(assignment), {
       assignment,
       inputMode: currentNilaiInputMode,
       rows
     }, user);
-    if (!options?.skipRender) renderNilaiTableState();
-    else {
-      renderNilaiOfflineDraftInfo(assignment);
-      window.GuruOffline?.renderStatus?.();
-    }
-    return { saved: true, rows, assignment, user, assignmentKey };
+    renderNilaiOfflineDraftInfo(assignment);
+    Swal.fire("Draft tersimpan", "Nilai disimpan di perangkat ini. Sinkronkan saat internet tersedia.", "success");
   } catch (error) {
     console.error(error);
     Swal.fire("Gagal menyimpan draft", error?.message || "Draft offline belum berhasil disimpan.", "error");
-    return { saved: false, reason: "error", error };
   }
 }
 
@@ -3449,12 +2566,14 @@ async function syncNilaiAssignmentOfflineDraft() {
   if (!assertGuruCanSaveNilaiAssignment(user, assignment)) return;
 
   const draft = getNilaiOfflineDraft(assignment);
-  if (!draft?.rows?.length) return;
+  if (!draft?.rows?.length) {
+    Swal.fire("Tidak ada draft", "Belum ada draft offline untuk kelas/mapel ini.", "info");
+    return;
+  }
 
   try {
     setNilaiSavingState(true, "Menyinkronkan draft...");
     validateNilaiRows(draft.rows);
-    const snapshotIds = await createNilaiSnapshot(draft.rows, assignment, "nilai_sync_draft");
     await upsertNilaiRows(draft.rows, assignment);
     mergeSavedNilaiRowsIntoCache(draft.rows, assignment);
     syncCurrentNilaiAssignmentRows(assignment);
@@ -3462,128 +2581,12 @@ async function syncNilaiAssignmentOfflineDraft() {
     setNilaiSavingState(false);
     renderNilaiTableState();
     window.GuruOffline.renderStatus?.();
-    recordNilaiAudit("nilai_sync_draft", {
-      title: "Sinkron Draft Nilai",
-      ringkasan: `${draft.rows.length} baris draft nilai disinkronkan untuk ${assignment.tingkat}${assignment.rombel} ${assignment.mapel_kode}.`,
-      rows: draft.rows.length,
-      assignment,
-      snapshot_ids: snapshotIds
-    });
-    showNilaiOperationNotification("Sinkron selesai", `${draft.rows.length} baris nilai draft sudah dikirim ke Supabase.`, "success");
+    Swal.fire("Sinkron selesai", `${draft.rows.length} baris nilai draft sudah dikirim ke Supabase.`, "success");
   } catch (error) {
     console.error(error);
     setNilaiSavingState(false);
     Swal.fire("Gagal sinkron", error?.message || "Draft belum berhasil disinkronkan.", "error");
   }
-}
-
-let nilaiAutoSyncInProgress = false;
-
-async function syncAllNilaiOfflineDrafts(options = {}) {
-  const automatic = options?.automatic === true;
-  if (!window.GuruOffline?.isOnline?.()) {
-    if (!automatic) {
-      Swal.fire("Masih offline", "Hubungkan internet dulu, lalu coba sinkronkan kembali.", "warning");
-    }
-    return { synced: 0, failed: 0, skipped: true };
-  }
-  if (!window.GuruOffline?.listNilaiDrafts) {
-    if (!automatic) {
-      Swal.fire("Belum siap", "Daftar draft offline belum bisa dibaca.", "warning");
-    }
-    return { synced: 0, failed: 0, skipped: true };
-  }
-  const user = getCurrentNilaiUser();
-  const drafts = window.GuruOffline.listNilaiDrafts(user);
-  if (!drafts.length) return { synced: 0, failed: 0 };
-
-  let synced = 0;
-  let failed = 0;
-  try {
-    if (!automatic) {
-      setNilaiSavingState(true, "Menyinkronkan semua draft...");
-    }
-    for (const item of drafts) {
-      const draft = item.draft;
-      const draftAssignment = draft?.assignment?.mapel_kode
-        ? draft.assignment
-        : parseNilaiOfflineAssignmentKey(item.assignmentKey);
-      if (!draftAssignment?.mapel_kode || !Array.isArray(draft?.rows) || !draft.rows.length) {
-        window.GuruOffline?.clearNilaiDraft?.(item.assignmentKey, user);
-        continue;
-      }
-      try {
-        validateNilaiRows(draft.rows);
-        const snapshotIds = await createNilaiSnapshot(draft.rows, draftAssignment, "nilai_sync_all_drafts");
-        await upsertNilaiRows(draft.rows, draftAssignment);
-        mergeSavedNilaiRowsIntoCache(draft.rows, draftAssignment);
-        if (snapshotIds.length) {
-          recordNilaiAudit("nilai_sync_draft", {
-            title: "Sinkron Semua Draft Nilai",
-            ringkasan: `${draft.rows.length} baris draft nilai disinkronkan untuk ${draftAssignment.tingkat}${draftAssignment.rombel} ${draftAssignment.mapel_kode}.`,
-            rows: draft.rows.length,
-            assignment: draftAssignment,
-            snapshot_ids: snapshotIds
-          });
-        }
-        window.GuruOffline.clearNilaiDraft(item.assignmentKey, user);
-        synced += draft.rows.length;
-      } catch (error) {
-        console.error("sync draft failed", item.assignmentKey, error);
-        failed += 1;
-      }
-    }
-    syncCurrentNilaiAssignmentRows(getSelectedNilaiAssignment());
-    if (!automatic) {
-      setNilaiSavingState(false);
-    }
-    renderNilaiTableState();
-    window.GuruOffline.renderStatus?.();
-    if (!synced) return { synced, failed };
-    if (!automatic) {
-      showNilaiOperationNotification(
-        failed ? "Sinkron sebagian selesai" : "Sinkron selesai",
-        failed ? `${synced} baris terkirim, ${failed} draft belum berhasil.` : `${synced} baris draft sudah dikirim ke Supabase.`,
-        failed ? "warning" : "success"
-      );
-    } else if (failed) {
-      showNilaiOperationNotification("Sinkron draft sebagian gagal", `${synced} baris terkirim, ${failed} draft belum berhasil.`, "warning");
-    }
-    return { synced, failed };
-  } catch (error) {
-    console.error(error);
-    if (!automatic) {
-      setNilaiSavingState(false);
-      Swal.fire("Gagal sinkron", error?.message || "Draft belum berhasil disinkronkan.", "error");
-    }
-    return { synced, failed: failed + 1, error };
-  }
-}
-
-async function autoSyncNilaiOfflineDrafts() {
-  if (nilaiAutoSyncInProgress || !canSaveNilaiAsOfflineDraft() || !window.GuruOffline?.isOnline?.()) return;
-  const drafts = window.GuruOffline?.listNilaiDrafts?.(getCurrentNilaiUser()) || [];
-  if (!drafts.length) return;
-  nilaiAutoSyncInProgress = true;
-  try {
-    await syncAllNilaiOfflineDrafts({ automatic: true });
-  } finally {
-    nilaiAutoSyncInProgress = false;
-  }
-}
-
-function initNilaiAutoSync() {
-  if (window.__nilaiAutoSyncInitialized) return;
-  window.__nilaiAutoSyncInitialized = true;
-  window.addEventListener?.("guru-spenturi-online", () => {
-    setTimeout(() => autoSyncNilaiOfflineDrafts(), 500);
-  });
-  window.addEventListener?.("online", () => {
-    setTimeout(() => autoSyncNilaiOfflineDrafts(), 800);
-  });
-  document.addEventListener?.("visibilitychange", () => {
-    if (!document.hidden) setTimeout(() => autoSyncNilaiOfflineDrafts(), 800);
-  });
 }
 
 async function saveNilaiAssignment() {
@@ -3598,63 +2601,11 @@ async function saveNilaiAssignment() {
   const user = getCurrentNilaiUser();
   if (!assertGuruCanSaveNilaiAssignment(user, assignment)) return;
 
-  if (canSaveNilaiAsOfflineDraft()) {
-    const draftResult = await saveNilaiAssignmentOfflineDraft({ automatic: true, silent: true });
-    if (!draftResult?.saved) {
-      return;
-    }
-
-    if (shouldSaveNilaiAsOfflineDraft()) {
-      showNilaiOperationNotification("Draft tersimpan", `${draftResult.rows.length} perubahan nilai disimpan di perangkat ini. Sinkronkan saat internet tersedia.`, "success");
-      return;
-    }
-
-    try {
-      setNilaiSavingState(true, "Mengirim draft ke server...");
-      validateNilaiRows(draftResult.rows);
-      const snapshotIds = await createNilaiSnapshot(draftResult.rows, assignment, "nilai_save");
-      await upsertNilaiRows(draftResult.rows, assignment);
-      mergeSavedNilaiRowsIntoCache(draftResult.rows, assignment);
-      syncCurrentNilaiAssignmentRows(assignment);
-      window.GuruOffline?.clearNilaiDraft?.(draftResult.assignmentKey, user);
-      setNilaiSavingState(false);
-      renderNilaiTableState();
-      window.GuruOffline?.renderStatus?.();
-      recordNilaiAudit("nilai_save", {
-        title: "Simpan Nilai",
-        ringkasan: `${draftResult.rows.length} baris nilai disimpan untuk ${assignment.tingkat}${assignment.rombel} ${assignment.mapel_kode}.`,
-        rows: draftResult.rows.length,
-        mode: getCurrentNilaiInputMode(),
-        assignment,
-        snapshot_ids: snapshotIds
-      });
-      showNilaiOperationNotification("Tersimpan", "Draft nilai sudah aman di perangkat dan berhasil dikirim ke server.", "success");
-    } catch (error) {
-      console.error(error);
-      setNilaiSavingState(false);
-      if (isNilaiNetworkSaveError(error)) {
-        window.GuruOffline?.markOffline?.();
-        renderNilaiInputModeUi();
-        showNilaiOperationNotification("Draft tersimpan", "Koneksi terputus saat mengirim. Nilai sudah aman sebagai draft dan bisa disinkronkan nanti.", "warning");
-        return;
-      }
-      renderNilaiTableState();
-      showNilaiOperationNotification("Draft tersimpan, kirim gagal", error?.message || "Nilai sudah aman sebagai draft, tetapi belum berhasil dikirim ke server.", "warning");
-    }
-    return;
-  }
-
   try {
     setNilaiSavingState(true);
-    const allRows = buildNilaiRowsFromCurrentInputs(assignment, user);
-    validateNilaiRows(allRows);
-    const rows = allRows.filter(row => isNilaiRowChanged(row, assignment));
-    if (!rows.length) {
-      setNilaiSavingState(false);
-      return;
-    }
+    const rows = buildNilaiRowsFromCurrentInputs(assignment, user);
+    validateNilaiRows(rows);
 
-    const snapshotIds = await createNilaiSnapshot(rows, assignment, "nilai_save");
     await upsertNilaiRows(rows, assignment);
     mergeSavedNilaiRowsIntoCache(rows, assignment);
     syncCurrentNilaiAssignmentRows(assignment);
@@ -3663,55 +2614,19 @@ async function saveNilaiAssignment() {
     }
     setNilaiSavingState(false);
     renderNilaiTableState();
-    recordNilaiAudit("nilai_save", {
-      title: "Simpan Nilai",
-      ringkasan: `${rows.length} baris nilai disimpan untuk ${assignment.tingkat}${assignment.rombel} ${assignment.mapel_kode}.`,
-      rows: rows.length,
-      mode: getCurrentNilaiInputMode(),
-      assignment,
-      snapshot_ids: snapshotIds
-    });
-    showNilaiOperationNotification("Tersimpan", "Nilai sudah disimpan.", "success");
+    Swal.fire("Tersimpan", "Nilai sudah disimpan.", "success");
   } catch (error) {
     console.error(error);
     setNilaiSavingState(false);
-    if (canSaveNilaiAsOfflineDraft() && isNilaiNetworkSaveError(error)) {
-      window.GuruOffline?.markOffline?.();
-      renderNilaiInputModeUi();
-      await saveNilaiAssignmentOfflineDraft({ automatic: true });
-      return;
-    }
     Swal.fire("Gagal menyimpan", error?.message || "Nilai belum berhasil disimpan.", "error");
   }
 }
 
-window.NilaiEngine = {
-  getCurrentMode: getCurrentNilaiInputMode,
-  setMode: setNilaiInputMode,
-  getModeRules: getNilaiModeRules,
-  getFieldConfigs: getNilaiInputFieldConfigs,
-  getUiValues: getNilaiUiValues,
-  calculateRapor: calculateNilaiRapor,
-  getKelasParts: getNilaiKelasParts,
-  getKelasBayanganParts: getNilaiKelasBayanganParts,
-  isDocMatchingAssignment: isNilaiDocMatchingAssignment,
-  getStudentsForAssignment: getNilaiStudentsForAssignment,
-  getStudentsForOriginalClass: getNilaiStudentsForOriginalClass,
-  getRaporRowsForExport: getNilaiRaporRowsForExport,
-  hydrateRaporExport: hydrateNilaiCacheForRaporExport
-};
-
 window.renderNilaiTableState = renderNilaiTableState;
 window.renderNilaiPageState = renderNilaiPageState;
-window.openNilaiDownloadMenu = openNilaiDownloadMenu;
 window.promptDownloadNilaiRapor = promptDownloadNilaiRapor;
-window.refreshSelectedNilaiAssignment = refreshSelectedNilaiAssignment;
-window.setNilaiQuickFilter = setNilaiQuickFilter;
 window.handleNilaiModeSelectorChange = handleNilaiModeSelectorChange;
 window.resolveNilaiInputModeForCurrentRole = resolveNilaiInputModeForCurrentRole;
 window.storeNilaiUiMode = storeNilaiUiMode;
 window.saveNilaiAssignmentOfflineDraft = saveNilaiAssignmentOfflineDraft;
 window.syncNilaiAssignmentOfflineDraft = syncNilaiAssignmentOfflineDraft;
-window.syncAllNilaiOfflineDrafts = syncAllNilaiOfflineDrafts;
-window.autoSyncNilaiOfflineDrafts = autoSyncNilaiOfflineDrafts;
-initNilaiAutoSync();

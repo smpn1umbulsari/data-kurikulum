@@ -49,45 +49,60 @@ Perubahan:
 - Menambahkan backup dan restore untuk local storage penting, termasuk state `kepangawasanAsesmenState` dan pengaturan administrasi asesmen.
 - Menaikkan format file backup ke `version: 2`.
 
-## Versi 1.21a
-
-Status: draft
-
-Tanggal: 2026-04-22
-
-Perubahan:
-- Menambahkan menu admin `Validasi Data` untuk mendeteksi guru tanpa kode, siswa tanpa kelas/NIPD, mapel tanpa kode, assignment ganda, kelas bayangan tidak sinkron, dan nilai lama yang berpotensi tidak sesuai struktur aktif.
-- Menambahkan menu admin `Riwayat Perubahan` untuk mencatat aksi penting seperti simpan/import/sinkron nilai, generate pembagian ruang, publish/unpublish kartu pengawas, backup, restore, dan reset data.
-- Memperkuat `Backup dan Restore` dengan preview isi file, validasi versi backup, pilihan restore sebagian, dan restore local storage/data semester secara opsional.
-- Menambahkan `riwayat_perubahan` ke daftar koleksi backup dan reset data.
-- Mengekspos `NilaiEngine` sebagai satu pintu helper mode nilai, kalkulasi rapor, kelas bayangan, pencarian siswa assignment, dan export rapor agar fitur lain tidak membuat ulang logika sendiri.
-
-Catatan:
-- Restore backup sekarang tidak langsung menulis semua bagian file. Admin dapat memilih collection, data semester, dan local storage sebelum memasukkan password.
-- `Validasi Data` bersifat diagnostik dulu; perbaikan data tetap dilakukan melalui menu asal masing-masing.
-
-## Versi 1.21b
-
-Status: draft
-
-Tanggal: 2026-04-22
-
-Perubahan:
-- Menambahkan `Panel Perbaikan Otomatis` di menu `Validasi Data` untuk mengisi kode guru dari username/nama, menghapus assignment ganda, dan menyinkronkan kelas bayangan yang aman diperbaiki otomatis.
-- Menambahkan fitur `Preview Migrasi Nilai Lama` untuk menyalin nilai legacy tanpa `term_id` ke format semester aktif tanpa menghapus dokumen sumber.
-- Memperkuat restore backup dengan estimasi dampak sebelum eksekusi, termasuk jumlah dokumen masuk, yang akan menimpa data lama, dan data baru.
-- Menambahkan opsi backup otomatis sebelum restore. Opsi ini aktif secara default agar admin punya titik aman sebelum data ditimpa.
-- Menambahkan snapshot ringan untuk perubahan nilai ke koleksi `nilai_snapshots`, lalu menampilkan tombol `Rollback Nilai` pada riwayat perubahan yang memiliki snapshot.
-- Menambahkan `nilai_snapshots` ke daftar koleksi backup.
-
-Catatan:
-- Rollback nilai mengembalikan dokumen nilai ke kondisi sebelum aksi simpan/import/sinkron. Jika sebelumnya belum ada dokumen nilai, dokumen hasil aksi akan dihapus.
-- Migrasi nilai lama bersifat salin/merge ke format baru, sehingga dokumen legacy tetap ada sebagai jejak data lama.
-
 Catatan:
 - Tidak ada menu baru.
 - Restore tetap kompatibel dengan file backup lama selama struktur `collections` masih tersedia.
 - Jika terjadi regresi, rollback difokuskan pada [Admin/backup.js](/D:/KURIKULUM/Data%20Kurikulum/Admin/backup.js) dan versi assetnya di [dashboard.html](/D:/KURIKULUM/Data%20Kurikulum/dashboard.html).
+
+## Versi 1.20b
+
+Status: draft
+
+Tanggal: 2026-04-23
+
+Perubahan:
+- Membuat titik backup dan rollback khusus sebelum membetulkan regresi `Input Nilai` yang menyebabkan assignment kelas-mapel tidak terload.
+- Menyimpan snapshot file terdampak ke folder [backups/1.20b-input-nilai-rollback-point](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20b-input-nilai-rollback-point).
+
+Catatan:
+- Tidak ada menu baru.
+- Titik rollback ini dipakai sebelum mengembalikan alur `Input Nilai` ke versi yang lebih stabil lalu memperbaiki bug assignment.
+- Jika perbaikan lanjutan gagal, rollback bisa dimulai dari salinan file di folder backup tersebut.
+
+## Versi 1.20c
+
+Status: draft
+
+Tanggal: 2026-04-23
+
+Perubahan:
+- Rollback alur `Input Nilai` ke tombol dan proses simpan stabil setelah regresi assignment tidak terload.
+- Mengembalikan pilihan `kelas-mapel`, `Simpan Nilai`, `Simpan Draft Offline`, dan `Sinkronkan Draft` ke alur sebelumnya.
+- Menghapus pemanggilan auto-sync yang memicu error runtime pada halaman `Input Nilai`.
+
+Catatan:
+- Backup rollback tetap disimpan di `backups/1.20b-input-nilai-rollback-point`.
+- Tidak ada menu baru.
+
+## Versi 1.20d
+
+Status: draft
+
+Tanggal: 2026-04-27
+
+Perubahan:
+- Menambahkan titik backup rollback baru sebelum perubahan `Kepersetaan` di folder [backups/1.20d-kepersetaan-manual-popup-table](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20d-kepersetaan-manual-popup-table).
+- Mengubah pengaturan `Mode pembagian = Manual` pada menu `Kepersetaan` agar langsung membuka popup pengisian.
+- Mendesain ulang popup manual menjadi tabel per ruangan sehingga jumlah siswa bisa diisi satu per satu dengan lebih rapi.
+- Memperbarui label tombol manual pada panel kelas agar lebih jelas sebagai aksi pengaturan pembagian manual.
+
+Catatan:
+- Tidak ada menu baru terpisah; perubahan ini memperbaiki alur fungsi pada menu `Kepersetaan` yang sudah ada.
+- Jika perlu rollback, fokus utama ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js), [Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-view.js), dan [style.css](/D:/KURIKULUM/Data%20Kurikulum/style.css).
+
+## Histori Sebelum 1.20
+
+Bagian ini menyimpan riwayat versi lama sebelum baseline `1.20`.
 
 ## Versi 1.01l.30
 
@@ -811,7 +826,7 @@ Catatan:
 - Tidak ada menu baru.
 - Perubahan ini hanya mengubah styling dashboard mobile.
 
-## Format Catatan Berikutnya
+## Template Catatan Berikutnya
 
 Gunakan format berikut saat ada perubahan:
 

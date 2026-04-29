@@ -1,0 +1,1049 @@
+let semuaDataWaliSiswa = [];
+let semuaDataWaliKelas = [];
+let semuaDataWaliMapel = [];
+let semuaDataWaliMengajar = [];
+let semuaDataWaliGuru = [];
+let semuaDataWaliNilai = [];
+let semuaDataWaliKehadiranRekap = [];
+let unsubscribeWaliSiswa = null;
+let unsubscribeWaliKelas = null;
+let unsubscribeWaliMapel = null;
+let unsubscribeWaliMengajar = null;
+let unsubscribeWaliGuru = null;
+let unsubscribeWaliNilai = null;
+let unsubscribeWaliKehadiranRekap = null;
+let unsubscribeWaliKelasBayanganSource = null;
+let waliKelasBayanganSourceByLevel = {};
+let currentWaliKelasPage = "";
+let lastWaliKehadiranTableHtml = "";
+let lastWaliKelengkapanTableHtml = "";
+let waliInitialReady = {
+  siswa: false,
+  kelas: false,
+  mapel: false,
+  mengajar: false,
+  guru: false,
+  nilai: false,
+  rekap: false
+};
+let accessibleWaliClassesCache = null;
+const waliStudentsByClassCache = new Map();
+const waliClassAssignmentsCache = new Map();
+const waliMapelByCodeCache = new Map();
+const waliGuruByCodeCache = new Map();
+const waliKehadiranStatusCache = new Map();
+const waliKehadiranCountsCache = new Map();
+const waliNilaiCountCache = new Map();
+
+function getWaliDocumentsApi() {
+  return window.SupabaseDocuments;
+}
+
+function resetWaliClassCaches() {
+  accessibleWaliClassesCache = null;
+  waliStudentsByClassCache.clear();
+  waliClassAssignmentsCache.clear();
+  waliKehadiranCountsCache.clear();
+  waliNilaiCountCache.clear();
+}
+
+function resetWaliLookupCaches() {
+  waliMapelByCodeCache.clear();
+  waliGuruByCodeCache.clear();
+  waliClassAssignmentsCache.clear();
+  waliNilaiCountCache.clear();
+}
+
+function resetWaliAttendanceCaches() {
+  waliKehadiranStatusCache.clear();
+  waliKehadiranCountsCache.clear();
+}
+
+function resetWaliNilaiCaches() {
+  waliNilaiCountCache.clear();
+}
+
+function rebuildWaliAttendanceStatusCache() {
+  resetWaliAttendanceCaches();
+  semuaDataWaliKehadiran.forEach(item => {
+    if (!item?.id) return;
+    waliKehadiranStatusCache.set(String(item.id), String(item.status || ""));
+  });
+}
+
+function escapeWaliHtml(value) {
+  if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getCurrentWaliUser() {
+  try {
+    return JSON.parse(localStorage.getItem("appUser") || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function getWaliKelasParts(kelasValue = "") {
+  if (window.AppUtils?.parseKelas) return window.AppUtils.parseKelas(kelasValue);
+  const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const match = normalized.match(/([7-9])([A-Z]+)$/);
+  return {
+    tingkat: match ? match[1] : "",
+    rombel: match ? match[2] : "",
+    kelas: match ? `${match[1]} ${match[2]}` : String(kelasValue || "").trim().toUpperCase()
+  };
+}
+
+function getWaliSiswaKelasBayanganParts(siswa) {
+  if (window.AppUtils?.getPrimaryKelasParts) return window.AppUtils.getPrimaryKelasParts(siswa);
+  const asli = getWaliKelasParts(siswa.kelas);
+  const bayangan = getWaliKelasParts(siswa.kelas_bayangan);
+  if (bayangan.tingkat === asli.tingkat && /^[A-H]$/.test(bayangan.rombel)) return bayangan;
+  if (/^[A-H]$/.test(asli.rombel)) return asli;
+  return { tingkat: asli.tingkat, rombel: "", kelas: "" };
+}
+
+function getWaliExcludedKelasRealSourceSet() {
+  return new Set(
+    Object.values(waliKelasBayanganSourceByLevel)
+      .map(value => getWaliKelasParts(value).kelas)
+      .filter(Boolean)
+  );
+}
+
+function filterWaliSelectableClasses(rows) {
+  const excluded = getWaliExcludedKelasRealSourceSet();
+  if (excluded.size === 0) return rows;
+  return rows.filter(item => {
+    const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
+    return !excluded.has(parts.kelas);
+  });
+}
+
+function mergeWaliClassRows(rows = []) {
+  const byClass = new Map();
+  rows.forEach(item => {
+    const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
+    if (!parts.kelas) return;
+    byClass.set(parts.kelas, item);
+  });
+  return [...byClass.values()];
+}
+
+  function getAccessibleWaliClasses() {
+    if (accessibleWaliClassesCache) {
+      return accessibleWaliClassesCache.map(item => ({ ...item }));
+    }
+    const user = getCurrentWaliUser();
+    let rows = [];
+    if (["admin", "superadmin"].includes(String(user.role || "admin").trim().toLowerCase())) {
+      rows = sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas));
+      accessibleWaliClassesCache = rows.map(item => ({ ...item }));
+      return rows;
+    }
+    if ((user.role || "") === "koordinator" || ((user.role || "") === "guru" && typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess())) {
+      const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
+      const kodeGuru = String(user.kode_guru || "").trim();
+    const levelClasses = semuaDataWaliKelas.filter(item => {
+      const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
+      return levels.includes(parts.tingkat);
+    });
+    const ownWaliClasses = semuaDataWaliKelas.filter(item => String(item.kode_guru || "").trim() === kodeGuru);
+    rows = sortWaliClasses(filterWaliSelectableClasses(mergeWaliClassRows([
+      ...levelClasses,
+      ...ownWaliClasses
+    ])));
+    accessibleWaliClassesCache = rows.map(item => ({ ...item }));
+    return rows;
+  }
+  rows = sortWaliClasses(filterWaliSelectableClasses(semuaDataWaliKelas.filter(item => String(item.kode_guru || "") === String(user.kode_guru || ""))));
+  accessibleWaliClassesCache = rows.map(item => ({ ...item }));
+  return rows;
+}
+
+function sortWaliClasses(rows) {
+  return [...rows].sort((a, b) => {
+    const aParts = getWaliKelasParts(a.kelas || `${a.tingkat || ""}${a.rombel || ""}`);
+    const bParts = getWaliKelasParts(b.kelas || `${b.tingkat || ""}${b.rombel || ""}`);
+    return `${aParts.tingkat}${aParts.rombel}`.localeCompare(`${bParts.tingkat}${bParts.rombel}`, undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
+function getWaliOwnClassValue(classes = getAccessibleWaliClasses()) {
+  const kodeGuru = String(getCurrentWaliUser().kode_guru || "").trim();
+  if (!kodeGuru) return "";
+  const ownClass = classes.find(item => String(item.kode_guru || "").trim() === kodeGuru);
+  if (!ownClass) return "";
+  return getWaliKelasParts(ownClass.kelas || `${ownClass.tingkat || ""}${ownClass.rombel || ""}`).kelas;
+}
+
+function getSelectedWaliClass() {
+  const value = document.getElementById("waliKelasSelect")?.value || getPreferredWaliClass();
+  return getWaliKelasParts(value);
+}
+
+function getPreferredWaliClass() {
+  const classes = getAccessibleWaliClasses();
+  if (classes.length === 0) return "";
+  const ownClass = getWaliOwnClassValue(classes);
+  return ownClass || getWaliKelasParts(classes[0].kelas || `${classes[0].tingkat || ""}${classes[0].rombel || ""}`).kelas;
+}
+
+function getWaliStudentsByClass(kelasValue) {
+  const target = getWaliKelasParts(kelasValue).kelas;
+  if (waliStudentsByClassCache.has(target)) {
+    return waliStudentsByClassCache.get(target).map(item => ({ ...item, kelasBayanganParts: { ...(item.kelasBayanganParts || {}) } }));
+  }
+  const rows = semuaDataWaliSiswa
+    .map(siswa => ({ ...siswa, kelasBayanganParts: getWaliSiswaKelasBayanganParts(siswa) }))
+    .filter(siswa => siswa.kelasBayanganParts.kelas === target)
+    .sort((a, b) => {
+      if (window.AppUtils?.compareStudentPlacement) return window.AppUtils.compareStudentPlacement(a, b);
+      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    });
+  waliStudentsByClassCache.set(target, rows.map(item => ({ ...item, kelasBayanganParts: { ...(item.kelasBayanganParts || {}) } })));
+  return rows;
+}
+
+function renderWaliKelasSelect() {
+  const classes = getAccessibleWaliClasses();
+  if (classes.length === 0) return `<option value="">Tidak ada kelas wali</option>`;
+  const currentValue = document.getElementById("waliKelasSelect")?.value || "";
+  const classValues = classes.map(item => getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas);
+  const preferred = classValues.includes(currentValue) ? currentValue : getPreferredWaliClass();
+  return classes.map(item => {
+    const parts = getWaliKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
+    return `<option value="${escapeWaliHtml(parts.kelas)}" ${parts.kelas === preferred ? "selected" : ""}>${escapeWaliHtml(parts.kelas)}</option>`;
+  }).join("");
+}
+
+function refreshWaliKelasSelectOptions() {
+  const select = document.getElementById("waliKelasSelect");
+  if (!select) return;
+  const beforeValue = select.value || "";
+  const nextOptions = renderWaliKelasSelect();
+  if (select.innerHTML !== nextOptions) {
+    select.innerHTML = nextOptions;
+  }
+
+  const values = Array.from(select.options).map(option => option.value);
+  if (beforeValue && values.includes(beforeValue)) {
+    select.value = beforeValue;
+  } else if (!select.value && values.length > 0) {
+    select.value = values[0];
+  }
+}
+
+function renderWaliKelasHeader(title, description, extraActions = "") {
+  if (window.WaliKelasView?.renderHeader) {
+    return window.WaliKelasView.renderHeader({
+      title,
+      description,
+      extraActions,
+      selectOptionsHtml: renderWaliKelasSelect(),
+      escape: escapeWaliHtml
+    });
+  }
+  return `
+    <div class="kelas-bayangan-head nilai-page-head">
+      <div>
+        <span class="dashboard-eyebrow">Wali Kelas</span>
+        <h2>${escapeWaliHtml(title)}</h2>
+        <p>${escapeWaliHtml(description)}</p>
+      </div>
+    </div>
+    <div class="nilai-control-panel wali-control-panel">
+      <label class="form-group">
+        <span>Pilih kelas</span>
+        <select id="waliKelasSelect" onchange="renderWaliKelasActivePage()">${renderWaliKelasSelect()}</select>
+      </label>
+      <div class="nilai-control-actions">${extraActions}</div>
+    </div>
+  `;
+}
+
+function renderWaliKehadiranPage() {
+  if (window.WaliKelasView?.renderPageShell) return window.WaliKelasView.renderPageShell();
+  return `
+    <div class="card">
+      <div id="waliKelasPageShell">
+        <div class="empty-panel">Memuat data wali kelas...</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderWaliKelengkapanPage() {
+  if (window.WaliKelasView?.renderPageShell) return window.WaliKelasView.renderPageShell();
+  return `
+    <div class="card">
+      <div id="waliKelasPageShell">
+        <div class="empty-panel">Memuat data wali kelas...</div>
+      </div>
+    </div>
+  `;
+}
+
+function loadRealtimeWaliKelas(page) {
+  if (window.WaliKelasService?.loadRealtime) {
+    const unsubs = window.WaliKelasService.loadRealtime(page, {
+      clearListeners: clearWaliKelasListeners,
+      setCurrentPage: value => {
+        currentWaliKelasPage = value;
+      },
+      setReadyState: value => {
+        waliInitialReady = value;
+      },
+      renderLoading: renderWaliKelasLoadingState,
+      renderActivePage: nextPage => renderWaliKelasActivePage(nextPage),
+      onSiswa: rows => {
+        semuaDataWaliSiswa = rows;
+        resetWaliClassCaches();
+      },
+      onKelas: rows => {
+        semuaDataWaliKelas = rows;
+        resetWaliClassCaches();
+      },
+      onMapel: rows => {
+        semuaDataWaliMapel = rows;
+        resetWaliLookupCaches();
+      },
+      onMengajar: rows => {
+        semuaDataWaliMengajar = rows;
+        waliClassAssignmentsCache.clear();
+        waliNilaiCountCache.clear();
+      },
+      onGuru: rows => {
+        semuaDataWaliGuru = rows;
+        waliGuruByCodeCache.clear();
+      },
+      onNilai: rows => {
+        semuaDataWaliNilai = rows;
+        resetWaliNilaiCaches();
+      },
+      onRekap: rows => {
+        semuaDataWaliKehadiranRekap = rows;
+        waliKehadiranCountsCache.clear();
+      },
+      onSource: data => {
+        waliKelasBayanganSourceByLevel = data?.levels && typeof data.levels === "object" && !Array.isArray(data.levels)
+          ? Object.fromEntries(
+              Object.entries(data.levels)
+                .map(([level, kelas]) => [String(level || "").trim(), getWaliKelasParts(kelas).kelas])
+                .filter(([level, kelas]) => level && kelas)
+            )
+          : {};
+        resetWaliClassCaches();
+      },
+      markReady: key => {
+        waliInitialReady[key] = true;
+      }
+    });
+    unsubscribeWaliSiswa = unsubs.siswa || null;
+    unsubscribeWaliKelas = unsubs.kelas || null;
+    unsubscribeWaliMapel = unsubs.mapel || null;
+    unsubscribeWaliMengajar = unsubs.mengajar || null;
+    unsubscribeWaliGuru = unsubs.guru || null;
+    unsubscribeWaliNilai = unsubs.nilai || null;
+    unsubscribeWaliKehadiranRekap = unsubs.rekap || null;
+    unsubscribeWaliKelasBayanganSource = unsubs.source || null;
+    return;
+  }
+  clearWaliKelasListeners();
+  currentWaliKelasPage = page || "";
+  waliInitialReady = {
+    siswa: false,
+    kelas: false,
+    mapel: false,
+    mengajar: false,
+    guru: false,
+    nilai: false,
+    rekap: false
+  };
+  renderWaliKelasLoadingState();
+  const render = () => renderWaliKelasActivePage(page);
+  const documentsApi = getWaliDocumentsApi();
+  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
+  const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : documentsApi.collection("kelas");
+  unsubscribeWaliSiswa = siswaQuery.onSnapshot(snapshot => {
+    semuaDataWaliSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetWaliClassCaches();
+    waliInitialReady.siswa = true;
+    render();
+  });
+  unsubscribeWaliKelas = kelasQuery.onSnapshot(snapshot => {
+    semuaDataWaliKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetWaliClassCaches();
+    waliInitialReady.kelas = true;
+    render();
+  });
+  unsubscribeWaliMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
+    semuaDataWaliMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    resetWaliLookupCaches();
+    waliInitialReady.mapel = true;
+    render();
+  });
+  unsubscribeWaliMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
+    semuaDataWaliMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliClassAssignmentsCache.clear();
+    waliNilaiCountCache.clear();
+    waliInitialReady.mengajar = true;
+    render();
+  });
+  unsubscribeWaliGuru = documentsApi.collection("guru").orderBy("kode_guru").onSnapshot(snapshot => {
+    semuaDataWaliGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    waliGuruByCodeCache.clear();
+    waliInitialReady.guru = true;
+    render();
+  });
+  unsubscribeWaliNilai = documentsApi.collection("nilai").onSnapshot(snapshot => {
+    semuaDataWaliNilai = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    resetWaliNilaiCaches();
+    waliInitialReady.nilai = true;
+    render();
+  });
+  unsubscribeWaliKehadiranRekap = documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
+    semuaDataWaliKehadiranRekap = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+    waliKehadiranCountsCache.clear();
+    waliInitialReady.rekap = true;
+    render();
+  });
+  unsubscribeWaliKelasBayanganSource = documentsApi.collection("settings").doc("kelas_bayangan_source").onSnapshot(snapshot => {
+    const data = snapshot.exists ? snapshot.data() : {};
+    waliKelasBayanganSourceByLevel = data?.levels && typeof data.levels === "object" && !Array.isArray(data.levels)
+      ? Object.fromEntries(
+          Object.entries(data.levels)
+            .map(([level, kelas]) => [String(level || "").trim(), getWaliKelasParts(kelas).kelas])
+            .filter(([level, kelas]) => level && kelas)
+        )
+      : {};
+    resetWaliClassCaches();
+    render();
+  });
+}
+
+function clearWaliKelasListeners() {
+  [unsubscribeWaliSiswa, unsubscribeWaliKelas, unsubscribeWaliMapel, unsubscribeWaliMengajar, unsubscribeWaliGuru, unsubscribeWaliNilai, unsubscribeWaliKehadiranRekap, unsubscribeWaliKelasBayanganSource].forEach(unsub => {
+    if (unsub) unsub();
+  });
+  unsubscribeWaliSiswa = null;
+  unsubscribeWaliKelas = null;
+  unsubscribeWaliMapel = null;
+  unsubscribeWaliMengajar = null;
+  unsubscribeWaliGuru = null;
+  unsubscribeWaliNilai = null;
+  unsubscribeWaliKehadiranRekap = null;
+  unsubscribeWaliKelasBayanganSource = null;
+}
+
+function isWaliInitialDataReady(page = currentWaliKelasPage) {
+  if (page === "kehadiran") {
+    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.rekap;
+  }
+  if (page === "kelengkapan") {
+    return waliInitialReady.siswa && waliInitialReady.kelas && waliInitialReady.mapel && waliInitialReady.mengajar && waliInitialReady.guru && waliInitialReady.nilai;
+  }
+  return waliInitialReady.siswa && waliInitialReady.kelas;
+}
+
+function renderWaliKelasLoadingState(message = "Memuat data wali kelas...") {
+  const shell = document.getElementById("waliKelasPageShell");
+  if (shell) {
+    shell.innerHTML = `<div class="empty-panel">${escapeWaliHtml(message)}</div>`;
+  }
+}
+
+function renderWaliSavingOverlay() {
+  return `
+    <div id="waliSavingOverlay" class="nilai-saving-overlay" style="display:none;" aria-hidden="true">
+      <div class="nilai-saving-card">
+        <div class="nilai-saving-spinner" aria-hidden="true"></div>
+        <strong>Menyimpan data...</strong>
+        <span>Mohon tunggu sebentar, data sedang dikirim.</span>
+      </div>
+    </div>
+  `;
+}
+
+function setWaliSavingState(isSaving, message = "Menyimpan data...") {
+  const overlay = document.getElementById("waliSavingOverlay");
+  if (!overlay) return;
+  const title = overlay.querySelector("strong");
+  const subtitle = overlay.querySelector("span");
+  if (title) title.textContent = message || "Menyimpan data...";
+  if (subtitle) subtitle.textContent = isSaving
+    ? "Mohon tunggu sebentar, data sedang dikirim."
+    : "";
+  overlay.style.display = isSaving ? "flex" : "none";
+  overlay.setAttribute("aria-hidden", isSaving ? "false" : "true");
+  document.body.classList.toggle("nilai-saving-active", Boolean(isSaving));
+}
+
+function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
+  const shell = document.getElementById("waliKelasPageShell");
+  if (!shell) return false;
+  const targetId = page === "kehadiran" ? "waliKehadiranTable" : "waliKelengkapanTable";
+  if (document.getElementById(targetId)) return true;
+
+  if (page === "kehadiran") {
+    shell.innerHTML = `
+      ${renderWaliKelasHeader("Rekap Kehadiran Siswa", "Rekap jumlah S, I, dan A berdasarkan anggota kelas.", `
+        <button type="button" class="btn-secondary" onclick="downloadWaliKehadiranTemplate()">Download Template</button>
+        <button type="button" class="btn-secondary" onclick="triggerWaliKehadiranImport()">Import Rekap</button>
+        <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
+        <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
+      `)}
+      <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
+      ${renderWaliSavingOverlay()}
+    `;
+    lastWaliKehadiranTableHtml = "";
+    lastWaliKelengkapanTableHtml = "";
+    return true;
+  }
+
+  shell.innerHTML = `
+    ${renderWaliKelasHeader("Cek Kelengkapan Nilai Siswa", "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.", "")}
+    <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
+  `;
+  lastWaliKehadiranTableHtml = "";
+  lastWaliKelengkapanTableHtml = "";
+  return true;
+}
+
+function renderWaliKelasActivePage(page) {
+  if (page) currentWaliKelasPage = page;
+  const activePage = currentWaliKelasPage;
+  if (!isWaliInitialDataReady(activePage)) {
+    renderWaliKelasLoadingState();
+    return;
+  }
+  ensureWaliKelasPageShell(activePage);
+  refreshWaliKelasSelectOptions();
+  if (activePage === "kehadiran") {
+    renderWaliKehadiranTable();
+    return;
+  }
+  if (activePage === "kelengkapan") {
+    renderWaliKelengkapanTable();
+    return;
+  }
+  if (document.getElementById("waliKehadiranTable")) {
+    renderWaliKehadiranTable();
+    return;
+  }
+  if (document.getElementById("waliKelengkapanTable")) {
+    renderWaliKelengkapanTable();
+  }
+}
+
+function makeWaliKehadiranRekapDocId(kelas, nipd) {
+  const baseId = [kelas.replace(/\s+/g, ""), String(nipd || "").trim()].join("_");
+  const termId = typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+  return termId === "legacy" ? baseId : `${termId}_${baseId}`;
+}
+
+function getWaliActiveTermPayload() {
+  const term = typeof getActiveSemesterContext === "function" ? getActiveSemesterContext() : { id: "legacy", semester: "", tahun: "" };
+  return {
+    term_id: term.id || "legacy",
+    semester: term.semester || "",
+    tahun_pelajaran: term.tahun || ""
+  };
+}
+
+function normalizeWaliRekapCount(value) {
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue) || numberValue < 0) return 0;
+  return Math.floor(numberValue);
+}
+
+function getWaliKehadiranCounts(kelas, nipd) {
+  const targetKelas = getWaliKelasParts(kelas).kelas;
+  const targetNipd = String(nipd || "").trim();
+  const cacheKey = `${targetKelas}|${targetNipd}`;
+  if (waliKehadiranCountsCache.has(cacheKey)) {
+    return { ...waliKehadiranCountsCache.get(cacheKey) };
+  }
+  const rekap = semuaDataWaliKehadiranRekap.find(item =>
+    item.id === makeWaliKehadiranRekapDocId(targetKelas, targetNipd) ||
+    (getWaliKelasParts(item.kelas).kelas === targetKelas && String(item.nipd || "").trim() === targetNipd)
+  );
+  if (rekap) {
+    const counts = {
+      S: normalizeWaliRekapCount(rekap.s ?? rekap.S),
+      I: normalizeWaliRekapCount(rekap.i ?? rekap.I),
+      A: normalizeWaliRekapCount(rekap.a ?? rekap.A)
+    };
+    waliKehadiranCountsCache.set(cacheKey, counts);
+    return { ...counts };
+  }
+  return { S: 0, I: 0, A: 0 };
+}
+
+function getWaliRekapInput(rowIndex, field) {
+  return document.querySelector(`.wali-rekap-input[data-row="${rowIndex}"][data-field="${field}"]`);
+}
+
+function getWaliRekapInputMeta(input) {
+  const rowFromData = Number(input?.dataset?.row);
+  const fieldFromData = String(input?.dataset?.field || "");
+  if (!Number.isNaN(rowFromData) && fieldFromData) {
+    return { rowIndex: rowFromData, field: fieldFromData };
+  }
+
+  const match = String(input?.id || "").match(/^wali-rekap-([sia])-([0-9]+)$/i);
+  if (!match) return { rowIndex: NaN, field: "" };
+  return {
+    rowIndex: Number(match[2]),
+    field: String(match[1] || "").toLowerCase()
+  };
+}
+
+function handleWaliRekapKeydown(event) {
+  const input = event.target;
+  if (!input?.classList?.contains("wali-rekap-input")) return;
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  const { rowIndex, field } = getWaliRekapInputMeta(input);
+  if (Number.isNaN(rowIndex) || !field) return;
+  const nextInput = getWaliRekapInput(rowIndex + 1, field);
+  if (!nextInput) return;
+  nextInput.focus();
+  nextInput.select?.();
+}
+
+function setupWaliRekapInputs() {
+  const container = document.getElementById("waliKehadiranTable");
+  if (!container) return;
+  container.removeEventListener("keydown", handleWaliRekapKeydown);
+  container.addEventListener("keydown", handleWaliRekapKeydown);
+}
+
+function renderWaliKehadiranTable() {
+  const container = document.getElementById("waliKehadiranTable");
+  if (!container) return;
+  const kelas = getSelectedWaliClass().kelas;
+  const students = getWaliStudentsByClass(kelas);
+  let nextHtml = "";
+  if (window.WaliKelasView?.renderKehadiranTable) {
+    nextHtml = window.WaliKelasView.renderKehadiranTable({
+      kelas,
+      students,
+      getCounts: getWaliKehadiranCounts,
+      escape: escapeWaliHtml
+    });
+    if (nextHtml !== lastWaliKehadiranTableHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastWaliKehadiranTableHtml = nextHtml;
+      setupWaliRekapInputs();
+    }
+    return;
+  }
+  nextHtml = `
+        <table class="mapel-table wali-kehadiran-table">
+          <colgroup>
+            <col class="wali-col-no">
+            <col class="wali-col-name">
+            <col class="wali-col-input">
+            <col class="wali-col-input">
+            <col class="wali-col-input">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>No</th>
+              <th>Nama Siswa</th>
+              <th>S</th>
+              <th>I</th>
+              <th>A</th>
+            </tr>
+          </thead>
+      <tbody>
+        ${students.map((siswa, index) => {
+          const counts = getWaliKehadiranCounts(kelas, siswa.nipd);
+          return `
+              <tr>
+                <td>${index + 1}</td>
+                <td class="wali-student-name">${escapeWaliHtml(siswa.nama || "-")}</td>
+                <td class="wali-rekap-s"><input id="wali-rekap-s-${index}" class="wali-rekap-input" data-row="${index}" data-field="s" type="number" min="0" value="${counts.S}"></td>
+                <td class="wali-rekap-i"><input id="wali-rekap-i-${index}" class="wali-rekap-input" data-row="${index}" data-field="i" type="number" min="0" value="${counts.I}"></td>
+                <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" data-row="${index}" data-field="a" type="number" min="0" value="${counts.A}"></td>
+              </tr>
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+  if (nextHtml !== lastWaliKehadiranTableHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastWaliKehadiranTableHtml = nextHtml;
+    setupWaliRekapInputs();
+  }
+}
+
+async function saveWaliKehadiranRekap() {
+  const kelas = getSelectedWaliClass().kelas;
+  const students = getWaliStudentsByClass(kelas);
+  if (!kelas || students.length === 0) {
+    Swal.fire("Tidak ada siswa", "", "warning");
+    return;
+  }
+  try {
+    setWaliSavingState(true, "Menyimpan rekap kehadiran...");
+    const documentsApi = getWaliDocumentsApi();
+    const batch = documentsApi.batch();
+    students.forEach((siswa, index) => {
+      const s = normalizeWaliRekapCount(document.getElementById(`wali-rekap-s-${index}`)?.value || 0);
+      const i = normalizeWaliRekapCount(document.getElementById(`wali-rekap-i-${index}`)?.value || 0);
+      const a = normalizeWaliRekapCount(document.getElementById(`wali-rekap-a-${index}`)?.value || 0);
+      batch.set(documentsApi.collection("kehadiran_rekap_siswa").doc(makeWaliKehadiranRekapDocId(kelas, siswa.nipd)), {
+        ...getWaliActiveTermPayload(),
+        kelas,
+        nipd: siswa.nipd || "",
+        nama_siswa: siswa.nama || "",
+        s,
+        i,
+        a,
+        updated_by: getCurrentWaliUser().username || "",
+        updated_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    setWaliSavingState(false);
+    Swal.fire("Tersimpan", "Rekap kehadiran siswa sudah disimpan.", "success");
+  } catch (error) {
+    console.error(error);
+    setWaliSavingState(false);
+    Swal.fire("Gagal menyimpan", "Rekap kehadiran siswa belum berhasil disimpan.", "error");
+  }
+}
+
+async function saveWaliKehadiran() {
+  const kelas = getSelectedWaliClass().kelas;
+  const date = getWaliKehadiranDate();
+  const students = getWaliStudentsByClass(kelas);
+  if (!kelas || students.length === 0) {
+    Swal.fire("Tidak ada siswa", "", "warning");
+    return;
+  }
+  try {
+    setWaliSavingState(true, "Menyimpan kehadiran...");
+    const documentsApi = getWaliDocumentsApi();
+    const batch = documentsApi.batch();
+    students.forEach(siswa => {
+      const status = getWaliKehadiranStatus(date, kelas, siswa.nipd);
+      if (!status) return;
+      batch.set(documentsApi.collection("kehadiran_siswa").doc(makeWaliKehadiranDocId(date, kelas, siswa.nipd)), {
+        ...getWaliActiveTermPayload(),
+        tanggal: date,
+        kelas,
+        nipd: siswa.nipd || "",
+        nama_siswa: siswa.nama || "",
+        status,
+        updated_by: getCurrentWaliUser().username || "",
+        updated_at: new Date()
+      }, { merge: true });
+    });
+    await batch.commit();
+    setWaliSavingState(false);
+    Swal.fire("Tersimpan", "Kehadiran siswa sudah disimpan.", "success");
+  } catch (error) {
+    console.error(error);
+    setWaliSavingState(false);
+    Swal.fire("Gagal menyimpan", "Kehadiran siswa belum berhasil disimpan.", "error");
+  }
+}
+
+async function downloadWaliKehadiranTemplate() {
+  await ensureSpreadsheetLibraries();
+  const kelas = getSelectedWaliClass().kelas;
+  const students = getWaliStudentsByClass(kelas);
+  if (!kelas || students.length === 0) {
+    Swal.fire("Tidak ada siswa", "", "warning");
+    return;
+  }
+  const rows = students.map((siswa, index) => {
+    const counts = getWaliKehadiranCounts(kelas, siswa.nipd);
+    return {
+      NO: index + 1,
+      NIPD: siswa.nipd || "",
+      NAMA: siswa.nama || "",
+      S: counts.S,
+      I: counts.I,
+      A: counts.A
+    };
+  });
+  const worksheet = XLSX.utils.json_to_sheet(rows, { header: ["NO", "NIPD", "NAMA", "S", "I", "A"] });
+  worksheet["!cols"] = [{ wch: 6 }, { wch: 14 }, { wch: 30 }, { wch: 8 }, { wch: 8 }, { wch: 8 }];
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Kehadiran");
+  return XLSX.writeFile(workbook, `template-rekap-kehadiran-${kelas.replace(/\s+/g, "")}.xlsx`);
+}
+
+function triggerWaliKehadiranImport() {
+  document.getElementById("waliKehadiranImportInput")?.click();
+}
+
+async function importWaliKehadiranExcel(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+  await ensureSpreadsheetLibraries();
+  const kelas = getSelectedWaliClass().kelas;
+  const students = getWaliStudentsByClass(kelas);
+  const reader = new FileReader();
+  reader.onload = async evt => {
+    try {
+      const workbook = XLSX.read(new Uint8Array(evt.target.result), { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet);
+      let count = 0;
+      rows.forEach(row => {
+        const nipd = String(getCellValue(row, ["NIPD"])).trim();
+        const siswa = students.find(item => String(item.nipd || "") === nipd);
+        if (!siswa) return;
+        const rekap = {
+          id: makeWaliKehadiranRekapDocId(kelas, nipd),
+          kelas,
+          nipd,
+          nama_siswa: siswa.nama || "",
+          s: normalizeWaliRekapCount(getCellValue(row, ["S", "SAKIT"])),
+          i: normalizeWaliRekapCount(getCellValue(row, ["I", "IZIN"])),
+          a: normalizeWaliRekapCount(getCellValue(row, ["A", "ALPA", "ALFA"]))
+        };
+        const existingIndex = semuaDataWaliKehadiranRekap.findIndex(item => item.id === rekap.id);
+        if (existingIndex >= 0) semuaDataWaliKehadiranRekap[existingIndex] = { ...semuaDataWaliKehadiranRekap[existingIndex], ...rekap };
+        else semuaDataWaliKehadiranRekap.push(rekap);
+        waliKehadiranCountsCache.delete(`${getWaliKelasParts(kelas).kelas}|${nipd}`);
+        count++;
+      });
+      event.target.value = "";
+      renderWaliKehadiranTable();
+      Swal.fire("Import selesai", `${count} rekap dimuat. Klik Simpan untuk menyimpan ke database.`, "success");
+    } catch (error) {
+      console.error(error);
+      Swal.fire("Gagal import", "", "error");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function getWaliClassAssignments(kelas) {
+  const classKey = getWaliKelasParts(kelas).kelas;
+  if (waliClassAssignmentsCache.has(classKey)) {
+    return waliClassAssignmentsCache.get(classKey).map(item => ({ ...item }));
+  }
+  const parts = getWaliKelasParts(kelas);
+  const mapelIndex = new Map(semuaDataWaliMapel.map((item, index) => [
+    String(item.kode_mapel || item.id || "").trim().toUpperCase(),
+    {
+      index,
+      mapping: Number(item.mapping ?? Number.MAX_SAFE_INTEGER),
+      kode: String(item.kode_mapel || item.id || "").trim().toUpperCase()
+    }
+  ]));
+  const seen = new Set();
+  const rows = semuaDataWaliMengajar
+    .filter(item => String(item.tingkat || "") === parts.tingkat && String(item.rombel || "").toUpperCase() === parts.rombel)
+    .filter(item => {
+      const kode = String(item.mapel_kode || "").toUpperCase();
+      if (!kode || seen.has(kode)) return false;
+      seen.add(kode);
+      return true;
+    })
+    .sort((a, b) => {
+      const aKode = String(a.mapel_kode || "").trim().toUpperCase();
+      const bKode = String(b.mapel_kode || "").trim().toUpperCase();
+      const aInfo = mapelIndex.get(aKode) || { mapping: Number.MAX_SAFE_INTEGER, index: Number.MAX_SAFE_INTEGER, kode: aKode };
+      const bInfo = mapelIndex.get(bKode) || { mapping: Number.MAX_SAFE_INTEGER, index: Number.MAX_SAFE_INTEGER, kode: bKode };
+      if (aInfo.mapping !== bInfo.mapping) return aInfo.mapping - bInfo.mapping;
+      if (aInfo.index !== bInfo.index) return aInfo.index - bInfo.index;
+      return aInfo.kode.localeCompare(bInfo.kode, undefined, { sensitivity: "base" });
+    });
+  waliClassAssignmentsCache.set(classKey, rows.map(item => ({ ...item })));
+  return rows;
+}
+
+function getWaliMapelName(mapelKode) {
+  const target = String(mapelKode || "").toUpperCase();
+  const mapel = getWaliMapelByKode(target);
+  return mapel?.nama_mapel || mapelKode || "-";
+}
+
+function getWaliMapelByKode(mapelKode) {
+  const target = String(mapelKode || "").trim().toUpperCase();
+  if (!target) return null;
+  if (waliMapelByCodeCache.has(target)) return waliMapelByCodeCache.get(target);
+  const mapel = semuaDataWaliMapel.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target) || null;
+  waliMapelByCodeCache.set(target, mapel);
+  return mapel;
+}
+
+function normalizeWaliAgama(value = "") {
+  return String(value || "").trim().toLowerCase();
+}
+
+function getWaliMapelIndukKode(mapel = {}) {
+  const value = String(mapel.induk_mapel || mapel.induk || mapel.kode_induk || "").trim().toUpperCase();
+  return value || String(mapel.kode_mapel || mapel.id || "").trim().toUpperCase();
+}
+
+function isWaliStudentEligibleForMapel(siswa, mapel) {
+  if (!mapel) return true;
+  if (getWaliMapelIndukKode(mapel) !== "PABP") return true;
+  const mapelAgama = normalizeWaliAgama(mapel.agama);
+  if (!mapelAgama) return true;
+  return normalizeWaliAgama(siswa.agama) === mapelAgama;
+}
+
+function getWaliGuruPengajarName(assignment = {}) {
+  const directName = String(assignment.guru_nama || assignment.nama_guru || assignment.guru || "").trim();
+  if (directName) return directName;
+  const kodeGuru = String(assignment.guru_kode || assignment.kode_guru || "").trim();
+  let guru = null;
+  if (waliGuruByCodeCache.has(kodeGuru)) guru = waliGuruByCodeCache.get(kodeGuru);
+  else {
+    guru = semuaDataWaliGuru.find(item => String(item.kode_guru || item.id || "").trim() === kodeGuru) || null;
+    waliGuruByCodeCache.set(kodeGuru, guru);
+  }
+  if (guru && typeof formatNamaGuru === "function") return formatNamaGuru(guru) || kodeGuru || "-";
+  if (guru) return [guru.gelar_depan, guru.nama, guru.gelar_belakang].filter(Boolean).join(" ") || kodeGuru || "-";
+  return kodeGuru || "-";
+}
+
+function getWaliActiveTermId() {
+  return typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+}
+
+function isWaliNilaiInActiveTerm(item = {}) {
+  if (typeof isActiveTermDoc === "function") return isActiveTermDoc(item);
+  const activeTermId = getWaliActiveTermId();
+  if (!item?.term_id) return activeTermId === "legacy";
+  return String(item.term_id || "") === String(activeTermId || "");
+}
+
+function getWaliNilaiCount(kelas, mapelKode, field) {
+  const cacheKey = `${getWaliKelasParts(kelas).kelas}|${String(mapelKode || "").trim().toUpperCase()}|${String(field || "").trim().toLowerCase()}`;
+  if (waliNilaiCountCache.has(cacheKey)) {
+    return { ...waliNilaiCountCache.get(cacheKey) };
+  }
+  const mapel = getWaliMapelByKode(mapelKode);
+  const students = getWaliStudentsByClass(kelas).filter(item => isWaliStudentEligibleForMapel(item, mapel));
+  const studentIds = new Set(students.map(item => String(item.nipd || "")));
+  const classParts = getWaliKelasParts(kelas);
+  const fieldAliases = {
+    uh_1: ["uh_1", "UH1", "UH_1", "uh1", "nilai"],
+    uh_2: ["uh_2", "UH2", "UH_2", "uh2"],
+    uh_3: ["uh_3", "UH3", "UH_3", "uh3"],
+    pts: ["pts", "PTS", "nilai_pts", "nilaiPTS"]
+  };
+  const aliases = fieldAliases[field] || [field];
+  const hasScore = item => aliases.some(alias => item[alias] !== "" && item[alias] !== null && item[alias] !== undefined);
+  const matchesClass = item => {
+    const itemKelas = getWaliKelasParts(item.kelas || "").kelas;
+    if (itemKelas && itemKelas === String(kelas || "").toUpperCase()) return true;
+    const itemTingkat = String(item.tingkat || "").trim();
+    const itemRombel = String(item.rombel || "").trim().toUpperCase();
+    return itemTingkat === classParts.tingkat && itemRombel === classParts.rombel;
+  };
+  const completedStudentIds = new Set(
+    semuaDataWaliNilai
+      .filter(item =>
+        isWaliNilaiInActiveTerm(item) &&
+        studentIds.has(String(item.nipd || "")) &&
+        matchesClass(item) &&
+        String(item.mapel_kode || "").toUpperCase() === String(mapelKode || "").toUpperCase() &&
+        hasScore(item)
+      )
+      .map(item => String(item.nipd || ""))
+      .filter(Boolean)
+  );
+  const result = { count: completedStudentIds.size, total: students.length };
+  waliNilaiCountCache.set(cacheKey, result);
+  return { ...result };
+}
+
+function getWaliCompletenessClass(count, total) {
+  if (!total || count === 0) return "wali-complete-red";
+  if (count >= total) return "wali-complete-green";
+  return "wali-complete-yellow";
+}
+
+function formatWaliCompletenessText(count, total) {
+  if (!count) return "";
+  return `${count} / ${total}`;
+}
+
+function renderWaliKelengkapanTable() {
+  const container = document.getElementById("waliKelengkapanTable");
+  if (!container) return;
+  const kelas = getSelectedWaliClass().kelas;
+  const assignments = getWaliClassAssignments(kelas);
+  let nextHtml = "";
+  if (window.WaliKelasView?.renderKelengkapanTable) {
+    nextHtml = window.WaliKelasView.renderKelengkapanTable({
+      kelas,
+      assignments,
+      escape: escapeWaliHtml,
+      getMapelName: getWaliMapelName,
+      getGuruName: getWaliGuruPengajarName,
+      getNilaiCount: getWaliNilaiCount,
+      getCompletenessClass: getWaliCompletenessClass,
+      formatCompletenessText: formatWaliCompletenessText
+    });
+    if (nextHtml !== lastWaliKelengkapanTableHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastWaliKelengkapanTableHtml = nextHtml;
+    }
+    return;
+  }
+  nextHtml = `
+    <table class="mapel-table wali-completeness-table">
+      <colgroup>
+        <col class="wali-col-mapel">
+        <col class="wali-col-teacher">
+        <col class="wali-col-score">
+        <col class="wali-col-score">
+        <col class="wali-col-score">
+        <col class="wali-col-score">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>Nama Mapel</th>
+          <th>Nama Guru</th>
+          <th>UH 1</th>
+          <th>UH 2</th>
+          <th>UH 3</th>
+          <th>PTS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${assignments.map(item => {
+          const fields = [["uh_1", "UH 1"], ["uh_2", "UH 2"], ["uh_3", "UH 3"], ["pts", "PTS"]];
+          return `
+            <tr>
+              <td>${escapeWaliHtml(getWaliMapelName(item.mapel_kode))}</td>
+              <td>${escapeWaliHtml(getWaliGuruPengajarName(item))}</td>
+              ${fields.map(([field]) => {
+                const result = getWaliNilaiCount(kelas, item.mapel_kode, field);
+                return `<td class="${getWaliCompletenessClass(result.count, result.total)}">${formatWaliCompletenessText(result.count, result.total)}</td>`;
+              }).join("")}
+            </tr>
+          `;
+        }).join("")}
+      </tbody>
+    </table>
+  `;
+  if (nextHtml !== lastWaliKelengkapanTableHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastWaliKelengkapanTableHtml = nextHtml;
+  }
+}

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Halaman Tidak Ditemukan</title>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #0f766e;
+      --line: #dbe4f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top, rgba(15, 118, 110, 0.08), transparent 26%),
+        linear-gradient(180deg, var(--bg), #eef4ff);
+    }
+
+    .not-found-card {
+      width: min(460px, 100%);
+      padding: 32px 28px;
+      border-radius: 24px;
+      background: var(--card);
+      border: 1px solid var(--line);
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    .not-found-code {
+      display: inline-flex;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.1);
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 18px 0 12px;
+      font-size: 30px;
+      line-height: 1.15;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+      line-height: 1.7;
+    }
+
+    .not-found-actions {
+      margin-top: 22px;
+    }
+
+    .not-found-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 18px;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <main class="not-found-card">
+    <div class="not-found-code">404</div>
+    <h1>Halaman Tidak Ditemukan</h1>
+    <p>Halaman yang Anda cari tidak tersedia atau alamatnya tidak tepat.</p>
+    <p>Silakan kembali ke halaman utama aplikasi untuk melanjutkan.</p>
+    <div class="not-found-actions">
+      <a class="not-found-link" href="index.html">Kembali ke Beranda</a>
+    </div>
+  </main>
+</body>
+</html>

@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Login Guru Spenturi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="vendor/supabase.js"></script>
+  <script src="supabase-config.js?v=20260408a"></script>
+  <script src="shared/supabase-documents.js?v=20260421d"></script>
+  <script src="shared/maintenance-mode.js?v=20260411b"></script>
+  <link rel="stylesheet" href="mobile-redesign.css?v=20260422i">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background:
+        radial-gradient(circle at top, rgba(17, 24, 39, 0.08), transparent 42%),
+        linear-gradient(160deg, #f8fafc 0%, #dbeafe 55%, #e2e8f0 100%);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    .login-page {
+      position: relative;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 24px;
+      box-sizing: border-box;
+    }
+
+    .login-intro {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.3), transparent 22%),
+        radial-gradient(circle at 15% 25%, rgba(250, 204, 21, 0.22), transparent 24%),
+        radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.2), transparent 26%),
+        linear-gradient(145deg, #0f172a 0%, #1d4ed8 48%, #0f766e 100%);
+      z-index: 2;
+      overflow: hidden;
+      transition: opacity 0.9s ease, visibility 0.9s ease;
+    }
+
+    body.login-ready .login-intro,
+    .login-intro.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .login-intro-panel {
+      position: relative;
+      text-align: center;
+      color: #fff;
+      width: min(720px, calc(100vw - 40px));
+      padding: 40px 28px;
+      animation: loginIntroFloat 1s ease both;
+      z-index: 2;
+    }
+
+    .login-intro-orb {
+      position: absolute;
+      border-radius: 999px;
+      filter: blur(2px);
+      opacity: 0.75;
+      animation: introOrbFloat 6s ease-in-out infinite;
+    }
+
+    .login-intro-orb-a {
+      width: 280px;
+      height: 280px;
+      top: -80px;
+      left: -50px;
+      background: radial-gradient(circle, rgba(250, 204, 21, 0.75), rgba(250, 204, 21, 0.05));
+    }
+
+    .login-intro-orb-b {
+      width: 360px;
+      height: 360px;
+      right: -110px;
+      bottom: -140px;
+      background: radial-gradient(circle, rgba(96, 165, 250, 0.7), rgba(96, 165, 250, 0.05));
+      animation-delay: -2s;
+    }
+
+    .login-intro-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+      background-size: 42px 42px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent 92%);
+      opacity: 0.45;
+    }
+
+    .login-intro-logos {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+
+    .login-intro-logo {
+      width: min(168px, 34vw);
+      height: auto;
+      object-fit: contain;
+      filter: drop-shadow(0 14px 22px rgba(15, 23, 42, 0.28));
+      animation: loginIntroPulse 1.5s ease-in-out infinite alternate;
+    }
+
+    .login-intro-kicker {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 9px 16px;
+      margin-bottom: 18px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(12px);
+      color: rgba(255, 255, 255, 0.92);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+    }
+
+    .login-intro-title {
+      margin: 0;
+      font-size: clamp(34px, 4vw, 52px);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      line-height: 1.05;
+      text-shadow: 0 12px 32px rgba(15, 23, 42, 0.28);
+    }
+
+    .login-intro-subtitle {
+      margin: 14px auto 0;
+      color: rgba(255, 255, 255, 0.86);
+      font-size: 16px;
+      font-weight: 600;
+      max-width: 620px;
+      line-height: 1.6;
+    }
+
+    .login-intro-shine {
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-radius: 999px;
+      background: radial-gradient(circle, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0));
+      opacity: 0.8;
+      animation: introShine 3s ease-in-out infinite;
+    }
+
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 22px;
+      width: min(360px, calc(100vw - 32px));
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      opacity: 0;
+      transform: translateY(28px) scale(0.98);
+      transition: opacity 0.65s ease, transform 0.65s ease;
+    }
+
+    body.login-ready .login-box,
+    .login-box.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .login-form-logo {
+      display: block;
+      width: 82px;
+      height: auto;
+      margin: 0 auto 16px;
+      object-fit: contain;
+      filter: drop-shadow(0 10px 18px rgba(15, 23, 42, 0.14));
+    }
+
+    h2 {
+      text-align: center;
+      margin: 0 0 8px;
+      color: #0f172a;
+    }
+
+    .login-subtitle {
+      text-align: center;
+      margin: 0 0 20px;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    .login-maintenance-alert {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin: 0 0 18px;
+      padding: 13px 15px;
+      border-radius: 14px;
+      border: 1px solid rgba(245, 158, 11, 0.26);
+      background: linear-gradient(180deg, rgba(255, 251, 235, 0.98), rgba(254, 243, 199, 0.92));
+      color: #92400e;
+      box-shadow: 0 12px 24px rgba(245, 158, 11, 0.12);
+    }
+
+    .login-maintenance-alert.visible {
+      display: flex;
+    }
+
+    .login-maintenance-icon {
+      flex: 0 0 auto;
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 12px;
+      background: rgba(245, 158, 11, 0.16);
+      color: #b45309;
+      font-size: 18px;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    }
+
+    .login-maintenance-copy {
+      min-width: 0;
+    }
+
+    .login-maintenance-alert strong {
+      display: block;
+      margin-bottom: 3px;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .login-maintenance-alert p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      box-sizing: border-box;
+      background: #fff;
+    }
+
+    .password-field {
+      position: relative;
+      margin-bottom: 15px;
+    }
+
+    .password-field input {
+      margin-bottom: 0;
+      padding-right: 76px;
+    }
+
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      right: 8px;
+      transform: translateY(-50%);
+      width: auto;
+      min-width: 58px;
+      padding: 6px 10px;
+      border-radius: 5px;
+      background: #e5eefc;
+      color: #1d4ed8;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .password-toggle:hover {
+      background: #dbe7ff;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    .error {
+      color: red;
+      font-size: 14px;
+      text-align: center;
+      display: none;
+    }
+
+    @keyframes loginIntroFloat {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.96);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes loginIntroPulse {
+      from {
+        transform: translateY(0) scale(1);
+      }
+      to {
+        transform: translateY(-4px) scale(1.03);
+      }
+    }
+
+    @keyframes introOrbFloat {
+      0%,
+      100% {
+        transform: translate3d(0, 0, 0) scale(1);
+      }
+      50% {
+        transform: translate3d(12px, -14px, 0) scale(1.05);
+      }
+    }
+
+    @keyframes introShine {
+      0%,
+      100% {
+        transform: translateX(-50%) scale(0.92);
+        opacity: 0.55;
+      }
+      50% {
+        transform: translateX(-50%) scale(1.14);
+        opacity: 0.92;
+      }
+    }
+
+    @keyframes introSweep {
+      from {
+        transform: translateX(-120%) skewX(-18deg);
+      }
+      to {
+        transform: translateX(220%) skewX(-18deg);
+      }
+    }
+
+    .login-intro::after {
+      content: "";
+      position: absolute;
+      top: -10%;
+      left: -15%;
+      width: 34%;
+      height: 120%;
+      background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
+      animation: introSweep 2.6s ease-in-out infinite;
+      opacity: 0.65;
+      pointer-events: none;
+    }
+
+    @media (max-width: 640px) {
+      .login-intro-panel {
+        padding: 32px 18px;
+      }
+
+      .login-intro-subtitle {
+        font-size: 14px;
+      }
+
+      .login-intro-logo {
+        width: min(132px, 42vw);
+      }
+
+      .login-form-logo {
+        width: 72px;
+        margin-bottom: 14px;
+      }
+
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body {
+        background:
+          radial-gradient(circle at top, rgba(59, 130, 246, 0.16), transparent 42%),
+          linear-gradient(160deg, #020617 0%, #0f172a 52%, #111827 100%);
+      }
+
+      .login-intro {
+        background:
+          radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.12), transparent 22%),
+          radial-gradient(circle at 15% 25%, rgba(250, 204, 21, 0.14), transparent 24%),
+          radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.16), transparent 26%),
+          linear-gradient(145deg, #020617 0%, #0f172a 42%, #1d4ed8 100%);
+      }
+
+      .login-intro-grid {
+        opacity: 0.28;
+      }
+
+      .login-intro-kicker {
+        background: rgba(15, 23, 42, 0.3);
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .login-box {
+        background: rgba(15, 23, 42, 0.86);
+        border: 1px solid rgba(148, 163, 184, 0.18);
+        box-shadow: 0 26px 70px rgba(2, 6, 23, 0.48);
+        backdrop-filter: blur(18px);
+      }
+
+      h2 {
+        color: #f8fafc;
+      }
+
+      .login-subtitle {
+        color: #94a3b8;
+      }
+
+      .login-maintenance-alert {
+        background: linear-gradient(180deg, rgba(120, 53, 15, 0.34), rgba(146, 64, 14, 0.28));
+        border-color: rgba(251, 191, 36, 0.28);
+        color: #fde68a;
+        box-shadow: 0 16px 28px rgba(2, 6, 23, 0.24);
+      }
+
+      .login-maintenance-icon {
+        background: rgba(251, 191, 36, 0.12);
+        color: #fde68a;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+
+      .login-form-logo {
+        filter: drop-shadow(0 12px 24px rgba(2, 6, 23, 0.4));
+      }
+
+      input,
+      select {
+        background: rgba(30, 41, 59, 0.92);
+        border-color: rgba(148, 163, 184, 0.24);
+        color: #e2e8f0;
+      }
+
+      input::placeholder {
+        color: #94a3b8;
+      }
+
+      input:focus,
+      select:focus {
+        outline: none;
+        border-color: rgba(96, 165, 250, 0.72);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+      }
+
+      .password-toggle {
+        background: rgba(30, 41, 59, 0.96);
+        color: #93c5fd;
+      }
+
+      .password-toggle:hover {
+        background: rgba(51, 65, 85, 0.96);
+      }
+
+      button {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+        box-shadow: 0 14px 28px rgba(37, 99, 235, 0.28);
+      }
+
+      button:hover {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+      }
+
+      .error {
+        color: #fca5a5;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .login-intro,
+      .login-box,
+      .login-intro-panel,
+      .login-intro-logo,
+      .login-form-logo,
+      .login-intro::after,
+      .login-intro-orb,
+      .login-intro-shine {
+        transition: none;
+        animation: none;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        overflow-y: auto;
+        background:
+          radial-gradient(circle at 18% 0%, rgba(20, 184, 166, 0.22), transparent 36%),
+          radial-gradient(circle at 100% 8%, rgba(59, 130, 246, 0.18), transparent 34%),
+          linear-gradient(180deg, #f8fafc 0%, #ecfdf5 52%, #e0f2fe 100%);
+      }
+
+      .login-page {
+        min-height: 100dvh;
+        align-items: stretch;
+        padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
+      }
+
+      .login-intro {
+        border-radius: 0 0 30px 30px;
+      }
+
+      .login-intro-panel {
+        width: min(100%, 420px);
+        padding: 32px 18px;
+      }
+
+      .login-intro-title {
+        font-size: clamp(32px, 10vw, 44px);
+      }
+
+      .login-intro-subtitle {
+        font-size: 13px;
+        line-height: 1.55;
+      }
+
+      .login-box {
+        align-self: center;
+        width: 100%;
+        max-width: 430px;
+        padding: 24px 18px 20px;
+        border-radius: 28px;
+        box-shadow: 0 24px 56px rgba(15, 23, 42, 0.16);
+      }
+
+      .login-form-logo {
+        width: 76px;
+      }
+
+      h2 {
+        font-size: 28px;
+      }
+
+      .login-subtitle {
+        margin-bottom: 18px;
+        line-height: 1.45;
+      }
+
+      input,
+      select,
+      button {
+        min-height: 50px;
+        border-radius: 16px;
+        font-size: 16px;
+      }
+
+      button {
+        font-weight: 800;
+        background: linear-gradient(135deg, #0f766e, #0891b2);
+        box-shadow: 0 16px 28px rgba(8, 145, 178, 0.24);
+      }
+
+      .password-toggle {
+        min-height: 36px;
+        border-radius: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+<noscript>
+  <style>
+    .login-intro {
+      display: none !important;
+    }
+
+    .login-box {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  </style>
+</noscript>
+
+<div class="login-page">
+  <div class="login-intro" id="loginIntro" aria-hidden="true">
+    <div class="login-intro-grid"></div>
+    <div class="login-intro-orb login-intro-orb-a"></div>
+    <div class="login-intro-orb login-intro-orb-b"></div>
+    <div class="login-intro-shine"></div>
+    <div class="login-intro-panel">
+      <div class="login-intro-logos">
+        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-intro-logo">
+      </div>
+      <div class="login-intro-kicker">Sistem Informasi Kurikulum</div>
+      <h1 class="login-intro-title">SMP Negeri 1 Umbulsari</h1>
+      <p class="login-intro-subtitle">Menyiapkan dashboard sekolah dan memuat akses pengguna. Form login akan tampil setelah splash screen selesai.</p>
+    </div>
+  </div>
+
+  <div class="login-box" id="loginBox">
+    <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-form-logo">
+    <h2>Login</h2>
+
+    <div class="login-maintenance-alert" id="loginMaintenanceAlert" role="status" aria-live="polite">
+      <div class="login-maintenance-icon" aria-hidden="true">🛠</div>
+      <div class="login-maintenance-copy">
+        <strong>Maintenance</strong>
+        <p id="loginMaintenanceMessage">Sistem sedang dalam perawatan dan perbaikan.</p>
+      </div>
+    </div>
+
+    <select id="semesterLogin">
+      <option value="">Memuat semester...</option>
+    </select>
+    <input type="text" id="username" placeholder="Username">
+    <div class="password-field">
+      <input type="password" id="password" placeholder="Password">
+      <button type="button" id="togglePasswordBtn" class="password-toggle" onclick="togglePasswordVisibility()">Lihat</button>
+    </div>
+    <button onclick="login()">Masuk</button>
+
+    <div class="error" id="error">Username atau password salah</div>
+  </div>
+</div>
+
+<script>
+  let daftarSemesterLogin = [];
+
+  function getLoginDocumentsApi() {
+    return window.SupabaseDocuments;
+  }
+
+  function updateLoginMaintenanceAlert(state = {}) {
+    const alert = document.getElementById("loginMaintenanceAlert");
+    const message = document.getElementById("loginMaintenanceMessage");
+    if (!alert || !message) return;
+
+    if (state.enabled) {
+      alert.classList.add("visible");
+      message.textContent = "Sistem sedang dalam perawatan dan perbaikan.";
+      return;
+    }
+
+    alert.classList.remove("visible");
+  }
+
+  function getStoredLoginUserRole() {
+    try {
+      return JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
+    } catch {
+      return "";
+    }
+  }
+
+  async function enforceMaintenanceBeforeLogin() {
+    const isLoggedIn = localStorage.getItem("login") === "true";
+    const role = getStoredLoginUserRole();
+    const state = await window.MaintenanceMode.load({ force: true });
+    updateLoginMaintenanceAlert(state);
+    if (isLoggedIn) {
+      if (state.enabled && !window.MaintenanceMode.isAdminRole(role)) {
+        window.location.replace("maintenance.html");
+      } else {
+        window.location.replace("dashboard.html");
+      }
+      return true;
+    }
+    return false;
+  }
+
+  function makeDefaultLoginSemester() {
+    return {
+      id: "20252026_genap",
+      semester: "GENAP",
+      tahun: "2025/2026",
+      label: "GENAP - 2025/2026",
+      legacy: true,
+      is_active: true,
+      use_snapshot: false
+    };
+  }
+
+  function normalizeLoginSemesterList(data) {
+    const list = Array.isArray(data?.list) && data.list.length ? data.list : [makeDefaultLoginSemester()];
+    const activeId = data?.active_id || list[0]?.id || "legacy";
+    const liveId = [...list].sort(compareLoginSemesterEntries).at(-1)?.id || data?.live_id || activeId;
+    daftarSemesterLogin = list.map(item => ({
+      ...item,
+      label: item.label || `${item.semester || "-"} - ${item.tahun || "-"}`,
+      is_active: item.id === activeId,
+      use_snapshot: item.id !== activeId,
+      active_id: activeId,
+      live_id: liveId
+    }));
+
+    const select = document.getElementById("semesterLogin");
+    select.innerHTML = daftarSemesterLogin.map(item =>
+      `<option value="${item.id}" ${item.id === activeId ? "selected" : ""}>${item.label}</option>`
+    ).join("");
+  }
+
+  function compareLoginSemesterEntries(a, b) {
+    const yearA = Number(String(a?.tahun || "").match(/\d{4}/)?.[0] || 0);
+    const yearB = Number(String(b?.tahun || "").match(/\d{4}/)?.[0] || 0);
+    if (yearA !== yearB) return yearA - yearB;
+    const order = { GANJIL: 1, GENAP: 2 };
+    const semesterA = String(a?.semester || "").trim().toUpperCase() === "GANJIL" ? "GANJIL" : "GENAP";
+    const semesterB = String(b?.semester || "").trim().toUpperCase() === "GANJIL" ? "GANJIL" : "GENAP";
+    return (order[semesterA] || 0) - (order[semesterB] || 0);
+  }
+
+  async function loadSemesterLoginOptions() {
+    try {
+      const snap = await getLoginDocumentsApi().collection("settings").doc("semester").get();
+      normalizeLoginSemesterList(snap.exists ? snap.data() : {});
+    } catch (error) {
+      console.error(error);
+      normalizeLoginSemesterList({});
+    }
+  }
+
+  function getSelectedLoginSemester() {
+    const id = document.getElementById("semesterLogin").value || "legacy";
+    return daftarSemesterLogin.find(item => item.id === id) || makeDefaultLoginSemester();
+  }
+
+  function togglePasswordVisibility() {
+    const passwordInput = document.getElementById("password");
+    const toggleBtn = document.getElementById("togglePasswordBtn");
+    if (!passwordInput || !toggleBtn) return;
+    const isHidden = passwordInput.type === "password";
+    passwordInput.type = isHidden ? "text" : "password";
+    toggleBtn.innerText = isHidden ? "Sembunyi" : "Lihat";
+    toggleBtn.setAttribute("aria-label", isHidden ? "Sembunyikan password" : "Lihat password");
+  }
+
+  const SUPERADMIN_USERNAME = "superadmin";
+  const SUPERADMIN_PASSWORD_HASH = "d0a2c27c72bfaafc9a4bb5866fe95eedab9db8acbeb1ff9f1f445281c44ce2aa";
+
+  async function sha256Hex(value = "") {
+    if (!window.crypto?.subtle) return "";
+    const bytes = new TextEncoder().encode(String(value || ""));
+    const hashBuffer = await window.crypto.subtle.digest("SHA-256", bytes);
+    return Array.from(new Uint8Array(hashBuffer)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+  }
+
+  async function isValidSuperadminLogin(username, password) {
+    if (String(username || "").trim().toLowerCase() !== SUPERADMIN_USERNAME) return false;
+    const hashed = await sha256Hex(password);
+    return hashed === SUPERADMIN_PASSWORD_HASH;
+  }
+
+  async function login() {
+    const username = document.getElementById("username").value.trim().toLowerCase();
+    const password = document.getElementById("password").value;
+    const semester = getSelectedLoginSemester();
+    const error = document.getElementById("error");
+    error.style.display = "none";
+    const maintenanceState = await window.MaintenanceMode.load({ force: true });
+
+    if (await isValidSuperadminLogin(username, password)) {
+      localStorage.setItem("login", "true");
+      const superadminPayload = {
+        username: SUPERADMIN_USERNAME,
+        nama: "Super Administrator",
+        role: "superadmin",
+        can_generate_prompt: true
+      };
+      localStorage.setItem("appUser", JSON.stringify(superadminPayload));
+      localStorage.setItem("appSemester", JSON.stringify(semester));
+      window.location.href = "dashboard.html";
+      return;
+    }
+
+    if ((username === "admin" || !username) && (password === "admin123" || password === "guruspenturi")) {
+      localStorage.setItem("login", "true");
+      const adminPayload = {
+        username: "admin",
+        nama: "Administrator",
+        role: "admin",
+        can_generate_prompt: true
+      };
+      localStorage.setItem("appUser", JSON.stringify(adminPayload));
+      localStorage.setItem("appSemester", JSON.stringify(semester));
+      window.location.href = "dashboard.html";
+      return;
+    }
+
+    try {
+      const snap = await getLoginDocumentsApi().collection("users")
+        .where("username", "==", username)
+        .limit(1)
+        .get();
+
+      if (snap.empty) {
+        error.style.display = "block";
+        return;
+      }
+
+      const doc = snap.docs[0];
+      const user = { id: doc.id, ...doc.data() };
+      if (user.aktif === false || String(user.password || "") !== password) {
+        error.style.display = "block";
+        return;
+      }
+
+      localStorage.setItem("login", "true");
+      const appUser = {
+        id: user.id,
+        username: user.username,
+        nama: user.nama,
+        role: user.role || "guru",
+        kode_guru: user.kode_guru || "",
+        nipd: user.nipd || "",
+        can_generate_prompt: (() => {
+          const rawAccess = user.can_generate_prompt;
+          if (typeof rawAccess === "string") {
+            const normalized = rawAccess.trim().toLowerCase();
+            return ["true", "1", "yes", "ya"].includes(normalized);
+          }
+          if (typeof rawAccess === "number") return rawAccess === 1;
+          return rawAccess === true;
+        })()
+      };
+      localStorage.setItem("appUser", JSON.stringify(appUser));
+      localStorage.setItem("appSemester", JSON.stringify(semester));
+      if (maintenanceState.enabled && !window.MaintenanceMode.isAdminRole(appUser.role)) {
+        window.location.href = "maintenance.html";
+        return;
+      }
+      window.location.href = "dashboard.html";
+    } catch (err) {
+      console.error(err);
+      error.style.display = "block";
+    }
+  }
+
+  document.addEventListener("keydown", event => {
+    if (event.key === "Enter") login();
+  });
+
+  function playLoginEntrance() {
+    const intro = document.getElementById("loginIntro");
+    const box = document.getElementById("loginBox");
+    if (!intro || !box) return;
+
+    const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const introDuration = reduceMotion ? 80 : 3000;
+
+    document.body.classList.remove("login-ready");
+
+    window.setTimeout(() => {
+      document.body.classList.add("login-ready");
+      intro.classList.add("hidden");
+      box.classList.add("visible");
+      document.getElementById("username")?.focus();
+    }, introDuration);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    enforceMaintenanceBeforeLogin().then(isBlocked => {
+      if (isBlocked) return;
+      loadSemesterLoginOptions();
+      playLoginEntrance();
+    });
+  });
+</script>
+
+</body>
+</html>

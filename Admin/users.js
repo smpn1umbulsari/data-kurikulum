@@ -100,7 +100,13 @@ function rebuildAdminPresenceCaches() {
 function canUserAccessAiPrompt(user = {}) {
   const role = String(user?.role || "").trim().toLowerCase();
   if (["admin", "superadmin"].includes(role)) return true;
-  return user?.can_generate_prompt !== false;
+  const rawAccess = user?.can_generate_prompt;
+  if (typeof rawAccess === "string") {
+    const normalized = rawAccess.trim().toLowerCase();
+    return ["true", "1", "yes", "ya"].includes(normalized);
+  }
+  if (typeof rawAccess === "number") return rawAccess === 1;
+  return rawAccess === true;
 }
 
 function isCurrentUserSuperadmin() {

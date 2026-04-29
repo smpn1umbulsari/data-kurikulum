@@ -12,10 +12,8 @@ const BACKUP_COLLECTIONS = [
   "nilai",
   "kehadiran_rekap_siswa",
   "rapor_catatan_wali",
-  "nilai_snapshots",
   "kepangawasan_kartu_guru",
   "informasi_urusan",
-  "riwayat_perubahan",
   "user_presence",
   "users",
   "settings"
@@ -42,7 +40,6 @@ const BACKUP_LOCAL_STORAGE_PREFIXES = [
 ];
 
 let selectedBackupRestoreFile = null;
-let selectedBackupRestorePayload = null;
 
 function renderAdminBackupPage() {
   setTimeout(() => {
@@ -68,7 +65,7 @@ function renderAdminBackupPage() {
       <div class="backup-grid">
         <article class="backup-panel">
           <h3>Backup</h3>
-          <p>File backup berisi data utama, user, nilai, rekap kehadiran, asesmen, kepangawasan, riwayat perubahan, pengaturan, dan data per semester.</p>
+          <p>File backup berisi data utama, user, nilai, rekap kehadiran, asesmen, kepangawasan, pengaturan, dan data per semester.</p>
           <div class="backup-actions">
             <button class="btn-primary" onclick="downloadFullBackup()">Download Backup JSON</button>
           </div>
@@ -83,7 +80,6 @@ function renderAdminBackupPage() {
             <input type="file" accept="application/json,.json" onchange="handleBackupRestoreFile(event)">
           </label>
           <div id="backupRestoreFileName" class="backup-status">Belum ada file dipilih.</div>
-          <div id="backupRestorePreview" class="backup-restore-preview" hidden></div>
           <div class="backup-actions">
             <button class="btn-danger" onclick="restoreFullBackup()">Restore Backup</button>
           </div>
@@ -210,171 +206,6 @@ function restoreBackupLocalStorage(rows = {}) {
   return count;
 }
 
-function isSupportedBackupVersion(version) {
-  return version === 1 || version === 2 || version === undefined || version === null;
-}
-
-function validateBackupPayload(payload) {
-  const errors = [];
-  const warnings = [];
-  if (!payload || typeof payload !== "object") {
-    errors.push("File backup tidak bisa dibaca sebagai objek JSON.");
-    return { valid: false, errors, warnings };
-  }
-  if (payload.app !== "DATA SISWA") {
-    errors.push("File ini bukan backup aplikasi Data Siswa.");
-  }
-  if (!payload.collections || typeof payload.collections !== "object") {
-    errors.push("Backup tidak memiliki bagian collections.");
-  }
-  if (!isSupportedBackupVersion(payload.version)) {
-    errors.push(`Versi backup ${payload.version} belum didukung oleh aplikasi ini.`);
-  }
-  if ((payload.version || 1) < 2) {
-    warnings.push("Backup versi lama terdeteksi. Local storage dan beberapa koleksi baru mungkin belum ada.");
-  }
-  const unknownCollections = Object.keys(payload.collections || {})
-    .filter(name => !BACKUP_COLLECTIONS.includes(name));
-  if (unknownCollections.length) {
-    warnings.push(`Ada collection di luar daftar aktif: ${unknownCollections.join(", ")}.`);
-  }
-  return { valid: !errors.length, errors, warnings };
-}
-
-function getBackupRestoreSelection() {
-  const selectedCollections = Array.from(document.querySelectorAll(".backup-restore-collection:checked"))
-    .map(input => input.value)
-    .filter(Boolean);
-  return {
-    collections: selectedCollections,
-    semesterData: document.getElementById("backupRestoreSemesterData")?.checked === true,
-    localStorage: document.getElementById("backupRestoreLocalStorage")?.checked === true,
-    autoBackup: document.getElementById("backupRestoreAutoBackup")?.checked !== false
-  };
-}
-
-async function createBackupPayload(options = {}) {
-  const collections = {};
-  const collectionNames = options.collections || BACKUP_COLLECTIONS;
-  for (const name of collectionNames) {
-    if (options.statusId) setBackupStatus(options.statusId, `Membaca ${name}...`);
-    collections[name] = await readBackupCollection(name);
-  }
-  const semesterIds = getBackupSemesterIds(collections.settings || []);
-  const semesterData = options.includeSemesterData === false ? {} : await readBackupSemesterData(semesterIds);
-  return {
-    app: "DATA SISWA",
-    version: 2,
-    exported_at: new Date().toISOString(),
-    collections_order: [...collectionNames],
-    collections,
-    semester_data: semesterData,
-    local_storage: options.includeLocalStorage === false ? {} : readBackupLocalStorage()
-  };
-}
-
-function downloadBackupPayload(payload, prefix = "backup-data-siswa") {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-  a.href = url;
-  a.download = `${prefix}-${stamp}.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-}
-
-async function calculateRestoreImpact(payload, selection) {
-  const impacts = [];
-  for (const collectionName of selection.collections) {
-    const incomingRows = payload.collections?.[collectionName] || [];
-    const currentRows = await readBackupCollection(collectionName).catch(() => []);
-    const currentIds = new Set(currentRows.map(row => row.id));
-    const overwrite = incomingRows.filter(row => currentIds.has(row.id)).length;
-    const create = incomingRows.length - overwrite;
-    impacts.push({ label: collectionName, incoming: incomingRows.length, overwrite, create });
-  }
-  if (selection.semesterData) {
-    let incoming = 0;
-    Object.values(payload.semester_data || {}).forEach(termData => {
-      incoming += (termData.siswa || []).length + (termData.kelas || []).length;
-    });
-    impacts.push({ label: "semester_data", incoming, overwrite: "cek per semester", create: "-" });
-  }
-  if (selection.localStorage) {
-    impacts.push({ label: "local_storage", incoming: Object.keys(payload.local_storage || {}).length, overwrite: "lokal", create: "-" });
-  }
-  return impacts;
-}
-
-function renderRestoreImpactTable(impact = []) {
-  return `
-    <table class="backup-impact-table">
-      <thead><tr><th>Bagian</th><th>Masuk</th><th>Menimpa</th><th>Baru</th></tr></thead>
-      <tbody>
-        ${impact.map(item => `
-          <tr>
-            <td>${escapeBackupHtml(item.label)}</td>
-            <td>${escapeBackupHtml(item.incoming)}</td>
-            <td>${escapeBackupHtml(item.overwrite)}</td>
-            <td>${escapeBackupHtml(item.create)}</td>
-          </tr>
-        `).join("")}
-      </tbody>
-    </table>
-  `;
-}
-
-function renderBackupRestorePreview(payload) {
-  const preview = document.getElementById("backupRestorePreview");
-  if (!preview) return;
-  if (!payload) {
-    preview.hidden = true;
-    preview.innerHTML = "";
-    return;
-  }
-  const validation = validateBackupPayload(payload);
-  const collections = Object.entries(payload.collections || {});
-  const semesterEntries = Object.entries(payload.semester_data || {});
-  const localCount = Object.keys(payload.local_storage || {}).length;
-  const collectionRows = collections.map(([name, rows]) => `
-    <label class="backup-restore-option">
-      <input class="backup-restore-collection" type="checkbox" value="${escapeBackupHtml(name)}" ${BACKUP_COLLECTIONS.includes(name) ? "checked" : ""}>
-      <span>${escapeBackupHtml(name)}</span>
-      <small>${Array.isArray(rows) ? rows.length : 0} dokumen</small>
-    </label>
-  `).join("");
-  preview.hidden = false;
-  preview.innerHTML = `
-    <div class="backup-preview-head">
-      <strong>Preview Backup</strong>
-      <span>Versi ${escapeBackupHtml(payload.version ?? "legacy")} | ${escapeBackupHtml(payload.exported_at || "-")}</span>
-    </div>
-    ${validation.errors.length ? `<div class="backup-preview-alert backup-preview-error">${validation.errors.map(escapeBackupHtml).join("<br>")}</div>` : ""}
-    ${validation.warnings.length ? `<div class="backup-preview-alert backup-preview-warning">${validation.warnings.map(escapeBackupHtml).join("<br>")}</div>` : ""}
-    <div class="backup-restore-options">
-      ${collectionRows || `<div class="backup-status">Tidak ada collection di file backup.</div>`}
-      <label class="backup-restore-option backup-restore-option-wide">
-        <input id="backupRestoreSemesterData" type="checkbox" ${semesterEntries.length ? "checked" : ""}>
-        <span>Data semester</span>
-        <small>${semesterEntries.length} semester</small>
-      </label>
-      <label class="backup-restore-option backup-restore-option-wide">
-        <input id="backupRestoreLocalStorage" type="checkbox" ${localCount ? "checked" : ""}>
-        <span>Local storage penting</span>
-        <small>${localCount} item</small>
-      </label>
-      <label class="backup-restore-option backup-restore-option-wide backup-restore-safety">
-        <input id="backupRestoreAutoBackup" type="checkbox" checked>
-        <span>Buat backup otomatis sebelum restore</span>
-        <small>Disarankan</small>
-      </label>
-    </div>
-  `;
-}
-
 async function readBackupCollection(collectionName) {
   const snapshot = await getBackupDocumentsApi().collection(collectionName).get();
   return snapshot.docs.map(doc => ({
@@ -417,15 +248,33 @@ async function downloadFullBackup() {
   try {
     setBackupStatus("backupExportStatus", "Membaca data...");
     window.AppLoading?.set("backup-export", true, { title: "Membuat backup...", message: "Mohon tunggu sebentar." });
-    const payload = await createBackupPayload({ statusId: "backupExportStatus" });
-    const semesterIds = Object.keys(payload.semester_data || {});
-    downloadBackupPayload(payload);
+    const collections = {};
+    for (const name of BACKUP_COLLECTIONS) {
+      setBackupStatus("backupExportStatus", `Membaca ${name}...`);
+      collections[name] = await readBackupCollection(name);
+    }
+    const semesterIds = getBackupSemesterIds(collections.settings || []);
+    const semesterData = await readBackupSemesterData(semesterIds);
+    const payload = {
+      app: "DATA SISWA",
+      version: 2,
+      exported_at: new Date().toISOString(),
+      collections_order: [...BACKUP_COLLECTIONS],
+      collections,
+      semester_data: semesterData,
+      local_storage: readBackupLocalStorage()
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.href = url;
+    a.download = `backup-data-siswa-${stamp}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
     setBackupStatus("backupExportStatus", `Backup selesai. ${BACKUP_COLLECTIONS.length} collection dibaca.`);
-    window.AuditLog?.record?.("backup_download", {
-      ringkasan: `Backup JSON dibuat: ${BACKUP_COLLECTIONS.length} collection, ${semesterIds.length} semester.`,
-      collections: BACKUP_COLLECTIONS,
-      semester_count: semesterIds.length
-    }, { module: "Backup Restore", title: "Download Backup" });
     Swal.fire("Backup selesai", "File JSON sudah diunduh.", "success");
   } catch (error) {
     console.error(error);
@@ -436,29 +285,12 @@ async function downloadFullBackup() {
   }
 }
 
-async function handleBackupRestoreFile(event) {
+function handleBackupRestoreFile(event) {
   selectedBackupRestoreFile = event.target.files?.[0] || null;
-  selectedBackupRestorePayload = null;
   setBackupStatus(
     "backupRestoreFileName",
     selectedBackupRestoreFile ? `${selectedBackupRestoreFile.name} (${Math.ceil(selectedBackupRestoreFile.size / 1024)} KB)` : "Belum ada file dipilih."
   );
-  renderBackupRestorePreview(null);
-  if (!selectedBackupRestoreFile) return;
-  try {
-    selectedBackupRestorePayload = await readSelectedBackupFile();
-    renderBackupRestorePreview(selectedBackupRestorePayload);
-    const validation = validateBackupPayload(selectedBackupRestorePayload);
-    setBackupStatus(
-      "backupRestoreStatus",
-      validation.valid
-        ? "Preview berhasil dibaca. Pilih bagian yang akan direstore."
-        : "File backup tidak valid. Restore tidak bisa dilanjutkan."
-    );
-  } catch (error) {
-    selectedBackupRestorePayload = null;
-    setBackupStatus("backupRestoreStatus", error.message || "File backup gagal dibaca.");
-  }
 }
 
 function readSelectedBackupFile() {
@@ -482,27 +314,15 @@ function readSelectedBackupFile() {
 
 async function restoreFullBackup() {
   try {
-    const payload = selectedBackupRestorePayload || await readSelectedBackupFile();
-    const validation = validateBackupPayload(payload);
-    if (!validation.valid) {
-      Swal.fire("File tidak cocok", validation.errors.join("\n"), "error");
-      return;
-    }
-    const selection = getBackupRestoreSelection();
-    if (!selection.collections.length && !selection.semesterData && !selection.localStorage) {
-      Swal.fire("Tidak ada pilihan", "Pilih minimal satu bagian data untuk direstore.", "warning");
+    const payload = await readSelectedBackupFile();
+    if (!payload?.collections || payload.app !== "DATA SISWA") {
+      Swal.fire("File tidak cocok", "File ini bukan backup aplikasi Data Siswa.", "error");
       return;
     }
 
-    const impact = await calculateRestoreImpact(payload, selection);
     const confirm = await Swal.fire({
       title: "Restore backup?",
-      html: `
-        <p>Masukkan password admin. Bagian yang dipilih akan ditulis ulang ke Supabase.</p>
-        <p><strong>${selection.collections.length}</strong> collection, data semester: <strong>${selection.semesterData ? "ya" : "tidak"}</strong>, local storage: <strong>${selection.localStorage ? "ya" : "tidak"}</strong>.</p>
-        ${renderRestoreImpactTable(impact)}
-        <p>Backup otomatis sebelum restore: <strong>${selection.autoBackup ? "aktif" : "nonaktif"}</strong>.</p>
-      `,
+      html: "Masukkan password admin. Dokumen dari file backup akan ditulis ulang ke Supabase.",
       input: "password",
       inputPlaceholder: "Password admin",
       icon: "warning",
@@ -523,32 +343,17 @@ async function restoreFullBackup() {
 
     window.AppLoading?.set("backup-restore", true, { title: "Restore berjalan...", message: "Mohon tunggu sebentar." });
     try {
-      if (selection.autoBackup) {
-        setBackupStatus("backupRestoreStatus", "Membuat backup otomatis sebelum restore...");
-        const safetyPayload = await createBackupPayload({ statusId: "backupRestoreStatus" });
-        downloadBackupPayload(safetyPayload, "backup-sebelum-restore");
-      }
       let count = 0;
-      for (const collectionName of selection.collections) {
-        const rows = payload.collections?.[collectionName] || [];
+      for (const [collectionName, rows] of Object.entries(payload.collections || {})) {
         setBackupStatus("backupRestoreStatus", `Restore ${collectionName}...`);
         count += await writeBackupCollection(collectionName, rows);
       }
-      if (selection.semesterData) {
-        for (const [termId, termData] of Object.entries(payload.semester_data || {})) {
-          count += await writeBackupSemesterCollection(termId, "siswa", termData.siswa || []);
-          count += await writeBackupSemesterCollection(termId, "kelas", termData.kelas || []);
-        }
+      for (const [termId, termData] of Object.entries(payload.semester_data || {})) {
+        count += await writeBackupSemesterCollection(termId, "siswa", termData.siswa || []);
+        count += await writeBackupSemesterCollection(termId, "kelas", termData.kelas || []);
       }
-      const localCount = selection.localStorage ? restoreBackupLocalStorage(payload.local_storage || {}) : 0;
+      const localCount = restoreBackupLocalStorage(payload.local_storage || {});
       setBackupStatus("backupRestoreStatus", `Restore selesai. ${count} dokumen ditulis. ${localCount} item lokal dipulihkan.`);
-      window.AuditLog?.record?.("backup_restore", {
-        ringkasan: `Restore selesai: ${count} dokumen, ${localCount} item lokal.`,
-        collections: selection.collections,
-        restore_semester_data: selection.semesterData,
-        restore_local_storage: selection.localStorage,
-        backup_version: payload.version || "legacy"
-      }, { module: "Backup Restore", title: "Restore Backup" });
       await Swal.fire("Restore selesai", `${count} dokumen ditulis dan ${localCount} item lokal dipulihkan. Silakan logout dan login ulang.`, "success");
     } finally {
       window.AppLoading?.set("backup-restore", false);
@@ -651,10 +456,6 @@ async function resetAllApplicationData() {
       }
       localStorage.clear();
       setBackupStatus("backupCleanStatus", `Selesai. ${deleted} dokumen dihapus. Cache lokal dibersihkan.`);
-      window.AuditLog?.record?.("reset_all_data", {
-        ringkasan: `Reset semua data selesai. ${deleted} dokumen dihapus.`,
-        deleted
-      }, { module: "Backup Restore", title: "Reset Semua Data" });
       await Swal.fire("Selesai", `${deleted} dokumen dihapus. Aplikasi siap diisi dari awal.`, "success");
       window.location.href = "login.html";
     } finally {

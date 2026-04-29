@@ -29,7 +29,6 @@
   let kepangawasanMapelOptions = [];
   let kepangawasanGuruOptions = [];
   let kepangawasanState = loadKepangawasanState();
-  let lastKepangawasanPageHtml = "";
 
   function escapeHtml(value) {
     if (global.AppUtils?.escapeHtml) return global.AppUtils.escapeHtml(value);
@@ -1848,11 +1847,7 @@
   function renderKepangawasanState() {
     const content = global.document.getElementById("content");
     if (!content) return;
-    const nextHtml = renderKepangawasanPage();
-    if (nextHtml !== lastKepangawasanPageHtml || !content.children.length) {
-      content.innerHTML = nextHtml;
-      lastKepangawasanPageHtml = nextHtml;
-    }
+    content.innerHTML = renderKepangawasanPage();
   }
 
   function setKepangawasanTab(tab) {
@@ -2004,12 +1999,6 @@
     kepangawasanState.pembagianAssignments = generatePembagianRuangAssignments();
     saveKepangawasanState();
     renderKepangawasanState();
-    global.AuditLog?.record?.("kepangawasan_generate_ruang", {
-      ringkasan: `Pembagian ruang digenerate: ${kepangawasanState.pembagianRooms} ruang, ${kepangawasanState.pembagianInvigilatorsPerRoom} pengawas/ruang, mode ${kepangawasanState.pembagianOrderMode}.`,
-      rooms: kepangawasanState.pembagianRooms,
-      invigilators_per_room: kepangawasanState.pembagianInvigilatorsPerRoom,
-      order_mode: kepangawasanState.pembagianOrderMode
-    }, { module: "Kepangawasan", title: "Generate Pembagian Ruang" });
     showKepangawasanToast("Pembagian ruang berhasil digenerate.");
   }
 
@@ -2132,11 +2121,6 @@
         saveKepangawasanState();
         renderKepangawasanState();
         global.Swal?.close?.();
-        global.AuditLog?.record?.("kepangawasan_publish_kartu", {
-          ringkasan: `Kartu pengawas ditampilkan di dashboard guru untuk ${records.length} guru.`,
-          guru_count: records.length,
-          sent_at: publishedAt
-        }, { module: "Kepangawasan", title: "Kirim Kartu Pengawas" });
         showKepangawasanToast(`Kartu pengawas tampil di dashboard guru. Dikirim ${global.AppUtils?.formatDateTimeId ? global.AppUtils.formatDateTimeId(publishedAt) : new Date(publishedAt).toLocaleString("id-ID")}`);
         return;
       }
@@ -2146,9 +2130,6 @@
       saveKepangawasanState();
       renderKepangawasanState();
       global.Swal?.close?.();
-      global.AuditLog?.record?.("kepangawasan_unpublish_kartu", {
-        ringkasan: "Kartu pengawas disembunyikan dari dashboard guru."
-      }, { module: "Kepangawasan", title: "Sembunyikan Kartu Pengawas" });
       showKepangawasanToast("Kartu pengawas disembunyikan dari dashboard guru.");
     } catch (error) {
       console.error("Gagal mengatur kartu pengawas dashboard guru", error);

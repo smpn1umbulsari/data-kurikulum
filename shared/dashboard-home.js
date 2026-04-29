@@ -1,147 +1,81 @@
 (function initDashboardHome(global) {
   if (global.DashboardHome) return;
 
-  const HOME_CACHE_PREFIX = "guruSpenturiHomeSnapshot:v3";
-  let lastHomeLoadOptions = null;
-  let homeRefreshInFlight = null;
+  const homeMapelLookupCache = new WeakMap();
+  const homeTugasLookupCache = new WeakMap();
+  const homeGuruByKodeCache = new WeakMap();
+  const homeGuruAliasCache = new WeakMap();
+  const HOME_PRESENCE_CACHE_TTL_MS = 15000;
+  const homePresenceCache = new Map();
+  const homePresenceInflight = new Map();
 
   function getDocumentsApi() {
     return global.SupabaseDocuments;
   }
 
-  function getHomeCacheKey(context = {}) {
-    return [
-      HOME_CACHE_PREFIX,
-      String(context.role || "dashboard").toLowerCase(),
-      context.isKoordinator ? "koordinator" : context.isGuru ? "guru" : context.isAdmin ? "admin" : "other",
-      String(context.kodeGuru || "none").toLowerCase(),
-      Array.isArray(context.coordinatorLevels) ? context.coordinatorLevels.join("-") : ""
-    ].join(":");
-  }
-
-  function readHomeSnapshot(context = {}) {
-    try {
-      return JSON.parse(global.localStorage.getItem(getHomeCacheKey(context)) || "null");
-    } catch {
-      return null;
-    }
-  }
-
-  function captureHomeSnapshot(context = {}) {
-    try {
-      const nodes = [...global.document.querySelectorAll("[id^='home'], [id^='guruHome']")];
-      const values = nodes
-        .filter(node => node.id)
-        .map(node => ({
-          id: node.id,
-          html: node.innerHTML,
-          hidden: Boolean(node.hidden),
-          className: node.className || ""
-        }));
-      global.localStorage.setItem(getHomeCacheKey(context), JSON.stringify({
-        savedAt: new Date().toISOString(),
-        values
-      }));
-    } catch {
-      // Cache tampilan hanya optimasi; jangan ganggu dashboard kalau storage penuh.
-    }
-  }
-
-  function applyHomeSnapshot(context = {}) {
-    const snapshot = readHomeSnapshot(context);
-    if (!snapshot?.values?.length) return false;
-    snapshot.values.forEach(item => {
-      const node = global.document.getElementById(item.id);
-      if (!node) return;
-      node.innerHTML = item.html || "";
-      node.hidden = Boolean(item.hidden);
-      if (typeof item.className === "string") node.className = item.className;
+  function getHomeMapelLookup(mapelList = []) {
+    if (!Array.isArray(mapelList)) return new Map();
+    const existing = homeMapelLookupCache.get(mapelList);
+    if (existing) return existing;
+    const lookup = new Map();
+    mapelList.forEach(item => {
+      const key = String(item?.kode_mapel || item?.id || "").trim().toUpperCase();
+      if (!key || lookup.has(key)) return;
+      lookup.set(key, item);
     });
-    const statusNode = global.document.getElementById("homeUpdatedAt");
-    if (statusNode && snapshot.savedAt) {
-      const savedAt = global.AppUtils?.formatDateTimeId
-        ? global.AppUtils.formatDateTimeId(snapshot.savedAt)
-        : new Date(snapshot.savedAt).toLocaleString("id-ID");
-      statusNode.innerHTML = `${statusNode.innerHTML} <span class="home-cache-badge">cache ${escapeHtml(savedAt)}</span>`;
-    }
-    return true;
+    homeMapelLookupCache.set(mapelList, lookup);
+    return lookup;
   }
 
-  function setHomeRefreshState(isRefreshing = false) {
-    global.document?.body?.classList.toggle("home-refreshing", Boolean(isRefreshing));
-    global.document?.querySelectorAll?.(".home-refresh-btn").forEach(button => {
-      button.disabled = Boolean(isRefreshing);
-      button.textContent = isRefreshing ? "Menyegarkan..." : "Refresh";
+  function getHomeTugasLookup(tugasList = []) {
+    if (!Array.isArray(tugasList)) return new Map();
+    const existing = homeTugasLookupCache.get(tugasList);
+    if (existing) return existing;
+    const lookup = new Map();
+    tugasList.forEach(item => {
+      const key = String(item?.id || "").trim();
+      if (!key || lookup.has(key)) return;
+      lookup.set(key, item);
     });
+    homeTugasLookupCache.set(tugasList, lookup);
+    return lookup;
   }
 
-  const DASHBOARD_FETCH_TTL_MS = 15000;
-  const dashboardFetchCache = new Map();
-
-  function cloneRows(rows = []) {
-    return rows.map(row => ({ ...(row || {}) }));
+  function getHomeGuruByKodeLookup(guruList = []) {
+    if (!Array.isArray(guruList)) return new Map();
+    const existing = homeGuruByKodeCache.get(guruList);
+    if (existing) return existing;
+    const lookup = new Map();
+    guruList.forEach(item => {
+      const key = String(item?.kode_guru || "").trim();
+      if (!key || lookup.has(key)) return;
+      lookup.set(key, item);
+    });
+    homeGuruByKodeCache.set(guruList, lookup);
+    return lookup;
   }
 
-  function readDashboardFetchCache(key) {
-    const cached = dashboardFetchCache.get(key);
-    if (!cached) return null;
-    if (Date.now() - cached.fetchedAt > DASHBOARD_FETCH_TTL_MS) {
-      dashboardFetchCache.delete(key);
-      return null;
-    }
-    return cached;
-  }
-
-  async function withDashboardFetchCache(key, loader) {
-    const cached = readDashboardFetchCache(key);
-    if (cached?.value) {
-      if (Array.isArray(cached.value)) return cloneRows(cached.value);
-      return cached.value;
-    }
-    if (cached?.promise) {
-      const data = await cached.promise;
-      return Array.isArray(data) ? cloneRows(data) : data;
-    }
-
-    const pending = Promise.resolve()
-      .then(loader)
-      .then(data => {
-        dashboardFetchCache.set(key, {
-          fetchedAt: Date.now(),
-          value: Array.isArray(data) ? cloneRows(data) : data,
-          promise: null
+  function getHomeGuruAliasLookup(guruList = []) {
+    if (!Array.isArray(guruList)) return new Map();
+    const existing = homeGuruAliasCache.get(guruList);
+    if (existing) return existing;
+    const lookup = new Map();
+    guruList.forEach(guru => {
+      [
+        guru?.kode_guru,
+        guru?.nip,
+        global.AdminUsersIdentity?.makeGuruUsername ? global.AdminUsersIdentity.makeGuruUsername(guru) : "",
+        global.AdminUsersIdentity?.getGuruName ? global.AdminUsersIdentity.getGuruName(guru) : guru?.nama,
+        global.AdminUsersIdentity?.getGuruUsernameName ? global.AdminUsersIdentity.getGuruUsernameName(guru) : guru?.nama
+      ]
+        .map(value => normalizeHomeIdentity(value))
+        .filter(Boolean)
+        .forEach(alias => {
+          if (!lookup.has(alias)) lookup.set(alias, guru);
         });
-        return data;
-      })
-      .catch(error => {
-        dashboardFetchCache.delete(key);
-        throw error;
-      });
-
-    dashboardFetchCache.set(key, {
-      fetchedAt: Date.now(),
-      value: null,
-      promise: pending
     });
-
-    const data = await pending;
-    return Array.isArray(data) ? cloneRows(data) : data;
-  }
-
-  async function getCachedCollectionRows(collectionName, queryFactory = null) {
-    return withDashboardFetchCache(`collection:${collectionName}`, async () => {
-      const documentsApi = getDocumentsApi();
-      const query = typeof queryFactory === "function" ? queryFactory() : documentsApi.collection(collectionName);
-      const snapshot = await query.get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    });
-  }
-
-  async function getCachedDocumentRow(collectionName, docId) {
-    return withDashboardFetchCache(`document:${collectionName}:${docId}`, async () => {
-      const snapshot = await getDocumentsApi().collection(collectionName).doc(docId).get();
-      return snapshot.exists ? { id: snapshot.id, ...snapshot.data() } : null;
-    });
+    homeGuruAliasCache.set(guruList, lookup);
+    return lookup;
   }
 
   function escapeHtml(value) {
@@ -165,13 +99,13 @@
 
   function getMapelName(mapelList, mapelKode) {
     const target = String(mapelKode || "").trim().toUpperCase();
-    const mapel = mapelList.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target);
+    const mapel = getHomeMapelLookup(mapelList).get(target);
     return mapel?.nama_mapel || mapel?.kode_mapel || mapelKode || "-";
   }
 
   function getMapelJp(mapelList, mapelKode) {
     const target = String(mapelKode || "").trim().toUpperCase();
-    const mapel = mapelList.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target);
+    const mapel = getHomeMapelLookup(mapelList).get(target);
     return Number(mapel?.jp || 0);
   }
 
@@ -232,9 +166,9 @@
     const tableRows = rows.length
       ? rows.map(row => `
           <tr>
-            <td class="home-invigilator-day">${escapeHtml(String(row.hari || "-").toUpperCase())}</td>
+            <td>${escapeHtml(String(row.hari || "-").toUpperCase())}</td>
             <td class="home-invigilator-time">${escapeHtml(row.time_label || "-")}</td>
-            <td class="home-invigilator-mapel">${escapeHtml(row.mapel_short || row.mapel || "-")}</td>
+            <td>${escapeHtml(row.mapel_short || row.mapel || "-")}</td>
             <td class="home-invigilator-room">${escapeHtml(row.ruang_label || "-")}</td>
           </tr>
         `).join("")
@@ -248,12 +182,18 @@
       </div>
       <div class="table-container home-invigilator-table-wrap">
         <table class="mapel-table home-invigilator-table">
+          <colgroup>
+            <col style="width: 60px;">
+            <col style="width: 100px;">
+            <col style="width: 100px;">
+            <col style="width: 60px;">
+          </colgroup>
           <thead>
             <tr>
-              <th class="home-invigilator-day">Hari</th>
-              <th class="home-invigilator-time">Waktu</th>
-              <th class="home-invigilator-mapel">MAPEL</th>
-              <th class="home-invigilator-room">R</th>
+              <th>Hari</th>
+              <th>Waktu</th>
+              <th>MAPEL</th>
+              <th>R</th>
             </tr>
           </thead>
           <tbody>${tableRows}</tbody>
@@ -269,6 +209,7 @@
   }
 
   function getTugasNames(assignment, tugasList) {
+    const tugasLookup = getHomeTugasLookup(tugasList);
     const slots = [
       ["utama_id", "utama_nama"],
       ["ekuivalen_1_id", "ekuivalen_1_nama"],
@@ -279,8 +220,8 @@
       ["sekolah_3_id", "sekolah_3_nama"]
     ];
     return slots.map(([idField, nameField]) => {
-      const id = assignment?.[idField] || "";
-      const tugas = tugasList.find(item => item.id === id);
+      const id = String(assignment?.[idField] || "").trim();
+      const tugas = id ? tugasLookup.get(id) : null;
       return assignment?.[nameField] || tugas?.nama || "";
     }).filter(Boolean);
   }
@@ -313,11 +254,16 @@
   }
 
   async function loadRecentPresenceRows(limit = 25) {
-    return withDashboardFetchCache(`presence:${limit}`, async () => {
-      if (global.DashboardHomeData?.loadPresenceRows) {
-        return global.DashboardHomeData.loadPresenceRows(limit);
-      }
-      const documentsApi = getDocumentsApi();
+    const cacheKey = String(Number(limit) || 25);
+    const cached = homePresenceCache.get(cacheKey);
+    if (cached && Date.now() - cached.fetchedAt <= HOME_PRESENCE_CACHE_TTL_MS) {
+      return cached.rows.map(item => ({ ...item }));
+    }
+    if (homePresenceInflight.has(cacheKey)) {
+      return homePresenceInflight.get(cacheKey);
+    }
+    const documentsApi = getDocumentsApi();
+    const fetchPromise = (async () => {
       if (documentsApi?.client?.from && documentsApi.table) {
         const { data, error } = await documentsApi.client
           .from(documentsApi.table)
@@ -327,24 +273,29 @@
           .limit(limit);
 
         if (!error) {
-          return (data || []).map(row => ({ id: row.id, ...row.data }));
+          const rows = (data || []).map(row => ({ id: row.id, ...row.data }));
+          homePresenceCache.set(cacheKey, {
+            fetchedAt: Date.now(),
+            rows
+          });
+          return rows.map(item => ({ ...item }));
         }
       }
 
       const snapshot = await documentsApi.collection("user_presence").orderBy("last_seen_at", "desc").limit(limit).get();
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    });
-  }
-
-  async function loadHomeNilaiRows(documentsApi, options = {}) {
-    if (!options.force && typeof documentsApi?.getPersistedCollectionRowsAsync === "function") {
-      const cachedRows = await documentsApi.getPersistedCollectionRowsAsync("nilai");
-      if (cachedRows.length) {
-        return cachedRows.map(row => ({ id: row.id, ...(row.data || {}) }));
-      }
+      const rows = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      homePresenceCache.set(cacheKey, {
+        fetchedAt: Date.now(),
+        rows
+      });
+      return rows.map(item => ({ ...item }));
+    })();
+    homePresenceInflight.set(cacheKey, fetchPromise);
+    try {
+      return await fetchPromise;
+    } finally {
+      homePresenceInflight.delete(cacheKey);
     }
-    const nilaiSnap = await documentsApi.collection("nilai").get();
-    return nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   }
 
   function renderMainHome() {
@@ -389,7 +340,6 @@
           <p id="guruHomeUpdatedAt">Memuat tugas mengajar, tugas tambahan, dan kelas wali.</p>
           <div class="dashboard-hero-actions">
             <button class="btn-secondary" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
-            <button class="btn-secondary home-offline-cta" data-native-only hidden onclick="prepareGuruOfflineData()">Siapkan Offline</button>
             <button class="btn-secondary" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
             <button class="btn-secondary" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
           </div>
@@ -401,15 +351,6 @@
         </div>
       </section>
       <section class="dashboard-grid">
-        <article class="dashboard-card-lite home-mobile-focus-card">
-          <span class="dashboard-card-label">Mode Smartphone</span>
-          <h3>Kerja cepat di HP</h3>
-          <div class="dashboard-mini-list">
-            <span><strong>1. Siapkan Offline</strong><b>saat internet aktif</b></span>
-            <span><strong>2. Input Nilai</strong><b>simpan draft saat offline</b></span>
-            <span><strong>3. Sinkronkan</strong><b>ketika online kembali</b></span>
-          </div>
-        </article>
         <article class="dashboard-card-lite home-teaching-panel">
           <div class="home-panel-head">
             <div>
@@ -564,7 +505,7 @@
         ? onlineUsers.map(item => `
             <span class="dashboard-online-chip">
               <strong>${escapeHtml(getPresenceUserLabel(item))}</strong>
-              <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} - ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
+              <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} · ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
             </span>
           `).join("")
         : "<span>Belum ada user yang sedang online.</span>");
@@ -612,7 +553,6 @@
       const tugasNames = getTugasNames(tugasGuru, tugas);
       const waliRows = kelas.filter(item => String(item.kode_guru || "").trim() === kodeGuru);
       const teachingRows = buildTeachingComparisonRows(myAssignments, mapelAsli, myAssignmentsBayangan, mapel);
-      global.DashboardShell?.setWaliAccessState?.(Boolean(waliRows.length), waliRows.map(item => getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas).filter(Boolean));
 
       setText("guruHomeName", formatGuruName(guru, user));
       setText("guruHomeMengajarCountLabel", `${teachingRows.length} mapel diajar`);
@@ -698,7 +638,9 @@
   }
 
   function getHomeGuruByKode(guruList = [], kodeGuru = "") {
-    return guruList.find(item => String(item?.kode_guru || "").trim() === String(kodeGuru || "").trim()) || null;
+    const key = String(kodeGuru || "").trim();
+    if (!key) return null;
+    return getHomeGuruByKodeLookup(guruList).get(key) || null;
   }
 
   function resolveHomeGuruFromUser(user = {}, guruList = []) {
@@ -720,19 +662,12 @@
 
     if (!userAliases.length) return null;
 
-    return guruList.find(guru => {
-      const guruAliases = [
-        guru?.kode_guru,
-        guru?.nip,
-        global.AdminUsersIdentity?.makeGuruUsername ? global.AdminUsersIdentity.makeGuruUsername(guru) : "",
-        global.AdminUsersIdentity?.getGuruName ? global.AdminUsersIdentity.getGuruName(guru) : guru?.nama,
-        global.AdminUsersIdentity?.getGuruUsernameName ? global.AdminUsersIdentity.getGuruUsernameName(guru) : guru?.nama
-      ]
-        .map(value => normalizeHomeIdentity(value))
-        .filter(Boolean);
-
-      return guruAliases.some(alias => userAliases.includes(alias));
-    }) || null;
+    const aliasLookup = getHomeGuruAliasLookup(guruList);
+    for (const alias of userAliases) {
+      const matchedGuru = aliasLookup.get(alias);
+      if (matchedGuru) return matchedGuru;
+    }
+    return null;
   }
 
   function getHomeResolvedContext(context = {}, guruList = []) {
@@ -807,9 +742,9 @@
     if (context.isGuru) {
       return `
         <button class="btn-secondary" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
-        <button class="btn-secondary home-wali-action" onclick="loadPage('wali-rekap-nilai')">Rekap Nilai Wali</button>
-        <button class="btn-secondary home-wali-action" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
-        <button class="btn-secondary home-wali-action" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
+        <button class="btn-secondary" onclick="loadPage('wali-rekap-nilai')">Rekap Nilai Wali</button>
+        <button class="btn-secondary" onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
+        <button class="btn-secondary" onclick="loadPage('wali-kelengkapan')">Kelengkapan Nilai</button>
       `;
     }
     return `
@@ -887,7 +822,7 @@
   }
 
   function getHomeStudentsForAssignment(assignment = {}, siswaList = [], mapelList = []) {
-    const mapel = mapelList.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === String(assignment.mapel_kode || "").trim().toUpperCase());
+    const mapel = getHomeMapelLookup(mapelList).get(String(assignment.mapel_kode || "").trim().toUpperCase()) || null;
     return siswaList
       .map(siswa => ({ ...siswa, kelasBayanganParts: getSiswaKelasBayanganParts(siswa) }))
       .filter(siswa => {
@@ -972,19 +907,27 @@
     const assignments = getHomeVisibleAssignments(context, data);
     const limit = context.isAdmin || context.isGuruAdmin ? 10 : 8;
     const fieldConfigs = getHomeSummaryFieldConfigs(getHomeNilaiInputMode());
+    const mapelLookup = getHomeMapelLookup(data.mapelBayangan || []);
+    const nilaiByAssignment = new Map();
+    (data.nilai || []).forEach(item => {
+      const assignmentKey = getHomeAssignmentKey(item);
+      if (!assignmentKey) return;
+      let bucket = nilaiByAssignment.get(assignmentKey);
+      if (!bucket) {
+        bucket = new Map();
+        nilaiByAssignment.set(assignmentKey, bucket);
+      }
+      const nipd = String(item.nipd || "").trim();
+      if (!nipd) return;
+      const current = bucket.get(nipd);
+      if (!current || getHomeNilaiDocTimestamp(item) >= getHomeNilaiDocTimestamp(current)) {
+        bucket.set(nipd, item);
+      }
+    });
     const rows = assignments.map(assignment => {
       const students = getHomeStudentsForAssignment(assignment, data.siswa || [], data.mapelBayangan || []);
       const total = students.length;
-      const nilaiBucket = new Map();
-      (data.nilai || []).forEach(item => {
-        if (!isHomeNilaiDocMatchingAssignment(item, assignment)) return;
-        const nipd = String(item.nipd || "").trim();
-        if (!nipd) return;
-        const current = nilaiBucket.get(nipd);
-        if (!current || getHomeNilaiDocTimestamp(item) >= getHomeNilaiDocTimestamp(current)) {
-          nilaiBucket.set(nipd, item);
-        }
-      });
+      const nilaiBucket = nilaiByAssignment.get(getHomeAssignmentKey(assignment)) || new Map();
 
       const fields = fieldConfigs.map(field => {
         const filled = students.reduce((count, student) => {
@@ -1012,7 +955,7 @@
         return score;
       }, 0);
 
-      const mapel = data.mapelBayangan?.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === String(assignment.mapel_kode || "").trim().toUpperCase());
+      const mapel = mapelLookup.get(String(assignment.mapel_kode || "").trim().toUpperCase()) || null;
       return {
         label: `${assignment.tingkat} ${String(assignment.rombel || "").toUpperCase()} - ${mapel?.kode_mapel || assignment.mapel_kode || "-"}`,
         total,
@@ -1131,13 +1074,6 @@
     return `
       <div class="table-container home-teaching-table-wrap">
         <table class="mapel-table home-teaching-table">
-          <colgroup>
-            <col style="width: 80px;">
-            <col style="width: 80px;">
-            <col style="width: 80px;">
-            <col style="width: 80px;">
-            <col style="width: 80px;">
-          </colgroup>
           <thead>
             <tr>
               <th>Kode Mapel</th>
@@ -1166,35 +1102,36 @@
   }
 
   function renderTeachingSimpleTable(title = "", rows = [], emptyMessage = "Belum ada data.") {
-    const tableRows = rows.length
-      ? rows.map(row => `
-          <tr>
-            <td class="home-summary-label"><strong>${escapeHtml(row.kode || "-")}</strong></td>
-            <td>${escapeHtml(row.kelas || "-")}</td>
-            <td>${escapeHtml(String(row.totalJp || 0))}</td>
-          </tr>
-        `).join("")
-      : `<tr><td colspan="3" class="empty-cell">${escapeHtml(emptyMessage)}</td></tr>`;
     return `
       <div class="home-teaching-simple-block">
         <div class="home-teaching-simple-title">${escapeHtml(title)}</div>
-        <div class="table-container home-teaching-table-wrap">
-          <table class="mapel-table home-teaching-table home-teaching-table--simple">
-            <colgroup>
-              <col style="width: 80px;">
-              <col style="width: 80px;">
-              <col style="width: 80px;">
-            </colgroup>
-            <thead>
-              <tr>
-                <th>Mapel</th>
-                <th>Kelas</th>
-                <th>JP</th>
-              </tr>
-            </thead>
-            <tbody>${tableRows}</tbody>
-          </table>
-        </div>
+        ${rows.length ? `
+          <div class="table-container home-teaching-table-wrap">
+            <table class="mapel-table home-teaching-table home-teaching-table--simple">
+              <colgroup>
+              <col style="width: 95px;">
+              <col style="width: 95px;">
+              <col style="width: 95px;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>Mapel</th>
+                  <th>Kelas</th>
+                  <th>JP</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows.map(row => `
+                  <tr>
+                    <td class="home-summary-label"><strong>${escapeHtml(row.kode || "-")}</strong></td>
+                    <td>${escapeHtml(row.kelas || "-")}</td>
+                    <td>${escapeHtml(String(row.totalJp || 0))}</td>
+                  </tr>
+                `).join("")}
+              </tbody>
+            </table>
+          </div>
+        ` : `<div class="empty-panel">${escapeHtml(emptyMessage)}</div>`}
       </div>
     `;
   }
@@ -1212,10 +1149,10 @@
     if (!rows.length) return `<div class="empty-panel">Belum ada pembagian mengajar yang bisa ditampilkan.</div>`;
     const fields = rows[0]?.fields || getHomeSummaryFieldConfigs(getHomeNilaiInputMode());
     return `
-      <table class="mapel-table home-summary-table plain-mobile-table">
+      <table class="mapel-table home-summary-table">
         <colgroup>
           <col style="width: 100px;">
-          ${fields.map(() => `<col style="width: 60px;">`).join("")}
+          ${fields.map(() => `<col style="width: 50px;">`).join("")}
         </colgroup>
         <thead>
           <tr>
@@ -1256,7 +1193,6 @@
             `}
             <div class="dashboard-hero-actions">
               ${getHomeQuickActions(context)}
-              <button type="button" class="btn-secondary home-refresh-btn" onclick="window.DashboardHome?.refreshHome?.()">Refresh</button>
             </div>
           </div>
         ${shouldUseGuruHero ? `
@@ -1368,76 +1304,51 @@
     const context = getHomeRoleContext(options);
     if (options.pageTitle) options.pageTitle.innerText = context.isKoordinator ? "Beranda Koordinator" : "Beranda Guru";
     if (options.content) options.content.innerHTML = renderHomePageShell(context);
-    const loadOptions = { ...context, getCollectionQuery: options.getCollectionQuery };
-    lastHomeLoadOptions = loadOptions;
-    if (!applyHomeSnapshot(context)) options.loadHomeStats?.(loadOptions);
+    options.loadHomeStats?.({ ...context, getCollectionQuery: options.getCollectionQuery });
   }
 
   function renderKoordinatorHomePage(options = {}) {
     const context = getHomeRoleContext({ ...options, role: "guru", hasCoordinatorAccess: true });
     if (options.pageTitle) options.pageTitle.innerText = "Beranda Koordinator";
     if (options.content) options.content.innerHTML = renderHomePageShell(context);
-    const loadOptions = { ...context, getCollectionQuery: options.getCollectionQuery };
-    lastHomeLoadOptions = loadOptions;
-    if (!applyHomeSnapshot(context)) options.loadHomeStats?.(loadOptions);
+    options.loadHomeStats?.({ ...context, getCollectionQuery: options.getCollectionQuery });
   }
 
   function renderHomePage(options = {}) {
     const context = getHomeRoleContext(options);
     if (options.pageTitle) options.pageTitle.innerText = context.isKoordinator ? "Beranda Koordinator" : context.isGuru ? "Beranda Guru" : "Beranda Dashboard";
     if (options.content) options.content.innerHTML = renderHomePageShell(context);
-    const loadOptions = { ...context, getCollectionQuery: options.getCollectionQuery };
-    lastHomeLoadOptions = loadOptions;
-    if (!applyHomeSnapshot(context)) options.loadHomeStats?.(loadOptions);
+    options.loadHomeStats?.({ ...context, getCollectionQuery: options.getCollectionQuery });
     return context.isKoordinator ? "koordinator" : context.isGuru ? "guru" : "dashboard";
   }
 
   async function loadHomeStats(options = {}) {
     const context = options.label ? options : getHomeRoleContext(options);
     const setText = (id, value) => global.AppDom?.setText?.(id, value);
-    lastHomeLoadOptions = { ...options, ...context };
-    setHomeRefreshState(true);
     try {
       const documentsApi = getDocumentsApi();
-      const data = global.DashboardHomeData?.loadHomeCollections
-        ? await global.DashboardHomeData.loadHomeCollections({ context, getCollectionQuery: options.getCollectionQuery })
-        : await (async () => {
-            const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
-            const [guru, siswa, kelas, mapelAsli, mengajarAsli, mapelBayangan, mengajarBayangan, nilaiRows, tugas, presenceRows] = await Promise.all([
-              getCachedCollectionRows("guru"),
-              getCachedCollectionRows("siswa", () => getQuery("siswa")),
-              getCachedCollectionRows("kelas", () => getQuery("kelas")),
-              getCachedCollectionRows("mapel"),
-              getCachedCollectionRows("mengajar"),
-              getCachedCollectionRows("mapel_bayangan"),
-              getCachedCollectionRows("mengajar_bayangan"),
-              getCachedCollectionRows("nilai"),
-              getCachedCollectionRows("tugas_tambahan"),
-              loadRecentPresenceRows(25)
-            ]);
-            return {
-              guru,
-              siswa,
-              kelas,
-              mapelAsli,
-              mengajarAsli,
-              mapelBayangan,
-              mengajarBayangan,
-              nilai: nilaiRows,
-              tugas,
-              presenceRows
-            };
-          })();
-      const guru = data.guru || [];
-      const siswa = data.siswa || [];
-      const kelas = data.kelas || [];
-      const mapelAsli = data.mapelAsli || [];
-      const mengajarAsli = data.mengajarAsli || [];
-      const mapelBayangan = data.mapelBayangan || [];
-      const mengajarBayangan = data.mengajarBayangan || [];
-      const nilai = (data.nilai || []).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
-      const tugas = data.tugas || [];
-      const presenceRows = data.presenceRows || [];
+      const getQuery = path => (typeof options.getCollectionQuery === "function" ? options.getCollectionQuery(path) : documentsApi.collection(path));
+      const [guruSnap, siswaSnap, kelasSnap, mapelAsliSnap, mengajarAsliSnap, mapelSnap, mengajarSnap, nilaiSnap, tugasSnap, presenceRows] = await Promise.all([
+        documentsApi.collection("guru").get(),
+        getQuery("siswa").get(),
+        getQuery("kelas").get(),
+        documentsApi.collection("mapel").get(),
+        documentsApi.collection("mengajar").get(),
+        documentsApi.collection("mapel_bayangan").get(),
+        documentsApi.collection("mengajar_bayangan").get(),
+        documentsApi.collection("nilai").get(),
+        documentsApi.collection("tugas_tambahan").get(),
+        loadRecentPresenceRows(25)
+      ]);
+      const guru = guruSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const siswa = siswaSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const kelas = kelasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const mapelAsli = mapelAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const mengajarAsli = mengajarAsliSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const mapelBayangan = mapelSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const mengajarBayangan = mengajarSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const nilai = nilaiSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(item => typeof global.isActiveTermDoc === "function" ? global.isActiveTermDoc(item) : true);
+      const tugas = tugasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       const onlineUsers = presenceRows
         .filter(item => isPresenceOnline(item))
         .sort((a, b) => new Date(b.last_seen_at || 0).getTime() - new Date(a.last_seen_at || 0).getTime())
@@ -1448,9 +1359,8 @@
       const invigilationCard = (resolvedContext.isGuru || resolvedContext.isKoordinator) && resolvedContext.kodeGuru
         ? await loadHomeInvigilationCard(documentsApi, resolvedContext.kodeGuru)
         : null;
-      const tugasGuru = resolvedContext.kodeGuru
-        ? (await getCachedDocumentRow("guru_tugas_tambahan", resolvedContext.kodeGuru)) || {}
-        : {};
+      const tugasGuruSnap = resolvedContext.kodeGuru ? await documentsApi.collection("guru_tugas_tambahan").doc(resolvedContext.kodeGuru).get() : null;
+      const tugasGuru = tugasGuruSnap?.exists ? { id: tugasGuruSnap.id, ...tugasGuruSnap.data() } : {};
       const tugasNames = getTugasNames(tugasGuru, tugas);
       const roleAssignments = getHomeVisibleAssignments(inputScopeContext, { mengajarBayangan, kelas });
       const roleAssignmentsAsli = getHomeVisibleAssignments(inputScopeContext, { mengajarBayangan: mengajarAsli, kelas });
@@ -1470,10 +1380,6 @@
         waliRows
           .map(item => getKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas)
           .filter(Boolean)
-      );
-      global.DashboardShell?.setWaliAccessState?.(
-        Boolean(resolvedContext.isKoordinator || resolvedContext.isGuruAdmin || waliClassSet.size),
-        [...waliClassSet]
       );
 
       if (context.isAdmin || resolvedContext.isGuruAdmin) {
@@ -1514,7 +1420,7 @@
           ? onlineUsers.map(item => `
               <span class="dashboard-online-chip">
                 <strong>${escapeHtml(getPresenceUserLabel(item))}</strong>
-                <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} - ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
+                <b>${escapeHtml(String(item.role || item.kode_guru || "-"))} · ${escapeHtml(formatPresenceAge(item.last_seen_at))}</b>
               </span>
             `).join("")
           : "<span>Belum ada user yang sedang online.</span>");
@@ -1612,30 +1518,17 @@
           : "<span>Belum menjadi wali kelas.</span>");
         global.AppDom?.setHtml?.("homeInvigilationContent", renderHomeInvigilationCard(invigilationCard));
       }
-      captureHomeSnapshot(context);
     } catch (error) {
       console.error(error);
       setText("homeUpdatedAt", "Ringkasan belum berhasil dimuat.");
       setText("homeInputSummaryTitle", "Rangkuman input belum berhasil dimuat.");
       setHomeInvigilationHeroVisibility(false);
       global.AppDom?.setHtml?.("homeInputSummaryTable", `<div class="empty-panel">Data rangkuman input belum berhasil dimuat.</div>`);
-    } finally {
-      setHomeRefreshState(false);
     }
   }
 
   async function loadGuruHomeStats(options = {}) {
     return loadHomeStats({ ...options, role: "guru" });
-  }
-
-  async function refreshHome() {
-    if (homeRefreshInFlight) return homeRefreshInFlight;
-    const options = lastHomeLoadOptions || getHomeRoleContext({});
-    homeRefreshInFlight = loadHomeStats({ ...options, force: true })
-      .finally(() => {
-        homeRefreshInFlight = null;
-      });
-    return homeRefreshInFlight;
   }
 
   global.DashboardHome = {
@@ -1656,7 +1549,6 @@
     renderGuruHomePage,
     renderKoordinatorHomePage,
     loadHomeStats,
-    loadGuruHomeStats,
-    refreshHome
+    loadGuruHomeStats
   };
 })(window);

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Guru Spenturi</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script>
+    document.documentElement.classList.add("role-access-pending");
+  </script>
+
+<link rel="stylesheet" href="style.css?v=20260423f">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase-config.js?v=20260408a"></script>
+<script src="shared/supabase-documents.js?v=20260414c"></script>
+<script src="shared/maintenance-mode.js?v=20260411b"></script>
+<script src="shared/spreadsheet-libs.js?v=20260414a"></script>
+
+  <script>
+    function applyDarkModePreference(isDark) {
+      document.documentElement.classList.toggle("dark", isDark);
+      if (document.body) document.body.classList.toggle("dark", isDark);
+    }
+
+    function toggleDark() {
+      const nextMode = !document.documentElement.classList.contains("dark");
+      localStorage.setItem("darkMode", nextMode ? "true" : "false");
+      applyDarkModePreference(nextMode);
+    }
+
+    if (localStorage.getItem("darkMode") === "true") {
+      document.documentElement.classList.add("dark");
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      applyDarkModePreference(localStorage.getItem("darkMode") === "true");
+    });
+  </script>
+</head>
+
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-brand">
+        <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="sidebar-brand-mark">
+        <div class="sidebar-brand-copy">
+          <button class="sidebar-brand-title" id="sidebarBrandTitle" onclick="renderHome()">Dashboard Sekolah</button>
+          <div class="sidebar-brand-meta">
+            <small id="sidebarSemesterInfo">Semester aktif</small>
+            <div id="sidebarRoleInfo" class="sidebar-role-line">Role</div>
+          </div>
+        </div>
+      </div>
+      <button class="icon-btn mobile-only" onclick="toggleSidebar()" aria-label="Tutup sidebar">X</button>
+    </div>
+
+    <div class="sidebar-quick-actions">
+      <button class="topbar-btn" onclick="toggleDark()">Mode</button>
+      <button class="topbar-btn topbar-btn-strong" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="sidebar-section-label">Navigasi</div>
+
+      <div class="menu-group role-menu role-admin role-superadmin" id="menuAdmin">
+        <button class="menu menu-parent" onclick="toggleMenu('submenuAdmin', this)">
+          <span>Admin</span>
+          <span class="menu-caret">+</span>
+        </button>
+        <div class="submenu" id="submenuAdmin">
+          <button onclick="loadPage('admin-user')">User</button>
+          <button onclick="loadPage('admin-hierarki')">Pengguna Hierarki</button>
+          <button onclick="loadPage('admin-semester')">Semester dan Tahun Pelajaran</button>
+          <button onclick="loadPage('admin-quota')">Quota</button>
+        </div>
+      </div>
+
+    <div class="menu-group role-menu role-admin role-superadmin" id="menuDataSekolah">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuDataSekolah', this)">
+        <span>Data Sekolah</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu submenu-sectioned" id="submenuDataSekolah">
+        <div class="submenu-section-label">Kepala Sekolah</div>
+        <button onclick="loadPage('admin-rapor')">Data KS</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Guru</div>
+        <button onclick="loadPage('guru-input')">Input Guru</button>
+        <button onclick="loadPage('guru-lihat')">Lihat Data</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Siswa</div>
+        <button onclick="loadPage('input')">Input Siswa</button>
+        <button onclick="loadPage('lihat')">Lihat Data</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Kelulusan</div>
+        <button onclick="loadPage('siswa-lulus')">Lihat Data</button>
+      </div>
+    </div>
+
+    <div class="menu-group role-menu role-admin role-superadmin role-urusan" id="menuKurikulum">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuKurikulum', this)">
+        <span>Kurikulum</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu submenu-sectioned" id="submenuKurikulum">
+        <div class="submenu-section-label">Administrasi Awal</div>
+        <button onclick="loadPage('kelas')">Data Kelas</button>
+        <button onclick="loadPage('mapel')">Data Mapel</button>
+        <button onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Pembagian Mengajar</div>
+        <button onclick="loadPage('mengajar')">Pembagian Mengajar</button>
+        <button onclick="loadPage('rekap-tugas-mengajar')">Rekap Administrasi</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Kalender</div>
+        <button onclick="loadPage('kalender-pendidikan')">Kalender Pendidikan</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('generate-perangkat-pembelajaran')">Generate Perangkat Pembelajaran</button>
+
+        <div class="submenu-section-divider"></div>
+        <div class="submenu-section-label">Asesmen</div>
+        <button onclick="loadPage('kepangawasan')">Kepangawasan</button>
+        <button onclick="loadPage('pembagian-ruang')">Kepersetaan</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
+        <button onclick="loadPage('nilai-input')">Input Nilai</button>
+        <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
+      </div>
+    </div>
+
+    <div class="menu-group role-menu role-guru" id="menuNilaiGuru">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuNilaiGuru', this)">
+        <span>Nilai</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu" id="submenuNilaiGuru">
+        <button id="menuNilaiGuruInputBtn" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('generate-perangkat-pembelajaran')">Generate Perangkat Pembelajaran</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
+      </div>
+    </div>
+
+    <div class="menu-group role-menu role-koordinator" id="menuSiswaKoordinator">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuSiswaKoordinator', this)">
+        <span>Data Siswa</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu" id="submenuSiswaKoordinator">
+        <button onclick="loadPage('input')">Input Data</button>
+        <button onclick="loadPage('lihat')">Lihat Data</button>
+        <button onclick="loadPage('kelas')">Data Kelas</button>
+        <button onclick="loadPage('kelas-bayangan-siswa')">Lihat Data Kelas Real</button>
+      </div>
+    </div>
+
+    <div class="menu-group role-menu role-koordinator" id="menuKurikulumKoordinator">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuKurikulumKoordinator', this)">
+        <span>Kurikulum</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu submenu-sectioned" id="submenuKurikulumKoordinator">
+        <div class="submenu-section-label">Nilai</div>
+        <button data-ai-prompt-menu="true" onclick="loadPage('generate-perangkat-pembelajaran')">Generate Perangkat Pembelajaran</button>
+        <button data-ai-prompt-menu="true" onclick="loadPage('ai-soal')">Generate Prompt AI</button>
+        <button onclick="loadPage('nilai-input')">Input Nilai</button>
+        <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
+      </div>
+    </div>
+
+    <div class="sidebar-menu-divider"></div>
+
+    <div class="menu-group role-menu role-admin role-superadmin role-koordinator" id="menuWaliKelas">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuWaliKelas', this)">
+        <span>Wali Kelas</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu" id="submenuWaliKelas">
+        <button onclick="loadPage('wali-kehadiran')">Kehadiran Siswa</button>
+        <button onclick="loadPage('wali-kelengkapan')">Cek Kelengkapan Nilai Siswa</button>
+        <button onclick="loadPage('wali-rekap-nilai')">Rekap Nilai</button>
+        <button onclick="loadPage('nilai-rapor')">Cetak Rapor</button>
+      </div>
+    </div>
+
+    <div class="menu-group role-menu role-admin role-superadmin">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuKelasBayangan', this)">
+        <span>Kelas Real</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu" id="submenuKelasBayangan">
+        <button onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
+        <button onclick="loadPage('kelas-bayangan-siswa')">Data Siswa</button>
+        <button onclick="loadPage('kelas-bayangan-mapel')">Data Mapel</button>
+        <button onclick="loadPage('kelas-bayangan-mengajar')">Pembagian Mengajar</button>
+        <button onclick="loadPage('kelas-bayangan-rekap-mengajar')">Rekap Tugas Mengajar</button>
+      </div>
+    </div>
+
+    <div class="sidebar-menu-divider"></div>
+
+    <div class="menu-group role-menu role-admin role-superadmin" id="menuBackupAdmin">
+      <button class="menu menu-parent" onclick="toggleMenu('submenuBackupAdmin', this)">
+        <span>Backup & Restore</span>
+        <span class="menu-caret">+</span>
+      </button>
+      <div class="submenu" id="submenuBackupAdmin">
+        <button onclick="loadPage('admin-backup')">Backup & Restore</button>
+      </div>
+    </div>
+
+    <div class="sidebar-footer">
+      <span class="sidebar-footer-kicker">Sistem aktif</span>
+      <span class="sidebar-footer-line">
+        <span class="sidebar-footer-version" id="sidebarVersionLabel">Ver 1.20a</span>
+        <span class="sidebar-footer-separator">|</span>
+        <strong id="supabaseProjectInfo">Supabase</strong>
+      </span>
+    </div>
+  </aside>
+  <div class="sidebar-overlay" onclick="toggleSidebar(true)"></div>
+
+  <div class="main-panel">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" onclick="toggleSidebar()" aria-label="Buka sidebar">Menu</button>
+        <button class="topbar-btn topbar-btn-home topbar-btn-header" onclick="renderHome()">Beranda</button>
+        <span id="guruOfflineStatusPill" class="guru-offline-status" title="Status koneksi Guru Spenturi">Online</span>
+        <div class="topbar-title">
+          <span>Panel Administrasi</span>
+          <h1 id="pageTitle">Beranda Dashboard</h1>
+        </div>
+      </div>
+    </header>
+
+    <main class="content" id="content"></main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="shared/app-utils.js?v=20260410a"></script>
+<script src="shared/app-dom.js?v=20260410a"></script>
+<script src="shared/app-loading.js?v=20260414b"></script>
+<script src="shared/app-lifecycle.js?v=20260410a"></script>
+<script src="shared/app-print.js?v=20260410a"></script>
+<script src="shared/app-router.js?v=20260410a"></script>
+<script src="shared/dashboard-shell.js?v=20260419a"></script>
+<script src="shared/dashboard-data.js?v=20260410a"></script>
+<script src="shared/network-traffic.js?v=20260415a"></script>
+<script src="shared/guru-offline.js?v=20260423a"></script>
+    <script src="shared/dashboard-home.js?v=20260423b"></script>
+    <script src="shared/dashboard-routes.js?v=20260421a"></script>
+<script src="inline-notification.js?v=20260409a"></script>
+<script src="ttd-ks.js?v=20260409b"></script>
+<script src="Semester/semester.js?v=20260419a"></script>
+<script src="Siswa/validation.js"></script>
+<script src="Siswa/crud.js?v=20260408b"></script>
+<script src="Siswa/excel.js?v=20260409b"></script>
+<script src="Siswa/murid.js?v=20260409e"></script>
+<script src="Siswa/ui.js?v=20260411b"></script>
+<script src="Siswa/kelas-bayangan.js?v=20260409b"></script>
+<script src="Siswa/siswa-lulus.js?v=20260409a"></script>
+<script src="Guru/validation.js"></script>
+<script src="Guru/crud.js"></script>
+<script src="Guru/guru.js?v=20260409a"></script>
+<script src="Guru/ui.js"></script>
+<script src="Admin/admin-users-identity.js?v=20260410a"></script>
+<script src="Admin/admin-users-service.js?v=20260413a"></script>
+<script src="Admin/admin-users-view.js?v=20260414c"></script>
+<script src="Admin/users.js?v=20260414c"></script>
+<script src="Admin/backup.js?v=20260421a"></script>
+<script src="Admin/quota.js?v=20260415a"></script>
+<script src="Mapel/crud.js?v=20260407c"></script>
+<script src="Mapel/mapel.js?v=20260408h"></script>
+<script src="Mapel/ui.js?v=20260408e"></script>
+<script src="Kelas/crud.js?v=20260408b"></script>
+<script src="Kelas/kelas.js?v=20260414c"></script>
+<script src="Kelas/ui.js?v=20260410a"></script>
+<script src="Mengajar/crud.js?v=20260406c"></script>
+<script src="Mengajar/mengajar.js?v=20260414e"></script>
+<script src="Mengajar/ui.js?v=20260414h"></script>
+<script src="TugasTambahan/tugas-tambahan.js?v=20260409i"></script>
+<script src="Kurikulum/kalender-pendidikan.js?v=20260412a"></script>
+<script src="Rekap/rekap-v2.js?v=20260409j"></script>
+<script src="Asesmen/pembagian-ruang-store.js?v=20260414a"></script>
+<script src="Asesmen/administrasi-settings.js?v=20260410a"></script>
+<script src="Asesmen/pembagian-ruang-service.js?v=20260410a"></script>
+<script src="Asesmen/pembagian-ruang-view.js?v=20260414a"></script>
+<script src="Asesmen/pembagian-ruang-v2.js?v=20260418a"></script>
+<script src="Asesmen/kepangawasan.js?v=20260421b"></script>
+<script src="Asesmen/soal-ai.js?v=20260413m"></script>
+    <script src="Nilai/nilai.js?v=20260423c"></script>
+<script src="Nilai/rapor.js?v=20260414f"></script>
+<script src="WaliKelas/wali-kelas-service.js?v=20260421a"></script>
+<script src="WaliKelas/wali-kelas-view.js?v=20260410a"></script>
+<script src="WaliKelas/wali-kelas.js?v=20260421a"></script>
+
+<script>
+  if (localStorage.getItem("login") !== "true") {
+    window.location.href = "login.html";
+  }
+
+  function logout() {
+    if (window.DashboardShell?.logout) {
+      window.DashboardShell.logout();
+      return;
+    }
+    localStorage.removeItem("login");
+    localStorage.removeItem("appUser");
+    localStorage.removeItem("appSemester");
+    window.location.href = "login.html";
+  }
+
+  function getCurrentAppUser() {
+    if (window.DashboardShell?.getCurrentAppUser) return window.DashboardShell.getCurrentAppUser();
+    if (window.AppUtils?.getStorageJson) return window.AppUtils.getStorageJson("appUser", {}) || {};
+    try {
+      return JSON.parse(localStorage.getItem("appUser") || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function getCurrentAppRole() {
+    if (window.DashboardShell?.getCurrentAppRole) return window.DashboardShell.getCurrentAppRole();
+    return getCurrentAppUser().role || "admin";
+  }
+
+  function applyMaintenanceUiState(state = {}) {
+    const panel = document.getElementById("backupMaintenancePanel") || document.getElementById("sidebarMaintenancePanel");
+    const toggle = document.getElementById("maintenanceModeToggle");
+    const statusText = document.getElementById("maintenanceStatusText");
+    if (!panel || !toggle || !statusText) return;
+
+    const isAdmin = window.MaintenanceMode?.isAdminRole
+      ? window.MaintenanceMode.isAdminRole(getCurrentAppRole())
+      : ["admin", "superadmin"].includes(getCurrentAppRole());
+    panel.hidden = !isAdmin;
+    if (!isAdmin) return;
+
+    toggle.checked = state.enabled === true;
+    panel.classList.toggle("is-active", state.enabled === true);
+    statusText.textContent = state.enabled ? "Aktif - non-admin ditahan" : "Nonaktif - sistem normal";
+  }
+
+  function markRoleAccessReady() {
+    document.documentElement.classList.remove("role-access-pending");
+  }
+
+  async function enforceDashboardMaintenanceMode() {
+    const role = getCurrentAppRole();
+    const isAdmin = window.MaintenanceMode?.isAdminRole
+      ? window.MaintenanceMode.isAdminRole(role)
+      : ["admin", "superadmin"].includes(role);
+    if (window.MaintenanceMode.peekCached().enabled && !isAdmin) {
+      window.MaintenanceMode.goToMaintenance();
+      return true;
+    }
+
+    const state = await window.MaintenanceMode.load({ force: true });
+    if (state.enabled && !isAdmin) {
+      window.MaintenanceMode.goToMaintenance();
+      return true;
+    }
+
+    applyMaintenanceUiState(state);
+    return false;
+  }
+
+  async function initializeMaintenanceToggle() {
+    if (!window.MaintenanceMode?.isAdminRole?.(getCurrentAppRole())) {
+      applyMaintenanceUiState({ enabled: false });
+      return;
+    }
+    const state = await window.MaintenanceMode.load({ force: true });
+    applyMaintenanceUiState(state);
+  }
+
+  async function handleMaintenanceToggleChange(input) {
+    if (!input || !window.MaintenanceMode?.isAdminRole?.(getCurrentAppRole())) return;
+
+    const nextEnabled = Boolean(input.checked);
+    input.disabled = true;
+
+    try {
+      const current = await window.MaintenanceMode.load({ force: true });
+      const saved = await window.MaintenanceMode.save({
+        ...current,
+        enabled: nextEnabled
+      });
+      applyMaintenanceUiState(saved);
+      Swal.fire(
+        "Status diperbarui",
+        nextEnabled
+          ? "Mode maintenance aktif. Login tetap terbuka, tetapi pengguna non-admin akan diarahkan ke halaman maintenance setelah berhasil masuk."
+          : "Mode maintenance dimatikan. Halaman login kembali normal.",
+        "success"
+      );
+    } catch (error) {
+      console.error("Gagal mengubah maintenance mode", error);
+      input.checked = !nextEnabled;
+      applyMaintenanceUiState({ enabled: !nextEnabled });
+      Swal.fire("Gagal", "Status maintenance belum berhasil disimpan.", "error");
+    } finally {
+      input.disabled = false;
+    }
+  }
+
+  function canUseCoordinatorAccess() {
+    if (window.DashboardShell?.canUseCoordinatorAccess) return window.DashboardShell.canUseCoordinatorAccess();
+    const role = getCurrentAppRole();
+    if (role === "koordinator") return true;
+    if (role === "guru") return getStoredCoordinatorLevels().length > 0;
+    return false;
+  }
+
+  function getStoredCoordinatorLevels() {
+    if (window.DashboardShell?.getStoredCoordinatorLevels) return window.DashboardShell.getStoredCoordinatorLevels();
+    const parsed = window.AppUtils?.getStorageJson
+      ? window.AppUtils.getStorageJson("appKoordinatorLevels", [])
+      : [];
+    return Array.isArray(parsed) ? parsed.map(item => String(item || "")).filter(Boolean) : [];
+  }
+
+  function setStoredCoordinatorLevels(levels) {
+    if (window.DashboardShell?.setStoredCoordinatorLevels) return window.DashboardShell.setStoredCoordinatorLevels(levels);
+    const normalized = [...new Set((Array.isArray(levels) ? levels : []).map(item => String(item || "").trim()).filter(Boolean))];
+    if (window.AppUtils?.setStorageJson) window.AppUtils.setStorageJson("appKoordinatorLevels", normalized);
+    else localStorage.setItem("appKoordinatorLevels", JSON.stringify(normalized));
+    return normalized;
+  }
+
+  function getCurrentCoordinatorLevelsSync() {
+    if (window.DashboardShell?.getCurrentCoordinatorLevelsSync) return window.DashboardShell.getCurrentCoordinatorLevelsSync();
+    return getStoredCoordinatorLevels();
+  }
+
+  async function refreshCoordinatorLevels() {
+    if (window.DashboardShell?.refreshCoordinatorLevels) return window.DashboardShell.refreshCoordinatorLevels();
+    if (!["koordinator", "guru"].includes(getCurrentAppRole())) {
+      setStoredCoordinatorLevels([]);
+      return [];
+    }
+    const kodeGuru = String(getCurrentAppUser().kode_guru || "").trim();
+    if (!kodeGuru) {
+      setStoredCoordinatorLevels([]);
+      return [];
+    }
+    try {
+      const documentsApi = window.SupabaseDocuments;
+      const snapshot = await documentsApi.collection("informasi_urusan").doc("koordinator_kelas").get();
+      const data = snapshot.exists ? snapshot.data() : {};
+      const levels = [];
+      if (String(data.kelas_7 || "").trim() === kodeGuru) levels.push("7");
+      if (String(data.kelas_8 || "").trim() === kodeGuru) levels.push("8");
+      if (String(data.kelas_9 || "").trim() === kodeGuru) levels.push("9");
+      return setStoredCoordinatorLevels(levels);
+    } catch {
+      return setStoredCoordinatorLevels([]);
+    }
+  }
+
+  function getSidebarSemesterLabel() {
+    if (window.DashboardShell?.getSidebarSemesterLabel) return window.DashboardShell.getSidebarSemesterLabel();
+    const semester = window.AppUtils?.getStorageJson
+      ? window.AppUtils.getStorageJson("appSemester", {})
+      : {};
+    if (semester?.label) return semester.label;
+    if (semester?.semester || semester?.tahun) return `${semester.semester || "-"} - ${semester.tahun || "-"}`;
+    return "GENAP - 2025/2026";
+  }
+
+  function updateSidebarSemesterInfo() {
+    if (window.DashboardShell?.updateSidebarSemesterInfo) {
+      window.DashboardShell.updateSidebarSemesterInfo({
+        getRole: getCurrentAppRole,
+        canUseCoordinatorAccess
+      });
+      return;
+    }
+    if (window.AppDom?.setText) window.AppDom.setText("sidebarSemesterInfo", getSidebarSemesterLabel());
+    else {
+      const info = document.getElementById("sidebarSemesterInfo");
+      if (info) info.innerText = getSidebarSemesterLabel();
+    }
+    const roleInfo = document.getElementById("sidebarRoleInfo");
+    if (roleInfo) {
+      const role = getCurrentAppRole();
+      const labelMap = {
+        superadmin: "Superadmin",
+        admin: "Admin",
+        guru: canUseCoordinatorAccess() ? "Guru + Koordinator" : "Guru",
+        koordinator: "Koordinator",
+        urusan: "Urusan",
+        siswa: "Siswa"
+      };
+      roleInfo.innerText = labelMap[role] || "Pengguna";
+    }
+    if (window.AppDom?.setText) window.AppDom.setText("supabaseProjectInfo", "Supabase");
+    else {
+      const supabaseInfo = document.getElementById("supabaseProjectInfo");
+      if (supabaseInfo) supabaseInfo.innerText = "Supabase";
+    }
+  }
+
+  function getDashboardCollectionQuery(collectionName, orderField = "") {
+    if (window.DashboardData?.getCollectionQuery) {
+      return window.DashboardData.getCollectionQuery(collectionName, orderField);
+    }
+    if (["siswa", "kelas"].includes(collectionName) && typeof getSemesterCollectionQuery === "function") {
+      return getSemesterCollectionQuery(collectionName, orderField);
+    }
+    const documentsApi = window.SupabaseDocuments;
+    const ref = documentsApi.collection(collectionName);
+    return orderField ? ref.orderBy(orderField) : ref;
+  }
+
+  function canAccessAiPromptMenu() {
+    if (window.DashboardShell?.canAccessAiPrompt) return window.DashboardShell.canAccessAiPrompt(getCurrentAppUser());
+    const user = getCurrentAppUser();
+    const role = String(user?.role || "").trim().toLowerCase();
+    if (["admin", "superadmin"].includes(role)) return true;
+    return user?.can_generate_prompt !== false;
+  }
+
+  function canAccessPage(page) {
+    if (window.DashboardShell?.canAccessPage) return window.DashboardShell.canAccessPage(page);
+    const role = getCurrentAppRole();
+    const guruPtsInputActive = typeof window.isGuruPtsInputActive === "function"
+      ? window.isGuruPtsInputActive()
+      : true;
+    if (["ai-soal", "generate-perangkat-pembelajaran"].includes(page) && !canAccessAiPromptMenu()) return false;
+    if (["admin", "superadmin"].includes(role)) return true;
+    if (["admin-user", "admin-hierarki"].includes(page)) return false;
+    if (role === "guru") {
+      if (canUseCoordinatorAccess()) {
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+      }
+      return ["nilai-input-guru", "nilai-input-semester-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "wali-rekap-nilai", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    }
+    if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+    if (role === "siswa") return false;
+    return false;
+  }
+
+  function applyRoleAccess() {
+    if (window.DashboardShell?.applyRoleAccess) {
+      const result = window.DashboardShell.applyRoleAccess({
+        document,
+        getRole: getCurrentAppRole,
+        getUser: getCurrentAppUser,
+        getCollectionQuery: getDashboardCollectionQuery
+      });
+      Promise.resolve(result).finally(markRoleAccessReady);
+      return result;
+    }
+    const role = getCurrentAppRole();
+    document.querySelectorAll(".role-menu").forEach(menu => {
+      menu.style.display = (menu.classList.contains(`role-${role}`) || (role === "superadmin" && menu.classList.contains("role-admin"))) ? "" : "none";
+    });
+
+    const waliMenu = document.getElementById("menuWaliKelas");
+    const nilaiMenu = document.getElementById("menuNilaiGuru");
+    const nilaiGuruInputBtn = document.getElementById("menuNilaiGuruInputBtn");
+    const siswaKoordinatorMenu = document.getElementById("menuSiswaKoordinator");
+    const kurikulumKoordinatorMenu = document.getElementById("menuKurikulumKoordinator");
+    document.querySelectorAll("[data-ai-prompt-menu='true']").forEach(button => {
+      button.style.display = canAccessAiPromptMenu() ? "" : "none";
+    });
+    if (!waliMenu) {
+      markRoleAccessReady();
+      return Promise.resolve();
+    }
+    if (role === "admin" || role === "superadmin") {
+      waliMenu.style.display = "";
+      markRoleAccessReady();
+      return Promise.resolve();
+    }
+    if (role === "koordinator") {
+      const kodeGuru = String(getCurrentAppUser().kode_guru || "").trim();
+      const ownWaliPromise = kodeGuru
+        ? getDashboardCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get()
+        : Promise.resolve({ empty: true });
+      return Promise.all([
+        refreshCoordinatorLevels(),
+        ownWaliPromise
+      ]).then(([levels, waliSnapshot]) => {
+        waliMenu.style.display = levels.length || !waliSnapshot.empty ? "" : "none";
+      }).catch(() => {
+        waliMenu.style.display = "none";
+      }).finally(markRoleAccessReady);
+    }
+    waliMenu.style.display = "none";
+    if (role === "guru") {
+      const kodeGuru = String(getCurrentAppUser().kode_guru || "").trim();
+      if (!kodeGuru) {
+        markRoleAccessReady();
+        return Promise.resolve();
+      }
+      return Promise.all([
+        getDashboardCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get(),
+        refreshCoordinatorLevels(),
+        typeof window.loadGuruNilaiInputAccessSetting === "function"
+          ? window.loadGuruNilaiInputAccessSetting(true)
+          : Promise.resolve(typeof window.isGuruPtsInputActive === "function" ? window.isGuruPtsInputActive() : true)
+      ])
+        .then(([snapshot, coordinatorLevels]) => {
+          const hasCoordinatorAccess = Array.isArray(coordinatorLevels) && coordinatorLevels.length > 0;
+          waliMenu.style.display = snapshot.empty && !hasCoordinatorAccess ? "none" : "";
+          if (nilaiMenu) nilaiMenu.style.display = "";
+          if (nilaiGuruInputBtn) nilaiGuruInputBtn.style.display = "";
+          if (siswaKoordinatorMenu) siswaKoordinatorMenu.style.display = hasCoordinatorAccess ? "" : "none";
+          if (kurikulumKoordinatorMenu) kurikulumKoordinatorMenu.style.display = hasCoordinatorAccess ? "" : "none";
+        })
+        .catch(() => {
+          waliMenu.style.display = "none";
+          if (nilaiMenu) nilaiMenu.style.display = "";
+          if (nilaiGuruInputBtn) nilaiGuruInputBtn.style.display = "";
+          if (siswaKoordinatorMenu) siswaKoordinatorMenu.style.display = "none";
+          if (kurikulumKoordinatorMenu) kurikulumKoordinatorMenu.style.display = "none";
+        })
+        .finally(markRoleAccessReady);
+    }
+    if (siswaKoordinatorMenu) siswaKoordinatorMenu.style.display = "none";
+    if (kurikulumKoordinatorMenu) kurikulumKoordinatorMenu.style.display = "none";
+    markRoleAccessReady();
+    return Promise.resolve();
+  }
+
+  function renderHome() {
+    if (window.DashboardHome?.renderHomePage) {
+      window.DashboardHome.renderHomePage({
+        content: document.getElementById("content"),
+        pageTitle: document.getElementById("pageTitle"),
+        role: getCurrentAppRole(),
+        hasCoordinatorAccess: canUseCoordinatorAccess,
+        getCoordinatorLevels: getCurrentCoordinatorLevelsSync,
+        getCollectionQuery: getDashboardCollectionQuery,
+        loadHomeStats,
+        loadGuruHomeStats
+      });
+      return;
+    }
+    const content = document.getElementById("content");
+    const pageTitle = document.getElementById("pageTitle");
+    if (pageTitle) pageTitle.innerText = "Beranda Dashboard";
+    if (getCurrentAppRole() === "guru" && !canUseCoordinatorAccess()) {
+      renderGuruHome(content, pageTitle);
+      return;
+    }
+    if (getCurrentAppRole() === "guru" && canUseCoordinatorAccess()) {
+      renderKoordinatorHome(content, pageTitle);
+      return;
+    }
+    if (getCurrentAppRole() === "koordinator") {
+      renderKoordinatorHome(content, pageTitle);
+      return;
+    }
+
+    content.innerHTML = `
+      <section class="dashboard-hero">
+        <div class="dashboard-hero-copy">
+          <span class="dashboard-eyebrow">Ringkasan Data</span>
+          <h2>Guru, siswa, rombel, mapel, dan pembagian mengajar dalam satu pantauan.</h2>
+          <p id="homeUpdatedAt">Memuat data terbaru...</p>
+          <div class="dashboard-hero-actions">
+            <button class="btn-secondary" onclick="loadPage('mengajar')">Buka Pembagian</button>
+            <button class="btn-secondary" onclick="loadPage('tugas-tambahan')">Buka Tugas Tambahan</button>
+            <button class="btn-secondary" onclick="loadPage('guru-lihat')">Buka Data Guru</button>
+          </div>
+        </div>
+
+        <div class="dashboard-hero-panel">
+          <div class="dashboard-stat">
+            <span>Jumlah Guru</span>
+            <strong id="homeGuruCount">...</strong>
+          </div>
+          <div class="dashboard-stat">
+            <span>Jumlah Rombel</span>
+            <strong id="homeKelasCount">...</strong>
+          </div>
+          <div class="dashboard-stat">
+            <span>Total Siswa</span>
+            <strong id="homeSiswaCount">...</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-card-lite dashboard-online-card">
+        <span class="dashboard-card-label">User Online</span>
+        <h3 id="homeOnlineCount">0 user</h3>
+        <div id="homeOnlineList" class="dashboard-mini-list">
+          <span>Memuat user online...</span>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <article class="dashboard-card-lite">
+          <span class="dashboard-card-label">Pembelajaran</span>
+          <h3 id="homeMapelCount">0 mapel</h3>
+          <p id="homeMengajarCount">0 pembagian mengajar tersimpan</p>
+        </article>
+
+        <article class="dashboard-card-lite">
+          <span class="dashboard-card-label">Kelas</span>
+          <h3 id="homeWaliCount">0 wali kelas</h3>
+          <p id="homeKelasBayanganInfo">Kelas real belum dihitung</p>
+        </article>
+
+        <article class="dashboard-card-lite">
+          <span class="dashboard-card-label">Tugas Tambahan</span>
+          <h3 id="homeTugasTambahanCount">0 tugas</h3>
+          <p id="homeTugasTambahanJp">0 JP terdaftar</p>
+        </article>
+
+        <article class="dashboard-card-lite">
+          <span class="dashboard-card-label">Rekap JP Guru</span>
+          <div id="homeGuruJpList" class="dashboard-mini-list">
+            <span>Memuat rekap JP...</span>
+          </div>
+        </article>
+
+        <article class="dashboard-card-lite">
+          <span class="dashboard-card-label">Sebaran Siswa</span>
+          <div id="homeSiswaByLevel" class="dashboard-mini-list">
+            <span>Memuat sebaran siswa...</span>
+          </div>
+        </article>
+      </section>
+    `;
+    loadHomeStats();
+  }
+
+  function escapeDashboardHtml(value) {
+    if (window.DashboardHome?.escapeHtml) return window.DashboardHome.escapeHtml(value);
+    if (window.AppUtils?.escapeHtml) return window.AppUtils.escapeHtml(value);
+    return String(value ?? "");
+  }
+
+  function getDashboardKelasParts(kelasValue = "") {
+    if (window.DashboardHome?.getKelasParts) return window.DashboardHome.getKelasParts(kelasValue);
+    return window.AppUtils?.parseKelas ? window.AppUtils.parseKelas(kelasValue) : { tingkat: "", rombel: "", kelas: String(kelasValue || "") };
+  }
+
+  function getDashboardSiswaKelasBayanganParts(siswa) {
+    if (window.DashboardHome?.getSiswaKelasBayanganParts) return window.DashboardHome.getSiswaKelasBayanganParts(siswa);
+    return window.AppUtils?.getPrimaryKelasParts ? window.AppUtils.getPrimaryKelasParts(siswa) : getDashboardKelasParts(siswa.kelas);
+  }
+
+  function getDashboardJenisKelamin(siswa) {
+    if (window.DashboardHome?.getJenisKelamin) return window.DashboardHome.getJenisKelamin(siswa);
+    return "";
+  }
+
+  function getDashboardMapelName(mapelList, mapelKode) {
+    if (window.DashboardHome?.getMapelName) return window.DashboardHome.getMapelName(mapelList, mapelKode);
+    return mapelKode || "-";
+  }
+
+  function getDashboardMapelJp(mapelList, mapelKode) {
+    if (window.DashboardHome?.getMapelJp) return window.DashboardHome.getMapelJp(mapelList, mapelKode);
+    return 0;
+  }
+
+  function formatDashboardGuruName(guru, fallbackUser = {}) {
+    if (window.DashboardHome?.formatGuruName) return window.DashboardHome.formatGuruName(guru, fallbackUser);
+    if (guru && typeof formatNamaGuru === "function") return formatNamaGuru(guru);
+    return guru?.nama || fallbackUser.nama || fallbackUser.guru_nama || fallbackUser.username || "Guru";
+  }
+
+  function getDashboardTugasNames(assignment, tugasList) {
+    if (window.DashboardHome?.getTugasNames) return window.DashboardHome.getTugasNames(assignment, tugasList);
+    return [];
+  }
+
+  function renderGuruHome(content, pageTitle) {
+    if (window.DashboardHome?.renderGuruHomePage) {
+      window.DashboardHome.renderGuruHomePage({
+        content,
+        pageTitle,
+        loadGuruHomeStats
+      });
+    }
+  }
+
+  function renderKoordinatorHome(content, pageTitle) {
+    if (window.DashboardHome?.renderKoordinatorHomePage) {
+      window.DashboardHome.renderKoordinatorHomePage({
+        content,
+        pageTitle,
+        getCoordinatorLevels: getCurrentCoordinatorLevelsSync
+      });
+    }
+  }
+
+  function renderRekapNilaiPlaceholderPage() {
+    if (window.DashboardHome?.renderRekapNilaiPlaceholder) {
+      return window.DashboardHome.renderRekapNilaiPlaceholder(getCurrentCoordinatorLevelsSync());
+    }
+    return "";
+  }
+
+  async function loadGuruHomeStats(options = {}) {
+    if (window.DashboardHome?.loadGuruHomeStats) {
+      await window.DashboardHome.loadGuruHomeStats({
+        ...options,
+        getCurrentUser: getCurrentAppUser,
+        getCollectionQuery: getDashboardCollectionQuery
+      });
+    }
+  }
+
+  async function loadHomeStats(options = {}) {
+    if (window.DashboardHome?.loadHomeStats) {
+      await window.DashboardHome.loadHomeStats({
+        ...options,
+        getCollectionQuery: getDashboardCollectionQuery
+      });
+    }
+  }
+
+  function toggleSidebar(forceClose = false) {
+    if (window.DashboardShell?.toggleSidebar) {
+      window.DashboardShell.toggleSidebar(forceClose, { document });
+      return;
+    }
+    if (forceClose) {
+      if (window.AppDom?.toggleBodyClass) window.AppDom.toggleBodyClass("sidebar-collapsed", true);
+      else document.body.classList.add("sidebar-collapsed");
+      return;
+    }
+    document.body.classList.toggle("sidebar-collapsed");
+  }
+
+  function toggleMenu(id, buttonEl) {
+    if (window.DashboardShell?.toggleMenu) {
+      window.DashboardShell.toggleMenu(id, buttonEl, { document, getComputedStyle: window.getComputedStyle });
+      return;
+    }
+    const s = document.getElementById(id);
+    if (!s) return;
+    const currentDisplay = window.getComputedStyle(s).display;
+    const isOpen = currentDisplay !== "none";
+    s.style.display = isOpen ? "none" : "block";
+    if (buttonEl) {
+      buttonEl.classList.toggle("active", !isOpen);
+    }
+  }
+
+  function loadPage(page) {
+    const content = document.getElementById("content");
+    const pageTitle = document.getElementById("pageTitle");
+
+    if (!canAccessPage(page)) {
+      Swal.fire("Akses ditolak", "Role pengguna tidak memiliki akses ke menu ini.", "warning");
+      return;
+    }
+
+    if (window.AppLifecycle?.clearPageSubscriptions) {
+      window.AppLifecycle.clearPageSubscriptions();
+    }
+
+    if (!window.AppRouter?.navigate?.(page, { content, pageTitle, page })) {
+      Swal.fire("Menu belum siap", "Route halaman ini belum terdaftar di router baru.", "info");
+      return;
+    }
+
+    if (window.DashboardShell?.syncResponsiveSidebar) {
+      window.DashboardShell.syncResponsiveSidebar({ document, innerWidth: window.innerWidth });
+    } else if (window.innerWidth <= 1180) {
+      document.body.classList.add("sidebar-collapsed");
+    }
+  }
+
+  function syncResponsiveSidebar() {
+    if (window.DashboardShell?.syncResponsiveSidebar) {
+      window.DashboardShell.syncResponsiveSidebar({ document, innerWidth: window.innerWidth });
+      return;
+    }
+    if (window.innerWidth <= 1180) {
+      document.body.classList.add("sidebar-collapsed");
+    } else {
+      document.body.classList.remove("sidebar-collapsed");
+    }
+  }
+
+  if (window.DashboardRoutes?.register) {
+    window.DashboardRoutes.register(window.AppRouter);
+  }
+
+  window.addEventListener("resize", syncResponsiveSidebar);
+  syncResponsiveSidebar();
+  enforceDashboardMaintenanceMode().then(isBlocked => {
+    if (isBlocked) return;
+    initializeMaintenanceToggle();
+  });
+  if (window.DashboardShell?.bootstrap) {
+    window.DashboardShell.bootstrap({
+      getRole: getCurrentAppRole,
+      refreshCoordinatorLevels,
+      applyRoleAccess,
+      updateSidebarSemesterInfo,
+      ensureActiveSemesterDataAvailable: typeof ensureActiveSemesterDataAvailable === "function"
+        ? ensureActiveSemesterDataAvailable
+        : null,
+      renderHome,
+      onError: error => console.error(error)
+    });
+  } else {
+    const finalizeDashboardBootstrap = () => {
+      applyRoleAccess();
+      updateSidebarSemesterInfo();
+      if (typeof ensureActiveSemesterDataAvailable === "function") {
+        ensureActiveSemesterDataAvailable()
+          .catch(error => console.error(error))
+          .finally(() => renderHome());
+      } else {
+        renderHome();
+      }
+    };
+
+    if (["koordinator", "guru"].includes(getCurrentAppRole())) {
+      refreshCoordinatorLevels().finally(finalizeDashboardBootstrap);
+    } else {
+      finalizeDashboardBootstrap();
+    }
+  }
+</script>
+
+</body>
+</html>

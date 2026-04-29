@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Redirect...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="vendor/supabase.js"></script>
+  <script src="supabase-config.js?v=20260408a"></script>
+  <script src="shared/supabase-documents.js?v=20260421d"></script>
+  <script src="shared/maintenance-mode.js?v=20260411b"></script>
+</head>
+<body>
+
+<script>
+  (async function redirectAppEntry() {
+    const isLoggedIn = localStorage.getItem("login") === "true";
+    let role = "";
+    try {
+      role = JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
+    } catch {}
+
+    const maintenanceState = await window.MaintenanceMode.load({ force: true });
+    if (isLoggedIn) {
+      if (maintenanceState.enabled && !window.MaintenanceMode.isAdminRole(role)) {
+        window.location.replace("maintenance.html");
+        return;
+      }
+      window.location.replace("dashboard.html");
+      return;
+    }
+
+    window.location.replace("login.html");
+  })();
+</script>
+
+</body>
+</html>

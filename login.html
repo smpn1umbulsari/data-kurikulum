@@ -829,7 +829,15 @@
         role: user.role || "guru",
         kode_guru: user.kode_guru || "",
         nipd: user.nipd || "",
-        can_generate_prompt: user.can_generate_prompt !== false
+        can_generate_prompt: (() => {
+          const rawAccess = user.can_generate_prompt;
+          if (typeof rawAccess === "string") {
+            const normalized = rawAccess.trim().toLowerCase();
+            return ["true", "1", "yes", "ya"].includes(normalized);
+          }
+          if (typeof rawAccess === "number") return rawAccess === 1;
+          return rawAccess === true;
+        })()
       };
       localStorage.setItem("appUser", JSON.stringify(appUser));
       localStorage.setItem("appSemester", JSON.stringify(semester));

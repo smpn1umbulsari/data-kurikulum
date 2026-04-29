@@ -1,23 +1,5 @@
 (function initDashboardShell(global) {
   const shell = global.DashboardShell || {};
-  const WALI_PAGE_IDS = ["nilai-rapor", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan"];
-
-  shell.setWaliAccessState = function setWaliAccessState(hasAccess, classes = []) {
-    global.GuruSpenturiWaliAccess = {
-      hasAccess: Boolean(hasAccess),
-      classes: Array.isArray(classes) ? classes.filter(Boolean) : [],
-      updatedAt: Date.now()
-    };
-    global.document?.documentElement?.classList.toggle("guru-has-wali", Boolean(hasAccess));
-    global.document?.querySelectorAll?.(".home-wali-action").forEach(button => {
-      button.hidden = !hasAccess;
-      button.style.display = hasAccess ? "" : "none";
-    });
-  };
-
-  shell.hasWaliAccess = function hasWaliAccess() {
-    return Boolean(global.GuruSpenturiWaliAccess?.hasAccess);
-  };
   const storage = global.AppUtils || {};
   let presenceHeartbeatTimer = null;
   let presenceVisibilityHandler = null;
@@ -44,8 +26,12 @@
 
   function setDisplay(element, shouldShow) {
     if (!element) return;
-    if (typeof dom.toggleDisplay === "function") dom.toggleDisplay(element, shouldShow);
-    else element.style.display = shouldShow ? "" : "none";
+    if (shouldShow) {
+      element.style.removeProperty("display");
+      if (typeof dom.toggleDisplay === "function") dom.toggleDisplay(element, true);
+      return;
+    }
+    element.style.setProperty("display", "none", "important");
   }
 
   function getBodyClassList(doc) {
@@ -203,7 +189,13 @@
   shell.canAccessAiPrompt = function canAccessAiPrompt(user = shell.getCurrentAppUser()) {
     const role = String(user?.role || "").trim().toLowerCase();
     if (["admin", "superadmin"].includes(role)) return true;
-    return user?.can_generate_prompt !== false;
+    const rawAccess = user?.can_generate_prompt;
+    if (typeof rawAccess === "string") {
+      const normalized = rawAccess.trim().toLowerCase();
+      return ["true", "1", "yes", "ya"].includes(normalized);
+    }
+    if (typeof rawAccess === "number") return rawAccess === 1;
+    return rawAccess === true;
   };
 
   shell.getStoredCoordinatorLevels = function getStoredCoordinatorLevels() {
@@ -309,8 +301,7 @@
       if (shell.canUseCoordinatorAccess()) {
         return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
       }
-      if (WALI_PAGE_IDS.includes(page)) return shell.hasWaliAccess();
-      return ["nilai-input-guru", "nilai-input-semester-guru", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+      return ["nilai-input-guru", "nilai-input-semester-guru", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "wali-rekap-nilai", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     }
     if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);
@@ -333,12 +324,12 @@
     const canAccessAiPrompt = shell.canAccessAiPrompt(typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser());
 
     doc.querySelectorAll("[data-ai-prompt-menu='true']").forEach(button => {
+      button.hidden = !canAccessAiPrompt;
       setDisplay(button, canAccessAiPrompt);
     });
 
     if (!waliMenu) return Promise.resolve();
     if (["admin", "superadmin"].includes(role)) {
-      shell.setWaliAccessState(true);
       setMenuDisplay(waliMenu, true);
       return Promise.resolve();
     }
@@ -353,25 +344,18 @@
         ownWaliPromise
       ])
         .then(([levels, waliSnapshot]) => {
-          const hasWaliMenuAccess = levels.length > 0 || !waliSnapshot.empty;
-          shell.setWaliAccessState(hasWaliMenuAccess);
-          setMenuDisplay(waliMenu, hasWaliMenuAccess);
+          setMenuDisplay(waliMenu, levels.length > 0 || !waliSnapshot.empty);
         })
         .catch(() => {
-          shell.setWaliAccessState(false);
           setMenuDisplay(waliMenu, false);
         });
     }
 
-    shell.setWaliAccessState(false);
     setMenuDisplay(waliMenu, false);
     if (role === "guru") {
       const getCollectionQuery = options.getCollectionQuery;
       const kodeGuru = String((typeof options.getUser === "function" ? options.getUser() : shell.getCurrentAppUser()).kode_guru || "").trim();
-      if (!kodeGuru || typeof getCollectionQuery !== "function") {
-        shell.setWaliAccessState(false);
-        return Promise.resolve();
-      }
+      if (!kodeGuru || typeof getCollectionQuery !== "function") return Promise.resolve();
 
       return Promise.all([
         getCollectionQuery("kelas").where("kode_guru", "==", kodeGuru).limit(1).get(),
@@ -382,16 +366,13 @@
       ])
         .then(([snapshot, coordinatorLevels]) => {
           const hasCoordinatorAccess = Array.isArray(coordinatorLevels) && coordinatorLevels.length > 0;
-          const hasWaliAccess = !snapshot.empty;
-          shell.setWaliAccessState(hasWaliAccess || hasCoordinatorAccess);
-          setMenuDisplay(waliMenu, hasWaliAccess || hasCoordinatorAccess);
+          setMenuDisplay(waliMenu, !snapshot.empty || hasCoordinatorAccess);
           setMenuDisplay(nilaiMenu, true);
           setMenuDisplay(nilaiGuruInputBtn, true);
           setMenuDisplay(siswaKoordinatorMenu, hasCoordinatorAccess);
           setMenuDisplay(kurikulumKoordinatorMenu, hasCoordinatorAccess);
         })
         .catch(() => {
-          shell.setWaliAccessState(false);
           setMenuDisplay(waliMenu, false);
           setMenuDisplay(nilaiMenu, true);
           setMenuDisplay(nilaiGuruInputBtn, true);
