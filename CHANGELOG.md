@@ -100,6 +100,399 @@ Catatan:
 - Tidak ada menu baru terpisah; perubahan ini memperbaiki alur fungsi pada menu `Kepersetaan` yang sudah ada.
 - Jika perlu rollback, fokus utama ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js), [Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-view.js), dan [style.css](/D:/KURIKULUM/Data%20Kurikulum/style.css).
 
+## Versi 1.20e
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Menambahkan titik backup rollback baru sebelum fitur cetak label peserta di folder [backups/1.20e-label-121-export](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20e-label-121-export).
+- Menambahkan export baru `Label 121` pada tab `Administrasi` di menu `Kepersetaan`.
+- Menambahkan popup pilihan `Kelas 7`, `Kelas 8`, atau `Kelas 9` sebelum proses export label.
+- Menghubungkan data label langsung ke hasil pembagian ruang pada tab `Pembagian Ruang`, sehingga label mengambil `nomor peserta`, `nama`, dan `ruang` dari susunan yang sudah di-set.
+- Menambahkan template cetak label 2 kolom x 5 baris dengan gaya yang mengikuti contoh label peserta yang diberikan.
+
+Catatan:
+- Tidak ada menu baru terpisah; perubahan ini menambah fungsi export pada tabel administrasi yang sudah ada.
+- Jika perlu rollback, fokus utama ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js), [Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-view.js), dan file backup [backups/1.20e-label-121-export](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20e-label-121-export).
+
+## Versi 1.20e.1
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Menyesuaikan template cetak `Label 121` agar area cetak total per lembar terkunci ke ukuran **160 mm x 210 mm**.
+- Memusatkan blok label di halaman cetak dan menyembunyikan header bantu saat mode print agar area label murni dipakai untuk stiker.
+
+Catatan:
+- Perubahan ini berupa penyesuaian layout cetak, tanpa menambah menu baru.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20f
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Menambahkan titik backup rollback baru di [backups/1.20f-pembagian-ruang-kelas-asli-bayangan](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20f-pembagian-ruang-kelas-asli-bayangan).
+- Menambahkan pilihan `Sumber kelas` pada `Kurikulum -> Kepesertaan -> Pembagian Ruang` dengan opsi `Kelas Asli` dan `Kelas Bayangan`.
+- Mengubah proses `Set` agar pembagian ruang memakai sumber kelas yang dipilih, bukan selalu kelas bayangan.
+- Menyesuaikan preview dan ringkasan pembagian ruang agar mengikuti sumber kelas aktif.
+- Menyimpan pilihan sumber kelas ke state lokal agar tetap konsisten saat halaman dibuka ulang.
+
+Catatan:
+- Tidak ada menu baru terpisah; perubahan ini menambah pilihan pada alur fungsi `Pembagian Ruang` yang sudah ada.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js), [Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-view.js), [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js), dan [www/Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-view.js).
+
+## Versi 1.20f.1
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Menambahkan titik backup rollback baru di [backups/1.20f.1-label-121-a4-full](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20f.1-label-121-a4-full).
+- Mengubah template cetak `Label 121` agar memenuhi seluruh halaman `A4 portrait`.
+- Menghapus batas area cetak lama yang lebih kecil, sehingga grid label memakai ruang halaman penuh.
+- Menyesuaikan ulang rasio jarak, proporsi kolom `R.`, ukuran nomor peserta, dan nama agar lebih dekat ke contoh PDF/gambar.
+
+Catatan:
+- Perubahan ini berupa penyesuaian layout cetak, tanpa menambah menu baru.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Menambahkan titik backup rollback baru di [backups/1.20g-manual-popup-set](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20g-manual-popup-set).
+- Memperbaiki alur `Pembagian Ruang` agar saat mode `Manual` dipilih, tombol `Set` juga memunculkan popup pengisian manual.
+- Menjaga perilaku lama saat dropdown baru saja diubah ke `Manual`, sehingga popup tetap bisa muncul dari dua jalur.
+
+Catatan:
+- Tidak ada menu baru.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20KurikULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g.1
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Menyetel ulang layout cetak `Label 121` setelah analisis ulang gambar referensi.
+- Mengurangi margin luar halaman agar blok label lebih menempel ke tepi seperti contoh.
+- Merapikan rasio jarak antar container dan proporsi kolom `R.` agar lebih dekat ke referensi.
+- Menghapus header halaman pada template label supaya grid langsung memenuhi halaman cetak.
+- Menyesuaikan lagi ukuran nomor peserta dan nama agar keseimbangannya lebih mirip desain acuan.
+
+Catatan:
+- Perubahan ini hanya styling/layout cetak.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g.2
+
+Status: draft
+
+Tanggal: 2026-04-30
+
+Perubahan:
+- Membuat nama peserta pada `Label 121` menjadi `wrap text` agar nama panjang tidak terpotong satu baris.
+- Memperbesar ukuran teks nomor peserta.
+- Memperbesar ukuran teks nama peserta agar lebih terbaca saat dicetak.
+
+Catatan:
+- Perubahan ini hanya styling/layout cetak.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g.3
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Menyetel ulang layout `Label 121` berdasarkan ukuran referensi kertas label `160 x 200 mm` yang dikonversi ke `A4`.
+- Menerapkan hasil konversi eksplisit pada template cetak:
+  - margin kanan-kiri `3.9375 mm`
+  - margin atas-bawah `1.485 mm`
+  - lebar sel `98.4375 mm`
+  - tinggi sel `54.945 mm`
+  - jarak antar kolom `2.625 mm`
+  - jarak antar baris `2.97 mm`
+
+Catatan:
+- Perubahan ini hanya styling/layout cetak.
+- Backup rollback ada di [backups/1.20g.3-label-121-a4-ratio](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20g.3-label-121-a4-ratio).
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g.4
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Menyetel ukuran final template `Label 121` sesuai angka tetap yang diminta untuk A4.
+- Menerapkan margin kanan-kiri `3 mm` dan margin atas-bawah `1 mm`.
+- Menerapkan ukuran sel `99.85 mm x 54 mm`.
+- Menerapkan jarak antar kolom `4.3 mm` dan jarak antar baris `3.5 mm`.
+
+Catatan:
+- Perubahan ini hanya styling/layout cetak.
+- Backup rollback ada di [backups/1.20g.4-label-121-fixed-a4](/D:/KURIKULUM/Data%20Kurikulum/backups/1.20g.4-label-121-fixed-a4).
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g.5
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengubah margin kanan-kiri template `Label 121` dari `3 mm` menjadi `1 mm`.
+- Memperlebar area efektif grid label pada halaman A4 tanpa mengubah tinggi sel.
+
+Catatan:
+- Perubahan ini hanya styling/layout cetak.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.20g.6
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengubah font teks ruang vertikal `R.xx` menjadi `14 mm` dan tebal.
+- Mengubah font nomor peserta menjadi `8.5 mm`.
+- Mengubah font nama peserta menjadi `6 mm` dan tetap `wrap-text`.
+- Menghapus border luar pada kontainer sel label.
+
+Catatan:
+- Perubahan ini hanya styling/layout cetak.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Menambahkan menu baru `Kartu Peserta` pada `Kepesertaan -> Administrasi`.
+- Menambahkan export PDF `Kartu Peserta` dengan pilihan `Kelas 7`, `Kelas 8`, atau `Kelas 9`.
+- Menyusun layout kartu peserta 3 kolom x 3 baris per halaman dengan isi nama, nomor peserta, ruang, dan tanda tangan KS.
+- Mengambil judul, keterangan, dan tahun pelajaran dari sumber pengaturan administrasi asesmen.
+- Menyisipkan TTD KS serta nama/NIP kepala sekolah pada kartu peserta.
+
+Catatan:
+- Penambahan ini termasuk menu/fungsi baru, sehingga versi naik ke `1.21a`.
+- Backup rollback ada di [backups/1.21a-kartu-peserta](/D:/KURIKULUM/Data%20Kurikulum/backups/1.21a-kartu-peserta).
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js), [Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-view.js), [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js), dan [www/Asesmen/pembagian-ruang-view.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-view.js).
+
+## Versi 1.21a.1
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Menyederhanakan kop kecil kartu peserta menjadi dua baris: `PEMERINTAH KABUPATEN JEMBER` dan `SMPN 1 UMBULSARI`.
+- Mengubah ukuran judul kartu menjadi `2 mm`.
+- Mengubah ukuran nama peserta menjadi `3.5 mm` dan mempertahankan `wrap-text`.
+- Menghapus blok teks kepala sekolah/NIP pada bagian bawah kartu.
+- Mengganti teks bawah kartu menjadi `Kartu Peserta` dan `SMP Negeri 1 Umbulsari`.
+
+Catatan:
+- Perubahan ini hanya penyesuaian layout/styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.2
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Memaksa layout cetak `Kartu Peserta` menjadi tetap `9 kartu per halaman`.
+- Menambahkan tinggi grid halaman yang tetap `3 x 3`.
+- Mengunci tinggi tiap kartu dan mencegah kartu memecah halaman saat isi lebih panjang.
+
+Catatan:
+- Perubahan ini hanya penyesuaian layout/styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Menambahkan filter `per ruang` saat export `Kartu Peserta`.
+- Menambahkan opsi `Semua Ruang` atau `Ruang tertentu` setelah memilih `Kelas 7`, `Kelas 8`, atau `Kelas 9`.
+- Memisahkan hasil cetak kartu peserta berdasarkan ruang, sehingga setiap ruang selalu dimulai dari halaman baru.
+- Jika satu ruang berisi lebih dari 9 peserta, kartu ruang yang sama akan lanjut ke halaman berikutnya sebelum pindah ke ruang lain.
+- Memperbarui judul dokumen export agar ikut memuat nomor ruang saat filter ruang dipilih.
+
+Catatan:
+- Perubahan ini menambah alur filter pada fitur `Kartu Peserta` tanpa menambah menu baru.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.1
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Menghapus tampilan TTD KS dari template `Kartu Peserta`.
+- Memperbesar area kartu peserta dengan mengurangi margin halaman dan jarak antar kartu.
+- Membesarkan elemen isi kartu sekitar `1.1x`, termasuk nama peserta, nomor peserta, nomor ruang, dan teks footer kartu.
+- Menjaga layout tetap muat `9 kartu per halaman` pada cetak A4 portrait.
+
+Catatan:
+- Perubahan ini hanya penyesuaian layout/styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.2
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengubah ukuran nilai `RUANG` pada `Kartu Peserta` menjadi `14 mm`.
+
+Catatan:
+- Perubahan ini hanya penyesuaian styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.3
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Memperbesar area kartu peserta semaksimal mungkin pada A4 portrait.
+- Mengurangi margin dalam halaman kartu peserta menjadi lebih tipis.
+- Merapatkan jarak antar kolom dan antar baris kartu agar tiap kartu mendapat area lebih besar.
+- Tetap menjaga layout `9 kartu per halaman`.
+
+Catatan:
+- Perubahan ini hanya penyesuaian styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.4
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengembalikan desain `Kartu Peserta` ke tampilan sebelum pembesaran area maksimal.
+- Mengembalikan margin halaman, padding, jarak antar kartu, dan tinggi grid ke setelan versi sebelumnya.
+
+Catatan:
+- Perubahan ini adalah rollback styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.5
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengubah gap `Kartu Peserta` menjadi `2 mm` untuk antar kolom dan antar baris.
+
+Catatan:
+- Perubahan ini hanya penyesuaian styling fitur `Kartu Peserta`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.6
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengubah font isi tabel `Data Map` menjadi `13px` untuk kolom `No`, `Nomor Peserta`, `Nama`, dan `Kelas`.
+
+Catatan:
+- Perubahan ini hanya penyesuaian styling cetak `Data Map`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.7
+
+Status: draft
+
+Tanggal: 2026-05-02
+
+Perubahan:
+- Mengubah font isi tabel `Data Map` menjadi `15px` untuk kolom `No`, `Nomor Peserta`, `Nama`, dan `Kelas`.
+- Mengubah header tabel `Data Map` agar bisa `wrap text` dan tetap `align-center`.
+
+Catatan:
+- Perubahan ini hanya penyesuaian styling cetak `Data Map`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.8
+
+Status: draft
+
+Tanggal: 2026-05-04
+
+Perubahan:
+- Mengubah orientasi cetak `Data Map` menjadi dinamis per halaman.
+- Jika dalam satu ruang hanya ada `1 kelas aktif`, halaman `Data Map` dicetak `portrait`.
+- Jika dalam satu ruang ada `2 kelas aktif`, halaman `Data Map` dicetak `landscape`.
+- Untuk halaman portrait, tabel `Data Map` ditampilkan satu kolom penuh.
+
+Catatan:
+- Perubahan ini menyesuaikan layout cetak `Data Map` tanpa menambah menu baru.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.3.9
+
+Status: draft
+
+Tanggal: 2026-05-04
+
+Perubahan:
+- Mengubah lebar kolom cetak `Data Map`:
+- `No` menjadi `30px`
+- `Nomor Peserta` menjadi `105px`
+- `Kelas` menjadi `52px`
+- Kolom `Nama` tetap memakai sisa lebar tabel.
+
+Catatan:
+- Perubahan ini hanya penyesuaian layout cetak `Data Map`.
+- Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
+
+## Versi 1.21a.4
+
+Status: draft
+
+Tanggal: 2026-05-19
+
+Perubahan:
+- Menambahkan skrip utilitas mass update `PTS` kelas 9 ke nilai `80`.
+- Skrip mendukung `dry-run` lebih dulu untuk menghitung jumlah baris target pada semester aktif.
+- Skrip juga mendukung mode `execute` untuk benar-benar menulis perubahan ke collection `nilai`.
+
+Catatan:
+- Perubahan ini tidak menambah menu baru di aplikasi, hanya menambah utilitas admin lokal.
+- File utama: [scripts/mass-update-pts-kelas9.js](/D:/KURIKULUM/Data%20Kurikulum/scripts/mass-update-pts-kelas9.js).
+
 ## Histori Sebelum 1.20
 
 Bagian ini menyimpan riwayat versi lama sebelum baseline `1.20`.
