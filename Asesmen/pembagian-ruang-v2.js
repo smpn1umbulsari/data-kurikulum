@@ -1560,6 +1560,24 @@ async function exportDaftarPesertaAsesmenExcel() {
       ["Kode Peserta", "Nama Siswa"],
       ...rows.map((row) => [row.kodePeserta, row.nama]),
     ]);
+    // Force font color to black for all cells in worksheet
+    try {
+      const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+      for (let R = range.s.r; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
+          const cell = worksheet[cellAddr];
+          if (!cell) continue;
+          cell.s = cell.s || {};
+          cell.s.font = Object.assign({}, cell.s.font || {}, {
+            color: { rgb: 'FF000000' },
+          });
+        }
+      }
+    } catch (err) {
+      // If styling isn't supported by the loaded XLSX build, ignore silently
+      console.warn('Could not apply cell font styling for export', err);
+    }
     XLSX.utils.book_append_sheet(workbook, worksheet, `Kelas ${level}`);
   });
 
