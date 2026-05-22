@@ -1695,7 +1695,10 @@ async function exportDaftarPesertaAsesmenExcel() {
     getAsesmenAdministrasiSchoolYear()
       .replace(/[^\d/]+/g, "")
       .replace(/\//g, "-") || "asesmen";
-  XLSX.writeFile(workbook, `daftar-peserta-asesmen-${schoolYear}.xlsx`);
+  XLSX.writeFile(workbook, `daftar-peserta-asesmen-${schoolYear}.xlsx`, {
+    bookType: "xlsx",
+    cellStyles: true,
+  });
 }
 
 function getAsesmenKartuPesertaEntries(level) {
