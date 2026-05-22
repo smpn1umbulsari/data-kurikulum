@@ -1,10 +1,15 @@
 // ================= STATE ASESMEN =================
 let semuaDataAsesmenSiswa = [];
 let unsubscribeAsesmenSiswa = null;
+function normalizeAsesmenKelasSumber(value) {
+  return String(value || "").trim().toLowerCase() === "asli" ? "asli" : "bayangan";
+}
 let jumlahRuangUjian = Number(localStorage.getItem("asesmenJumlahRuangUjian") || 1);
 let draftJumlahRuangUjian = jumlahRuangUjian;
 let pembagianKelasAsesmen = ["manual", "20siswa"].includes(localStorage.getItem("asesmenPembagianKelas")) ? localStorage.getItem("asesmenPembagianKelas") : "setengah";
 let draftPembagianKelasAsesmen = pembagianKelasAsesmen;
+let asesmenKelasSumber = normalizeAsesmenKelasSumber(localStorage.getItem("asesmenKelasSumber") || "bayangan");
+let draftAsesmenKelasSumber = asesmenKelasSumber;
 const asesmenRuangStore = window.AsesmenRuangStore || null;
 let asesmenSaveStateTimer = null;
 const asesmenStudentLevelCache = new Map();
@@ -70,6 +75,14 @@ function invalidateAsesmenStudentCaches() {
   asesmenOrderedStudentsCache.clear();
   asesmenPresensiIndexCache.clear();
   invalidateAsesmenRoomCaches();
+}
+
+function isAsesmenUsingKelasBayangan() {
+  return asesmenKelasSumber === "bayangan";
+}
+
+function getAsesmenKelasSumberLabel() {
+  return isAsesmenUsingKelasBayangan() ? "kelas bayangan" : "kelas asli";
 }
 
 function invalidateAsesmenRoomCaches() {
@@ -142,6 +155,8 @@ function saveAsesmenPembagianRuangState() {
       draftJumlahRuangUjian,
       pembagianKelasAsesmen,
       draftPembagianKelasAsesmen,
+      asesmenKelasSumber,
+      draftAsesmenKelasSumber,
       appliedLevels: Array.from(appliedAsesmenLevels),
       asesmenLevelSettings,
       draftAsesmenLevelSettings
@@ -153,6 +168,8 @@ function saveAsesmenPembagianRuangState() {
     draftJumlahRuangUjian,
     pembagianKelasAsesmen,
     draftPembagianKelasAsesmen,
+    asesmenKelasSumber,
+    draftAsesmenKelasSumber,
     appliedLevels: Array.from(appliedAsesmenLevels),
     asesmenLevelSettings: {
       7: sanitizeAsesmenLevelSettings(asesmenLevelSettings[7]),
@@ -180,6 +197,7 @@ function loadAsesmenPembagianRuangState() {
     const saved = asesmenRuangStore.load(ASESMEN_STORAGE_KEY, {
       jumlahRuangUjian,
       pembagianKelasAsesmen,
+      asesmenKelasSumber,
       asesmenLevelSettings
     });
     if (!saved) return;
@@ -187,6 +205,8 @@ function loadAsesmenPembagianRuangState() {
     draftJumlahRuangUjian = saved.draftJumlahRuangUjian;
     pembagianKelasAsesmen = saved.pembagianKelasAsesmen;
     draftPembagianKelasAsesmen = saved.draftPembagianKelasAsesmen;
+    asesmenKelasSumber = normalizeAsesmenKelasSumber(saved.asesmenKelasSumber);
+    draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(saved.draftAsesmenKelasSumber || asesmenKelasSumber);
     [7, 8, 9].forEach(level => {
       asesmenLevelSettings[level] = saved.asesmenLevelSettings[level];
       draftAsesmenLevelSettings[level] = saved.draftAsesmenLevelSettings[level];
@@ -195,6 +215,7 @@ function loadAsesmenPembagianRuangState() {
     saved.appliedLevels.forEach(level => appliedAsesmenLevels.add(String(level)));
     localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
     localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
+    localStorage.setItem("asesmenKelasSumber", asesmenKelasSumber);
     return;
   }
   try {
@@ -206,6 +227,8 @@ function loadAsesmenPembagianRuangState() {
     draftJumlahRuangUjian = Math.min(Math.max(Number(saved?.draftJumlahRuangUjian) || savedJumlah, 1), 99);
     pembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(saved?.pembagianKelasAsesmen) ? saved.pembagianKelasAsesmen : "setengah";
     draftPembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(saved?.draftPembagianKelasAsesmen) ? saved.draftPembagianKelasAsesmen : pembagianKelasAsesmen;
+    asesmenKelasSumber = normalizeAsesmenKelasSumber(saved?.asesmenKelasSumber || localStorage.getItem("asesmenKelasSumber") || "bayangan");
+    draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(saved?.draftAsesmenKelasSumber || asesmenKelasSumber);
 
     [7, 8, 9].forEach(level => {
       asesmenLevelSettings[level] = sanitizeAsesmenLevelSettings(
@@ -227,6 +250,7 @@ function loadAsesmenPembagianRuangState() {
 
     localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
     localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
+    localStorage.setItem("asesmenKelasSumber", asesmenKelasSumber);
   } catch (error) {
     console.error("Gagal memuat pengaturan pembagian ruang asesmen", error);
   }
@@ -304,15 +328,23 @@ function getAsesmenKelasBayanganParts(siswa) {
   return { tingkat: asliParts.tingkat, rombel: "", kelas: "" };
 }
 
+function getAsesmenSelectedClassParts(siswa) {
+  const asliKelasParts = getAsesmenKelasParts(siswa.kelas);
+  const bayanganKelasParts = getAsesmenKelasBayanganParts(siswa);
+  return {
+    asliKelasParts,
+    bayanganKelasParts,
+    kelasParts: asesmenKelasSumber === "asli" ? asliKelasParts : bayanganKelasParts
+  };
+}
+
 function getAsesmenStudentsByLevel(level) {
   const cacheKey = String(level);
   if (asesmenStudentLevelCache.has(cacheKey)) return asesmenStudentLevelCache.get(cacheKey);
 
   const students = semuaDataAsesmenSiswa
     .map(siswa => {
-      const asliKelasParts = getAsesmenKelasParts(siswa.kelas);
-      const kelasParts = getAsesmenKelasBayanganParts(siswa);
-      return { ...siswa, asliKelasParts, kelasParts };
+      return { ...siswa, ...getAsesmenSelectedClassParts(siswa) };
     })
     .filter(siswa => siswa.kelasParts.tingkat === String(level) && siswa.kelasParts.rombel)
     .sort((a, b) => {
@@ -388,20 +420,20 @@ function getAsesmenNomorUjian(siswa) {
 }
 
 function getAsesmenKelasAsliNote(siswa) {
+  if (!isAsesmenUsingKelasBayangan()) return "";
   const kelasAsli = siswa?.asliKelasParts?.kelas || siswa?.kelas || "";
   const kelasAcuan = siswa?.kelasParts?.kelas || "";
   return kelasAsli && kelasAcuan && kelasAsli !== kelasAcuan ? ` <small>(${escapeAsesmenHtml(kelasAsli)})</small>` : "";
 }
 
 function getAsesmenUnassignedStudentsByLevel(level) {
+  if (!isAsesmenUsingKelasBayangan()) return [];
   const cacheKey = String(level);
   if (asesmenUnassignedLevelCache.has(cacheKey)) return asesmenUnassignedLevelCache.get(cacheKey);
 
   const students = semuaDataAsesmenSiswa
     .map(siswa => {
-      const asliKelasParts = getAsesmenKelasParts(siswa.kelas);
-      const kelasParts = getAsesmenKelasBayanganParts(siswa);
-      return { ...siswa, asliKelasParts, kelasParts };
+      return { ...siswa, ...getAsesmenSelectedClassParts(siswa) };
     })
     .filter(siswa => siswa.asliKelasParts.tingkat === String(level) && !siswa.kelasParts.rombel);
   asesmenUnassignedLevelCache.set(cacheKey, students);
@@ -588,11 +620,18 @@ function setPembagianKelasAsesmen(value) {
   }
 }
 
+function setAsesmenKelasSumber(value) {
+  draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(value);
+  scheduleAsesmenPembagianRuangSave();
+}
+
 function applyJumlahRuangUjian() {
   jumlahRuangUjian = Math.min(Math.max(Number(draftJumlahRuangUjian) || 1, 1), 99);
   pembagianKelasAsesmen = ["manual", "20siswa"].includes(draftPembagianKelasAsesmen) ? draftPembagianKelasAsesmen : "setengah";
+  asesmenKelasSumber = normalizeAsesmenKelasSumber(draftAsesmenKelasSumber);
   localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
   localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
+  localStorage.setItem("asesmenKelasSumber", asesmenKelasSumber);
   appliedAsesmenLevels.clear();
   [7, 8, 9].forEach(level => {
     asesmenLevelSettings[level].mode = pembagianKelasAsesmen;
@@ -600,9 +639,12 @@ function applyJumlahRuangUjian() {
     syncAsesmenManualCountLength(asesmenLevelSettings[level]);
     syncAsesmenManualCountLength(draftAsesmenLevelSettings[level]);
   });
-  invalidateAsesmenRoomCaches();
+  invalidateAsesmenStudentCaches();
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
+  if (pembagianKelasAsesmen === "manual") {
+    setTimeout(() => openAsesmenManualCountDialog(["7", "8", "9"]), 0);
+  }
   if (typeof showFloatingToast === "function") showFloatingToast("Pengaturan telah diset");
 }
 
@@ -931,6 +973,14 @@ function renderAdministrasiAsesmenPage() {
               <td>Tempel Kaca</td>
               <td><button type="button" class="btn-primary btn-table-compact" onclick="exportTempelKacaPDF()">Export PDF</button></td>
             </tr>
+            <tr>
+              <td>Label 121</td>
+              <td><button type="button" class="btn-primary btn-table-compact" onclick="promptExportLabel121PDF()">Export PDF</button></td>
+            </tr>
+            <tr>
+              <td>Kartu Peserta</td>
+              <td><button type="button" class="btn-primary btn-table-compact" onclick="promptExportKartuPesertaPDF()">Export PDF</button></td>
+            </tr>
           </tbody>
         </table>
       </div>
@@ -1083,6 +1133,7 @@ function renderPembagianRuangPage() {
     return window.AsesmenRuangView.renderPembagianPage({
       draftJumlahRuangUjian,
       draftPembagianKelasAsesmen,
+      draftAsesmenKelasSumber,
       draftSettings: draftAsesmenLevelSettings,
       jumlahRuangUjian,
       escape: escapeAsesmenHtml,
@@ -1102,6 +1153,7 @@ function renderPembagianRuangPage() {
           <div class="asesmen-room-total-note">
             <span>Jumlah ruang -> isi banyak ruang yang dipakai.</span>
             <span>Mode pembagian -> pilih setengah, 20 siswa, atau manual.</span>
+            <span>Sumber kelas -> pilih kelas asli atau kelas bayangan.</span>
             <span>Jika pilih Manual, popup tabel jumlah siswa per ruang akan langsung muncul.</span>
           </div>
           <div class="asesmen-room-total-control">
@@ -1115,6 +1167,13 @@ function renderPembagianRuangPage() {
                 <option value="setengah" ${draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
                 <option value="20siswa" ${draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
                 <option value="manual" ${draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
+              </select>
+            </label>
+            <label class="asesmen-room-total-field">
+              <span>Sumber kelas</span>
+              <select class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber pembagian kelas">
+                <option value="bayangan" ${draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
+                <option value="asli" ${draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
               </select>
             </label>
             <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()">Set</button>
@@ -1189,7 +1248,7 @@ function renderAsesmenPreview(level) {
     <div class="asesmen-level-summary">
       <span>${decoratedRooms.length} bagian</span>
       <span>${physicalRooms.length} ruang dipilih</span>
-      <span>A-H dari kelas bayangan</span>
+      <span>A-H dari ${escapeAsesmenHtml(getAsesmenKelasSumberLabel())}</span>
       <span>${assigned}/${totalSiswa} siswa</span>
     </div>
   `;
@@ -1292,21 +1351,714 @@ function renderDataMapPage(roomNumber, entries) {
   const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
   const leftEntry = sortedEntries[0] || null;
   const rightEntry = sortedEntries[1] || null;
+  const isPortrait = sortedEntries.length <= 1;
+  const pageClass = isPortrait ? "data-map-page data-map-page--portrait" : "data-map-page data-map-page--landscape";
+  const gridClass = isPortrait ? "data-map-grid data-map-grid--portrait" : "data-map-grid data-map-grid--landscape";
 
   return `
-    <section class="data-map-page">
+    <section class="${pageClass}">
       <div class="data-map-sheet">
         <header class="data-map-header">
           <h1>DAFTAR NAMA PESERTA ASESMEN</h1>
           <div>Ruang : ${escapeAsesmenHtml(roomNumber)}</div>
         </header>
-        <div class="data-map-grid">
+        <div class="${gridClass}">
           ${renderDataMapTable(leftEntry)}
-          ${renderDataMapTable(rightEntry)}
+          ${isPortrait ? "" : renderDataMapTable(rightEntry)}
         </div>
       </div>
     </section>
   `;
+}
+
+function getAsesmenLabel121Entries(level) {
+  const levelKey = String(level);
+  return getDecoratedAsesmenRoomsByLevel(levelKey)
+    .sort((a, b) => Number(a.roomNumber) - Number(b.roomNumber))
+    .flatMap(room => (room.students || []).map(student => ({
+      level: levelKey,
+      roomNumber: room.roomNumber,
+      nomorPeserta: getAsesmenNomorUjian(student) || "",
+      nama: student?.nama || ""
+    })));
+}
+
+function getAsesmenDaftarPesertaRows(level) {
+  return getDecoratedAsesmenRoomsByLevel(level)
+    .flatMap(room => room.students || [])
+    .map(siswa => ({
+      kodePeserta: getAsesmenNomorUjian(siswa) || "",
+      nama: String(siswa?.nama || "").trim()
+    }))
+    .sort((a, b) => String(a.kodePeserta).localeCompare(String(b.kodePeserta), undefined, {
+      numeric: true,
+      sensitivity: "base"
+    }));
+}
+
+async function exportDaftarPesertaAsesmenExcel() {
+  await ensureSpreadsheetLibraries();
+
+  const levels = [7, 8, 9];
+  const populatedLevels = levels.filter(level => getAsesmenDaftarPesertaRows(level).length > 0);
+  if (!populatedLevels.length) {
+    Swal.fire(
+      "Belum ada data",
+      "Belum ada peserta terpetakan. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.",
+      "warning"
+    );
+    return;
+  }
+
+  const workbook = XLSX.utils.book_new();
+  levels.forEach(level => {
+    const rows = getAsesmenDaftarPesertaRows(level);
+    const worksheet = XLSX.utils.aoa_to_sheet([
+      ["Kode Peserta", "Nama Siswa"],
+      ...rows.map(row => [row.kodePeserta, row.nama])
+    ]);
+    XLSX.utils.book_append_sheet(workbook, worksheet, `Kelas ${level}`);
+  });
+
+  const schoolYear = getAsesmenAdministrasiSchoolYear().replace(/[^\d/]+/g, "").replace(/\//g, "-") || "asesmen";
+  XLSX.writeFile(workbook, `daftar-peserta-asesmen-${schoolYear}.xlsx`);
+}
+
+function getAsesmenKartuPesertaEntries(level) {
+  return getAsesmenLabel121Entries(level).sort((a, b) => {
+    const roomDiff = Number(a.roomNumber || 0) - Number(b.roomNumber || 0);
+    if (roomDiff !== 0) return roomDiff;
+    return String(a.nomorPeserta || "").localeCompare(String(b.nomorPeserta || ""), undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
+function getAsesmenKartuPesertaRoomKey(entry) {
+  const roomNumber = String(entry?.roomNumber || "").trim();
+  return roomNumber || "__NO_ROOM__";
+}
+
+function getAsesmenKartuPesertaRoomLabel(roomKey) {
+  return roomKey === "__NO_ROOM__" ? "Tanpa Ruang" : roomKey;
+}
+
+function getAsesmenKartuPesertaRoomKeys(entries = []) {
+  return Array.from(new Set(entries.map(getAsesmenKartuPesertaRoomKey))).sort((a, b) => {
+    const labelA = getAsesmenKartuPesertaRoomLabel(a);
+    const labelB = getAsesmenKartuPesertaRoomLabel(b);
+    const numericA = Number(labelA);
+    const numericB = Number(labelB);
+    const aIsNumeric = Number.isFinite(numericA) && labelA !== "";
+    const bIsNumeric = Number.isFinite(numericB) && labelB !== "";
+    if (aIsNumeric && bIsNumeric && numericA !== numericB) return numericA - numericB;
+    if (aIsNumeric !== bIsNumeric) return aIsNumeric ? -1 : 1;
+    return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: "base" });
+  });
+}
+
+function getAsesmenAdministrasiJudul() {
+  return String(getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "").trim() || "Asesmen Sumatif";
+}
+
+function getAsesmenAdministrasiKeterangan() {
+  return String(getAdministrasiAsesmenSetting("Keterangan", "Akhir Tahun") || "").trim() || "Akhir Tahun";
+}
+
+function getAsesmenAdministrasiSchoolYear() {
+  return String(getAdministrasiAsesmenSetting("TahunPelajaran", "") || "").trim() || getActiveSchoolYearLabel();
+}
+
+function getAsesmenKepalaSekolahInfo() {
+  const raporSettings = typeof window.getRaporSettings === "function" ? window.getRaporSettings() : {};
+  return {
+    nama: String(raporSettings?.kepala_nama || "").trim() || "Dra. MAMIK SASMIATI, M.Pd",
+    nip: String(raporSettings?.kepala_nip || "").trim() || "19660601 199003 2 010",
+    ttd: typeof window.getKepalaSekolahTtdImage === "function"
+      ? String(window.getKepalaSekolahTtdImage() || "").trim()
+      : String(raporSettings?.kepala_ttd || "").trim()
+  };
+}
+
+function renderAsesmenLabel121Card(entry) {
+  const roomLabel = entry ? `R. ${escapeAsesmenHtml(entry.roomNumber)}` : "&nbsp;";
+  const nomorPeserta = entry ? escapeAsesmenHtml(entry.nomorPeserta || "") : "&nbsp;";
+  const namaPeserta = entry ? escapeAsesmenHtml(entry.nama || "") : "&nbsp;";
+  const emptyClass = entry ? "" : " label121-card-empty";
+
+  return `
+    <article class="label121-card${emptyClass}">
+      <div class="label121-room">${roomLabel}</div>
+      <div class="label121-main">
+        <div class="label121-number">${nomorPeserta}</div>
+        <div class="label121-name">${namaPeserta}</div>
+      </div>
+    </article>
+  `;
+}
+
+function renderAsesmenLabel121Page(entries, pageIndex, totalPages, level) {
+  const items = Array.from({ length: 10 }, (_, index) => entries[index] || null)
+    .map(renderAsesmenLabel121Card)
+    .join("");
+
+  return `
+    <section class="label121-page">
+      <div class="label121-grid">${items}</div>
+    </section>
+  `;
+}
+
+function getLabel121PrintHtml(level) {
+  const levelKey = String(level);
+  const labelEntries = getAsesmenLabel121Entries(levelKey);
+  const chunks = [];
+  for (let index = 0; index < labelEntries.length; index += 10) {
+    chunks.push(labelEntries.slice(index, index + 10));
+  }
+  if (!chunks.length) chunks.push([]);
+  const pages = chunks
+    .map((chunk, pageIndex) => renderAsesmenLabel121Page(chunk, pageIndex, chunks.length, levelKey))
+    .join("");
+
+  return `
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Label 121 Kelas ${escapeAsesmenHtml(levelKey)}</title>
+      <style>
+        * { box-sizing: border-box; }
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          color: #111827;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .label121-toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          display: flex;
+          justify-content: flex-end;
+          padding: 10px 12px 0;
+          background: #ffffff;
+        }
+        .label121-toolbar button {
+          min-height: 38px;
+          padding: 8px 14px;
+          border: 1px solid #0e7490;
+          border-radius: 999px;
+          background: #0e7490;
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .label121-page {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 0 auto 6mm;
+          padding: 1mm 1mm;
+          page-break-after: always;
+          break-after: page;
+          background: #ffffff;
+        }
+        .label121-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+        .label121-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 99.85mm);
+          grid-template-rows: repeat(5, 54mm);
+          column-gap: 4.3mm;
+          row-gap: 3.5mm;
+          justify-content: start;
+          align-content: start;
+        }
+        .label121-card {
+          min-height: 0;
+          height: 100%;
+          display: grid;
+          grid-template-columns: 15.2% 84.8%;
+          background: #ffffff;
+        }
+        .label121-room {
+          display: grid;
+          place-items: center;
+          border-right: 1px solid #111827;
+          font-size: 14mm;
+          font-weight: 800;
+          line-height: 1;
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
+          letter-spacing: 0.12mm;
+        }
+        .label121-main {
+          display: grid;
+          grid-template-rows: 1fr 1fr;
+        }
+        .label121-number,
+        .label121-name {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          padding: 3mm 3.4mm;
+        }
+        .label121-number {
+          border-bottom: 1px solid #111827;
+          font-size: 8.5mm;
+          font-weight: 800;
+          letter-spacing: 0.08mm;
+          white-space: nowrap;
+        }
+        .label121-name {
+          font-size: 6mm;
+          font-weight: 700;
+          text-transform: uppercase;
+          line-height: 1.12;
+          white-space: normal;
+          overflow: visible;
+          text-overflow: initial;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+        .label121-card-empty .label121-number,
+        .label121-card-empty .label121-name {
+          color: transparent;
+        }
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        @media print {
+          .label121-toolbar { display: none; }
+          .label121-page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0;
+            padding: 1mm 1mm;
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="label121-toolbar">
+        <button type="button" onclick="window.print()">Print / Simpan PDF</button>
+      </div>
+      ${pages}
+    </body>
+    </html>
+  `;
+}
+
+function renderAsesmenKartuPesertaCard(entry, meta = {}) {
+  const schoolLogoUrl = meta.schoolLogoUrl || "";
+  const titleLine = String(meta.titleLine || "").trim().toUpperCase();
+  const schoolYear = String(meta.schoolYear || "").trim();
+  const nama = escapeAsesmenHtml(entry?.nama || "");
+  const nomorPeserta = escapeAsesmenHtml(entry?.nomorPeserta || "");
+  const roomNumber = escapeAsesmenHtml(entry?.roomNumber || "");
+
+  return `
+    <article class="kartu-peserta-card">
+      <div class="kartu-peserta-kop">
+        <div class="kartu-peserta-kop-head">
+          <img src="${escapeAsesmenHtml(schoolLogoUrl)}" alt="Logo Pemda">
+          <div class="kartu-peserta-kop-text">
+            <span>PEMERINTAH KABUPATEN JEMBER</span>
+            <strong>SMPN 1 UMBULSARI</strong>
+          </div>
+        </div>
+      </div>
+      <div class="kartu-peserta-title">
+        <strong>${escapeAsesmenHtml(titleLine)}</strong>
+        <span>TAHUN PELAJARAN ${escapeAsesmenHtml(schoolYear)}</span>
+      </div>
+      <div class="kartu-peserta-name-box">${nama || "&nbsp;"}</div>
+      <div class="kartu-peserta-field">
+        <span class="kartu-peserta-label">NO PESERTA</span>
+        <strong class="kartu-peserta-value">${nomorPeserta || "&nbsp;"}</strong>
+      </div>
+      <div class="kartu-peserta-field">
+        <span class="kartu-peserta-label">RUANG</span>
+        <strong class="kartu-peserta-value kartu-peserta-room">${roomNumber || "&nbsp;"}</strong>
+      </div>
+      <div class="kartu-peserta-signature">
+        <strong>Kartu Peserta</strong>
+        <small>SMP Negeri 1 Umbulsari</small>
+      </div>
+    </article>
+  `;
+}
+
+function renderAsesmenKartuPesertaPage(entries, meta = {}) {
+  const items = Array.from({ length: 9 }, (_, index) => entries[index] || null)
+    .map(entry => entry ? renderAsesmenKartuPesertaCard(entry, meta) : `<article class="kartu-peserta-card kartu-peserta-card--empty"></article>`)
+    .join("");
+  return `<section class="kartu-peserta-page"><div class="kartu-peserta-grid">${items}</div></section>`;
+}
+
+function getKartuPesertaPrintHtml(level, options = {}) {
+  const levelKey = String(level);
+  const roomFilter = String(options?.roomFilter || "").trim();
+  const entries = getAsesmenKartuPesertaEntries(levelKey);
+  const filteredEntries = roomFilter
+    ? entries.filter(entry => getAsesmenKartuPesertaRoomKey(entry) === roomFilter)
+    : entries;
+  const roomKeys = roomFilter
+    ? [roomFilter]
+    : getAsesmenKartuPesertaRoomKeys(filteredEntries);
+  const pageGroups = [];
+
+  roomKeys.forEach(roomKey => {
+    const roomEntries = filteredEntries.filter(entry => getAsesmenKartuPesertaRoomKey(entry) === roomKey);
+    if (!roomEntries.length) {
+      pageGroups.push([]);
+      return;
+    }
+    for (let index = 0; index < roomEntries.length; index += 9) {
+      pageGroups.push(roomEntries.slice(index, index + 9));
+    }
+  });
+
+  if (!pageGroups.length) pageGroups.push([]);
+  const judul = getAsesmenAdministrasiJudul();
+  const keterangan = getAsesmenAdministrasiKeterangan();
+  const schoolYear = getAsesmenAdministrasiSchoolYear();
+  const titleLine = [judul, keterangan].filter(Boolean).join(" ");
+  const meta = {
+    titleLine,
+    schoolYear,
+    kepalaInfo: getAsesmenKepalaSekolahInfo(),
+    schoolLogoUrl: new URL("img/logo_pemda.png", window.location.href).href
+  };
+  const pages = pageGroups.map(group => renderAsesmenKartuPesertaPage(group, meta)).join("");
+
+  return `
+    <!doctype html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Kartu Peserta Kelas ${escapeAsesmenHtml(levelKey)}${roomFilter ? ` Ruang ${escapeAsesmenHtml(getAsesmenKartuPesertaRoomLabel(roomFilter))}` : ""}</title>
+      <style>
+        * { box-sizing: border-box; }
+        html, body {
+          margin: 0;
+          padding: 0;
+          background: #ffffff;
+          color: #111827;
+          font-family: Arial, Helvetica, sans-serif;
+        }
+        body {
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+        .kartu-peserta-toolbar {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          display: flex;
+          justify-content: flex-end;
+          padding: 10px 12px 0;
+          background: #ffffff;
+        }
+        .kartu-peserta-toolbar button {
+          min-height: 38px;
+          padding: 8px 14px;
+          border: 1px solid #0e7490;
+          border-radius: 999px;
+          background: #0e7490;
+          color: #ffffff;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .kartu-peserta-page {
+          width: 210mm;
+          min-height: 297mm;
+          margin: 0 auto 6mm;
+          padding: 4.8mm 4.2mm;
+          overflow: hidden;
+          page-break-after: always;
+          break-after: page;
+          background: #ffffff;
+        }
+        .kartu-peserta-page:last-child {
+          page-break-after: auto;
+          break-after: auto;
+        }
+        .kartu-peserta-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          grid-template-rows: repeat(3, 1fr);
+          gap: 2mm 2mm;
+          height: calc(297mm - 9.6mm);
+        }
+        .kartu-peserta-card {
+          min-height: 0;
+          height: 100%;
+          border: 1px solid #111827;
+          padding: 3.3mm 3.5mm 3.5mm;
+          display: grid;
+          grid-template-rows: auto auto auto auto 1fr;
+          background: #fff;
+          overflow: hidden;
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        .kartu-peserta-card--empty {
+          border-color: transparent;
+        }
+        .kartu-peserta-kop {
+          border-bottom: 1px solid #111827;
+          padding-bottom: 1.15mm;
+          margin-bottom: 1.2mm;
+        }
+        .kartu-peserta-kop-head {
+          display: grid;
+          grid-template-columns: 13mm 1fr;
+          gap: 2mm;
+          align-items: center;
+        }
+        .kartu-peserta-kop-head img {
+          width: 11.5mm;
+          height: 11.5mm;
+          object-fit: contain;
+        }
+        .kartu-peserta-kop-text {
+          display: grid;
+          line-height: 1.05;
+          text-align: left;
+        }
+        .kartu-peserta-kop-text span,
+        .kartu-peserta-kop-text strong {
+          font-size: 2.15mm;
+          font-weight: 700;
+        }
+        .kartu-peserta-kop-text strong {
+          font-size: 3.05mm;
+          letter-spacing: 0.04mm;
+        }
+        .kartu-peserta-title {
+          display: grid;
+          gap: 0.45mm;
+          margin-bottom: 2.3mm;
+          text-align: center;
+          line-height: 1.15;
+        }
+        .kartu-peserta-title strong,
+        .kartu-peserta-title span {
+          font-size: 2mm;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .kartu-peserta-name-box,
+        .kartu-peserta-field {
+          border: 1px solid #111827;
+          margin: 0 2.2mm 1.7mm;
+          text-align: center;
+          background: #fff;
+        }
+        .kartu-peserta-name-box {
+          min-height: 11.55mm;
+          display: grid;
+          place-items: center;
+          padding: 1.1mm 1.8mm;
+          font-size: 3.85mm;
+          font-weight: 800;
+          line-height: 1.1;
+          text-transform: uppercase;
+          white-space: normal;
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+        .kartu-peserta-field {
+          padding: 0.9mm 1.4mm 1.1mm;
+        }
+        .kartu-peserta-label {
+          display: block;
+          font-size: 2.1mm;
+          font-weight: 800;
+          margin-bottom: 0.55mm;
+          text-transform: uppercase;
+        }
+        .kartu-peserta-value {
+          display: block;
+          font-size: 5.85mm;
+          font-weight: 800;
+          line-height: 1.05;
+        }
+        .kartu-peserta-room {
+          font-size: 14mm;
+        }
+        .kartu-peserta-signature {
+          display: grid;
+          align-content: end;
+          justify-items: center;
+          text-align: center;
+          padding-top: 1.1mm;
+          line-height: 1.08;
+        }
+        .kartu-peserta-signature span,
+        .kartu-peserta-signature strong,
+        .kartu-peserta-signature small {
+          display: block;
+        }
+        .kartu-peserta-signature strong {
+          font-size: 3.08mm;
+          font-weight: 800;
+          margin-top: 0;
+        }
+        .kartu-peserta-signature small {
+          font-size: 2.53mm;
+          font-weight: 700;
+          margin-top: 0.25mm;
+        }
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+        @media print {
+          .kartu-peserta-toolbar { display: none; }
+          .kartu-peserta-page {
+            margin: 0;
+            overflow: hidden;
+          }
+          .kartu-peserta-grid {
+            height: calc(297mm - 9.6mm);
+          }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="kartu-peserta-toolbar">
+        <button type="button" onclick="window.print()">Print / Simpan PDF</button>
+      </div>
+      ${pages}
+    </body>
+    </html>
+  `;
+}
+
+async function promptExportKartuPesertaPDF() {
+  const levelOptions = { "7": "Kelas 7", "8": "Kelas 8", "9": "Kelas 9" };
+  const levelResult = await Swal.fire({
+    title: "Cetak Kartu Peserta",
+    input: "select",
+    inputOptions: levelOptions,
+    inputValue: "7",
+    inputPlaceholder: "Pilih kelas",
+    confirmButtonText: "Export PDF",
+    cancelButtonText: "Batal",
+    showCancelButton: true,
+    inputValidator: value => value ? "" : "Pilih kelas terlebih dahulu."
+  });
+
+  if (!levelResult.isConfirmed) return;
+  const level = String(levelResult.value || "");
+  const entries = getAsesmenKartuPesertaEntries(level);
+  if (!entries.length) {
+    Swal.fire("Belum ada data", `Belum ada peserta terpetakan untuk Kelas ${escapeAsesmenHtml(level)}. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.`, "warning");
+    return;
+  }
+
+  const roomKeys = getAsesmenKartuPesertaRoomKeys(entries);
+  const roomOptions = { "": "Semua Ruang" };
+  roomKeys.forEach(roomKey => {
+    const roomLabel = getAsesmenKartuPesertaRoomLabel(roomKey);
+    roomOptions[roomKey] = roomKey === "__NO_ROOM__" ? roomLabel : `Ruang ${roomLabel}`;
+  });
+  const roomResult = await Swal.fire({
+    title: "Filter Ruang",
+    input: "select",
+    inputOptions: roomOptions,
+    inputValue: "",
+    inputPlaceholder: "Semua ruang",
+    confirmButtonText: "Export PDF",
+    cancelButtonText: "Batal",
+    showCancelButton: true
+  });
+
+  if (!roomResult.isConfirmed) return;
+  const roomFilter = String(roomResult.value || "").trim();
+  const html = getKartuPesertaPrintHtml(level, { roomFilter });
+  const roomTitle = roomFilter ? ` Ruang ${getAsesmenKartuPesertaRoomLabel(roomFilter)}` : "";
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: `Kartu Peserta Kelas ${level}${roomTitle}`,
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 450,
+      fallbackDelayMs: 1000
+    });
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 450);
+}
+
+async function promptExportLabel121PDF() {
+  const levelOptions = { "7": "Kelas 7", "8": "Kelas 8", "9": "Kelas 9" };
+  const result = await Swal.fire({
+    title: "Cetak Label 121",
+    input: "select",
+    inputOptions: levelOptions,
+    inputValue: "7",
+    inputPlaceholder: "Pilih kelas",
+    confirmButtonText: "Export PDF",
+    cancelButtonText: "Batal",
+    showCancelButton: true,
+    inputValidator: value => value ? "" : "Pilih kelas terlebih dahulu."
+  });
+
+  if (!result.isConfirmed) return;
+
+  const level = String(result.value || "");
+  const labelEntries = getAsesmenLabel121Entries(level);
+  if (!labelEntries.length) {
+    Swal.fire("Belum ada data", `Belum ada peserta terpetakan untuk Kelas ${escapeAsesmenHtml(level)}. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.`, "warning");
+    return;
+  }
+
+  const html = getLabel121PrintHtml(level);
+  if (window.AppPrint?.openHtml) {
+    window.AppPrint.openHtml(html, {
+      documentTitle: `Label 121 Kelas ${level}`,
+      popupBlockedTitle: "Popup diblokir",
+      popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
+      autoPrint: true,
+      printDelayMs: 450,
+      fallbackDelayMs: 1000
+    });
+    return;
+  }
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
+    return;
+  }
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 450);
 }
 
 function getDenahSeatNumbers() {
@@ -1721,21 +2473,35 @@ function getDataMapPrintHtml() {
         * { box-sizing: border-box; }
         body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, Helvetica, sans-serif; }
         .data-map-page {
-          width: 100%;
-          height: 210mm;
-          padding: 8mm 10mm;
           page-break-after: always;
           break-after: page;
           background: #ffffff;
           overflow: hidden;
         }
         .data-map-page:last-child { page-break-after: auto; break-after: auto; }
+        .data-map-page--landscape {
+          width: 297mm;
+          height: 210mm;
+          padding: 8mm 10mm;
+          page: data-map-landscape;
+        }
+        .data-map-page--portrait {
+          width: 210mm;
+          height: 297mm;
+          padding: 10mm 8mm;
+          page: data-map-portrait;
+        }
         .data-map-sheet {
           width: 100%;
-          height: calc(210mm - 16mm);
           border: 1.3px solid #4b5563;
           padding: 6mm 6mm 5mm;
           overflow: hidden;
+        }
+        .data-map-page--landscape .data-map-sheet {
+          height: calc(210mm - 16mm);
+        }
+        .data-map-page--portrait .data-map-sheet {
+          height: calc(297mm - 20mm);
         }
         .data-map-header {
           margin-bottom: 5mm;
@@ -1754,9 +2520,14 @@ function getDataMapPrintHtml() {
         }
         .data-map-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 5mm;
           align-items: start;
+        }
+        .data-map-grid--landscape {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .data-map-grid--portrait {
+          grid-template-columns: minmax(0, 1fr);
         }
         .data-map-panel {
           min-width: 0;
@@ -1768,7 +2539,7 @@ function getDataMapPrintHtml() {
           width: 100%;
           border-collapse: collapse;
           table-layout: fixed;
-          font-size: 10.5px;
+          font-size: 15px;
         }
         .data-map-table th,
         .data-map-table td {
@@ -1783,17 +2554,21 @@ function getDataMapPrintHtml() {
           text-transform: uppercase;
           background: #ffffff;
           color: #111827;
-          white-space: nowrap;
+          text-align: center;
+          white-space: normal;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+          line-height: 1.15;
         }
         .data-map-table tbody tr {
           height: 7.4mm;
         }
         .data-map-no {
-          width: 28px;
+          width: 30px;
           text-align: center;
         }
         .data-map-number {
-          width: 98px;
+          width: 105px;
           text-align: center;
           white-space: nowrap;
         }
@@ -1804,12 +2579,16 @@ function getDataMapPrintHtml() {
           text-overflow: clip;
         }
         .data-map-class {
-          width: 48px;
+          width: 52px;
           text-align: center;
           white-space: nowrap;
         }
-        @page {
+        @page data-map-landscape {
           size: A4 landscape;
+          margin: 0;
+        }
+        @page data-map-portrait {
+          size: A4 portrait;
           margin: 0;
         }
         @media print {
@@ -2237,8 +3016,12 @@ function renderAsesmenRoomArrangement() {
 }
 
 window.setAsesmenLevelEnabled = setAsesmenLevelEnabled;
+window.setAsesmenKelasSumber = setAsesmenKelasSumber;
 window.setAsesmenPageTab = setAsesmenPageTab;
 window.renderKepersetaanPage = renderKepersetaanPage;
 window.exportTempelKacaPDF = exportTempelKacaPDF;
+window.exportDaftarPesertaAsesmenExcel = exportDaftarPesertaAsesmenExcel;
+window.promptExportLabel121PDF = promptExportLabel121PDF;
+window.promptExportKartuPesertaPDF = promptExportKartuPesertaPDF;
 window.exportDataMapPDF = exportDataMapPDF;
 window.exportDenahPesertaPDF = exportDenahPesertaPDF;

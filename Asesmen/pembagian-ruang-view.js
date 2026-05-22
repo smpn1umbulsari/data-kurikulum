@@ -50,10 +50,14 @@
             <thead>
               <tr>
                 <th>Administrasi</th>
-                <th>Export PDF</th>
+                <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td class="asesmen-admin-name-cell">Daftar Peserta</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-secondary btn-table-compact" onclick="exportDaftarPesertaAsesmenExcel()">Download Excel</button></td>
+              </tr>
               <tr>
                 <td class="asesmen-admin-name-cell">Tempel Kaca</td>
                 <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportTempelKacaPDF()">Export PDF</button></td>
@@ -65,6 +69,14 @@
               <tr>
                 <td class="asesmen-admin-name-cell">Denah Peserta</td>
                 <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportDenahPesertaPDF()">Export PDF</button></td>
+              </tr>
+              <tr>
+                <td class="asesmen-admin-name-cell">Label 121</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="promptExportLabel121PDF()">Export PDF</button></td>
+              </tr>
+              <tr>
+                <td class="asesmen-admin-name-cell">Kartu Peserta</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="promptExportKartuPesertaPDF()">Export PDF</button></td>
               </tr>
             </tbody>
           </table>
@@ -180,6 +192,7 @@
             <div class="asesmen-room-total-note">
               <span>Jumlah ruang -> isi banyak ruang yang dipakai.</span>
               <span>Mode pembagian -> pilih setengah, 20 siswa, atau manual.</span>
+              <span>Sumber kelas -> pilih kelas asli atau kelas bayangan.</span>
               <span>Jika pilih Manual, popup tabel jumlah siswa per ruang akan langsung muncul.</span>
             </div>
             <div class="asesmen-room-total-control">
@@ -193,6 +206,13 @@
                   <option value="setengah" ${context.draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
                   <option value="20siswa" ${context.draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
                   <option value="manual" ${context.draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
+                </select>
+              </label>
+              <label class="asesmen-room-total-field">
+                <span>Sumber kelas</span>
+                <select class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber kelas">
+                  <option value="bayangan" ${context.draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
+                  <option value="asli" ${context.draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
                 </select>
               </label>
               <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()">Set</button>

@@ -22,7 +22,7 @@
     tugasBase: ["Mapel/crud.js?v=20260407c", "Guru/crud.js", "Mengajar/crud.js?v=20260406c", "TugasTambahan/tugas-tambahan.js?v=20260409i"],
     rekapBase: ["ttd-ks.js?v=20260409b", "Mapel/crud.js?v=20260407c", "Guru/crud.js", "Mengajar/crud.js?v=20260406c", "TugasTambahan/tugas-tambahan.js?v=20260409i", "Rekap/rekap-v2.js?v=20260409j"],
     kalender: ["ttd-ks.js?v=20260409b", "Kurikulum/kalender-pendidikan.js?v=20260412a"],
-    asesmenPembagian: ["ttd-ks.js?v=20260409b", "Asesmen/pembagian-ruang-store.js?v=20260414a", "Asesmen/administrasi-settings.js?v=20260410a", "Asesmen/pembagian-ruang-service.js?v=20260410a", "Asesmen/pembagian-ruang-view.js?v=20260427a", "Asesmen/pembagian-ruang-v2.js?v=20260427a"],
+  asesmenPembagian: ["ttd-ks.js?v=20260409b", "Asesmen/pembagian-ruang-store.js?v=20260414a", "Asesmen/administrasi-settings.js?v=20260410a", "Asesmen/pembagian-ruang-service.js?v=20260410a", "Asesmen/pembagian-ruang-view.js?v=20260502f", "Asesmen/pembagian-ruang-v2.js?v=20260504b"],
     kepangawasan: ["ttd-ks.js?v=20260409b", "Asesmen/kepangawasan.js?v=20260422a"],
     aiSoal: ["Asesmen/soal-ai.js?v=20260413m"],
     nilaiBase: ["ttd-ks.js?v=20260409b", "Nilai/nilai-data.js?v=20260422a", "Nilai/nilai.js?v=20260422l", "Nilai/rapor.js?v=20260414f"],
