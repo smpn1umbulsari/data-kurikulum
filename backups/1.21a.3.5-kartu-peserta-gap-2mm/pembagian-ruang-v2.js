@@ -2,68 +2,56 @@
 let semuaDataAsesmenSiswa = [];
 let unsubscribeAsesmenSiswa = null;
 function normalizeAsesmenKelasSumber(value) {
-  return String(value || "")
-    .trim()
-    .toLowerCase() === "asli"
-    ? "asli"
-    : "bayangan";
+  return String(value || "").trim().toLowerCase() === "asli" ? "asli" : "bayangan";
 }
-let jumlahRuangUjian = Number(
-  localStorage.getItem("asesmenJumlahRuangUjian") || 1,
-);
+let jumlahRuangUjian = Number(localStorage.getItem("asesmenJumlahRuangUjian") || 1);
 let draftJumlahRuangUjian = jumlahRuangUjian;
-let pembagianKelasAsesmen = ["manual", "20siswa"].includes(
-  localStorage.getItem("asesmenPembagianKelas"),
-)
-  ? localStorage.getItem("asesmenPembagianKelas")
-  : "setengah";
+let pembagianKelasAsesmen = ["manual", "20siswa"].includes(localStorage.getItem("asesmenPembagianKelas")) ? localStorage.getItem("asesmenPembagianKelas") : "setengah";
 let draftPembagianKelasAsesmen = pembagianKelasAsesmen;
-let asesmenKelasSumber = normalizeAsesmenKelasSumber(
-  localStorage.getItem("asesmenKelasSumber") || "bayangan",
-);
+let asesmenKelasSumber = normalizeAsesmenKelasSumber(localStorage.getItem("asesmenKelasSumber") || "bayangan");
 let draftAsesmenKelasSumber = asesmenKelasSumber;
 const asesmenRuangStore = window.AsesmenRuangStore || null;
 let asesmenSaveStateTimer = null;
 const asesmenStudentLevelCache = new Map();
 const asesmenUnassignedLevelCache = new Map();
 const asesmenOrderedStudentsCache = new Map();
-const createAsesmenLevelSettings =
-  asesmenRuangStore?.createLevelSettings ||
-  ((mode = "setengah") => ({
-    enabled: true,
-    mode,
-    order: "az",
-    roomRanges: [
-      { start: "", end: "" },
-      { start: "", end: "" },
-    ],
-    manualCounts: [],
-  }));
+const asesmenPresensiIndexCache = new Map();
+const asesmenLevelRoomsCache = new Map();
+const asesmenRoomsCache = new Map();
+const asesmenDecoratedRoomsCache = new Map();
+let asesmenRoomUsageCache = null;
+let asesmenCombinedRoomMapCache = null;
+const createAsesmenLevelSettings = asesmenRuangStore?.createLevelSettings || ((mode = "setengah") => ({
+  enabled: true,
+  mode,
+  order: "az",
+  roomRanges: [{ start: "", end: "" }, { start: "", end: "" }],
+  manualCounts: []
+}));
 const asesmenLevelSettings = {
   7: createAsesmenLevelSettings(pembagianKelasAsesmen),
   8: createAsesmenLevelSettings(pembagianKelasAsesmen),
-  9: createAsesmenLevelSettings(pembagianKelasAsesmen),
+  9: createAsesmenLevelSettings(pembagianKelasAsesmen)
 };
 const draftAsesmenLevelSettings = {
   7: cloneAsesmenLevelSettings(asesmenLevelSettings[7]),
   8: cloneAsesmenLevelSettings(asesmenLevelSettings[8]),
-  9: cloneAsesmenLevelSettings(asesmenLevelSettings[9]),
+  9: cloneAsesmenLevelSettings(asesmenLevelSettings[9])
 };
 const appliedAsesmenLevels = new Set();
 const ASESMEN_STORAGE_KEY = "asesmenPembagianRuangV2";
 const ASESMEN_PAGE_TAB_KEY = "asesmenKepersetaanTab";
 const ASESMEN_PAGE_TABS = [
   { key: "pembagian-ruang", label: "Pembagian Ruang" },
-  { key: "administrasi", label: "Administrasi" },
+  { key: "administrasi", label: "Administrasi" }
 ];
-let asesmenPageTab = normalizeAsesmenPageTab(
-  localStorage.getItem(ASESMEN_PAGE_TAB_KEY) || "pembagian-ruang",
-);
+let asesmenPageTab = normalizeAsesmenPageTab(localStorage.getItem(ASESMEN_PAGE_TAB_KEY) || "pembagian-ruang");
+let lastKepersetaanPageHtml = "";
+let lastAsesmenRoomArrangementHtml = "";
+const lastAsesmenPreviewHtmlByLevel = {};
 
 function normalizeAsesmenPageTab(tab) {
-  return ASESMEN_PAGE_TABS.some((item) => item.key === tab)
-    ? tab
-    : "pembagian-ruang";
+  return ASESMEN_PAGE_TABS.some(item => item.key === tab) ? tab : "pembagian-ruang";
 }
 
 function setAsesmenPageTab(tab, options = {}) {
@@ -77,10 +65,16 @@ function setAsesmenPageTab(tab, options = {}) {
   loadRealtimePembagianRuang();
 }
 
+function setAsesmenHtmlIfChanged(element, html) {
+  if (element.innerHTML !== html) element.innerHTML = html;
+}
+
 function invalidateAsesmenStudentCaches() {
   asesmenStudentLevelCache.clear();
   asesmenUnassignedLevelCache.clear();
   asesmenOrderedStudentsCache.clear();
+  asesmenPresensiIndexCache.clear();
+  invalidateAsesmenRoomCaches();
 }
 
 function isAsesmenUsingKelasBayangan() {
@@ -91,6 +85,14 @@ function getAsesmenKelasSumberLabel() {
   return isAsesmenUsingKelasBayangan() ? "kelas bayangan" : "kelas asli";
 }
 
+function invalidateAsesmenRoomCaches() {
+  asesmenLevelRoomsCache.clear();
+  asesmenRoomsCache.clear();
+  asesmenDecoratedRoomsCache.clear();
+  asesmenRoomUsageCache = null;
+  asesmenCombinedRoomMapCache = null;
+}
+
 function cloneAsesmenLevelSettings(settings) {
   if (asesmenRuangStore?.cloneLevelSettings) {
     return asesmenRuangStore.cloneLevelSettings(settings);
@@ -99,8 +101,8 @@ function cloneAsesmenLevelSettings(settings) {
     enabled: settings.enabled !== false,
     mode: settings.mode,
     order: settings.order,
-    roomRanges: settings.roomRanges.map((range) => ({ ...range })),
-    manualCounts: [...settings.manualCounts],
+    roomRanges: settings.roomRanges.map(range => ({ ...range })),
+    manualCounts: [...settings.manualCounts]
   };
 }
 
@@ -109,43 +111,34 @@ function syncAsesmenManualCountLength(settings) {
     asesmenRuangStore.syncManualCountLength(settings, jumlahRuangUjian);
     return;
   }
-  while (settings.manualCounts.length < jumlahRuangUjian)
-    settings.manualCounts.push("");
-  if (settings.manualCounts.length > jumlahRuangUjian)
-    settings.manualCounts.length = jumlahRuangUjian;
+  while (settings.manualCounts.length < jumlahRuangUjian) settings.manualCounts.push("");
+  if (settings.manualCounts.length > jumlahRuangUjian) settings.manualCounts.length = jumlahRuangUjian;
 }
 
-function sanitizeAsesmenLevelSettings(
-  settings = {},
-  fallbackMode = pembagianKelasAsesmen,
-) {
+function sanitizeAsesmenLevelSettings(settings = {}, fallbackMode = pembagianKelasAsesmen) {
   if (asesmenRuangStore?.sanitizeLevelSettings) {
     return asesmenRuangStore.sanitizeLevelSettings(settings, {
       fallbackMode,
-      jumlahRuangUjian,
+      jumlahRuangUjian
     });
   }
-  const roomRanges = Array.isArray(settings.roomRanges)
-    ? settings.roomRanges
-    : [];
-  const sanitizedRanges = [0, 1].map((index) => {
+  const roomRanges = Array.isArray(settings.roomRanges) ? settings.roomRanges : [];
+  const sanitizedRanges = [0, 1].map(index => {
     const range = roomRanges[index] || {};
     return {
       start: String(range.start ?? "").trim(),
-      end: String(range.end ?? "").trim(),
+      end: String(range.end ?? "").trim()
     };
   });
   const manualCounts = Array.isArray(settings.manualCounts)
-    ? settings.manualCounts.map((value) => String(value ?? "").trim())
+    ? settings.manualCounts.map(value => String(value ?? "").trim())
     : [];
   const sanitized = {
     enabled: settings.enabled !== false,
-    mode: ["manual", "20siswa", "setengah"].includes(settings.mode)
-      ? settings.mode
-      : fallbackMode,
+    mode: ["manual", "20siswa", "setengah"].includes(settings.mode) ? settings.mode : fallbackMode,
     order: settings.order === "za" ? "za" : "az",
     roomRanges: sanitizedRanges,
-    manualCounts,
+    manualCounts
   };
   syncAsesmenManualCountLength(sanitized);
   return sanitized;
@@ -166,7 +159,7 @@ function saveAsesmenPembagianRuangState() {
       draftAsesmenKelasSumber,
       appliedLevels: Array.from(appliedAsesmenLevels),
       asesmenLevelSettings,
-      draftAsesmenLevelSettings,
+      draftAsesmenLevelSettings
     });
     return;
   }
@@ -181,13 +174,13 @@ function saveAsesmenPembagianRuangState() {
     asesmenLevelSettings: {
       7: sanitizeAsesmenLevelSettings(asesmenLevelSettings[7]),
       8: sanitizeAsesmenLevelSettings(asesmenLevelSettings[8]),
-      9: sanitizeAsesmenLevelSettings(asesmenLevelSettings[9]),
+      9: sanitizeAsesmenLevelSettings(asesmenLevelSettings[9])
     },
     draftAsesmenLevelSettings: {
       7: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[7]),
       8: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[8]),
-      9: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[9]),
-    },
+      9: sanitizeAsesmenLevelSettings(draftAsesmenLevelSettings[9])
+    }
   };
   localStorage.setItem(ASESMEN_STORAGE_KEY, JSON.stringify(payload));
 }
@@ -205,7 +198,7 @@ function loadAsesmenPembagianRuangState() {
       jumlahRuangUjian,
       pembagianKelasAsesmen,
       asesmenKelasSumber,
-      asesmenLevelSettings,
+      asesmenLevelSettings
     });
     if (!saved) return;
     jumlahRuangUjian = saved.jumlahRuangUjian;
@@ -213,17 +206,13 @@ function loadAsesmenPembagianRuangState() {
     pembagianKelasAsesmen = saved.pembagianKelasAsesmen;
     draftPembagianKelasAsesmen = saved.draftPembagianKelasAsesmen;
     asesmenKelasSumber = normalizeAsesmenKelasSumber(saved.asesmenKelasSumber);
-    draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(
-      saved.draftAsesmenKelasSumber || asesmenKelasSumber,
-    );
-    [7, 8, 9].forEach((level) => {
+    draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(saved.draftAsesmenKelasSumber || asesmenKelasSumber);
+    [7, 8, 9].forEach(level => {
       asesmenLevelSettings[level] = saved.asesmenLevelSettings[level];
       draftAsesmenLevelSettings[level] = saved.draftAsesmenLevelSettings[level];
     });
     appliedAsesmenLevels.clear();
-    saved.appliedLevels.forEach((level) =>
-      appliedAsesmenLevels.add(String(level)),
-    );
+    saved.appliedLevels.forEach(level => appliedAsesmenLevels.add(String(level)));
     localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
     localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
     localStorage.setItem("asesmenKelasSumber", asesmenKelasSumber);
@@ -233,57 +222,30 @@ function loadAsesmenPembagianRuangState() {
     const raw = localStorage.getItem(ASESMEN_STORAGE_KEY);
     if (!raw) return;
     const saved = JSON.parse(raw);
-    const savedJumlah = Math.min(
-      Math.max(Number(saved?.jumlahRuangUjian) || jumlahRuangUjian, 1),
-      99,
-    );
+    const savedJumlah = Math.min(Math.max(Number(saved?.jumlahRuangUjian) || jumlahRuangUjian, 1), 99);
     jumlahRuangUjian = savedJumlah;
-    draftJumlahRuangUjian = Math.min(
-      Math.max(Number(saved?.draftJumlahRuangUjian) || savedJumlah, 1),
-      99,
-    );
-    pembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(
-      saved?.pembagianKelasAsesmen,
-    )
-      ? saved.pembagianKelasAsesmen
-      : "setengah";
-    draftPembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(
-      saved?.draftPembagianKelasAsesmen,
-    )
-      ? saved.draftPembagianKelasAsesmen
-      : pembagianKelasAsesmen;
-    asesmenKelasSumber = normalizeAsesmenKelasSumber(
-      saved?.asesmenKelasSumber ||
-        localStorage.getItem("asesmenKelasSumber") ||
-        "bayangan",
-    );
-    draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(
-      saved?.draftAsesmenKelasSumber || asesmenKelasSumber,
-    );
+    draftJumlahRuangUjian = Math.min(Math.max(Number(saved?.draftJumlahRuangUjian) || savedJumlah, 1), 99);
+    pembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(saved?.pembagianKelasAsesmen) ? saved.pembagianKelasAsesmen : "setengah";
+    draftPembagianKelasAsesmen = ["manual", "20siswa", "setengah"].includes(saved?.draftPembagianKelasAsesmen) ? saved.draftPembagianKelasAsesmen : pembagianKelasAsesmen;
+    asesmenKelasSumber = normalizeAsesmenKelasSumber(saved?.asesmenKelasSumber || localStorage.getItem("asesmenKelasSumber") || "bayangan");
+    draftAsesmenKelasSumber = normalizeAsesmenKelasSumber(saved?.draftAsesmenKelasSumber || asesmenKelasSumber);
 
-    [7, 8, 9].forEach((level) => {
+    [7, 8, 9].forEach(level => {
       asesmenLevelSettings[level] = sanitizeAsesmenLevelSettings(
-        saved?.asesmenLevelSettings?.[level] ||
-          saved?.asesmenLevelSettings?.[String(level)] ||
-          asesmenLevelSettings[level],
-        pembagianKelasAsesmen,
+        saved?.asesmenLevelSettings?.[level] || saved?.asesmenLevelSettings?.[String(level)] || asesmenLevelSettings[level],
+        pembagianKelasAsesmen
       );
       draftAsesmenLevelSettings[level] = sanitizeAsesmenLevelSettings(
-        saved?.draftAsesmenLevelSettings?.[level] ||
-          saved?.draftAsesmenLevelSettings?.[String(level)] ||
-          asesmenLevelSettings[level],
-        draftPembagianKelasAsesmen,
+        saved?.draftAsesmenLevelSettings?.[level] || saved?.draftAsesmenLevelSettings?.[String(level)] || asesmenLevelSettings[level],
+        draftPembagianKelasAsesmen
       );
     });
 
     appliedAsesmenLevels.clear();
-    const appliedLevels = Array.isArray(saved?.appliedLevels)
-      ? saved.appliedLevels
-      : [];
-    appliedLevels.forEach((level) => {
+    const appliedLevels = Array.isArray(saved?.appliedLevels) ? saved.appliedLevels : [];
+    appliedLevels.forEach(level => {
       const normalized = String(level || "").trim();
-      if (["7", "8", "9"].includes(normalized))
-        appliedAsesmenLevels.add(normalized);
+      if (["7", "8", "9"].includes(normalized)) appliedAsesmenLevels.add(normalized);
     });
 
     localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
@@ -315,49 +277,31 @@ function escapeAsesmenHtml(value) {
 }
 
 function asesmenCompare(left, right, direction = "asc") {
-  const result = String(left ?? "")
-    .trim()
-    .localeCompare(String(right ?? "").trim(), undefined, {
-      numeric: true,
-      sensitivity: "base",
-    });
+  const result = String(left ?? "").trim().localeCompare(String(right ?? "").trim(), undefined, {
+    numeric: true,
+    sensitivity: "base"
+  });
   return direction === "asc" ? result : -result;
 }
 
 function getAsesmenKelasParts(kelasValue = "") {
-  if (window.AppUtils?.parseKelas)
-    return window.AppUtils.parseKelas(kelasValue);
-  const normalized = String(kelasValue || "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "");
+  if (window.AppUtils?.parseKelas) return window.AppUtils.parseKelas(kelasValue);
+  const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
   const match = normalized.match(/([7-9])([A-Z]+)$/);
   return {
     tingkat: match ? match[1] : "",
     rombel: match ? match[2] : "",
-    kelas: match
-      ? `${match[1]} ${match[2]}`
-      : String(kelasValue || "")
-          .trim()
-          .toUpperCase(),
+    kelas: match ? `${match[1]} ${match[2]}` : String(kelasValue || "").trim().toUpperCase()
   };
 }
 
 function isAsesmenRombelBayanganUtama(rombel) {
-  return /^[A-H]$/.test(
-    String(rombel || "")
-      .trim()
-      .toUpperCase(),
-  );
+  return /^[A-H]$/.test(String(rombel || "").trim().toUpperCase());
 }
 
 function isAsesmenSiswaTambahanBayangan(siswa) {
-  const kelasAsli = String(siswa?.asliKelasParts?.kelas || siswa?.kelas || "")
-    .trim()
-    .toUpperCase();
-  const kelasAcuan = String(siswa?.kelasParts?.kelas || "")
-    .trim()
-    .toUpperCase();
+  const kelasAsli = String(siswa?.asliKelasParts?.kelas || siswa?.kelas || "").trim().toUpperCase();
+  const kelasAcuan = String(siswa?.kelasParts?.kelas || "").trim().toUpperCase();
   return Boolean(kelasAsli && kelasAcuan && kelasAsli !== kelasAcuan);
 }
 
@@ -369,15 +313,11 @@ function compareAsesmenSiswaDalamKelas(a, b) {
 }
 
 function getAsesmenKelasBayanganParts(siswa) {
-  if (window.AppUtils?.getPrimaryKelasParts)
-    return window.AppUtils.getPrimaryKelasParts(siswa);
+  if (window.AppUtils?.getPrimaryKelasParts) return window.AppUtils.getPrimaryKelasParts(siswa);
   const asliParts = getAsesmenKelasParts(siswa.kelas);
   const bayanganParts = getAsesmenKelasParts(siswa.kelas_bayangan);
 
-  if (
-    bayanganParts.tingkat === asliParts.tingkat &&
-    isAsesmenRombelBayanganUtama(bayanganParts.rombel)
-  ) {
+  if (bayanganParts.tingkat === asliParts.tingkat && isAsesmenRombelBayanganUtama(bayanganParts.rombel)) {
     return bayanganParts;
   }
 
@@ -394,30 +334,21 @@ function getAsesmenSelectedClassParts(siswa) {
   return {
     asliKelasParts,
     bayanganKelasParts,
-    kelasParts:
-      asesmenKelasSumber === "asli" ? asliKelasParts : bayanganKelasParts,
+    kelasParts: asesmenKelasSumber === "asli" ? asliKelasParts : bayanganKelasParts
   };
 }
 
 function getAsesmenStudentsByLevel(level) {
   const cacheKey = String(level);
-  if (asesmenStudentLevelCache.has(cacheKey))
-    return asesmenStudentLevelCache.get(cacheKey);
+  if (asesmenStudentLevelCache.has(cacheKey)) return asesmenStudentLevelCache.get(cacheKey);
 
   const students = semuaDataAsesmenSiswa
-    .map((siswa) => {
+    .map(siswa => {
       return { ...siswa, ...getAsesmenSelectedClassParts(siswa) };
     })
-    .filter(
-      (siswa) =>
-        siswa.kelasParts.tingkat === String(level) && siswa.kelasParts.rombel,
-    )
+    .filter(siswa => siswa.kelasParts.tingkat === String(level) && siswa.kelasParts.rombel)
     .sort((a, b) => {
-      const kelasResult = asesmenCompare(
-        a.kelasParts.rombel,
-        b.kelasParts.rombel,
-        "asc",
-      );
+      const kelasResult = asesmenCompare(a.kelasParts.rombel, b.kelasParts.rombel, "asc");
       if (kelasResult !== 0) return kelasResult;
       return compareAsesmenSiswaDalamKelas(a, b);
     });
@@ -426,42 +357,58 @@ function getAsesmenStudentsByLevel(level) {
 }
 
 function getAsesmenRombelCode(rombel = "") {
-  const letter = String(rombel || "")
-    .trim()
-    .toUpperCase()
-    .charAt(0);
+  const letter = String(rombel || "").trim().toUpperCase().charAt(0);
   if (!/^[A-Z]$/.test(letter)) return "0";
   return String(letter.charCodeAt(0) - 64);
 }
 
 function getAsesmenJenisKelaminCode(jk = "") {
-  const normalized = String(jk || "")
-    .trim()
-    .toUpperCase();
+  const normalized = String(jk || "").trim().toUpperCase();
   if (normalized === "L") return "1";
   if (normalized === "P") return "2";
   return "-";
 }
 
 function isSameAsesmenSiswa(left, right) {
-  if (left?.nipd && right?.nipd)
-    return String(left.nipd) === String(right.nipd);
-  if (left?.nisn && right?.nisn)
-    return String(left.nisn) === String(right.nisn);
-  return (
-    String(left?.nama || "") === String(right?.nama || "") &&
-    String(left?.kelasParts?.kelas || left?.kelas || "") ===
-      String(right?.kelasParts?.kelas || right?.kelas || "")
-  );
+  if (left?.nipd && right?.nipd) return String(left.nipd) === String(right.nipd);
+  if (left?.nisn && right?.nisn) return String(left.nisn) === String(right.nisn);
+  return String(left?.nama || "") === String(right?.nama || "")
+    && String(left?.kelasParts?.kelas || left?.kelas || "") === String(right?.kelasParts?.kelas || right?.kelas || "");
+}
+
+function getAsesmenStudentKey(siswa = {}) {
+  if (siswa.nipd) return `nipd:${String(siswa.nipd)}`;
+  if (siswa.nisn) return `nisn:${String(siswa.nisn)}`;
+  return `nama:${String(siswa.nama || "")}|kelas:${String(siswa.kelasParts?.kelas || siswa.kelas || "")}`;
+}
+
+function getAsesmenPresensiIndexByLevel(level) {
+  const cacheKey = String(level || "");
+  if (asesmenPresensiIndexCache.has(cacheKey)) return asesmenPresensiIndexCache.get(cacheKey);
+
+  const byClass = new Map();
+  getAsesmenStudentsByLevel(level).forEach(siswa => {
+    const kelas = siswa?.kelasParts?.kelas || "";
+    if (!kelas) return;
+    if (!byClass.has(kelas)) byClass.set(kelas, []);
+    byClass.get(kelas).push(siswa);
+  });
+
+  const indexByStudent = new Map();
+  byClass.forEach(students => {
+    [...students]
+      .sort(compareAsesmenSiswaDalamKelas)
+      .forEach((siswa, index) => {
+        indexByStudent.set(getAsesmenStudentKey(siswa), index + 1);
+      });
+  });
+  asesmenPresensiIndexCache.set(cacheKey, indexByStudent);
+  return indexByStudent;
 }
 
 function getAsesmenNomorPresensi(siswa) {
-  const kelas = siswa?.kelasParts?.kelas || "";
-  const classmates = getAsesmenStudentsByLevel(siswa?.kelasParts?.tingkat)
-    .filter((item) => item.kelasParts.kelas === kelas)
-    .sort(compareAsesmenSiswaDalamKelas);
-  const index = classmates.findIndex((item) => isSameAsesmenSiswa(item, siswa));
-  return String(index >= 0 ? index + 1 : 0).padStart(3, "0");
+  const presensi = getAsesmenPresensiIndexByLevel(siswa?.kelasParts?.tingkat).get(getAsesmenStudentKey(siswa)) || 0;
+  return String(presensi).padStart(3, "0");
 }
 
 function getAsesmenNomorUjian(siswa) {
@@ -476,42 +423,30 @@ function getAsesmenKelasAsliNote(siswa) {
   if (!isAsesmenUsingKelasBayangan()) return "";
   const kelasAsli = siswa?.asliKelasParts?.kelas || siswa?.kelas || "";
   const kelasAcuan = siswa?.kelasParts?.kelas || "";
-  return kelasAsli && kelasAcuan && kelasAsli !== kelasAcuan
-    ? ` <small>(${escapeAsesmenHtml(kelasAsli)})</small>`
-    : "";
+  return kelasAsli && kelasAcuan && kelasAsli !== kelasAcuan ? ` <small>(${escapeAsesmenHtml(kelasAsli)})</small>` : "";
 }
 
 function getAsesmenUnassignedStudentsByLevel(level) {
   if (!isAsesmenUsingKelasBayangan()) return [];
   const cacheKey = String(level);
-  if (asesmenUnassignedLevelCache.has(cacheKey))
-    return asesmenUnassignedLevelCache.get(cacheKey);
+  if (asesmenUnassignedLevelCache.has(cacheKey)) return asesmenUnassignedLevelCache.get(cacheKey);
 
   const students = semuaDataAsesmenSiswa
-    .map((siswa) => {
+    .map(siswa => {
       return { ...siswa, ...getAsesmenSelectedClassParts(siswa) };
     })
-    .filter(
-      (siswa) =>
-        siswa.asliKelasParts.tingkat === String(level) &&
-        !siswa.kelasParts.rombel,
-    );
+    .filter(siswa => siswa.asliKelasParts.tingkat === String(level) && !siswa.kelasParts.rombel);
   asesmenUnassignedLevelCache.set(cacheKey, students);
   return students;
 }
 
 function getOrderedAsesmenStudents(level) {
   const cacheKey = `${level}:${asesmenLevelSettings[level]?.order || "az"}`;
-  if (asesmenOrderedStudentsCache.has(cacheKey))
-    return asesmenOrderedStudentsCache.get(cacheKey);
+  if (asesmenOrderedStudentsCache.has(cacheKey)) return asesmenOrderedStudentsCache.get(cacheKey);
   const settings = asesmenLevelSettings[level];
   const classDirection = settings.order === "za" ? "desc" : "asc";
   const students = [...getAsesmenStudentsByLevel(level)].sort((a, b) => {
-    const kelasResult = asesmenCompare(
-      a.kelasParts.rombel,
-      b.kelasParts.rombel,
-      classDirection,
-    );
+    const kelasResult = asesmenCompare(a.kelasParts.rombel, b.kelasParts.rombel, classDirection);
     if (kelasResult !== 0) return kelasResult;
     return compareAsesmenSiswaDalamKelas(a, b);
   });
@@ -544,39 +479,41 @@ function expandAsesmenRange(startValue, endValue) {
 
 function getAsesmenLevelRooms(level) {
   if (!isAsesmenLevelApplied(level)) return [];
+  const cacheKey = String(level);
+  if (asesmenLevelRoomsCache.has(cacheKey)) return asesmenLevelRoomsCache.get(cacheKey);
 
   const seen = new Set();
   const rooms = [];
-  asesmenLevelSettings[level].roomRanges.forEach((range) => {
-    expandAsesmenRange(range.start, range.end).forEach((room) => {
+  asesmenLevelSettings[level].roomRanges.forEach(range => {
+    expandAsesmenRange(range.start, range.end).forEach(room => {
       if (!seen.has(room)) {
         seen.add(room);
         rooms.push(room);
       }
     });
   });
+  asesmenLevelRoomsCache.set(cacheKey, rooms);
   return rooms;
 }
 
 function getAsesmenRoomUsage() {
+  if (asesmenRoomUsageCache) return asesmenRoomUsageCache;
   const usage = new Map();
-  [7, 8, 9].forEach((level) => {
-    getAsesmenLevelRooms(level).forEach((roomNumber) => {
+  [7, 8, 9].forEach(level => {
+    getAsesmenLevelRooms(level).forEach(roomNumber => {
       if (!usage.has(roomNumber)) usage.set(roomNumber, []);
       usage.get(roomNumber).push(String(level));
     });
   });
+  asesmenRoomUsageCache = usage;
   return usage;
 }
 
 function getAsesmenRoomConflictMessages(level) {
   const usage = getAsesmenRoomUsage();
   return getAsesmenLevelRooms(level)
-    .filter((roomNumber) => (usage.get(roomNumber) || []).length > 2)
-    .map(
-      (roomNumber) =>
-        `Ruang ${roomNumber} dipakai oleh kelas ${usage.get(roomNumber).join(", ")}`,
-    );
+    .filter(roomNumber => (usage.get(roomNumber) || []).length > 2)
+    .map(roomNumber => `Ruang ${roomNumber} dipakai oleh kelas ${usage.get(roomNumber).join(", ")}`);
 }
 
 function decorateAsesmenRooms(level, rooms) {
@@ -585,7 +522,7 @@ function decorateAsesmenRooms(level, rooms) {
     level: String(level),
     students,
     roomNumber: physicalRooms[index] || index + 1,
-    missingPhysicalRoom: physicalRooms.length > 0 && !physicalRooms[index],
+    missingPhysicalRoom: physicalRooms.length > 0 && !physicalRooms[index]
   }));
 }
 
@@ -593,7 +530,7 @@ function buildSetengahAsesmenRooms(level) {
   const settings = asesmenLevelSettings[level];
   const classDirection = settings.order === "za" ? "desc" : "asc";
   const grouped = new Map();
-  getAsesmenStudentsByLevel(level).forEach((siswa) => {
+  getAsesmenStudentsByLevel(level).forEach(siswa => {
     const kelas = siswa.kelasParts.kelas;
     if (!grouped.has(kelas)) grouped.set(kelas, []);
     grouped.get(kelas).push(siswa);
@@ -605,7 +542,7 @@ function buildSetengahAsesmenRooms(level) {
     return asesmenCompare(rombelA, rombelB, classDirection);
   });
 
-  return kelasList.flatMap((kelas) => {
+  return kelasList.flatMap(kelas => {
     const siswaKelas = grouped.get(kelas).sort(compareAsesmenSiswaDalamKelas);
     const halfSize = Math.max(1, Math.ceil(siswaKelas.length / 2));
     return chunkAsesmenStudents(siswaKelas, halfSize);
@@ -623,9 +560,9 @@ function buildManualAsesmenRooms(level) {
 
   return settings.manualCounts
     .slice(0, jumlahRuangUjian)
-    .map((count) => Math.min(Math.max(Number(count) || 0, 0), 20))
-    .filter((count) => count > 0)
-    .map((count) => {
+    .map(count => Math.min(Math.max(Number(count) || 0, 0), 20))
+    .filter(count => count > 0)
+    .map(count => {
       const roomStudents = students.slice(cursor, cursor + count);
       cursor += count;
       return roomStudents;
@@ -634,29 +571,38 @@ function buildManualAsesmenRooms(level) {
 
 function getAsesmenRooms(level) {
   if (!isAsesmenLevelApplied(level)) return [];
+  const cacheKey = String(level);
+  if (asesmenRoomsCache.has(cacheKey)) return asesmenRoomsCache.get(cacheKey);
 
   const settings = asesmenLevelSettings[level];
-  if (settings.mode === "manual") return buildManualAsesmenRooms(level);
-  if (settings.mode === "20siswa")
-    return buildTwentyStudentsAsesmenRooms(level);
-  return buildSetengahAsesmenRooms(level);
+  const rooms = settings.mode === "manual"
+    ? buildManualAsesmenRooms(level)
+    : settings.mode === "20siswa"
+      ? buildTwentyStudentsAsesmenRooms(level)
+      : buildSetengahAsesmenRooms(level);
+  asesmenRoomsCache.set(cacheKey, rooms);
+  return rooms;
 }
 
 function getDecoratedAsesmenRoomsByLevel(level) {
-  return decorateAsesmenRooms(level, getAsesmenRooms(level));
+  const cacheKey = String(level);
+  if (asesmenDecoratedRoomsCache.has(cacheKey)) return asesmenDecoratedRoomsCache.get(cacheKey);
+  const rooms = decorateAsesmenRooms(level, getAsesmenRooms(level));
+  asesmenDecoratedRoomsCache.set(cacheKey, rooms);
+  return rooms;
 }
 
 function getCombinedAsesmenRoomMap() {
+  if (asesmenCombinedRoomMapCache) return asesmenCombinedRoomMapCache;
   const roomMap = new Map();
-  [7, 8, 9].forEach((level) => {
-    getDecoratedAsesmenRoomsByLevel(level).forEach((room) => {
+  [7, 8, 9].forEach(level => {
+    getDecoratedAsesmenRoomsByLevel(level).forEach(room => {
       if (!roomMap.has(room.roomNumber)) roomMap.set(room.roomNumber, []);
       roomMap.get(room.roomNumber).push(room);
     });
   });
-  return new Map(
-    Array.from(roomMap.entries()).sort((a, b) => Number(a[0]) - Number(b[0])),
-  );
+  asesmenCombinedRoomMapCache = new Map(Array.from(roomMap.entries()).sort((a, b) => Number(a[0]) - Number(b[0])));
+  return asesmenCombinedRoomMapCache;
 }
 
 function setJumlahRuangUjian(value) {
@@ -665,9 +611,7 @@ function setJumlahRuangUjian(value) {
 }
 
 function setPembagianKelasAsesmen(value) {
-  const normalizedValue = ["manual", "20siswa"].includes(value)
-    ? value
-    : "setengah";
+  const normalizedValue = ["manual", "20siswa"].includes(value) ? value : "setengah";
   const previousValue = draftPembagianKelasAsesmen;
   draftPembagianKelasAsesmen = normalizedValue;
   scheduleAsesmenPembagianRuangSave();
@@ -682,21 +626,14 @@ function setAsesmenKelasSumber(value) {
 }
 
 function applyJumlahRuangUjian() {
-  jumlahRuangUjian = Math.min(
-    Math.max(Number(draftJumlahRuangUjian) || 1, 1),
-    99,
-  );
-  pembagianKelasAsesmen = ["manual", "20siswa"].includes(
-    draftPembagianKelasAsesmen,
-  )
-    ? draftPembagianKelasAsesmen
-    : "setengah";
+  jumlahRuangUjian = Math.min(Math.max(Number(draftJumlahRuangUjian) || 1, 1), 99);
+  pembagianKelasAsesmen = ["manual", "20siswa"].includes(draftPembagianKelasAsesmen) ? draftPembagianKelasAsesmen : "setengah";
   asesmenKelasSumber = normalizeAsesmenKelasSumber(draftAsesmenKelasSumber);
   localStorage.setItem("asesmenJumlahRuangUjian", String(jumlahRuangUjian));
   localStorage.setItem("asesmenPembagianKelas", pembagianKelasAsesmen);
   localStorage.setItem("asesmenKelasSumber", asesmenKelasSumber);
   appliedAsesmenLevels.clear();
-  [7, 8, 9].forEach((level) => {
+  [7, 8, 9].forEach(level => {
     asesmenLevelSettings[level].mode = pembagianKelasAsesmen;
     draftAsesmenLevelSettings[level].mode = pembagianKelasAsesmen;
     syncAsesmenManualCountLength(asesmenLevelSettings[level]);
@@ -708,8 +645,7 @@ function applyJumlahRuangUjian() {
   if (pembagianKelasAsesmen === "manual") {
     setTimeout(() => openAsesmenManualCountDialog(["7", "8", "9"]), 0);
   }
-  if (typeof showFloatingToast === "function")
-    showFloatingToast("Pengaturan telah diset");
+  if (typeof showFloatingToast === "function") showFloatingToast("Pengaturan telah diset");
 }
 
 function setAsesmenLevelEnabled(level, enabled) {
@@ -718,14 +654,11 @@ function setAsesmenLevelEnabled(level, enabled) {
   draftAsesmenLevelSettings[normalizedLevel].enabled = safeEnabled;
   asesmenLevelSettings[normalizedLevel].enabled = safeEnabled;
   if (!safeEnabled) appliedAsesmenLevels.delete(normalizedLevel);
+  invalidateAsesmenRoomCaches();
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
   if (typeof showFloatingToast === "function") {
-    showFloatingToast(
-      safeEnabled
-        ? `Kelas ${normalizedLevel} diaktifkan`
-        : `Kelas ${normalizedLevel} dinonaktifkan`,
-    );
+    showFloatingToast(safeEnabled ? `Kelas ${normalizedLevel} diaktifkan` : `Kelas ${normalizedLevel} dinonaktifkan`);
   }
 }
 
@@ -745,14 +678,10 @@ function setAsesmenManualCount(level, roomIndex, value) {
 }
 
 function normalizeAsesmenManualDialogLevels(levelOrLevels) {
-  const levelKeys = (
-    Array.isArray(levelOrLevels) ? levelOrLevels : [levelOrLevels]
-  )
-    .map((level) => String(level))
-    .filter((level) => draftAsesmenLevelSettings[level]?.enabled !== false);
-  return levelKeys.length
-    ? levelKeys
-    : ["7", "8", "9"].filter((level) => draftAsesmenLevelSettings[level]);
+  const levelKeys = (Array.isArray(levelOrLevels) ? levelOrLevels : [levelOrLevels])
+    .map(level => String(level))
+    .filter(level => draftAsesmenLevelSettings[level]?.enabled !== false);
+  return levelKeys.length ? levelKeys : ["7", "8", "9"].filter(level => draftAsesmenLevelSettings[level]);
 }
 
 function renderAsesmenManualPopupTable(levelKey, settings, roomCount) {
@@ -802,32 +731,18 @@ function renderAsesmenManualPopupTable(levelKey, settings, roomCount) {
 function openAsesmenManualCountDialog(levelOrLevels) {
   const levelKeys = normalizeAsesmenManualDialogLevels(levelOrLevels);
   if (!levelKeys.length) return;
-  const roomCount = Math.min(
-    Math.max(Number(draftJumlahRuangUjian) || Number(jumlahRuangUjian) || 1, 1),
-    99,
-  );
-  levelKeys.forEach((levelKey) => {
+  const roomCount = Math.min(Math.max(Number(draftJumlahRuangUjian) || Number(jumlahRuangUjian) || 1, 1), 99);
+  levelKeys.forEach(levelKey => {
     const settings = draftAsesmenLevelSettings[levelKey];
-    while (settings.manualCounts.length < roomCount)
-      settings.manualCounts.push("");
-    if (settings.manualCounts.length > roomCount)
-      settings.manualCounts.length = roomCount;
+    while (settings.manualCounts.length < roomCount) settings.manualCounts.push("");
+    if (settings.manualCounts.length > roomCount) settings.manualCounts.length = roomCount;
   });
   const tables = levelKeys
-    .map((levelKey) =>
-      renderAsesmenManualPopupTable(
-        levelKey,
-        draftAsesmenLevelSettings[levelKey],
-        roomCount,
-      ),
-    )
+    .map(levelKey => renderAsesmenManualPopupTable(levelKey, draftAsesmenLevelSettings[levelKey], roomCount))
     .join("");
 
   Swal.fire({
-    title:
-      levelKeys.length === 1
-        ? `Manual Kelas ${levelKeys[0]}`
-        : "Mode Pembagian Manual",
+    title: levelKeys.length === 1 ? `Manual Kelas ${levelKeys[0]}` : "Mode Pembagian Manual",
     html: `
       <div class="asesmen-manual-popup">
         <p>Isi jumlah siswa untuk tiap ruangan. Batas maksimal 20 siswa per ruang.</p>
@@ -841,33 +756,23 @@ function openAsesmenManualCountDialog(levelOrLevels) {
     focusConfirm: false,
     preConfirm: () => {
       const result = {};
-      levelKeys.forEach((levelKey) => {
+      levelKeys.forEach(levelKey => {
         const values = Array.from({ length: roomCount }, (_, index) => {
-          const input = document.getElementById(
-            `asesmenManualCount-${levelKey}-${index}`,
-          );
+          const input = document.getElementById(`asesmenManualCount-${levelKey}-${index}`);
           return Math.min(Math.max(Number(input?.value) || 0, 0), 20);
         });
-        result[levelKey] = values.map((value) =>
-          value > 0 ? String(value) : "",
-        );
+        result[levelKey] = values.map(value => (value > 0 ? String(value) : ""));
       });
       return result;
-    },
-  }).then((result) => {
-    if (
-      !result.isConfirmed ||
-      !result.value ||
-      typeof result.value !== "object"
-    )
-      return;
-    levelKeys.forEach((levelKey) => {
+    }
+  }).then(result => {
+    if (!result.isConfirmed || !result.value || typeof result.value !== "object") return;
+    levelKeys.forEach(levelKey => {
       if (Array.isArray(result.value[levelKey])) {
-        draftAsesmenLevelSettings[levelKey].manualCounts =
-          result.value[levelKey];
+        draftAsesmenLevelSettings[levelKey].manualCounts = result.value[levelKey];
       }
     });
-    invalidateAsesmenStudentCaches();
+    invalidateAsesmenRoomCaches();
     saveAsesmenPembagianRuangState();
     renderPembagianRuangState();
   });
@@ -876,36 +781,33 @@ function openAsesmenManualCountDialog(levelOrLevels) {
 function applyAsesmenLevelSettings(level) {
   if (draftAsesmenLevelSettings[level].enabled === false) {
     appliedAsesmenLevels.delete(String(level));
+    invalidateAsesmenRoomCaches();
     saveAsesmenPembagianRuangState();
     renderPembagianRuangState();
     return;
   }
   syncAsesmenManualCountLength(draftAsesmenLevelSettings[level]);
   draftAsesmenLevelSettings[level].mode = pembagianKelasAsesmen;
-  asesmenLevelSettings[level] = cloneAsesmenLevelSettings(
-    draftAsesmenLevelSettings[level],
-  );
+  asesmenLevelSettings[level] = cloneAsesmenLevelSettings(draftAsesmenLevelSettings[level]);
   appliedAsesmenLevels.add(String(level));
+  invalidateAsesmenRoomCaches();
   saveAsesmenPembagianRuangState();
   renderPembagianRuangState();
 }
 
 function loadRealtimePembagianRuang() {
   if (window.AsesmenRuangService?.loadPembagianRuang) {
-    unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadPembagianRuang(
-      unsubscribeAsesmenSiswa,
-      {
-        onData: (data) => {
-          semuaDataAsesmenSiswa = data;
-          invalidateAsesmenStudentCaches();
-        },
-        onRender: () => renderPembagianRuangState(),
+    unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadPembagianRuang(unsubscribeAsesmenSiswa, {
+      onData: data => {
+        semuaDataAsesmenSiswa = data;
+        invalidateAsesmenStudentCaches();
       },
-    );
+      onRender: () => renderPembagianRuangState()
+    });
     return;
   }
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
-  unsubscribeAsesmenSiswa = listenSiswa((data) => {
+  unsubscribeAsesmenSiswa = listenSiswa(data => {
     semuaDataAsesmenSiswa = data;
     invalidateAsesmenStudentCaches();
     renderPembagianRuangState();
@@ -914,23 +816,20 @@ function loadRealtimePembagianRuang() {
 
 function loadRealtimeAdministrasiAsesmen() {
   if (window.AsesmenRuangService?.loadAdministrasi) {
-    unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadAdministrasi(
-      unsubscribeAsesmenSiswa,
-      {
-        onData: (data) => {
-          semuaDataAsesmenSiswa = data;
-          invalidateAsesmenStudentCaches();
-        },
-        onRender: () => renderAdministrasiAsesmenState(),
+    unsubscribeAsesmenSiswa = window.AsesmenRuangService.loadAdministrasi(unsubscribeAsesmenSiswa, {
+      onData: data => {
+        semuaDataAsesmenSiswa = data;
+        invalidateAsesmenStudentCaches();
       },
-    );
+      onRender: () => renderAdministrasiAsesmenState()
+    });
     return;
   }
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
   if (typeof loadKepalaSekolahTtdSettings === "function") {
     loadKepalaSekolahTtdSettings().then(renderAdministrasiAsesmenState);
   }
-  unsubscribeAsesmenSiswa = listenSiswa((data) => {
+  unsubscribeAsesmenSiswa = listenSiswa(data => {
     semuaDataAsesmenSiswa = data;
     invalidateAsesmenStudentCaches();
     renderAdministrasiAsesmenState();
@@ -940,14 +839,27 @@ function loadRealtimeAdministrasiAsesmen() {
 function renderPembagianRuangState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderKepersetaanPage();
+  const nextHtml = renderKepersetaanPage();
+  const expectedId = asesmenPageTab === "pembagian-ruang" ? "asesmenRoomArrangement" : "asesmenAdministrasiPage";
+  if (nextHtml !== lastKepersetaanPageHtml || !document.getElementById(expectedId)) {
+    content.innerHTML = nextHtml;
+    lastKepersetaanPageHtml = nextHtml;
+    lastAsesmenRoomArrangementHtml = "";
+    Object.keys(lastAsesmenPreviewHtmlByLevel).forEach(key => {
+      lastAsesmenPreviewHtmlByLevel[key] = "";
+    });
+  }
   if (asesmenPageTab === "pembagian-ruang") renderAllAsesmenPreviews();
 }
 
 function renderAdministrasiAsesmenState() {
   const content = document.getElementById("content");
   if (!content) return;
-  content.innerHTML = renderKepersetaanPage();
+  const nextHtml = renderKepersetaanPage();
+  if (nextHtml !== lastKepersetaanPageHtml || !content.children.length) {
+    content.innerHTML = nextHtml;
+    lastKepersetaanPageHtml = nextHtml;
+  }
 }
 
 function setAdministrasiAsesmenSetting(key, value) {
@@ -969,39 +881,37 @@ function renderAdministrasiAsesmenKeteranganSelect() {
   if (window.AsesmenRuangView?.renderAdministrasiKeteranganSelect) {
     return window.AsesmenRuangView.renderAdministrasiKeteranganSelect({
       getSetting: getAdministrasiAsesmenSetting,
-      keteranganOptions: window.AsesmenAdministrasiSettings
-        ?.getKeteranganOptions
+      keteranganOptions: window.AsesmenAdministrasiSettings?.getKeteranganOptions
         ? window.AsesmenAdministrasiSettings.getKeteranganOptions()
         : [
-            "Tengah Semester Ganjil",
-            "Akhir Semester Ganjil",
-            "Tengah Semester Genap",
-            "Akhir Tahun",
-            "Akhir Jenjang",
-          ],
-      escape: escapeAsesmenHtml,
+          "Tengah Semester Ganjil",
+          "Akhir Semester Ganjil",
+          "Tengah Semester Genap",
+          "Akhir Tahun",
+          "Akhir Jenjang"
+        ],
+      escape: escapeAsesmenHtml
     });
   }
   const value = getAdministrasiAsesmenSetting("Keterangan", "Akhir Tahun");
   const options = window.AsesmenAdministrasiSettings?.getKeteranganOptions
     ? window.AsesmenAdministrasiSettings.getKeteranganOptions()
     : [
-        "Tengah Semester Ganjil",
-        "Akhir Semester Ganjil",
-        "Tengah Semester Genap",
-        "Akhir Tahun",
-        "Akhir Jenjang",
-      ];
+      "Tengah Semester Ganjil",
+      "Akhir Semester Ganjil",
+      "Tengah Semester Genap",
+      "Akhir Tahun",
+      "Akhir Jenjang"
+    ];
   const hasStoredValue = options.includes(value);
-  const extraOption =
-    value && !hasStoredValue
-      ? `<option value="${escapeAsesmenHtml(value)}" selected>${escapeAsesmenHtml(value)}</option>`
-      : "";
+  const extraOption = value && !hasStoredValue
+    ? `<option value="${escapeAsesmenHtml(value)}" selected>${escapeAsesmenHtml(value)}</option>`
+    : "";
 
   return `
     <select class="kelas-inline-select" onchange="setAdministrasiAsesmenSetting('Keterangan', this.value)">
       ${extraOption}
-      ${options.map((option) => `<option value="${escapeAsesmenHtml(option)}" ${option === value ? "selected" : ""}>${escapeAsesmenHtml(option)}</option>`).join("")}
+      ${options.map(option => `<option value="${escapeAsesmenHtml(option)}" ${option === value ? "selected" : ""}>${escapeAsesmenHtml(option)}</option>`).join("")}
     </select>
   `;
 }
@@ -1011,20 +921,16 @@ function renderAdministrasiAsesmenPage() {
     return window.AsesmenRuangView.renderAdministrasiPage({
       getSetting: getAdministrasiAsesmenSetting,
       escape: escapeAsesmenHtml,
-      ttdPanelHtml:
-        typeof renderKepalaSekolahTtdPanelHtml === "function"
-          ? renderKepalaSekolahTtdPanelHtml()
-          : "",
-      keteranganOptions: window.AsesmenAdministrasiSettings
-        ?.getKeteranganOptions
+      ttdPanelHtml: typeof renderKepalaSekolahTtdPanelHtml === "function" ? renderKepalaSekolahTtdPanelHtml() : "",
+      keteranganOptions: window.AsesmenAdministrasiSettings?.getKeteranganOptions
         ? window.AsesmenAdministrasiSettings.getKeteranganOptions()
         : [
-            "Tengah Semester Ganjil",
-            "Akhir Semester Ganjil",
-            "Tengah Semester Genap",
-            "Akhir Tahun",
-            "Akhir Jenjang",
-          ],
+          "Tengah Semester Ganjil",
+          "Akhir Semester Ganjil",
+          "Tengah Semester Genap",
+          "Akhir Tahun",
+          "Akhir Jenjang"
+        ]
     });
   }
   return `
@@ -1075,10 +981,6 @@ function renderAdministrasiAsesmenPage() {
               <td>Kartu Peserta</td>
               <td><button type="button" class="btn-primary btn-table-compact" onclick="promptExportKartuPesertaPDF()">Export PDF</button></td>
             </tr>
-            <tr>
-              <td>Daftar Peserta (Excel)</td>
-              <td><button type="button" class="btn-primary btn-table-compact" onclick="exportDaftarPesertaAsesmenExcel()">Download Excel</button></td>
-            </tr>
           </tbody>
         </table>
       </div>
@@ -1087,7 +989,7 @@ function renderAdministrasiAsesmenPage() {
 }
 
 function renderAllAsesmenPreviews() {
-  [7, 8, 9].forEach((level) => renderAsesmenPreview(level));
+  [7, 8, 9].forEach(level => renderAsesmenPreview(level));
   renderAsesmenRoomArrangement();
 }
 
@@ -1096,8 +998,7 @@ function renderKepersetaanPage() {
   return `
     <div class="kepangawasan-page">
       <div class="kepangawasan-tabbar" role="tablist" aria-label="Menu Kepersetaan">
-        ${ASESMEN_PAGE_TABS.map(
-          (item) => `
+        ${ASESMEN_PAGE_TABS.map(item => `
           <button
             type="button"
             class="kepangawasan-tab ${item.key === asesmenPageTab ? "active" : ""}"
@@ -1106,8 +1007,7 @@ function renderKepersetaanPage() {
           >
             ${item.label}
           </button>
-        `,
-        ).join("")}
+        `).join("")}
       </div>
       ${isAdministrasi ? renderAdministrasiAsesmenPage() : renderPembagianRuangPage()}
     </div>
@@ -1116,14 +1016,11 @@ function renderKepersetaanPage() {
 
 function renderAsesmenManualInputs(level) {
   if (window.AsesmenRuangView?.renderManualInputs) {
-    return window.AsesmenRuangView.renderManualInputs(
-      {
-        draftSettings: draftAsesmenLevelSettings,
-        jumlahRuangUjian,
-        escape: escapeAsesmenHtml,
-      },
-      level,
-    );
+    return window.AsesmenRuangView.renderManualInputs({
+      draftSettings: draftAsesmenLevelSettings,
+      jumlahRuangUjian,
+      escape: escapeAsesmenHtml
+    }, level);
   }
   const settings = draftAsesmenLevelSettings[level];
   const isEnabled = settings.enabled !== false;
@@ -1131,7 +1028,7 @@ function renderAsesmenManualInputs(level) {
 
   const filledCounts = settings.manualCounts
     .slice(0, jumlahRuangUjian)
-    .map((value) => Math.min(Math.max(Number(value) || 0, 0), 20));
+    .map(value => Math.min(Math.max(Number(value) || 0, 0), 20));
 
   return `
     <div class="asesmen-manual-summary">
@@ -1148,21 +1045,16 @@ function renderAsesmenManualInputs(level) {
 
 function renderAsesmenRoomRangeInputs(level) {
   if (window.AsesmenRuangView?.renderRoomRangeInputs) {
-    return window.AsesmenRuangView.renderRoomRangeInputs(
-      {
-        draftSettings: draftAsesmenLevelSettings,
-        escape: escapeAsesmenHtml,
-      },
-      level,
-    );
+    return window.AsesmenRuangView.renderRoomRangeInputs({
+      draftSettings: draftAsesmenLevelSettings,
+      escape: escapeAsesmenHtml
+    }, level);
   }
   const ranges = draftAsesmenLevelSettings[level].roomRanges;
   const isEnabled = draftAsesmenLevelSettings[level].enabled !== false;
   return `
     <div class="asesmen-range-grid">
-      ${ranges
-        .map(
-          (range, index) => `
+      ${ranges.map((range, index) => `
         <div class="asesmen-range-group">
           <span>Rentang ${index + 1}</span>
             <input
@@ -1182,25 +1074,19 @@ function renderAsesmenRoomRangeInputs(level) {
               oninput="setAsesmenRoomRange('${level}', ${index}, 'end', this.value)"
             >
         </div>
-      `,
-        )
-        .join("")}
+      `).join("")}
     </div>
   `;
 }
 
 function renderAsesmenLevelPanel(level) {
   if (window.AsesmenRuangView?.renderLevelPanel) {
-    return window.AsesmenRuangView.renderLevelPanel(
-      {
-        draftSettings: draftAsesmenLevelSettings,
-        escape: escapeAsesmenHtml,
-        jumlahRuangUjian,
-        getStudentCount: (currentLevel) =>
-          getAsesmenStudentsByLevel(currentLevel).length,
-      },
-      level,
-    );
+    return window.AsesmenRuangView.renderLevelPanel({
+      draftSettings: draftAsesmenLevelSettings,
+      escape: escapeAsesmenHtml,
+      jumlahRuangUjian,
+      getStudentCount: currentLevel => getAsesmenStudentsByLevel(currentLevel).length
+    }, level);
   }
   const settings = draftAsesmenLevelSettings[level];
   const totalSiswa = getAsesmenStudentsByLevel(level).length;
@@ -1251,7 +1137,7 @@ function renderPembagianRuangPage() {
       draftSettings: draftAsesmenLevelSettings,
       jumlahRuangUjian,
       escape: escapeAsesmenHtml,
-      getStudentCount: (level) => getAsesmenStudentsByLevel(level).length,
+      getStudentCount: level => getAsesmenStudentsByLevel(level).length
     });
   }
   return `
@@ -1285,7 +1171,7 @@ function renderPembagianRuangPage() {
             </label>
             <label class="asesmen-room-total-field">
               <span>Sumber kelas</span>
-              <select class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber kelas">
+              <select class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber pembagian kelas">
                 <option value="bayangan" ${draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
                 <option value="asli" ${draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
               </select>
@@ -1326,39 +1212,39 @@ function renderAsesmenPreview(level) {
   const belumBayangan = getAsesmenUnassignedStudentsByLevel(level).length;
   const assigned = rooms.reduce((sum, room) => sum + room.length, 0);
   const physicalRooms = getAsesmenLevelRooms(level);
-  const missingPhysicalCount = decoratedRooms.filter(
-    (room) => room.missingPhysicalRoom,
-  ).length;
+  const missingPhysicalCount = decoratedRooms.filter(room => room.missingPhysicalRoom).length;
   const conflictMessages = getAsesmenRoomConflictMessages(level);
   const warnings = [];
 
   if (totalSiswa === 0) {
-    const message =
-      belumBayangan > 0
-        ? `${belumBayangan} siswa kelas ${level} belum memiliki kelas bayangan.`
-        : `Belum ada siswa kelas ${level}.`;
-    container.innerHTML = `<div class="empty-panel">${escapeAsesmenHtml(message)}</div>`;
+    const message = belumBayangan > 0
+      ? `${belumBayangan} siswa kelas ${level} belum memiliki kelas bayangan.`
+      : `Belum ada siswa kelas ${level}.`;
+    const nextHtml = `<div class="empty-panel">${escapeAsesmenHtml(message)}</div>`;
+    if (nextHtml !== lastAsesmenPreviewHtmlByLevel[level] || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastAsesmenPreviewHtmlByLevel[level] = nextHtml;
+    }
     return;
   }
 
   if (!isAsesmenLevelApplied(level)) {
-    container.innerHTML = `<div class="empty-panel">Panel kelas ${escapeAsesmenHtml(level)} belum di-set.</div>`;
+    const nextHtml = `<div class="empty-panel">Panel kelas ${escapeAsesmenHtml(level)} belum di-set.</div>`;
+    if (nextHtml !== lastAsesmenPreviewHtmlByLevel[level] || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastAsesmenPreviewHtmlByLevel[level] = nextHtml;
+    }
     return;
   }
 
-  if (assigned < totalSiswa)
-    warnings.push(`${totalSiswa - assigned} siswa belum masuk ruang.`);
-  if (belumBayangan > 0)
-    warnings.push(`${belumBayangan} siswa belum memiliki kelas bayangan.`);
+  if (assigned < totalSiswa) warnings.push(`${totalSiswa - assigned} siswa belum masuk ruang.`);
+  if (belumBayangan > 0) warnings.push(`${belumBayangan} siswa belum memiliki kelas bayangan.`);
   if (physicalRooms.length === 0) warnings.push("Ruang fisik belum diisi.");
-  if (missingPhysicalCount > 0)
-    warnings.push(
-      `${missingPhysicalCount} bagian belum mendapat nomor ruang fisik.`,
-    );
-  conflictMessages.forEach((message) => warnings.push(message));
+  if (missingPhysicalCount > 0) warnings.push(`${missingPhysicalCount} bagian belum mendapat nomor ruang fisik.`);
+  conflictMessages.forEach(message => warnings.push(message));
 
-  container.innerHTML = `
-    ${warnings.map((message) => `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`).join("")}
+  const nextHtml = `
+    ${warnings.map(message => `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`).join("")}
     <div class="asesmen-level-summary">
       <span>${decoratedRooms.length} bagian</span>
       <span>${physicalRooms.length} ruang dipilih</span>
@@ -1366,6 +1252,10 @@ function renderAsesmenPreview(level) {
       <span>${assigned}/${totalSiswa} siswa</span>
     </div>
   `;
+  if (nextHtml !== lastAsesmenPreviewHtmlByLevel[level] || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastAsesmenPreviewHtmlByLevel[level] = nextHtml;
+  }
 }
 
 function renderAsesmenStudentColumn(entry) {
@@ -1376,43 +1266,32 @@ function renderAsesmenStudentColumn(entry) {
         <span>${entry.students.length} siswa</span>
       </div>
       <div class="asesmen-student-list">
-        ${entry.students
-          .map(
-            (siswa) => `
+        ${entry.students.map(siswa => `
           <span>${escapeAsesmenHtml(siswa.kelasParts.kelas)}, ${escapeAsesmenHtml(getAsesmenNomorUjian(siswa))}, ${escapeAsesmenHtml(siswa.nama || "-")}${getAsesmenKelasAsliNote(siswa)}</span>
-        `,
-          )
-          .join("")}
+        `).join("")}
       </div>
     </section>
   `;
 }
 
 function renderTempelKacaRows(students = []) {
-  return Array.from({ length: 20 }, (_, index) => students[index] || null)
-    .map((siswa, index) =>
-      siswa
-        ? `
+  return Array.from({ length: 20 }, (_, index) => students[index] || null).map((siswa, index) => siswa ? `
     <tr>
       <td class="tempel-no">${index + 1}</td>
       <td class="tempel-kelas">${escapeAsesmenHtml(siswa.kelasParts?.kelas || "-")}</td>
       <td class="tempel-nama">${escapeAsesmenHtml(siswa.nama || "-")}</td>
     </tr>
-  `
-        : `
+  ` : `
     <tr>
       <td class="tempel-no">&nbsp;</td>
       <td class="tempel-kelas">&nbsp;</td>
       <td class="tempel-nama">&nbsp;</td>
     </tr>
-  `,
-    )
-    .join("");
+  `).join("");
 }
 
 function renderTempelKacaStudentTable(entry, label) {
-  if (!entry)
-    return `<section class="tempel-student-panel tempel-student-panel-empty"></section>`;
+  if (!entry) return `<section class="tempel-student-panel tempel-student-panel-empty"></section>`;
 
   return `
     <section class="tempel-student-panel">
@@ -1431,35 +1310,25 @@ function renderTempelKacaStudentTable(entry, label) {
 }
 
 function renderDataMapRows(students = [], totalRows = 20) {
-  return Array.from(
-    { length: totalRows },
-    (_, index) => students[index] || null,
-  )
-    .map((siswa, index) =>
-      siswa
-        ? `
+  return Array.from({ length: totalRows }, (_, index) => students[index] || null).map((siswa, index) => siswa ? `
     <tr>
       <td class="data-map-no">${index + 1}</td>
       <td class="data-map-number">${escapeAsesmenHtml(getAsesmenNomorUjian(siswa) || "-")}</td>
       <td class="data-map-name">${escapeAsesmenHtml(siswa.nama || "-")}</td>
       <td class="data-map-class">${escapeAsesmenHtml(siswa.kelasParts?.kelas || "-")}</td>
     </tr>
-  `
-        : `
+  ` : `
     <tr>
       <td class="data-map-no">&nbsp;</td>
       <td class="data-map-number">&nbsp;</td>
       <td class="data-map-name">&nbsp;</td>
       <td class="data-map-class">&nbsp;</td>
     </tr>
-  `,
-    )
-    .join("");
+  `).join("");
 }
 
 function renderDataMapTable(entry) {
-  if (!entry)
-    return `<section class="data-map-panel data-map-panel-empty"></section>`;
+  if (!entry) return `<section class="data-map-panel data-map-panel-empty"></section>`;
 
   return `
     <section class="data-map-panel">
@@ -1479,29 +1348,20 @@ function renderDataMapTable(entry) {
 }
 
 function renderDataMapPage(roomNumber, entries) {
-  const sortedEntries = [...entries].sort(
-    (a, b) => Number(b.level) - Number(a.level),
-  );
+  const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
   const leftEntry = sortedEntries[0] || null;
   const rightEntry = sortedEntries[1] || null;
-  const isPortrait = sortedEntries.length <= 1;
-  const pageClass = isPortrait
-    ? "data-map-page data-map-page--portrait"
-    : "data-map-page data-map-page--landscape";
-  const gridClass = isPortrait
-    ? "data-map-grid data-map-grid--portrait"
-    : "data-map-grid data-map-grid--landscape";
 
   return `
-    <section class="${pageClass}">
+    <section class="data-map-page">
       <div class="data-map-sheet">
         <header class="data-map-header">
           <h1>DAFTAR NAMA PESERTA ASESMEN</h1>
           <div>Ruang : ${escapeAsesmenHtml(roomNumber)}</div>
         </header>
-        <div class="${gridClass}">
+        <div class="data-map-grid">
           ${renderDataMapTable(leftEntry)}
-          ${isPortrait ? "" : renderDataMapTable(rightEntry)}
+          ${renderDataMapTable(rightEntry)}
         </div>
       </div>
     </section>
@@ -1512,91 +1372,19 @@ function getAsesmenLabel121Entries(level) {
   const levelKey = String(level);
   return getDecoratedAsesmenRoomsByLevel(levelKey)
     .sort((a, b) => Number(a.roomNumber) - Number(b.roomNumber))
-    .flatMap((room) =>
-      (room.students || []).map((student) => ({
-        level: levelKey,
-        roomNumber: room.roomNumber,
-        nomorPeserta: getAsesmenNomorUjian(student) || "",
-        nama: student?.nama || "",
-      })),
-    );
-}
-
-function getAsesmenDaftarPesertaRows(level) {
-  return getDecoratedAsesmenRoomsByLevel(level)
-    .flatMap((room) => room.students || [])
-    .map((siswa) => ({
-      kodePeserta: getAsesmenNomorUjian(siswa) || "",
-      nama: String(siswa?.nama || "").trim(),
-    }))
-    .sort((a, b) =>
-      String(a.kodePeserta).localeCompare(String(b.kodePeserta), undefined, {
-        numeric: true,
-        sensitivity: "base",
-      }),
-    );
-}
-
-async function exportDaftarPesertaAsesmenExcel() {
-  await ensureSpreadsheetLibraries();
-
-  const levels = [7, 8, 9];
-  const populatedLevels = levels.filter(
-    (level) => getAsesmenDaftarPesertaRows(level).length > 0,
-  );
-  if (!populatedLevels.length) {
-    Swal.fire(
-      "Belum ada data",
-      "Belum ada peserta terpetakan. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.",
-      "warning",
-    );
-    return;
-  }
-
-  const workbook = XLSX.utils.book_new();
-  levels.forEach((level) => {
-    const rows = getAsesmenDaftarPesertaRows(level);
-    const worksheet = XLSX.utils.aoa_to_sheet([
-      ["Kode Peserta", "Nama Siswa"],
-      ...rows.map((row) => [row.kodePeserta, row.nama]),
-    ]);
-    // Force font color to black for all cells in worksheet
-    try {
-      const range = XLSX.utils.decode_range(worksheet["!ref"] || "A1");
-      for (let R = range.s.r; R <= range.e.r; ++R) {
-        for (let C = range.s.c; C <= range.e.c; ++C) {
-          const cellAddr = XLSX.utils.encode_cell({ r: R, c: C });
-          const cell = worksheet[cellAddr];
-          if (!cell) continue;
-          cell.s = cell.s || {};
-          cell.s.font = Object.assign({}, cell.s.font || {}, {
-            color: { rgb: "FF000000" },
-          });
-        }
-      }
-    } catch (err) {
-      // If styling isn't supported by the loaded XLSX build, ignore silently
-      console.warn("Could not apply cell font styling for export", err);
-    }
-    XLSX.utils.book_append_sheet(workbook, worksheet, `Kelas ${level}`);
-  });
-
-  const schoolYear =
-    getAsesmenAdministrasiSchoolYear()
-      .replace(/[^\d/]+/g, "")
-      .replace(/\//g, "-") || "asesmen";
-  XLSX.writeFile(workbook, `daftar-peserta-asesmen-${schoolYear}.xlsx`);
+    .flatMap(room => (room.students || []).map(student => ({
+      level: levelKey,
+      roomNumber: room.roomNumber,
+      nomorPeserta: getAsesmenNomorUjian(student) || "",
+      nama: student?.nama || ""
+    })));
 }
 
 function getAsesmenKartuPesertaEntries(level) {
   return getAsesmenLabel121Entries(level).sort((a, b) => {
     const roomDiff = Number(a.roomNumber || 0) - Number(b.roomNumber || 0);
     if (roomDiff !== 0) return roomDiff;
-    return String(a.nomorPeserta || "").localeCompare(
-      String(b.nomorPeserta || ""),
-      undefined,
-      { numeric: true, sensitivity: "base" },
-    );
+    return String(a.nomorPeserta || "").localeCompare(String(b.nomorPeserta || ""), undefined, { numeric: true, sensitivity: "base" });
   });
 }
 
@@ -1610,73 +1398,45 @@ function getAsesmenKartuPesertaRoomLabel(roomKey) {
 }
 
 function getAsesmenKartuPesertaRoomKeys(entries = []) {
-  return Array.from(new Set(entries.map(getAsesmenKartuPesertaRoomKey))).sort(
-    (a, b) => {
-      const labelA = getAsesmenKartuPesertaRoomLabel(a);
-      const labelB = getAsesmenKartuPesertaRoomLabel(b);
-      const numericA = Number(labelA);
-      const numericB = Number(labelB);
-      const aIsNumeric = Number.isFinite(numericA) && labelA !== "";
-      const bIsNumeric = Number.isFinite(numericB) && labelB !== "";
-      if (aIsNumeric && bIsNumeric && numericA !== numericB)
-        return numericA - numericB;
-      if (aIsNumeric !== bIsNumeric) return aIsNumeric ? -1 : 1;
-      return labelA.localeCompare(labelB, undefined, {
-        numeric: true,
-        sensitivity: "base",
-      });
-    },
-  );
+  return Array.from(new Set(entries.map(getAsesmenKartuPesertaRoomKey))).sort((a, b) => {
+    const labelA = getAsesmenKartuPesertaRoomLabel(a);
+    const labelB = getAsesmenKartuPesertaRoomLabel(b);
+    const numericA = Number(labelA);
+    const numericB = Number(labelB);
+    const aIsNumeric = Number.isFinite(numericA) && labelA !== "";
+    const bIsNumeric = Number.isFinite(numericB) && labelB !== "";
+    if (aIsNumeric && bIsNumeric && numericA !== numericB) return numericA - numericB;
+    if (aIsNumeric !== bIsNumeric) return aIsNumeric ? -1 : 1;
+    return labelA.localeCompare(labelB, undefined, { numeric: true, sensitivity: "base" });
+  });
 }
 
 function getAsesmenAdministrasiJudul() {
-  return (
-    String(
-      getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "",
-    ).trim() || "Asesmen Sumatif"
-  );
+  return String(getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif") || "").trim() || "Asesmen Sumatif";
 }
 
 function getAsesmenAdministrasiKeterangan() {
-  return (
-    String(
-      getAdministrasiAsesmenSetting("Keterangan", "Akhir Tahun") || "",
-    ).trim() || "Akhir Tahun"
-  );
+  return String(getAdministrasiAsesmenSetting("Keterangan", "Akhir Tahun") || "").trim() || "Akhir Tahun";
 }
 
 function getAsesmenAdministrasiSchoolYear() {
-  return (
-    String(getAdministrasiAsesmenSetting("TahunPelajaran", "") || "").trim() ||
-    getActiveSchoolYearLabel()
-  );
+  return String(getAdministrasiAsesmenSetting("TahunPelajaran", "") || "").trim() || getActiveSchoolYearLabel();
 }
 
 function getAsesmenKepalaSekolahInfo() {
-  const raporSettings =
-    typeof window.getRaporSettings === "function"
-      ? window.getRaporSettings()
-      : {};
+  const raporSettings = typeof window.getRaporSettings === "function" ? window.getRaporSettings() : {};
   return {
-    nama:
-      String(raporSettings?.kepala_nama || "").trim() ||
-      "Dra. MAMIK SASMIATI, M.Pd",
-    nip:
-      String(raporSettings?.kepala_nip || "").trim() || "19660601 199003 2 010",
-    ttd:
-      typeof window.getKepalaSekolahTtdImage === "function"
-        ? String(window.getKepalaSekolahTtdImage() || "").trim()
-        : String(raporSettings?.kepala_ttd || "").trim(),
+    nama: String(raporSettings?.kepala_nama || "").trim() || "Dra. MAMIK SASMIATI, M.Pd",
+    nip: String(raporSettings?.kepala_nip || "").trim() || "19660601 199003 2 010",
+    ttd: typeof window.getKepalaSekolahTtdImage === "function"
+      ? String(window.getKepalaSekolahTtdImage() || "").trim()
+      : String(raporSettings?.kepala_ttd || "").trim()
   };
 }
 
 function renderAsesmenLabel121Card(entry) {
-  const roomLabel = entry
-    ? `R. ${escapeAsesmenHtml(entry.roomNumber)}`
-    : "&nbsp;";
-  const nomorPeserta = entry
-    ? escapeAsesmenHtml(entry.nomorPeserta || "")
-    : "&nbsp;";
+  const roomLabel = entry ? `R. ${escapeAsesmenHtml(entry.roomNumber)}` : "&nbsp;";
+  const nomorPeserta = entry ? escapeAsesmenHtml(entry.nomorPeserta || "") : "&nbsp;";
   const namaPeserta = entry ? escapeAsesmenHtml(entry.nama || "") : "&nbsp;";
   const emptyClass = entry ? "" : " label121-card-empty";
 
@@ -1712,9 +1472,7 @@ function getLabel121PrintHtml(level) {
   }
   if (!chunks.length) chunks.push([]);
   const pages = chunks
-    .map((chunk, pageIndex) =>
-      renderAsesmenLabel121Page(chunk, pageIndex, chunks.length, levelKey),
-    )
+    .map((chunk, pageIndex) => renderAsesmenLabel121Page(chunk, pageIndex, chunks.length, levelKey))
     .join("");
 
   return `
@@ -1857,9 +1615,7 @@ function getLabel121PrintHtml(level) {
 
 function renderAsesmenKartuPesertaCard(entry, meta = {}) {
   const schoolLogoUrl = meta.schoolLogoUrl || "";
-  const titleLine = String(meta.titleLine || "")
-    .trim()
-    .toUpperCase();
+  const titleLine = String(meta.titleLine || "").trim().toUpperCase();
   const schoolYear = String(meta.schoolYear || "").trim();
   const nama = escapeAsesmenHtml(entry?.nama || "");
   const nomorPeserta = escapeAsesmenHtml(entry?.nomorPeserta || "");
@@ -1899,11 +1655,7 @@ function renderAsesmenKartuPesertaCard(entry, meta = {}) {
 
 function renderAsesmenKartuPesertaPage(entries, meta = {}) {
   const items = Array.from({ length: 9 }, (_, index) => entries[index] || null)
-    .map((entry) =>
-      entry
-        ? renderAsesmenKartuPesertaCard(entry, meta)
-        : `<article class="kartu-peserta-card kartu-peserta-card--empty"></article>`,
-    )
+    .map(entry => entry ? renderAsesmenKartuPesertaCard(entry, meta) : `<article class="kartu-peserta-card kartu-peserta-card--empty"></article>`)
     .join("");
   return `<section class="kartu-peserta-page"><div class="kartu-peserta-grid">${items}</div></section>`;
 }
@@ -1913,19 +1665,15 @@ function getKartuPesertaPrintHtml(level, options = {}) {
   const roomFilter = String(options?.roomFilter || "").trim();
   const entries = getAsesmenKartuPesertaEntries(levelKey);
   const filteredEntries = roomFilter
-    ? entries.filter(
-        (entry) => getAsesmenKartuPesertaRoomKey(entry) === roomFilter,
-      )
+    ? entries.filter(entry => getAsesmenKartuPesertaRoomKey(entry) === roomFilter)
     : entries;
   const roomKeys = roomFilter
     ? [roomFilter]
     : getAsesmenKartuPesertaRoomKeys(filteredEntries);
   const pageGroups = [];
 
-  roomKeys.forEach((roomKey) => {
-    const roomEntries = filteredEntries.filter(
-      (entry) => getAsesmenKartuPesertaRoomKey(entry) === roomKey,
-    );
+  roomKeys.forEach(roomKey => {
+    const roomEntries = filteredEntries.filter(entry => getAsesmenKartuPesertaRoomKey(entry) === roomKey);
     if (!roomEntries.length) {
       pageGroups.push([]);
       return;
@@ -1944,11 +1692,9 @@ function getKartuPesertaPrintHtml(level, options = {}) {
     titleLine,
     schoolYear,
     kepalaInfo: getAsesmenKepalaSekolahInfo(),
-    schoolLogoUrl: new URL("img/logo_pemda.png", window.location.href).href,
+    schoolLogoUrl: new URL("img/logo_pemda.png", window.location.href).href
   };
-  const pages = pageGroups
-    .map((group) => renderAsesmenKartuPesertaPage(group, meta))
-    .join("");
+  const pages = pageGroups.map(group => renderAsesmenKartuPesertaPage(group, meta)).join("");
 
   return `
     <!doctype html>
@@ -2007,7 +1753,7 @@ function getKartuPesertaPrintHtml(level, options = {}) {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
           grid-template-rows: repeat(3, 1fr);
-          gap: 2mm 2mm;
+          gap: 1.6mm 1.6mm;
           height: calc(297mm - 9.6mm);
         }
         .kartu-peserta-card {
@@ -2157,7 +1903,7 @@ function getKartuPesertaPrintHtml(level, options = {}) {
 }
 
 async function promptExportKartuPesertaPDF() {
-  const levelOptions = { 7: "Kelas 7", 8: "Kelas 8", 9: "Kelas 9" };
+  const levelOptions = { "7": "Kelas 7", "8": "Kelas 8", "9": "Kelas 9" };
   const levelResult = await Swal.fire({
     title: "Cetak Kartu Peserta",
     input: "select",
@@ -2167,27 +1913,22 @@ async function promptExportKartuPesertaPDF() {
     confirmButtonText: "Export PDF",
     cancelButtonText: "Batal",
     showCancelButton: true,
-    inputValidator: (value) => (value ? "" : "Pilih kelas terlebih dahulu."),
+    inputValidator: value => value ? "" : "Pilih kelas terlebih dahulu."
   });
 
   if (!levelResult.isConfirmed) return;
   const level = String(levelResult.value || "");
   const entries = getAsesmenKartuPesertaEntries(level);
   if (!entries.length) {
-    Swal.fire(
-      "Belum ada data",
-      `Belum ada peserta terpetakan untuk Kelas ${escapeAsesmenHtml(level)}. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.`,
-      "warning",
-    );
+    Swal.fire("Belum ada data", `Belum ada peserta terpetakan untuk Kelas ${escapeAsesmenHtml(level)}. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.`, "warning");
     return;
   }
 
   const roomKeys = getAsesmenKartuPesertaRoomKeys(entries);
   const roomOptions = { "": "Semua Ruang" };
-  roomKeys.forEach((roomKey) => {
+  roomKeys.forEach(roomKey => {
     const roomLabel = getAsesmenKartuPesertaRoomLabel(roomKey);
-    roomOptions[roomKey] =
-      roomKey === "__NO_ROOM__" ? roomLabel : `Ruang ${roomLabel}`;
+    roomOptions[roomKey] = roomKey === "__NO_ROOM__" ? roomLabel : `Ruang ${roomLabel}`;
   });
   const roomResult = await Swal.fire({
     title: "Filter Ruang",
@@ -2197,15 +1938,13 @@ async function promptExportKartuPesertaPDF() {
     inputPlaceholder: "Semua ruang",
     confirmButtonText: "Export PDF",
     cancelButtonText: "Batal",
-    showCancelButton: true,
+    showCancelButton: true
   });
 
   if (!roomResult.isConfirmed) return;
   const roomFilter = String(roomResult.value || "").trim();
   const html = getKartuPesertaPrintHtml(level, { roomFilter });
-  const roomTitle = roomFilter
-    ? ` Ruang ${getAsesmenKartuPesertaRoomLabel(roomFilter)}`
-    : "";
+  const roomTitle = roomFilter ? ` Ruang ${getAsesmenKartuPesertaRoomLabel(roomFilter)}` : "";
   if (window.AppPrint?.openHtml) {
     window.AppPrint.openHtml(html, {
       documentTitle: `Kartu Peserta Kelas ${level}${roomTitle}`,
@@ -2213,18 +1952,14 @@ async function promptExportKartuPesertaPDF() {
       popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
       autoPrint: true,
       printDelayMs: 450,
-      fallbackDelayMs: 1000,
+      fallbackDelayMs: 1000
     });
     return;
   }
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    Swal.fire(
-      "Popup diblokir",
-      "Izinkan popup browser untuk export PDF.",
-      "warning",
-    );
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
   printWindow.document.open();
@@ -2235,7 +1970,7 @@ async function promptExportKartuPesertaPDF() {
 }
 
 async function promptExportLabel121PDF() {
-  const levelOptions = { 7: "Kelas 7", 8: "Kelas 8", 9: "Kelas 9" };
+  const levelOptions = { "7": "Kelas 7", "8": "Kelas 8", "9": "Kelas 9" };
   const result = await Swal.fire({
     title: "Cetak Label 121",
     input: "select",
@@ -2245,7 +1980,7 @@ async function promptExportLabel121PDF() {
     confirmButtonText: "Export PDF",
     cancelButtonText: "Batal",
     showCancelButton: true,
-    inputValidator: (value) => (value ? "" : "Pilih kelas terlebih dahulu."),
+    inputValidator: value => value ? "" : "Pilih kelas terlebih dahulu."
   });
 
   if (!result.isConfirmed) return;
@@ -2253,11 +1988,7 @@ async function promptExportLabel121PDF() {
   const level = String(result.value || "");
   const labelEntries = getAsesmenLabel121Entries(level);
   if (!labelEntries.length) {
-    Swal.fire(
-      "Belum ada data",
-      `Belum ada peserta terpetakan untuk Kelas ${escapeAsesmenHtml(level)}. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.`,
-      "warning",
-    );
+    Swal.fire("Belum ada data", `Belum ada peserta terpetakan untuk Kelas ${escapeAsesmenHtml(level)}. Set panel kelas dan ruang terlebih dahulu di tab Pembagian Ruang.`, "warning");
     return;
   }
 
@@ -2269,18 +2000,14 @@ async function promptExportLabel121PDF() {
       popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
       autoPrint: true,
       printDelayMs: 450,
-      fallbackDelayMs: 1000,
+      fallbackDelayMs: 1000
     });
     return;
   }
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    Swal.fire(
-      "Popup diblokir",
-      "Izinkan popup browser untuk export PDF.",
-      "warning",
-    );
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
   printWindow.document.open();
@@ -2296,7 +2023,7 @@ function getDenahSeatNumbers() {
     [13, 14, 15, 16],
     [12, 11, 10, 9],
     [5, 6, 7, 8],
-    [4, 3, 2, 1],
+    [4, 3, 2, 1]
   ];
 }
 
@@ -2306,25 +2033,21 @@ function getDenahSeatDirections() {
     ["right", "right", "right", "up"],
     ["up", "left", "left", "left"],
     ["right", "right", "right", "up"],
-    ["up", "left", "left", "start"],
+    ["up", "left", "left", "start"]
   ];
 }
 
 function getDenahSeatData(entries = [], seatNumber) {
-  const sortedEntries = [...entries].sort(
-    (a, b) => Number(a.level) - Number(b.level),
-  );
-  return sortedEntries.map((entry) => ({
+  const sortedEntries = [...entries].sort((a, b) => Number(a.level) - Number(b.level));
+  return sortedEntries.map(entry => ({
     level: String(entry.level || ""),
-    student: entry.students?.[seatNumber - 1] || null,
+    student: entry.students?.[seatNumber - 1] || null
   }));
 }
 
 function getKepangawasanExamType() {
   try {
-    const parsed = JSON.parse(
-      localStorage.getItem("kepangawasanAsesmenState") || "{}",
-    );
+    const parsed = JSON.parse(localStorage.getItem("kepangawasanAsesmenState") || "{}");
     const examType = String(parsed?.examType || "").trim();
     return examType || "Asesmen Sumatif";
   } catch {
@@ -2353,7 +2076,7 @@ function renderDenahSeat(entryData, seatNumber, direction) {
     left: "\u2190",
     right: "\u2192",
     up: "\u2191",
-    start: "AWAL",
+    start: "AWAL"
   };
   const arrowText = arrowMap[direction] || "";
   const arrowClass = direction === "start" ? " denah-arrow-start" : "";
@@ -2381,26 +2104,19 @@ function renderDenahGrid(entries = []) {
   const directionRows = getDenahSeatDirections();
   return `
     <div class="denah-grid">
-      ${seatRows
-        .map(
-          (row, rowIndex) => `
+      ${seatRows.map((row, rowIndex) => `
         <div class="denah-grid-row">
           ${row.map((seatNumber, colIndex) => renderDenahSeat(getDenahSeatData(entries, seatNumber), seatNumber, directionRows[rowIndex][colIndex])).join("")}
         </div>
-      `,
-        )
-        .join("")}
+      `).join("")}
       <div class="denah-board">PAPAN TULIS</div>
     </div>
   `;
 }
 
 function renderDenahLegend(entries = []) {
-  const sortedLevels = [
-    ...new Set(
-      entries.map((entry) => String(entry.level || "").trim()).filter(Boolean),
-    ),
-  ].sort((a, b) => Number(b) - Number(a));
+  const sortedLevels = [...new Set(entries.map(entry => String(entry.level || "").trim()).filter(Boolean))]
+    .sort((a, b) => Number(b) - Number(a));
   const firstLevel = sortedLevels[0] || "";
   const secondLevel = sortedLevels[1] || "";
   return `
@@ -2423,8 +2139,7 @@ function renderDenahLegend(entries = []) {
 function renderDenahPesertaPage(roomNumber, entries) {
   const jenisUjian = getKepangawasanExamType();
   const tahunPelajaran = getActiveSchoolYearLabel();
-  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href)
-    .href;
+  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
   return `
     <section class="denah-page">
@@ -2454,9 +2169,7 @@ function renderDenahPesertaPage(roomNumber, entries) {
 
 function getDenahPesertaPrintHtml() {
   const roomMap = getCombinedAsesmenRoomMap();
-  const pages = Array.from(roomMap.entries())
-    .map(([roomNumber, entries]) => renderDenahPesertaPage(roomNumber, entries))
-    .join("");
+  const pages = Array.from(roomMap.entries()).map(([roomNumber, entries]) => renderDenahPesertaPage(roomNumber, entries)).join("");
 
   return `
     <!doctype html>
@@ -2704,9 +2417,7 @@ function getDenahPesertaPrintHtml() {
 
 function getDataMapPrintHtml() {
   const roomMap = getCombinedAsesmenRoomMap();
-  const pages = Array.from(roomMap.entries())
-    .map(([roomNumber, entries]) => renderDataMapPage(roomNumber, entries))
-    .join("");
+  const pages = Array.from(roomMap.entries()).map(([roomNumber, entries]) => renderDataMapPage(roomNumber, entries)).join("");
 
   return `
     <!doctype html>
@@ -2718,35 +2429,21 @@ function getDataMapPrintHtml() {
         * { box-sizing: border-box; }
         body { margin: 0; background: #ffffff; color: #111827; font-family: Arial, Helvetica, sans-serif; }
         .data-map-page {
+          width: 100%;
+          height: 210mm;
+          padding: 8mm 10mm;
           page-break-after: always;
           break-after: page;
           background: #ffffff;
           overflow: hidden;
         }
         .data-map-page:last-child { page-break-after: auto; break-after: auto; }
-        .data-map-page--landscape {
-          width: 297mm;
-          height: 210mm;
-          padding: 8mm 10mm;
-          page: data-map-landscape;
-        }
-        .data-map-page--portrait {
-          width: 210mm;
-          height: 297mm;
-          padding: 10mm 8mm;
-          page: data-map-portrait;
-        }
         .data-map-sheet {
           width: 100%;
+          height: calc(210mm - 16mm);
           border: 1.3px solid #4b5563;
           padding: 6mm 6mm 5mm;
           overflow: hidden;
-        }
-        .data-map-page--landscape .data-map-sheet {
-          height: calc(210mm - 16mm);
-        }
-        .data-map-page--portrait .data-map-sheet {
-          height: calc(297mm - 20mm);
         }
         .data-map-header {
           margin-bottom: 5mm;
@@ -2765,14 +2462,9 @@ function getDataMapPrintHtml() {
         }
         .data-map-grid {
           display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
           gap: 5mm;
           align-items: start;
-        }
-        .data-map-grid--landscape {
-          grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-        .data-map-grid--portrait {
-          grid-template-columns: minmax(0, 1fr);
         }
         .data-map-panel {
           min-width: 0;
@@ -2784,7 +2476,7 @@ function getDataMapPrintHtml() {
           width: 100%;
           border-collapse: collapse;
           table-layout: fixed;
-          font-size: 15px;
+          font-size: 10.5px;
         }
         .data-map-table th,
         .data-map-table td {
@@ -2799,21 +2491,17 @@ function getDataMapPrintHtml() {
           text-transform: uppercase;
           background: #ffffff;
           color: #111827;
-          text-align: center;
-          white-space: normal;
-          overflow-wrap: anywhere;
-          word-break: break-word;
-          line-height: 1.15;
+          white-space: nowrap;
         }
         .data-map-table tbody tr {
           height: 7.4mm;
         }
         .data-map-no {
-          width: 30px;
+          width: 28px;
           text-align: center;
         }
         .data-map-number {
-          width: 105px;
+          width: 98px;
           text-align: center;
           white-space: nowrap;
         }
@@ -2824,16 +2512,12 @@ function getDataMapPrintHtml() {
           text-overflow: clip;
         }
         .data-map-class {
-          width: 52px;
+          width: 48px;
           text-align: center;
           white-space: nowrap;
         }
-        @page data-map-landscape {
+        @page {
           size: A4 landscape;
-          margin: 0;
-        }
-        @page data-map-portrait {
-          size: A4 portrait;
           margin: 0;
         }
         @media print {
@@ -2847,17 +2531,14 @@ function getDataMapPrintHtml() {
 }
 
 function renderTempelKacaPage(roomNumber, entries) {
-  const sortedEntries = [...entries].sort(
-    (a, b) => Number(b.level) - Number(a.level),
-  );
+  const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
   const highEntry = sortedEntries[0] || null;
   const lowEntry = sortedEntries[1] || null;
   const singleEntryClass = lowEntry ? "" : " tempel-kaca-page-single";
   const jenisUjian = getKepangawasanExamType();
   const tahunPelajaran = getActiveSchoolYearLabel();
   const logoPemdaUrl = new URL("img/logo_pemda.png", window.location.href).href;
-  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href)
-    .href;
+  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
   return `
     <section class="tempel-kaca-page${singleEntryClass}">
@@ -2892,13 +2573,10 @@ function renderTempelKacaPage(roomNumber, entries) {
 
 function getTempelKacaPrintHtml() {
   const roomMap = getCombinedAsesmenRoomMap();
-  const pages = Array.from(roomMap.entries())
-    .map(([roomNumber, entries]) => renderTempelKacaPage(roomNumber, entries))
-    .join("");
+  const pages = Array.from(roomMap.entries()).map(([roomNumber, entries]) => renderTempelKacaPage(roomNumber, entries)).join("");
   const baseHref = window.location.href;
   const logoPemdaUrl = new URL("img/logo_pemda.png", window.location.href).href;
-  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href)
-    .href;
+  const logoSekolahUrl = new URL("img/logo_sekolah.png", window.location.href).href;
 
   return `
     <!doctype html>
@@ -3131,11 +2809,7 @@ function getTempelKacaPrintHtml() {
 function exportTempelKacaPDF() {
   const roomMap = getCombinedAsesmenRoomMap();
   if (roomMap.size === 0) {
-    Swal.fire(
-      "Belum ada ruang",
-      "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.",
-      "warning",
-    );
+    Swal.fire("Belum ada ruang", "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.", "warning");
     return;
   }
 
@@ -3147,18 +2821,14 @@ function exportTempelKacaPDF() {
       popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
       autoPrint: true,
       printDelayMs: 450,
-      fallbackDelayMs: 1000,
+      fallbackDelayMs: 1000
     });
     return;
   }
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    Swal.fire(
-      "Popup diblokir",
-      "Izinkan popup browser untuk export PDF.",
-      "warning",
-    );
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
   printWindow.document.open();
@@ -3171,11 +2841,7 @@ function exportTempelKacaPDF() {
 function exportDataMapPDF() {
   const roomMap = getCombinedAsesmenRoomMap();
   if (roomMap.size === 0) {
-    Swal.fire(
-      "Belum ada ruang",
-      "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.",
-      "warning",
-    );
+    Swal.fire("Belum ada ruang", "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.", "warning");
     return;
   }
 
@@ -3187,18 +2853,14 @@ function exportDataMapPDF() {
       popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
       autoPrint: true,
       printDelayMs: 450,
-      fallbackDelayMs: 1000,
+      fallbackDelayMs: 1000
     });
     return;
   }
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    Swal.fire(
-      "Popup diblokir",
-      "Izinkan popup browser untuk export PDF.",
-      "warning",
-    );
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
   printWindow.document.open();
@@ -3211,11 +2873,7 @@ function exportDataMapPDF() {
 function exportDenahPesertaPDF() {
   const roomMap = getCombinedAsesmenRoomMap();
   if (roomMap.size === 0) {
-    Swal.fire(
-      "Belum ada ruang",
-      "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.",
-      "warning",
-    );
+    Swal.fire("Belum ada ruang", "Set panel kelas dan ruang ujian terlebih dahulu di menu Pembagian Ruang.", "warning");
     return;
   }
 
@@ -3227,18 +2885,14 @@ function exportDenahPesertaPDF() {
       popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
       autoPrint: true,
       printDelayMs: 450,
-      fallbackDelayMs: 1000,
+      fallbackDelayMs: 1000
     });
     return;
   }
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    Swal.fire(
-      "Popup diblokir",
-      "Izinkan popup browser untuk export PDF.",
-      "warning",
-    );
+    Swal.fire("Popup diblokir", "Izinkan popup browser untuk export PDF.", "warning");
     return;
   }
   printWindow.document.open();
@@ -3254,22 +2908,22 @@ function renderAsesmenRoomArrangement() {
 
   const roomMap = getCombinedAsesmenRoomMap();
   if (roomMap.size === 0) {
-    container.innerHTML = `<div class="empty-panel">Isi ruang yang digunakan untuk melihat susunan ruang.</div>`;
+    const nextHtml = `<div class="empty-panel">Isi ruang yang digunakan untuk melihat susunan ruang.</div>`;
+    if (nextHtml !== lastAsesmenRoomArrangementHtml || !container.children.length) {
+      container.innerHTML = nextHtml;
+      lastAsesmenRoomArrangementHtml = nextHtml;
+    }
     return;
   }
 
-  container.innerHTML = `
+  const nextHtml = `
     <div class="asesmen-combined-room-list">
-      ${Array.from(roomMap.entries())
-        .map(([roomNumber, entries]) => {
-          const sortedEntries = entries.sort(
-            (a, b) => Number(b.level) - Number(a.level),
-          );
-          const warning =
-            sortedEntries.length > 2
-              ? `<div class="asesmen-warning">Ruang ini dipakai ${sortedEntries.length} jenjang. Maksimal dua jenjang.</div>`
-              : "";
-          return `
+      ${Array.from(roomMap.entries()).map(([roomNumber, entries]) => {
+        const sortedEntries = [...entries].sort((a, b) => Number(b.level) - Number(a.level));
+        const warning = sortedEntries.length > 2
+          ? `<div class="asesmen-warning">Ruang ini dipakai ${sortedEntries.length} jenjang. Maksimal dua jenjang.</div>`
+          : "";
+        return `
           <article class="asesmen-combined-room-card">
             <div class="asesmen-room-card-head">
               <strong>Ruang ${escapeAsesmenHtml(roomNumber)}</strong>
@@ -3281,10 +2935,13 @@ function renderAsesmenRoomArrangement() {
             </div>
           </article>
         `;
-        })
-        .join("")}
+      }).join("")}
     </div>
   `;
+  if (nextHtml !== lastAsesmenRoomArrangementHtml || !container.children.length) {
+    container.innerHTML = nextHtml;
+    lastAsesmenRoomArrangementHtml = nextHtml;
+  }
 }
 
 window.setAsesmenLevelEnabled = setAsesmenLevelEnabled;
@@ -3292,7 +2949,6 @@ window.setAsesmenKelasSumber = setAsesmenKelasSumber;
 window.setAsesmenPageTab = setAsesmenPageTab;
 window.renderKepersetaanPage = renderKepersetaanPage;
 window.exportTempelKacaPDF = exportTempelKacaPDF;
-window.exportDaftarPesertaAsesmenExcel = exportDaftarPesertaAsesmenExcel;
 window.promptExportLabel121PDF = promptExportLabel121PDF;
 window.promptExportKartuPesertaPDF = promptExportKartuPesertaPDF;
 window.exportDataMapPDF = exportDataMapPDF;
