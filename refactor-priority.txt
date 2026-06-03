@@ -1,0 +1,193 @@
+﻿# Refactor Priority Plan
+
+Dokumen ini mengurutkan refactor berdasarkan risiko teknis, dampak ke UX, dan kemudahan eksekusi. Tujuannya bukan mengubah semua hal sekaligus, tetapi menurunkan risiko bertahap sambil menjaga aplikasi tetap jalan.
+
+## Prinsip Urutan
+
+1. Mulai dari sumber yang paling banyak dipakai oleh seluruh aplikasi.
+2. Turunkan override dan duplikasi sebelum merapikan modul individual.
+3. Jangan sentuh logic data besar sebelum shell dan style dasar lebih stabil.
+4. Sinkronkan root dan `www/` setiap kali file yang sama ikut berubah.
+5. Validasi tiap fase sebelum lanjut ke fase berikutnya.
+
+## Fase 1 - Fondasi Styling Dan Token
+
+Target:
+- menyatukan sumber visual utama
+- mengurangi konflik antara `css/design-system.css`, `style.css`, dan `mobile-redesign.css`
+- membuat komponen dasar konsisten di semua halaman
+
+File prioritas:
+- `css/design-system.css`
+- `style.css`
+- `mobile-redesign.css`
+
+Urutan kerja:
+1. Audit token dasar di `css/design-system.css`.
+2. Pastikan warna, radius, shadow, spacing, dan control height tidak bertabrakan.
+3. Periksa semua kelas tombol utama: `.btn-*`, `.topbar-btn`, `.menu`, `.submenu button`, `.sidebar-logout-btn`.
+4. Periksa semua input utama: `.form-group input`, `.admin-user-input`, `.nilai-input-cell`, `.wali-rekap-input`, `.rapor-catatan-input`.
+5. Periksa semua tabel utama: `.table-container`, `.responsive-data-table`, `.nilai-table`, `.rekap-table`, `.kelas-data-table`, `.guru-compact-table`, `.mapel-table`.
+6. Hapus atau rapikan override lama di `style.css` yang menghidupkan ulang gaya berbeda dari design system baru.
+7. Kurangi isi `mobile-redesign.css` yang hanya menyalin ulang style dasar, bukan perilaku mobile yang spesifik.
+
+Output fase:
+- tombol dan input punya tampilan yang sama lintas modul
+- tabel dasar seragam
+- mobile override lebih tipis dan fokus ke layout layar kecil
+
+## Fase 2 - Shell Dashboard
+
+Target:
+- menyederhanakan navigasi
+- membuat sidebar dan topbar mudah dipindai
+- mengurangi menu ganda dan struktur lama yang masih hidup bersamaan
+
+File prioritas:
+- `dashboard.html`
+- `shared/dashboard-shell.js`
+- `shared/dashboard-routes.js`
+- `shared/app-router.js`
+
+Urutan kerja:
+1. Audit struktur menu di `dashboard.html`.
+2. Pilih satu pola sidebar utama: flat menu, atau flat menu dengan grup yang benar-benar perlu saja.
+3. Hapus pengulangan menu yang fungsi dan labelnya sama.
+4. Kecilkan jumlah submenu yang tidak memberi nilai navigasi nyata.
+5. Samakan state aktif menu, parent, dan submenu.
+6. Rapikan topbar: judul, role, aksi cepat, dan tombol mobile.
+7. Periksa bootstrap shell agar urutan load route dan modul tetap aman setelah menu disederhanakan.
+
+Output fase:
+- sidebar lebih pendek dan lebih mudah dibaca
+- topbar tidak terasa penuh
+- navigasi tetap lengkap tetapi tidak dobel
+
+## Fase 3 - Modul Data Utama
+
+Target:
+- menyamakan pola halaman di modul operasional harian
+- membuat header, toolbar, filter, tabel, dan empty state konsisten
+
+File prioritas:
+- `Siswa/ui.js`
+- `Guru/ui.js`
+- `Kelas/ui.js`
+- `Mapel/ui.js`
+- `Nilai/nilai.js`
+- `Rekap/rekap.js`
+- `Kurikulum/kalender-pendidikan.js`
+
+Urutan kerja:
+1. Jadikan `Siswa/ui.js`, `Guru/ui.js`, `Kelas/ui.js`, dan `Mapel/ui.js` sebagai referensi pola halaman data.
+2. Samakan struktur header: label konteks, judul, deskripsi singkat, aksi utama.
+3. Samakan toolbar: pencarian, filter, template, import, refresh, reset.
+4. Samakan empty state dan loading state.
+5. Selaraskan tabel pada domain yang paling sering dipakai.
+6. Baru setelah itu rapikan `Nilai/nilai.js` dan `Rekap/rekap.js`, karena keduanya punya state dan aturan yang lebih kompleks.
+7. Terakhir, sentuh `Kurikulum/kalender-pendidikan.js` karena file ini punya layout besar dan print view yang mudah rusak.
+
+Output fase:
+- halaman data terasa satu keluarga
+- input dan tabel besar lebih cepat dipindai
+- risiko regresi berkurang karena pola UI dasar sudah seragam
+
+## Fase 4 - Mobile Dan Tabel Padat
+
+Target:
+- membuat mobile menjadi mode pengalaman yang sebenarnya
+- bukan sekadar desktop yang dipaksa muat di layar kecil
+
+File prioritas:
+- `mobile-redesign.css`
+- `shared/responsive-tables.js`
+- `css/design-system.css`
+- tabel besar di modul data
+
+Urutan kerja:
+1. Evaluasi breakpoint yang benar-benar dipakai.
+2. Tentukan elemen shell yang harus selalu sticky, dan mana yang boleh jadi panel biasa.
+3. Ubah tabel yang terlalu lebar menjadi format yang lebih terbaca per baris.
+4. Pastikan button row tidak membuat layout melonjak atau overflow.
+5. Perbaiki ruang baca pada kartu, panel, dan field form.
+6. Periksa tabel nilai dan rapor karena area ini paling sensitif terhadap perubahan kolom.
+
+Output fase:
+- mobile lebih ringan
+- tabel besar tidak memaksa horizontal scroll berlebihan
+- action bar lebih nyaman dipakai di layar kecil
+
+## Fase 5 - Login Dan State Akhir
+
+Target:
+- mengurangi beban visual halaman masuk
+- memastikan state kosong, loading, dan dark mode konsisten
+
+File prioritas:
+- `login.html`
+- `maintenance.html`
+- `shared/maintenance-mode.js`
+- `shared/app-loading.js`
+
+Urutan kerja:
+1. Ringankan intro login.
+2. Pastikan form muncul lebih cepat dan lebih menonjol dari dekorasi.
+3. Rapikan alert maintenance agar informatif tetapi tidak berat.
+4. Validasi kontras, ukuran kontrol, dan fokus keyboard.
+5. Periksa empty state dan loading state di dashboard setelah refactor.
+6. Pastikan dark mode tidak pecah di komponen yang sudah dipindahkan ke design system.
+
+Output fase:
+- login lebih cepat dipahami
+- maintenance tidak terasa seperti halaman terpisah yang asing
+- state dasar tetap konsisten
+
+## Fase 6 - Sinkronisasi Root Dan `www/`
+
+Target:
+- mencegah drift antara source utama dan mirror deploy
+
+File prioritas:
+- semua file yang punya pasangan di root dan `www/`
+
+Urutan kerja:
+1. Cek file yang berubah di root.
+2. Pastikan mirror `www/` ikut diperbarui pada file yang sama.
+3. Validasi script vendor yang berbeda di root dan `www/` tidak mengubah perilaku.
+4. Lakukan smoke check setelah sinkronisasi.
+
+Output fase:
+- hasil build web dan root tetap sama secara fungsional
+- lebih kecil kemungkinan bug hanya muncul di salah satu jalur
+
+## Prioritas Risiko Tertinggi
+
+1. `dashboard.html` dan `shared/dashboard-shell.js`
+2. `css/design-system.css` dan `style.css`
+3. `Nilai/nilai.js` dan `Nilai/rapor.js`
+4. `mobile-redesign.css`
+5. `Kurikulum/kalender-pendidikan.js`
+6. root vs `www/` parity
+
+## Alasan Urutan Ini
+
+- Shell dan routing memengaruhi seluruh aplikasi, jadi perubahan di sana punya efek terbesar.
+- Styling dasar menimpa hampir semua halaman, jadi konflik visual harus dirapikan lebih dulu.
+- Nilai dan kurikulum punya kompleksitas data dan layout paling tinggi, sehingga lebih aman dikerjakan setelah fondasi stabil.
+- Mobile sebaiknya dirapikan setelah struktur desktop lebih konsisten, supaya override yang ditulis tidak melawan sistem baru.
+- Sinkronisasi `www/` disimpan sebagai fase akhir karena itu proses verifikasi, bukan desain inti.
+
+## Checklist Eksekusi Bertahap
+
+- [ ] Fase 1 selesai dan diuji di halaman data dasar.
+- [ ] Fase 2 selesai dan navigasi utama tidak dobel.
+- [ ] Fase 3 selesai dan modul siswa/guru/kelas/mapel/nilai stabil.
+- [ ] Fase 4 selesai dan mobile bisa dipakai tanpa geser berlebihan.
+- [ ] Fase 5 selesai dan login lebih ringan.
+- [ ] Fase 6 selesai dan root serta `www/` sinkron.
+
+## Catatan Praktis
+
+- Jangan refactor struktur besar dan visual polish dalam satu perubahan besar kalau bisa dipisah.
+- Jika satu file punya banyak concern, rapikan yang paling banyak dipakai lintas halaman dulu.
+- Setelah setiap fase, cek satu halaman dari root dan satu halaman dari `www/` untuk memastikan tidak ada drift.

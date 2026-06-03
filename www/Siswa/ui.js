@@ -72,6 +72,9 @@ function renderForm() {
           </div>
 
           <div class="student-form-actions">
+            <button type="button" class="btn-secondary" onclick="loadPage('lihat')">
+              Kembali ke Data Siswa
+            </button>
             <button id="btnSimpan" class="btn-primary" onclick="simpanData()">
               Simpan Data
             </button>
@@ -131,85 +134,125 @@ function updateFilterUI() {
   if (rows) rows.value = String(rowsPerPage);
 }
 
+function renderSiswaModuleTabs(activeRoute = "lihat") {
+  const tabs = [
+    { route: "lihat", label: "Siswa Aktif" },
+    { route: "siswa-lulus", label: "Siswa Lulus" }
+  ];
+  return `
+    <div class="siswa-module-tabs" role="tablist" aria-label="Navigasi data siswa">
+      ${tabs.map(tab => `
+        <button
+          type="button"
+          class="siswa-module-tab ${activeRoute === tab.route ? "active" : ""}"
+          role="tab"
+          aria-selected="${activeRoute === tab.route ? "true" : "false"}"
+          onclick="loadPage('${tab.route}')"
+        >
+          ${tab.label}
+        </button>
+      `).join("")}
+    </div>
+  `;
+}
+
 function renderTable() {
   const isKoordinator = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
   const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   return `
-    <div class="card">
-
-      <h2>Data Siswa</h2>
-      ${isKoordinator ? `<div class="matrix-toolbar-note">Akses koordinator dibatasi ke jenjang ${escapeSiswaHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
-
-      <!-- TOOLBAR -->
-      <div class="toolbar">
-
-        <!-- SEARCH -->
-        <div class="toolbar-left">
-          <input id="search" placeholder="🔍 Cari siswa..." oninput="handleSearch(); updateFilterUI()">
+    <div class="card siswa-module-panel">
+      <div class="siswa-module-header">
+        <div>
+          <span class="dashboard-eyebrow">Akademik</span>
+          <h2>Data Siswa</h2>
         </div>
+        <button class="btn-primary siswa-primary-action" onclick="loadPage('input')">
+          <span class="siswa-action-icon siswa-icon-plus" aria-hidden="true"></span>
+          Tambah Siswa
+        </button>
+      </div>
 
-        <!-- FILTER + ACTION -->
-        <div class="toolbar-right">
+      <div class="siswa-module-subbar">
+        ${renderSiswaModuleTabs("lihat")}
+        <div class="siswa-toolbar-actions">
           ${isKoordinator ? "" : `
-            <button class="btn-secondary" onclick="downloadSiswaTemplate()">
-              Download Template
+            <button class="btn-secondary siswa-action-btn" onclick="downloadSiswaTemplate()">
+              <span class="siswa-action-icon siswa-icon-download" aria-hidden="true"></span>
+              Template
             </button>
-          `}
-
-          <select id="filterTingkat" onchange="handleTingkatFilterChange()">
-            <option value="">Semua Tingkat</option>
-            <option value="7">Tingkat 7</option>
-            <option value="8">Tingkat 8</option>
-            <option value="9">Tingkat 9</option>
-          </select>
-
-          <select id="filterKelas" onchange="applyFilters()">
-            <option value="">Semua Kelas</option>
-          </select>
-
-          <select id="filterJK" onchange="applyFilters(); updateFilterUI()">
-            <option value="">Semua JK</option>
-            <option value="L">Laki-laki</option>
-            <option value="P">Perempuan</option>
-          </select>
-
-          <select id="filterAgama" onchange="applyFilters(); updateFilterUI()">
-            <option value="">Semua Agama</option>
-            <option>Islam</option>
-            <option>Kristen</option>
-            <option>Katolik</option>
-            <option>Hindu</option>
-            <option>Buddha</option>
-            <option>Konghucu</option>
-          </select>
-
-          ${isKoordinator ? "" : `
-            <label class="btn-upload">
+            <label class="btn-secondary siswa-action-btn siswa-upload-action">
+              <span class="siswa-action-icon siswa-icon-upload" aria-hidden="true"></span>
               Import
               <input type="file" accept=".xlsx, .xls" onchange="importExcel(event)">
             </label>
           `}
+          <button class="btn-secondary siswa-action-btn" onclick="resetFilter()">
+            <span class="siswa-action-icon siswa-icon-reset" aria-hidden="true"></span>
+            Reset
+          </button>
+          <button class="btn-secondary siswa-action-btn" onclick="refreshSiswaTable()">
+            <span class="siswa-action-icon siswa-icon-refresh" aria-hidden="true"></span>
+            Refresh
+          </button>
         </div>
       </div>
 
-      <!-- INFO -->
-      <div class="toolbar-info">
+      ${isKoordinator ? `<div class="matrix-toolbar-note siswa-access-note">Akses koordinator dibatasi ke jenjang ${escapeSiswaHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
+
+      <div class="siswa-toolbar-panel">
+        <div class="siswa-filter-grid">
+          <label class="siswa-field siswa-field-search" for="search">
+            <span>Pencarian</span>
+            <input id="search" placeholder="Cari nama, NIPD, atau NISN..." oninput="handleSearch(); updateFilterUI()">
+          </label>
+
+          <label class="siswa-field" for="filterTingkat">
+            <span>Tingkat</span>
+            <select id="filterTingkat" onchange="handleTingkatFilterChange()">
+              <option value="">Semua Tingkat</option>
+              <option value="7">Tingkat 7</option>
+              <option value="8">Tingkat 8</option>
+              <option value="9">Tingkat 9</option>
+            </select>
+          </label>
+
+          <label class="siswa-field" for="filterKelas">
+            <span>Kelas</span>
+            <select id="filterKelas" onchange="applyFilters()">
+              <option value="">Semua Kelas</option>
+            </select>
+          </label>
+
+          <label class="siswa-field" for="filterAgama">
+            <span>Agama</span>
+            <select id="filterAgama" onchange="applyFilters(); updateFilterUI()">
+              <option value="">Semua Agama</option>
+              <option>Islam</option>
+              <option>Kristen</option>
+              <option>Katolik</option>
+              <option>Hindu</option>
+              <option>Buddha</option>
+              <option>Konghucu</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="siswa-table-meta">
         <span id="jumlahData">0 siswa</span>
-        <div class="page-size-control">
-          <label for="rowsPerPage">Tampilkan</label>
+        <label class="page-size-control" for="rowsPerPage">
+          <span>Rows per page</span>
           <select id="rowsPerPage" onchange="setRowsPerPage(this.value)">
             <option value="10" selected>10</option>
             <option value="20">20</option>
             <option value="50">50</option>
             <option value="100">100</option>
             <option value="200">200</option>
-            <option value="all">Semuanya</option>
+            <option value="all">Semua</option>
           </select>
-          <button class="btn-secondary" onclick="refreshSiswaTable()">Refresh</button>
-        </div>
+        </label>
       </div>
 
-      <!-- TABLE -->
       <div class="table-container siswa-table-container">
         <table class="siswa-compact-table">
           <thead>
@@ -226,8 +269,7 @@ function renderTable() {
           <tbody id="tbody"></tbody>
         </table>
 
-        <!-- EMPTY STATE -->
-        <div id="emptyState" style="display:none; text-align:center; padding:20px; color:#64748b;">
+        <div id="emptyState" class="siswa-empty-state" style="display:none;">
           Tidak ada data
         </div>
       </div>
@@ -243,7 +285,6 @@ function renderTable() {
     </div>
   `;
 }
-
 
 // ================= ROW =================
 function renderRow(d) {
@@ -279,9 +320,9 @@ function renderRow(d) {
         </td>
 
         <td class="siswa-col-aksi">
-          <div class="table-actions">
-            <button onclick="saveEdit('${safeNipdJs}')" class="btn-primary btn-table-compact">Simpan</button>
-            <button onclick="cancelEdit()" class="btn-secondary btn-table-compact">Batal</button>
+          <div class="table-actions siswa-row-actions">
+            <button onclick="saveEdit('${safeNipdJs}')" class="btn-primary btn-table-compact table-action-icon-btn table-action-save" title="Simpan" aria-label="Simpan">Simpan</button>
+            <button onclick="cancelEdit()" class="btn-secondary btn-table-compact table-action-icon-btn table-action-cancel" title="Batal" aria-label="Batal">Batal</button>
           </div>
         </td>
       </tr>
@@ -297,19 +338,21 @@ function renderRow(d) {
       <td class="siswa-col-agama">${escapeSiswaHtml(d.agama || "-")}</td>
       <td class="siswa-col-kelas">${escapeSiswaHtml(d.kelas || "-")}</td>
       <td class="siswa-col-aksi">
+        <div class="table-actions siswa-row-actions">
         ${d.nipd ? `
-          <button class="btn-secondary btn-table-compact" onclick="editRow('${safeNipdJs}')">
+          <button class="btn-secondary btn-table-compact siswa-edit-btn table-action-icon-btn table-action-edit" onclick="editRow('${safeNipdJs}')" title="Edit" aria-label="Edit">
             Edit
           </button>
         ` : `
-          <button class="btn-secondary btn-table-compact" disabled>
+          <button class="btn-secondary btn-table-compact siswa-edit-btn table-action-icon-btn table-action-edit" disabled title="Edit tidak tersedia" aria-label="Edit tidak tersedia">
             Edit
           </button>
         `}
 
-        <button class="btn-danger btn-table-compact" onclick="hapusData('${safeNipdJs}')">
+        <button class="btn-danger btn-table-compact siswa-delete-btn table-action-icon-btn table-action-delete" onclick="hapusData('${safeNipdJs}')" title="Hapus" aria-label="Hapus">
           Hapus
         </button>
+        </div>
       </td>
     </tr>
   `;

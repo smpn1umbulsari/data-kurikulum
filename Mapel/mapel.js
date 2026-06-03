@@ -20,20 +20,22 @@ const INDUK_MAPEL_OPTIONS = [
   { kode: "PJOK", nama: "Pendidikan Jasmani, Olahraga, dan Kesehatan (PJOK)" },
   { kode: "INF", nama: "Informatika" },
   { kode: "SENPRA", nama: "Seni dan Prakarya" },
-  { kode: "MLD", nama: "Muatan Lokal Daerah" }
+  { kode: "MLD", nama: "Muatan Lokal Daerah" },
 ];
-const MAPEL_AGAMA_OPTIONS = ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"];
+const MAPEL_AGAMA_OPTIONS = [
+  "Islam",
+  "Kristen",
+  "Katolik",
+  "Hindu",
+  "Buddha",
+  "Konghucu",
+];
 
 async function downloadMapelTemplate() {
   await ensureSpreadsheetLibraries();
-  const worksheet = XLSX.utils.aoa_to_sheet([[
-    "MAPPING",
-    "INDUK_MAPEL",
-    "AGAMA",
-    "KODE_MAPEL",
-    "NAMA_MAPEL",
-    "JP"
-  ]]);
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ["MAPPING", "INDUK_MAPEL", "AGAMA", "KODE_MAPEL", "NAMA_MAPEL", "JP"],
+  ]);
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
@@ -49,7 +51,10 @@ function normalizeMapelHeader(text) {
 
 function getMapelCellValue(row, aliases) {
   const normalizedRow = Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [normalizeMapelHeader(key), value])
+    Object.entries(row).map(([key, value]) => [
+      normalizeMapelHeader(key),
+      value,
+    ]),
   );
 
   for (const alias of aliases) {
@@ -70,13 +75,15 @@ function normalizeIndukMapel(value) {
   const text = String(value || "").trim();
   if (!text) return "";
   const upper = text.toUpperCase();
-  const found = INDUK_MAPEL_OPTIONS.find(item => item.kode === upper || item.nama.toUpperCase() === upper);
+  const found = INDUK_MAPEL_OPTIONS.find(
+    (item) => item.kode === upper || item.nama.toUpperCase() === upper,
+  );
   return found?.kode || upper;
 }
 
 function getIndukMapelOption(kode) {
   const normalized = normalizeIndukMapel(kode);
-  return INDUK_MAPEL_OPTIONS.find(item => item.kode === normalized) || null;
+  return INDUK_MAPEL_OPTIONS.find((item) => item.kode === normalized) || null;
 }
 
 function getMapelIndukKode(item = {}) {
@@ -93,7 +100,12 @@ function getMapelIndukLabel(item = {}) {
 
 function inferIndukMapelFromMapel(kode = "", nama = "") {
   const text = `${kode} ${nama}`.toUpperCase();
-  if (/AGAMA|PABP|PA ISLAM|PA KRISTEN|PA KATOLIK|PA HINDU|PA BUDDHA|KONGHUCU/.test(text)) return "PABP";
+  if (
+    /AGAMA|PABP|PA ISLAM|PA KRISTEN|PA KATOLIK|PA HINDU|PA BUDDHA|KONGHUCU/.test(
+      text,
+    )
+  )
+    return "PABP";
   if (/PANCASILA|PPKN|PP\b/.test(text)) return "PP";
   if (/BAHASA INDONESIA|\bBIN\b/.test(text)) return "BIN";
   if (/MATEMATIKA|\bMTK\b/.test(text)) return "MTK";
@@ -111,15 +123,23 @@ function renderIndukMapelOptions(selected = "") {
   const current = normalizeIndukMapel(selected);
   return [
     `<option value="">Pilih induk</option>`,
-    ...INDUK_MAPEL_OPTIONS.map(item => `<option value="${item.kode}" ${item.kode === current ? "selected" : ""}>${item.kode} - ${item.nama}</option>`)
+    ...INDUK_MAPEL_OPTIONS.map(
+      (item) =>
+        `<option value="${item.kode}" ${item.kode === current ? "selected" : ""}>${item.kode} - ${item.nama}</option>`,
+    ),
   ].join("");
 }
 
 function renderAgamaMapelOptions(selected = "") {
-  const current = String(selected || "").trim().toLowerCase();
+  const current = String(selected || "")
+    .trim()
+    .toLowerCase();
   return [
     `<option value="">Agama</option>`,
-    ...MAPEL_AGAMA_OPTIONS.map(item => `<option value="${item}" ${item.toLowerCase() === current ? "selected" : ""}>${item}</option>`)
+    ...MAPEL_AGAMA_OPTIONS.map(
+      (item) =>
+        `<option value="${item}" ${item.toLowerCase() === current ? "selected" : ""}>${item}</option>`,
+    ),
   ].join("");
 }
 
@@ -128,7 +148,9 @@ function toggleAgamaMapelField(prefix = "") {
   const agamaWrapId = prefix ? `${prefix}AgamaMapelWrap` : "agamaMapelWrap";
   const induk = document.getElementById(indukId)?.value || "";
   const agamaWrap = document.getElementById(agamaWrapId);
-  if (agamaWrap) agamaWrap.style.display = normalizeIndukMapel(induk) === "PABP" ? "" : "none";
+  if (agamaWrap)
+    agamaWrap.style.display =
+      normalizeIndukMapel(induk) === "PABP" ? "" : "none";
 }
 
 function sortMapelByMapping(data) {
@@ -144,10 +166,18 @@ function sortMapelByMapping(data) {
     }
 
     if (mapelSortField === "induk_mapel") {
-      return compareValues(getMapelIndukKode(a), getMapelIndukKode(b), mapelSortDirection);
+      return compareValues(
+        getMapelIndukKode(a),
+        getMapelIndukKode(b),
+        mapelSortDirection,
+      );
     }
 
-    return compareValues(a[mapelSortField], b[mapelSortField], mapelSortDirection);
+    return compareValues(
+      a[mapelSortField],
+      b[mapelSortField],
+      mapelSortDirection,
+    );
   });
 }
 
@@ -185,14 +215,26 @@ function renderMapelTableState() {
   renderMapelFiltered();
 }
 
-function validateMapelValues(mapping, induk, agama, kode, nama, jp, excludeKode = "") {
+function validateMapelValues(
+  mapping,
+  induk,
+  agama,
+  kode,
+  nama,
+  jp,
+  excludeKode = "",
+) {
   const mappingValue = normalizeMapelMapping(mapping);
   const indukValue = normalizeIndukMapel(induk);
   const agamaValue = String(agama || "").trim();
-  const kodeNorm = String(kode || "").trim().toLowerCase();
+  const kodeNorm = String(kode || "")
+    .trim()
+    .toLowerCase();
   const namaValue = String(nama || "").trim();
   const jpValue = String(jp || "").trim();
-  const excludeNorm = String(excludeKode || "").trim().toLowerCase();
+  const excludeNorm = String(excludeKode || "")
+    .trim()
+    .toLowerCase();
 
   if (!mappingValue) {
     return "Mapping wajib diisi";
@@ -210,9 +252,15 @@ function validateMapelValues(mapping, induk, agama, kode, nama, jp, excludeKode 
     return "Agama wajib dipilih untuk induk PABP";
   }
 
-  const duplicateMapping = semuaDataMapel.some(d => {
-    const existingCode = String(d.kode_mapel || "").trim().toLowerCase();
-    return normalizeMapelMapping(d.mapping) === mappingValue && getMapelIndukKode(d) !== indukValue && existingCode !== excludeNorm;
+  const duplicateMapping = semuaDataMapel.some((d) => {
+    const existingCode = String(d.kode_mapel || "")
+      .trim()
+      .toLowerCase();
+    return (
+      normalizeMapelMapping(d.mapping) === mappingValue &&
+      getMapelIndukKode(d) !== indukValue &&
+      existingCode !== excludeNorm
+    );
   });
 
   if (duplicateMapping) {
@@ -227,8 +275,10 @@ function validateMapelValues(mapping, induk, agama, kode, nama, jp, excludeKode 
     return "Gunakan huruf, angka, titik, strip, atau underscore untuk kode mapel";
   }
 
-  const duplicate = semuaDataMapel.some(d => {
-    const existingCode = String(d.kode_mapel || "").trim().toLowerCase();
+  const duplicate = semuaDataMapel.some((d) => {
+    const existingCode = String(d.kode_mapel || "")
+      .trim()
+      .toLowerCase();
     return existingCode === kodeNorm && existingCode !== excludeNorm;
   });
 
@@ -259,11 +309,35 @@ function validateMapelValues(mapping, induk, agama, kode, nama, jp, excludeKode 
   return "";
 }
 
-function validateMapelImportValues(mapping, induk, agama, kode, nama, jp, seenCodes, seenMappings) {
-  const kodeNorm = String(kode || "").trim().toLowerCase();
+function validateMapelImportValues(
+  mapping,
+  induk,
+  agama,
+  kode,
+  nama,
+  jp,
+  seenCodes,
+  seenMappings,
+) {
+  const kodeNorm = String(kode || "")
+    .trim()
+    .toLowerCase();
   const mappingValue = normalizeMapelMapping(mapping);
-  const existing = semuaDataMapel.find(d => String(d.kode_mapel || "").trim().toLowerCase() === kodeNorm);
-  const validationMessage = validateMapelValues(mapping, induk, agama, kode, nama, jp, existing?.kode_mapel || "");
+  const existing = semuaDataMapel.find(
+    (d) =>
+      String(d.kode_mapel || "")
+        .trim()
+        .toLowerCase() === kodeNorm,
+  );
+  const validationMessage = validateMapelValues(
+    mapping,
+    induk,
+    agama,
+    kode,
+    nama,
+    jp,
+    existing?.kode_mapel || "",
+  );
 
   if (validationMessage) {
     return validationMessage;
@@ -299,7 +373,14 @@ function validateMapelForm() {
   const nama = document.getElementById("namaMapel")?.value.trim() || "";
   const jp = document.getElementById("jpMapel")?.value.trim() || "";
 
-  const validationMessage = validateMapelValues(mapping, induk, agama, kode, nama, jp);
+  const validationMessage = validateMapelValues(
+    mapping,
+    induk,
+    agama,
+    kode,
+    nama,
+    jp,
+  );
 
   if (!mapping) {
     setMapelError("mappingMapel", "Mapping wajib diisi");
@@ -328,7 +409,10 @@ function validateMapelForm() {
     setMapelError("kodeMapel", "Kode mapel wajib diisi");
     valid = false;
   } else if (!/^[a-zA-Z0-9._-]+$/.test(kode)) {
-    setMapelError("kodeMapel", "Gunakan huruf, angka, titik, strip, atau underscore");
+    setMapelError(
+      "kodeMapel",
+      "Gunakan huruf, angka, titik, strip, atau underscore",
+    );
     valid = false;
   } else if (validationMessage === "Kode mapel sudah digunakan") {
     setMapelError("kodeMapel", "Kode mapel sudah digunakan");
@@ -364,7 +448,9 @@ function validateMapelForm() {
 }
 
 function getMapelRowsPerPageValue() {
-  return rowsPerPageMapel === "all" ? Number.MAX_SAFE_INTEGER : Number(rowsPerPageMapel);
+  return rowsPerPageMapel === "all"
+    ? Number.MAX_SAFE_INTEGER
+    : Number(rowsPerPageMapel);
 }
 
 function setMapelRowsPerPage(value) {
@@ -375,49 +461,70 @@ function setMapelRowsPerPage(value) {
 
 function setMapelPage(page) {
   const hasil = semuaDataMapel;
-  const totalPages = Math.max(1, Math.ceil(hasil.length / getMapelRowsPerPageValue()));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(hasil.length / getMapelRowsPerPageValue()),
+  );
   currentPageMapel = Math.min(Math.max(1, page), totalPages);
   renderMapelFiltered();
 }
 
 function isMapelBayanganMode() {
-  return typeof getActiveMapelCollectionName === "function" && getActiveMapelCollectionName() === "mapel_bayangan";
+  return (
+    typeof getActiveMapelCollectionName === "function" &&
+    getActiveMapelCollectionName() === "mapel_bayangan"
+  );
 }
 
-async function syncMapelBayanganFromOriginal({ force = false, removeMissing = false } = {}) {
+async function syncMapelBayanganFromOriginal({
+  force = false,
+  removeMissing = false,
+} = {}) {
   if (!isMapelBayanganMode() || isSyncingMapelBayangan) return;
   isSyncingMapelBayangan = true;
   try {
     const [originalSnapshot, bayanganSnapshot] = await Promise.all([
       getMapelPageDocumentsApi().collection("mapel").get(),
-      getMapelPageDocumentsApi().collection("mapel_bayangan").get()
+      getMapelPageDocumentsApi().collection("mapel_bayangan").get(),
     ]);
     if (!force && !bayanganSnapshot.empty) return;
     if (originalSnapshot.empty) return;
-    const bayanganById = new Map(bayanganSnapshot.docs.map(doc => [doc.id, { id: doc.id, ...doc.data() }]));
+    const bayanganById = new Map(
+      bayanganSnapshot.docs.map((doc) => [
+        doc.id,
+        { id: doc.id, ...doc.data() },
+      ]),
+    );
     const originalIds = new Set();
     const documentsApi = getMapelPageDocumentsApi();
     const batch = documentsApi.batch();
     let count = 0;
-    originalSnapshot.docs.forEach(doc => {
+    originalSnapshot.docs.forEach((doc) => {
       const data = doc.data();
-      const kode = String(data.kode_mapel || doc.id || "").trim().toUpperCase();
+      const kode = String(data.kode_mapel || doc.id || "")
+        .trim()
+        .toUpperCase();
       if (!kode) return;
       originalIds.add(kode);
       const existing = bayanganById.get(kode);
       batch.set(documentsApi.collection("mapel_bayangan").doc(kode), {
         ...data,
         kode_mapel: kode,
-        jp: existing?.jp !== undefined ? Number(existing.jp || 0) : Number(data.jp || 0),
+        jp:
+          existing?.jp !== undefined
+            ? Number(existing.jp || 0)
+            : Number(data.jp || 0),
         sumber_clone: "mapel",
         cloned_at: existing?.cloned_at || new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       });
       count++;
     });
     if (removeMissing) {
-      bayanganSnapshot.docs.forEach(doc => {
-        const kode = String(doc.data().kode_mapel || doc.id || "").trim().toUpperCase();
+      bayanganSnapshot.docs.forEach((doc) => {
+        const kode = String(doc.data().kode_mapel || doc.id || "")
+          .trim()
+          .toUpperCase();
         if (kode && !originalIds.has(kode)) {
           batch.delete(doc.ref);
           count++;
@@ -442,7 +549,7 @@ async function syncMapelBayanganManual() {
     icon: "question",
     showCancelButton: true,
     confirmButtonText: "Sinkron",
-    cancelButtonText: "Batal"
+    cancelButtonText: "Batal",
   });
 
   if (!confirm.isConfirmed) return;
@@ -451,13 +558,21 @@ async function syncMapelBayanganManual() {
     Swal.fire({
       title: "Menyinkronkan mapel...",
       allowOutsideClick: false,
-      didOpen: () => Swal.showLoading()
+      didOpen: () => Swal.showLoading(),
     });
     await syncMapelBayanganFromOriginal({ force: true, removeMissing: true });
-    Swal.fire("Berhasil", "Data Mapel Kelas Bayangan sudah disinkronkan.", "success");
+    Swal.fire(
+      "Berhasil",
+      "Data Mapel Kelas Bayangan sudah disinkronkan.",
+      "success",
+    );
   } catch (error) {
     console.error(error);
-    Swal.fire("Gagal", "Data Mapel Kelas Bayangan belum berhasil disinkronkan.", "error");
+    Swal.fire(
+      "Gagal",
+      "Data Mapel Kelas Bayangan belum berhasil disinkronkan.",
+      "error",
+    );
   }
 }
 
@@ -467,7 +582,7 @@ function loadRealtimeMapel() {
     syncMapelBayanganFromOriginal();
   }
 
-  unsubscribeMapel = listenMapel(data => {
+  unsubscribeMapel = listenMapel((data) => {
     semuaDataMapel = data;
     renderMapelFiltered();
   });
@@ -484,21 +599,25 @@ function renderMapelFiltered() {
 
   const rowsHtml = [
     isMapelBayanganMode() ? "" : renderMapelInputRow(),
-    ...hasil.map(d => renderMapelRow(d))
+    ...hasil.map((d) => renderMapelRow(d)),
   ].join("");
   const renderKey = JSON.stringify({
     mode: isMapelBayanganMode() ? "bayangan" : "utama",
     currentEditMapel: currentEditMapel || "",
-    rows: hasil.map(item => [
-      item.kode_mapel,
-      item.nama_mapel,
-      item.mapping,
-      item.induk_mapel,
-      item.agama,
-      item.jp,
-      item.updated_at || item.created_at || ""
-    ].map(value => String(value ?? "")).join("|")),
-    total: hasil.length
+    rows: hasil.map((item) =>
+      [
+        item.kode_mapel,
+        item.nama_mapel,
+        item.mapping,
+        item.induk_mapel,
+        item.agama,
+        item.jp,
+        item.updated_at || item.created_at || "",
+      ]
+        .map((value) => String(value ?? ""))
+        .join("|"),
+    ),
+    total: hasil.length,
   });
   if (renderKey !== lastMapelTableRenderKey || !tbody.children.length) {
     tbody.innerHTML = rowsHtml;
@@ -533,8 +652,8 @@ function renderMapelRow(d) {
           </td>
           <td>
             <div class="table-actions mapel-actions">
-              <button class="btn-primary btn-table-compact" onclick="saveEditMapel('${d.kode_mapel}')">Simpan JP</button>
-              <button class="btn-secondary btn-table-compact" onclick="cancelEditMapel()">Batal</button>
+              <button type="button" class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveEditMapel('${d.kode_mapel}')" title="Simpan" aria-label="Simpan JP"></button>
+              <button type="button" class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onclick="cancelEditMapel()" title="Batal" aria-label="Batal"></button>
             </div>
           </td>
         </tr>
@@ -566,8 +685,8 @@ function renderMapelRow(d) {
         </td>
         <td>
           <div class="table-actions mapel-actions">
-            <button class="btn-primary btn-table-compact" onclick="saveEditMapel('${d.kode_mapel}')">Simpan</button>
-            <button class="btn-secondary btn-table-compact" onclick="cancelEditMapel()">Batal</button>
+            <button type="button" class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveEditMapel('${d.kode_mapel}')" title="Simpan" aria-label="Simpan"></button>
+            <button type="button" class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onclick="cancelEditMapel()" title="Batal" aria-label="Batal"></button>
           </div>
         </td>
       </tr>
@@ -583,8 +702,8 @@ function renderMapelRow(d) {
       <td>${d.jp || "-"}</td>
       <td>
         <div class="table-actions mapel-actions">
-          <button class="btn-secondary btn-table-compact" onclick="editMapel('${d.kode_mapel}')">${isMapelBayanganMode() ? "Edit JP" : "Edit"}</button>
-          ${isMapelBayanganMode() ? "" : `<button class="btn-secondary btn-danger-lite btn-table-compact" onclick="hapusMapel('${d.kode_mapel}')">Hapus</button>`}
+          <button type="button" class="btn-secondary btn-table-compact btn-action-edit table-action-icon-btn table-action-edit" onclick="editMapel('${d.kode_mapel}')" title="Edit" aria-label="${isMapelBayanganMode() ? "Edit JP" : "Edit"}"></button>
+          ${isMapelBayanganMode() ? "" : `<button type="button" class="btn-secondary btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="hapusMapel('${d.kode_mapel}')" title="Hapus" aria-label="Hapus"></button>`}
         </div>
       </td>
     </tr>
@@ -659,7 +778,7 @@ function renderMapelInputRow() {
         </div>
       </td>
       <td>
-        <button id="btnSimpanMapel" class="btn-primary btn-inline-mapel btn-table-compact" onclick="simpanMapelData()">Tambah</button>
+        <button id="btnSimpanMapel" class="btn-primary btn-inline-mapel btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="simpanMapelData()" title="Tambah" aria-label="Tambah"></button>
       </td>
     </tr>
   `;
@@ -683,40 +802,75 @@ async function importMapelExcel(event) {
 
   const reader = new FileReader();
 
-  reader.onload = async evt => {
+  reader.onload = async (evt) => {
     try {
       const data = new Uint8Array(evt.target.result);
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(sheet);
 
-      const parsed = json.map(row => {
-        const mapping = String(getMapelCellValue(row, ["MAPPING", "NO", "NOMOR_URUT", "NOMOR URUT"])).trim();
-        const indukMapelRaw = normalizeIndukMapel(getMapelCellValue(row, ["INDUK_MAPEL", "INDUK MAPEL", "INDUK"]));
-        const agama = String(getMapelCellValue(row, ["AGAMA"])).trim();
-        const kodeMapel = String(getMapelCellValue(row, ["KODE_MAPEL", "KODE MAPEL", "KODE"])).trim().toUpperCase();
-        const namaMapel = String(getMapelCellValue(row, ["NAMA_MAPEL", "NAMA MAPEL", "NAMA"])).trim();
-        const indukMapel = indukMapelRaw || inferIndukMapelFromMapel(kodeMapel, namaMapel);
-        const jp = String(getMapelCellValue(row, ["JP", "JAM_PELAJARAN", "JAM PELAJARAN"])).trim();
+      const parsed = json
+        .map((row) => {
+          const mapping = String(
+            getMapelCellValue(row, [
+              "MAPPING",
+              "NO",
+              "NOMOR_URUT",
+              "NOMOR URUT",
+            ]),
+          ).trim();
+          const indukMapelRaw = normalizeIndukMapel(
+            getMapelCellValue(row, ["INDUK_MAPEL", "INDUK MAPEL", "INDUK"]),
+          );
+          const agama = String(getMapelCellValue(row, ["AGAMA"])).trim();
+          const kodeMapel = String(
+            getMapelCellValue(row, ["KODE_MAPEL", "KODE MAPEL", "KODE"]),
+          )
+            .trim()
+            .toUpperCase();
+          const namaMapel = String(
+            getMapelCellValue(row, ["NAMA_MAPEL", "NAMA MAPEL", "NAMA"]),
+          ).trim();
+          const indukMapel =
+            indukMapelRaw || inferIndukMapelFromMapel(kodeMapel, namaMapel);
+          const jp = String(
+            getMapelCellValue(row, ["JP", "JAM_PELAJARAN", "JAM PELAJARAN"]),
+          ).trim();
 
-        return {
-          mapping,
-          induk_mapel: indukMapel,
-          agama,
-          kode_mapel: kodeMapel,
-          nama_mapel: namaMapel,
-          jp
-        };
-      }).filter(item => item.kode_mapel || item.nama_mapel);
+          return {
+            mapping,
+            induk_mapel: indukMapel,
+            agama,
+            kode_mapel: kodeMapel,
+            nama_mapel: namaMapel,
+            jp,
+          };
+        })
+        .filter((item) => item.kode_mapel || item.nama_mapel);
 
       const seenCodes = new Set();
       const seenMappings = new Set();
-      const preparedRows = parsed.map(item => {
-        const error = validateMapelImportValues(item.mapping, item.induk_mapel, item.agama, item.kode_mapel, item.nama_mapel, item.jp, seenCodes, seenMappings);
-        const existing = semuaDataMapel.find(mapel => mapel.kode_mapel === item.kode_mapel);
+      const preparedRows = parsed.map((item) => {
+        const error = validateMapelImportValues(
+          item.mapping,
+          item.induk_mapel,
+          item.agama,
+          item.kode_mapel,
+          item.nama_mapel,
+          item.jp,
+          seenCodes,
+          seenMappings,
+        );
+        const existing = semuaDataMapel.find(
+          (mapel) => mapel.kode_mapel === item.kode_mapel,
+        );
 
         if (!error) {
-          seenCodes.add(String(item.kode_mapel || "").trim().toLowerCase());
+          seenCodes.add(
+            String(item.kode_mapel || "")
+              .trim()
+              .toLowerCase(),
+          );
           seenMappings.add(normalizeMapelMapping(item.mapping));
         }
 
@@ -724,21 +878,29 @@ async function importMapelExcel(event) {
           ...item,
           __error: error,
           __mode: existing ? "update" : "new",
-          __existing: existing || null
+          __existing: existing || null,
         };
       });
 
-      const validRows = preparedRows.filter(item => !item.__error);
+      const validRows = preparedRows.filter((item) => !item.__error);
       const invalidRows = preparedRows.length - validRows.length;
 
       if (validRows.length === 0) {
         event.target.value = "";
-        Swal.fire("Import mapel gagal", "Tidak ada data valid yang bisa diimport.", "error");
+        Swal.fire(
+          "Import mapel gagal",
+          "Tidak ada data valid yang bisa diimport.",
+          "error",
+        );
         return;
       }
 
-      const totalBaru = validRows.filter(item => item.__mode === "new").length;
-      const totalUpdate = validRows.filter(item => item.__mode === "update").length;
+      const totalBaru = validRows.filter(
+        (item) => item.__mode === "new",
+      ).length;
+      const totalUpdate = validRows.filter(
+        (item) => item.__mode === "update",
+      ).length;
 
       const confirm = await Swal.fire({
         title: "Import Data Mapel",
@@ -746,7 +908,7 @@ async function importMapelExcel(event) {
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Import",
-        cancelButtonText: "Batal"
+        cancelButtonText: "Batal",
       });
 
       if (!confirm.isConfirmed) {
@@ -756,7 +918,7 @@ async function importMapelExcel(event) {
 
       Swal.fire({
         title: "Mengimport mapel...",
-        didOpen: () => Swal.showLoading()
+        didOpen: () => Swal.showLoading(),
       });
 
       let berhasil = 0;
@@ -767,17 +929,21 @@ async function importMapelExcel(event) {
       for (const item of validRows) {
         try {
           const existing = item.__existing;
-          await getActiveMapelCollection().doc(item.kode_mapel).set({
-            mapping: Number(item.mapping),
-            induk_mapel: item.induk_mapel,
-            induk_nama: getIndukMapelOption(item.induk_mapel)?.nama || "",
-            agama: item.induk_mapel === "PABP" ? item.agama : "",
-            kode_mapel: item.kode_mapel,
-            nama_mapel: item.nama_mapel,
-            jp: Number(item.jp),
-            created_at: existing ? existing.created_at || new Date() : new Date(),
-            updated_at: new Date()
-          });
+          await getActiveMapelCollection()
+            .doc(item.kode_mapel)
+            .set({
+              mapping: Number(item.mapping),
+              induk_mapel: item.induk_mapel,
+              induk_nama: getIndukMapelOption(item.induk_mapel)?.nama || "",
+              agama: item.induk_mapel === "PABP" ? item.agama : "",
+              kode_mapel: item.kode_mapel,
+              nama_mapel: item.nama_mapel,
+              jp: Number(item.jp),
+              created_at: existing
+                ? existing.created_at || new Date()
+                : new Date(),
+              updated_at: new Date(),
+            });
           berhasil++;
           if (item.__mode === "update") {
             update++;
@@ -794,7 +960,7 @@ async function importMapelExcel(event) {
         title: "Import mapel selesai",
         html: `Berhasil: ${berhasil}<br>Baru: ${baru}<br>Update: ${update}<br>Gagal: ${gagal}<br>Tidak valid: ${invalidRows}`,
         icon: "success",
-        confirmButtonText: "OK"
+        confirmButtonText: "OK",
       });
     } catch (error) {
       console.error(error);
@@ -809,7 +975,11 @@ async function importMapelExcel(event) {
 
 async function simpanMapelData() {
   if (isMapelBayanganMode()) {
-    Swal.fire("Read only", "Data mapel kelas bayangan disalin dari mapel asli. Yang bisa diubah hanya JP pada baris mapel.", "info");
+    Swal.fire(
+      "Read only",
+      "Data mapel kelas bayangan disalin dari mapel asli. Yang bisa diubah hanya JP pada baris mapel.",
+      "info",
+    );
     return;
   }
   if (isSubmittingMapel) return;
@@ -827,12 +997,13 @@ async function simpanMapelData() {
     mapping: Number(mappingEl.value.trim()),
     induk_mapel: normalizeIndukMapel(indukEl.value),
     induk_nama: getIndukMapelOption(indukEl.value)?.nama || "",
-    agama: normalizeIndukMapel(indukEl.value) === "PABP" ? agamaEl.value.trim() : "",
+    agama:
+      normalizeIndukMapel(indukEl.value) === "PABP" ? agamaEl.value.trim() : "",
     kode_mapel: kodeEl.value.trim().toUpperCase(),
     nama_mapel: namaEl.value.trim(),
     jp: Number(jpEl.value.trim()),
     created_at: new Date(),
-    updated_at: new Date()
+    updated_at: new Date(),
   };
 
   try {
@@ -905,14 +1076,20 @@ async function saveEditMapel(kodeLama) {
       return;
     }
     try {
-      await getActiveMapelCollection().doc(kodeLama).update({
-        jp: Number(jpBaru),
-        updated_at: new Date()
-      });
+      await getActiveMapelCollection()
+        .doc(kodeLama)
+        .update({
+          jp: Number(jpBaru),
+          updated_at: new Date(),
+        });
       currentEditMapel = null;
       renderMapelFiltered();
       if (typeof showInlineSaveNotificationForData === "function") {
-        showInlineSaveNotificationForData("data-mapel-kode", kodeLama, "Tersimpan");
+        showInlineSaveNotificationForData(
+          "data-mapel-kode",
+          kodeLama,
+          "Tersimpan",
+        );
       }
     } catch (error) {
       console.error(error);
@@ -921,13 +1098,25 @@ async function saveEditMapel(kodeLama) {
     return;
   }
 
-  const mappingBaru = document.getElementById("editMappingMapel")?.value.trim() || "";
-  const indukBaru = document.getElementById("editIndukMapel")?.value.trim() || "";
-  const agamaBaru = document.getElementById("editAgamaMapel")?.value.trim() || "";
-  const kodeBaru = document.getElementById("editKodeMapel")?.value.trim().toUpperCase() || "";
+  const mappingBaru =
+    document.getElementById("editMappingMapel")?.value.trim() || "";
+  const indukBaru =
+    document.getElementById("editIndukMapel")?.value.trim() || "";
+  const agamaBaru =
+    document.getElementById("editAgamaMapel")?.value.trim() || "";
+  const kodeBaru =
+    document.getElementById("editKodeMapel")?.value.trim().toUpperCase() || "";
   const namaBaru = document.getElementById("editNamaMapel")?.value.trim() || "";
   const jpBaru = document.getElementById("editJpMapel")?.value.trim() || "";
-  const validationMessage = validateMapelValues(mappingBaru, indukBaru, agamaBaru, kodeBaru, namaBaru, jpBaru, kodeLama);
+  const validationMessage = validateMapelValues(
+    mappingBaru,
+    indukBaru,
+    agamaBaru,
+    kodeBaru,
+    namaBaru,
+    jpBaru,
+    kodeLama,
+  );
 
   if (validationMessage) {
     Swal.fire("Edit mapel belum bisa disimpan", validationMessage, "warning");
@@ -935,7 +1124,8 @@ async function saveEditMapel(kodeLama) {
   }
 
   try {
-    const existing = semuaDataMapel.find(d => d.kode_mapel === kodeLama) || {};
+    const existing =
+      semuaDataMapel.find((d) => d.kode_mapel === kodeLama) || {};
 
     await updateMapel(kodeLama, {
       ...existing,
@@ -946,14 +1136,23 @@ async function saveEditMapel(kodeLama) {
       kode_mapel: kodeBaru,
       nama_mapel: namaBaru,
       jp: Number(jpBaru),
-      updated_at: new Date()
+      updated_at: new Date(),
     });
 
     currentEditMapel = null;
     renderMapelFiltered();
     if (typeof showInlineSaveNotificationForData === "function") {
-      const shown = showInlineSaveNotificationForData("data-mapel-kode", kodeBaru, "Tersimpan");
-      if (!shown) showInlineSaveNotificationForData("data-mapel-kode", kodeLama, "Tersimpan");
+      const shown = showInlineSaveNotificationForData(
+        "data-mapel-kode",
+        kodeBaru,
+        "Tersimpan",
+      );
+      if (!shown)
+        showInlineSaveNotificationForData(
+          "data-mapel-kode",
+          kodeLama,
+          "Tersimpan",
+        );
     }
   } catch (error) {
     console.error(error);
@@ -963,7 +1162,11 @@ async function saveEditMapel(kodeLama) {
 
 async function hapusMapel(kodeMapel) {
   if (isMapelBayanganMode()) {
-    Swal.fire("Read only", "Mapel kelas bayangan tidak bisa dihapus. Hapus dari Data Mapel asli jika perlu.", "info");
+    Swal.fire(
+      "Read only",
+      "Mapel kelas bayangan tidak bisa dihapus. Hapus dari Data Mapel asli jika perlu.",
+      "info",
+    );
     return;
   }
   const confirm = await Swal.fire({
@@ -972,7 +1175,7 @@ async function hapusMapel(kodeMapel) {
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Hapus",
-    cancelButtonText: "Batal"
+    cancelButtonText: "Batal",
   });
 
   if (!confirm.isConfirmed) return;

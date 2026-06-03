@@ -49,8 +49,12 @@ function escapeKelasBayanganJs(value) {
 }
 
 function normalizeKelasBayanganAgama(value = "") {
-  if (typeof normalizeMengajarAgama === "function") return normalizeMengajarAgama(value);
-  const text = String(value || "").trim().toLowerCase().replace(/[^a-z]/g, "");
+  if (typeof normalizeMengajarAgama === "function")
+    return normalizeMengajarAgama(value);
+  const text = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
   const aliases = {
     islam: "Islam",
     kristen: "Kristen",
@@ -62,32 +66,44 @@ function normalizeKelasBayanganAgama(value = "") {
     buddha: "Buddha",
     budha: "Buddha",
     konghucu: "Konghucu",
-    khonghucu: "Konghucu"
+    khonghucu: "Konghucu",
   };
   return aliases[text] || "";
 }
 
 function getKelasBayanganMapelAgama(mapel = {}) {
-  if (typeof getMengajarMapelAgama === "function") return getMengajarMapelAgama(mapel);
+  if (typeof getMengajarMapelAgama === "function")
+    return getMengajarMapelAgama(mapel);
   const explicit = normalizeKelasBayanganAgama(mapel.agama);
   if (explicit) return explicit;
-  const text = `${mapel.kode_mapel || ""} ${mapel.nama_mapel || ""}`.toLowerCase();
-  return ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"]
-    .find(agama => text.includes(agama.toLowerCase())) || "";
+  const text =
+    `${mapel.kode_mapel || ""} ${mapel.nama_mapel || ""}`.toLowerCase();
+  return (
+    ["Islam", "Kristen", "Katolik", "Hindu", "Buddha", "Konghucu"].find(
+      (agama) => text.includes(agama.toLowerCase()),
+    ) || ""
+  );
 }
 
 function isKelasBayanganMapelPabp(mapel = {}) {
-  if (typeof isMengajarMapelPabp === "function") return isMengajarMapelPabp(mapel);
-  if (typeof getMapelIndukKode === "function" && getMapelIndukKode(mapel) === "PABP") return true;
-  return /pabp|agama|budi pekerti/i.test(`${mapel.kode_mapel || ""} ${mapel.nama_mapel || ""}`);
+  if (typeof isMengajarMapelPabp === "function")
+    return isMengajarMapelPabp(mapel);
+  if (
+    typeof getMapelIndukKode === "function" &&
+    getMapelIndukKode(mapel) === "PABP"
+  )
+    return true;
+  return /pabp|agama|budi pekerti/i.test(
+    `${mapel.kode_mapel || ""} ${mapel.nama_mapel || ""}`,
+  );
 }
 
 function getKelasBayanganAgamaSetForClass(tingkat, rombel) {
   const kelasValue = buildKelasName(tingkat, rombel);
   return new Set(
     getKelasBayanganMembers(kelasValue)
-      .map(siswa => normalizeKelasBayanganAgama(siswa.agama))
-      .filter(Boolean)
+      .map((siswa) => normalizeKelasBayanganAgama(siswa.agama))
+      .filter(Boolean),
   );
 }
 
@@ -107,23 +123,37 @@ function getKelasBayanganMapelDisabledReason(mapel, tingkat, rombel) {
 }
 
 function getKelasBayanganParts(kelasValue = "") {
-  const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const normalized = String(kelasValue || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const match = normalized.match(/([7-9])([A-Z]+)$/);
   return {
     tingkat: match ? match[1] : "",
     rombel: match ? match[2] : "",
-    kelas: match ? `${match[1]} ${match[2]}` : String(kelasValue || "").trim().toUpperCase()
+    kelas: match
+      ? `${match[1]} ${match[2]}`
+      : String(kelasValue || "")
+          .trim()
+          .toUpperCase(),
   };
 }
 
 function isRombelBayanganUtama(rombel) {
-  return /^[A-H]$/.test(String(rombel || "").trim().toUpperCase());
+  return /^[A-H]$/.test(
+    String(rombel || "")
+      .trim()
+      .toUpperCase(),
+  );
 }
 
 function getKelasBayanganSavedParts(siswa) {
   const asliParts = getKelasBayanganParts(siswa?.kelas);
   const savedParts = getKelasBayanganParts(siswa?.kelas_bayangan);
-  if (savedParts.tingkat === asliParts.tingkat && isRombelBayanganUtama(savedParts.rombel)) {
+  if (
+    savedParts.tingkat === asliParts.tingkat &&
+    isRombelBayanganUtama(savedParts.rombel)
+  ) {
     return savedParts;
   }
   return { tingkat: asliParts.tingkat, rombel: "", kelas: "" };
@@ -139,15 +169,19 @@ function getKelasBayanganEfektif(siswa) {
 }
 
 function getKelasBayanganSourceForLevel(level) {
-  return getKelasBayanganParts(kelasBayanganSourceByLevel[String(level)] || "").kelas;
+  return getKelasBayanganParts(kelasBayanganSourceByLevel[String(level)] || "")
+    .kelas;
 }
 
 function normalizeKelasBayanganSourceState(value) {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   return Object.fromEntries(
     Object.entries(value)
-      .map(([level, kelas]) => [String(level || "").trim(), getKelasBayanganParts(kelas).kelas])
-      .filter(([level, kelas]) => level && kelas)
+      .map(([level, kelas]) => [
+        String(level || "").trim(),
+        getKelasBayanganParts(kelas).kelas,
+      ])
+      .filter(([level, kelas]) => level && kelas),
   );
 }
 
@@ -161,28 +195,50 @@ function applyKelasBayanganSourceState(nextState) {
 async function setKelasBayanganSource(kelasValue) {
   const parts = getKelasBayanganParts(kelasValue);
   if (!parts.tingkat || !parts.rombel) {
-    Swal.fire("Kelas belum valid", "Pilih kelas yang valid terlebih dahulu.", "warning");
+    Swal.fire(
+      "Kelas belum valid",
+      "Pilih kelas yang valid terlebih dahulu.",
+      "warning",
+    );
     return;
   }
 
   if (!canSetKelasBayanganSource(parts.kelas)) {
-    Swal.fire("Belum bisa diset", "Kelas real hanya bisa diset dari kelas abjad terakhir yang masih punya sisa siswa belum terdistribusi.", "warning");
+    Swal.fire(
+      "Belum bisa diset",
+      "Kelas real hanya bisa diset dari kelas abjad terakhir yang masih punya sisa siswa belum terdistribusi.",
+      "warning",
+    );
     return;
   }
 
   try {
     const nextState = {
       ...kelasBayanganSourceByLevel,
-      [String(parts.tingkat)]: parts.kelas
+      [String(parts.tingkat)]: parts.kelas,
     };
-    await getKelasBayanganDocumentsApi().collection("settings").doc("kelas_bayangan_source").set({
-      levels: normalizeKelasBayanganSourceState(nextState),
-      updated_at: new Date()
-    }, { merge: true });
-    Swal.fire("Kelas real aktif", `${parts.kelas} menjadi sumber kelas real untuk tingkat ${parts.tingkat}.`, "success");
+    await getKelasBayanganDocumentsApi()
+      .collection("settings")
+      .doc("kelas_bayangan_source")
+      .set(
+        {
+          levels: normalizeKelasBayanganSourceState(nextState),
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
+    Swal.fire(
+      "Kelas real aktif",
+      `${parts.kelas} menjadi sumber kelas real untuk tingkat ${parts.tingkat}.`,
+      "success",
+    );
   } catch (error) {
     console.error(error);
-    Swal.fire("Gagal menyimpan", "Kelas sumber belum berhasil diperbarui.", "error");
+    Swal.fire(
+      "Gagal menyimpan",
+      "Kelas sumber belum berhasil diperbarui.",
+      "error",
+    );
   }
 }
 
@@ -191,11 +247,23 @@ function getKelasBayanganSourceRemainingCount(kelasValue) {
 }
 
 function getEligibleKelasBayanganSourceForLevel(level) {
-  return sortKelasBayanganItems(semuaDataKelasBayanganKelas)
-    .map(item => getKelasBayanganParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`))
-    .filter(parts => parts.tingkat === String(level || "") && parts.rombel)
-    .sort((a, b) => b.rombel.localeCompare(a.rombel, undefined, { numeric: true, sensitivity: "base" }))
-    .find(parts => getKelasBayanganSourceRemainingCount(parts.kelas) > 0) || null;
+  return (
+    sortKelasBayanganItems(semuaDataKelasBayanganKelas)
+      .map((item) =>
+        getKelasBayanganParts(
+          item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+        ),
+      )
+      .filter((parts) => parts.tingkat === String(level || "") && parts.rombel)
+      .sort((a, b) =>
+        b.rombel.localeCompare(a.rombel, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      )
+      .find((parts) => getKelasBayanganSourceRemainingCount(parts.kelas) > 0) ||
+    null
+  );
 }
 
 function canSetKelasBayanganSource(kelasValue) {
@@ -206,14 +274,24 @@ function canSetKelasBayanganSource(kelasValue) {
 
 function sortKelasBayanganItems(data) {
   return [...data].sort((a, b) => {
-    const aParts = getKelasBayanganParts(a.kelas || `${a.tingkat || ""}${a.rombel || ""}`);
-    const bParts = getKelasBayanganParts(b.kelas || `${b.tingkat || ""}${b.rombel || ""}`);
-    const kelasResult = `${aParts.tingkat}${aParts.rombel}`.localeCompare(`${bParts.tingkat}${bParts.rombel}`, undefined, {
-      numeric: true,
-      sensitivity: "base"
-    });
+    const aParts = getKelasBayanganParts(
+      a.kelas || `${a.tingkat || ""}${a.rombel || ""}`,
+    );
+    const bParts = getKelasBayanganParts(
+      b.kelas || `${b.tingkat || ""}${b.rombel || ""}`,
+    );
+    const kelasResult = `${aParts.tingkat}${aParts.rombel}`.localeCompare(
+      `${bParts.tingkat}${bParts.rombel}`,
+      undefined,
+      {
+        numeric: true,
+        sensitivity: "base",
+      },
+    );
     if (kelasResult !== 0) return kelasResult;
-    return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+      sensitivity: "base",
+    });
   });
 }
 
@@ -261,7 +339,7 @@ function renderKelasBayanganSiswaPage() {
           <h2>Data Siswa Kelas Real</h2>
           <p>Kelas asli A-H menjadi acuan otomatis. Siswa dari kelas I dibagi manual ke kelas real A-H.</p>
         </div>
-        <button class="btn-primary" onclick="syncKelasBayanganUtama()">Sinkronkan A-H</button>
+        <button class="btn-icon-only btn-primary" onclick="syncKelasBayanganUtama()" title="Sinkronkan A-H" aria-label="Sinkronkan A-H"></button>
       </div>
 
       <div class="matrix-toolbar-note">
@@ -281,7 +359,13 @@ function renderKelasBayanganSiswaPage() {
           </select>
           <select id="kelasBayanganRombel" onchange="setKelasBayanganRombel(this.value)">
             <option value="">Semua Rombel Asli</option>
-            ${"ABCDEFGHI".split("").map(rombel => `<option value="${rombel}">Kelas ${rombel}</option>`).join("")}
+            ${"ABCDEFGHI"
+              .split("")
+              .map(
+                (rombel) =>
+                  `<option value="${rombel}">Kelas ${rombel}</option>`,
+              )
+              .join("")}
           </select>
         </div>
       </div>
@@ -325,7 +409,7 @@ function renderKelasBayanganMengajarPage() {
           </div>
         </div>
         <div class="toolbar-right">
-          <button class="btn-primary" onclick="saveAllMengajarBayangan()">Simpan Semua</button>
+          <button class="btn-icon-only btn-primary" onclick="saveAllMengajarBayangan()" title="Simpan Semua" aria-label="Simpan Semua"></button>
         </div>
       </div>
 
@@ -362,26 +446,30 @@ function renderKelasBayanganPage() {
 function loadRealtimeKelasBayangan() {
   if (unsubscribeKelasBayanganSiswa) unsubscribeKelasBayanganSiswa();
   if (unsubscribeKelasBayanganKelas) unsubscribeKelasBayanganKelas();
-  if (unsubscribeKelasBayanganSourceSettings) unsubscribeKelasBayanganSourceSettings();
+  if (unsubscribeKelasBayanganSourceSettings)
+    unsubscribeKelasBayanganSourceSettings();
   isKelasBayanganSiswaLoaded = false;
 
-  unsubscribeKelasBayanganSiswa = listenSiswa(data => {
+  unsubscribeKelasBayanganSiswa = listenSiswa((data) => {
     semuaDataKelasBayanganSiswa = data;
     isKelasBayanganSiswaLoaded = true;
     renderKelasBayanganViews();
     renderMengajarBayanganMatrix();
   });
 
-  unsubscribeKelasBayanganKelas = listenKelas(data => {
+  unsubscribeKelasBayanganKelas = listenKelas((data) => {
     semuaDataKelasBayanganKelas = data;
     renderKelasBayanganViews();
     renderMengajarBayanganMatrix();
   });
 
-  unsubscribeKelasBayanganSourceSettings = getKelasBayanganDocumentsApi().collection("settings").doc("kelas_bayangan_source").onSnapshot(snapshot => {
-    const data = snapshot.exists ? snapshot.data() : {};
-    applyKelasBayanganSourceState(data?.levels || {});
-  });
+  unsubscribeKelasBayanganSourceSettings = getKelasBayanganDocumentsApi()
+    .collection("settings")
+    .doc("kelas_bayangan_source")
+    .onSnapshot((snapshot) => {
+      const data = snapshot.exists ? snapshot.data() : {};
+      applyKelasBayanganSourceState(data?.levels || {});
+    });
 }
 
 function refreshKelasBayangan() {
@@ -411,24 +499,41 @@ function setKelasBayanganRombel(value) {
 
 function getFilteredKelasBayanganRows() {
   return semuaDataKelasBayanganSiswa
-    .map(siswa => ({
+    .map((siswa) => ({
       ...siswa,
       kelasAsliParts: getKelasBayanganParts(siswa.kelas),
-      kelasBayanganEfektif: getKelasBayanganEfektif(siswa)
+      kelasBayanganEfektif: getKelasBayanganEfektif(siswa),
     }))
-    .filter(siswa => {
-      const keyword = `${siswa.nipd || ""} ${siswa.nisn || ""} ${siswa.nama || ""}`.toLowerCase();
-      if (kelasBayanganSearch && !keyword.includes(kelasBayanganSearch)) return false;
-      if (kelasBayanganTingkat && siswa.kelasAsliParts.tingkat !== kelasBayanganTingkat) return false;
-      if (kelasBayanganRombel && siswa.kelasAsliParts.rombel !== kelasBayanganRombel) return false;
+    .filter((siswa) => {
+      const keyword =
+        `${siswa.nipd || ""} ${siswa.nisn || ""} ${siswa.nama || ""}`.toLowerCase();
+      if (kelasBayanganSearch && !keyword.includes(kelasBayanganSearch))
+        return false;
+      if (
+        kelasBayanganTingkat &&
+        siswa.kelasAsliParts.tingkat !== kelasBayanganTingkat
+      )
+        return false;
+      if (
+        kelasBayanganRombel &&
+        siswa.kelasAsliParts.rombel !== kelasBayanganRombel
+      )
+        return false;
       return true;
     })
     .sort((a, b) => {
       const kelasA = `${a.kelasAsliParts.tingkat}${a.kelasAsliParts.rombel}`;
       const kelasB = `${b.kelasAsliParts.tingkat}${b.kelasAsliParts.rombel}`;
-      const kelasResult = kelasA.localeCompare(kelasB, undefined, { numeric: true, sensitivity: "base" });
+      const kelasResult = kelasA.localeCompare(kelasB, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
       if (kelasResult !== 0) return kelasResult;
-      return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+      return String(a.nama || "").localeCompare(
+        String(b.nama || ""),
+        undefined,
+        { sensitivity: "base" },
+      );
     });
 }
 
@@ -436,9 +541,20 @@ function renderKelasBayanganSummary(rows) {
   const container = document.getElementById("kelasBayanganSummary");
   if (!container) return;
 
-  const otomatis = rows.filter(siswa => isRombelBayanganUtama(siswa.kelasAsliParts.rombel)).length;
-  const manualSelesai = rows.filter(siswa => !isRombelBayanganUtama(siswa.kelasAsliParts.rombel) && siswa.kelasBayanganEfektif).length;
-  const manualBelum = rows.filter(siswa => siswa.kelasAsliParts.tingkat && !isRombelBayanganUtama(siswa.kelasAsliParts.rombel) && !siswa.kelasBayanganEfektif).length;
+  const otomatis = rows.filter((siswa) =>
+    isRombelBayanganUtama(siswa.kelasAsliParts.rombel),
+  ).length;
+  const manualSelesai = rows.filter(
+    (siswa) =>
+      !isRombelBayanganUtama(siswa.kelasAsliParts.rombel) &&
+      siswa.kelasBayanganEfektif,
+  ).length;
+  const manualBelum = rows.filter(
+    (siswa) =>
+      siswa.kelasAsliParts.tingkat &&
+      !isRombelBayanganUtama(siswa.kelasAsliParts.rombel) &&
+      !siswa.kelasBayanganEfektif,
+  ).length;
 
   const nextHtml = `
     <span>${rows.length} siswa tampil</span>
@@ -454,11 +570,14 @@ function renderKelasBayanganSummary(rows) {
 
 function renderKelasBayanganOptions(tingkat, selectedValue = "") {
   const selectedParts = getKelasBayanganParts(selectedValue);
-  return "ABCDEFGH".split("").map(rombel => {
-    const value = `${tingkat} ${rombel}`;
-    const selected = selectedParts.kelas === value ? "selected" : "";
-    return `<option value="${value}" ${selected}>${value}</option>`;
-  }).join("");
+  return "ABCDEFGH"
+    .split("")
+    .map((rombel) => {
+      const value = `${tingkat} ${rombel}`;
+      const selected = selectedParts.kelas === value ? "selected" : "";
+      return `<option value="${value}" ${selected}>${value}</option>`;
+    })
+    .join("");
 }
 
 function renderKelasBayanganStatus(siswa) {
@@ -468,7 +587,8 @@ function renderKelasBayanganStatus(siswa) {
     return `<span class="kelas-bayangan-chip ok">Manual</span>`;
   }
   if (isOtomatis) return `<span class="kelas-bayangan-chip ok">Otomatis</span>`;
-  if (siswa.kelasBayanganEfektif) return `<span class="kelas-bayangan-chip ok">Manual</span>`;
+  if (siswa.kelasBayanganEfektif)
+    return `<span class="kelas-bayangan-chip ok">Manual</span>`;
   return `<span class="kelas-bayangan-chip warn">Belum dibagi</span>`;
 }
 
@@ -492,10 +612,10 @@ function renderKelasBayanganRow(siswa) {
       : `<span class="muted-text">Kelas asli belum valid</span>`;
 
   const actionCell = isOtomatis
-    ? `<button class="btn-secondary" disabled>Otomatis</button>`
+    ? `<button class="btn-secondary" disabled title="Otomatis" aria-label="Otomatis"></button>`
     : canAssign
-      ? `<button class="btn-primary" onclick="saveKelasBayanganManual('${safeNipdJs}', '${escapeKelasBayanganJs(selectId)}')">Simpan</button>`
-      : `<button class="btn-secondary" disabled>Simpan</button>`;
+      ? `<button class="btn-icon-only btn-primary" onclick="saveKelasBayanganManual('${safeNipdJs}', '${escapeKelasBayanganJs(selectId)}')" title="Simpan" aria-label="Simpan"></button>`
+      : `<button class="btn-secondary" disabled title="Simpan" aria-label="Simpan"></button>`;
 
   return `
     <tr>
@@ -529,33 +649,40 @@ function getKelasBayanganMembers(kelasValue) {
   const targetParts = getKelasBayanganParts(kelasValue);
   const target = targetParts.kelas.toUpperCase();
   const rows = semuaDataKelasBayanganSiswa
-    .map(siswa => ({
+    .map((siswa) => ({
       ...siswa,
       kelasAsliParts: getKelasBayanganParts(siswa.kelas),
       kelasBayanganSavedParts: getKelasBayanganSavedParts(siswa),
-      kelasBayanganEfektif: getKelasBayanganEfektif(siswa)
+      kelasBayanganEfektif: getKelasBayanganEfektif(siswa),
     }))
-    .filter(siswa => {
-      const effectiveMatch = getKelasBayanganParts(siswa.kelasBayanganEfektif).kelas.toUpperCase() === target;
+    .filter((siswa) => {
+      const effectiveMatch =
+        getKelasBayanganParts(
+          siswa.kelasBayanganEfektif,
+        ).kelas.toUpperCase() === target;
       const belumDipindah = !siswa.kelasBayanganSavedParts.kelas;
-      const originalSourceMatch = siswa.kelasAsliParts.kelas.toUpperCase() === target && belumDipindah;
+      const originalSourceMatch =
+        siswa.kelasAsliParts.kelas.toUpperCase() === target && belumDipindah;
 
       if (!targetParts.rombel) return false;
       if (isRombelBayanganUtama(targetParts.rombel)) return effectiveMatch;
       return originalSourceMatch;
     });
 
-  const byName = (a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+  const byName = (a, b) =>
+    String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+      sensitivity: "base",
+    });
 
   if (!isRombelBayanganUtama(targetParts.rombel)) {
     return rows.sort(byName);
   }
 
   const anggotaAsli = rows
-    .filter(siswa => siswa.kelasAsliParts.kelas.toUpperCase() === target)
+    .filter((siswa) => siswa.kelasAsliParts.kelas.toUpperCase() === target)
     .sort(byName);
   const anggotaTambahan = rows
-    .filter(siswa => siswa.kelasAsliParts.kelas.toUpperCase() !== target)
+    .filter((siswa) => siswa.kelasAsliParts.kelas.toUpperCase() !== target)
     .sort(byName);
 
   return [...anggotaAsli, ...anggotaTambahan];
@@ -566,25 +693,32 @@ function getKelasBayanganOriginalMembers(kelasValue) {
   if (!target) return [];
 
   return semuaDataKelasBayanganSiswa
-    .map(siswa => ({
+    .map((siswa) => ({
       ...siswa,
       kelasAsliParts: getKelasBayanganParts(siswa.kelas),
       kelasBayanganSavedParts: getKelasBayanganSavedParts(siswa),
-      kelasBayanganEfektif: getKelasBayanganEfektif(siswa)
+      kelasBayanganEfektif: getKelasBayanganEfektif(siswa),
     }))
-    .filter(siswa => siswa.kelasAsliParts.kelas.toUpperCase() === target)
-    .sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" }));
+    .filter((siswa) => siswa.kelasAsliParts.kelas.toUpperCase() === target)
+    .sort((a, b) =>
+      String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+        sensitivity: "base",
+      }),
+    );
 }
 
 function getKelasBayanganAvailableSourceMembers(sourceKelas) {
-  return getKelasBayanganOriginalMembers(sourceKelas).filter(siswa => {
+  return getKelasBayanganOriginalMembers(sourceKelas).filter((siswa) => {
     const saved = siswa.kelasBayanganSavedParts;
-    return !saved.kelas || saved.kelas === getKelasBayanganParts(sourceKelas).kelas;
+    return (
+      !saved.kelas || saved.kelas === getKelasBayanganParts(sourceKelas).kelas
+    );
   });
 }
 
 function getKelasBayanganDestinationText(siswa) {
-  const saved = siswa.kelasBayanganSavedParts || getKelasBayanganSavedParts(siswa);
+  const saved =
+    siswa.kelasBayanganSavedParts || getKelasBayanganSavedParts(siswa);
   const asli = siswa.kelasAsliParts || getKelasBayanganParts(siswa.kelas);
 
   if (saved.kelas) return saved.kelas;
@@ -598,23 +732,26 @@ function renderKelasBayanganKelasTable() {
   if (!body) return;
 
   const rows = sortKelasBayanganItems(semuaDataKelasBayanganKelas);
-  const nextHtml = rows.map(item => {
-    const parts = getKelasBayanganParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`);
-    const kelasValue = parts.kelas;
-    const kelasJs = escapeKelasBayanganJs(kelasValue);
-    const memberCount = getKelasBayanganMembers(kelasValue).length;
-    const sourceKelas = getKelasBayanganSourceForLevel(parts.tingkat);
-    const isSource = sourceKelas === kelasValue;
-    const canSetSource = canSetKelasBayanganSource(kelasValue);
-    const sourceRemaining = getKelasBayanganSourceRemainingCount(kelasValue);
-    const rowClass = isSource ? "kelas-bayangan-row-active" : "";
-    const sourceButton = isSource
-      ? `<button class="btn-secondary" disabled>Aktif sebagai sumber</button>`
-      : canSetSource
-        ? `<button class="btn-primary" onclick="setKelasBayanganSource('${kelasJs}')">Set sebagai kelas real</button>`
-        : `<button class="btn-secondary" disabled>${sourceRemaining > 0 ? "Menunggu kelas terakhir" : "Sisa 0"}</button>`;
+  const nextHtml = rows
+    .map((item) => {
+      const parts = getKelasBayanganParts(
+        item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+      );
+      const kelasValue = parts.kelas;
+      const kelasJs = escapeKelasBayanganJs(kelasValue);
+      const memberCount = getKelasBayanganMembers(kelasValue).length;
+      const sourceKelas = getKelasBayanganSourceForLevel(parts.tingkat);
+      const isSource = sourceKelas === kelasValue;
+      const canSetSource = canSetKelasBayanganSource(kelasValue);
+      const sourceRemaining = getKelasBayanganSourceRemainingCount(kelasValue);
+      const rowClass = isSource ? "kelas-bayangan-row-active" : "";
+      const sourceButton = isSource
+        ? `<button class="btn-secondary" disabled>Aktif sebagai sumber</button>`
+        : canSetSource
+          ? `<button class="btn-primary" onclick="setKelasBayanganSource('${kelasJs}')">Set sebagai kelas real</button>`
+          : `<button class="btn-secondary" disabled>${sourceRemaining > 0 ? "Menunggu kelas terakhir" : "Sisa 0"}</button>`;
 
-    return `
+      return `
       <tr class="${rowClass}">
         <td>${escapeKelasBayanganHtml(parts.tingkat || "-")}</td>
         <td>${escapeKelasBayanganHtml(parts.rombel || "-")}</td>
@@ -627,7 +764,8 @@ function renderKelasBayanganKelasTable() {
         </td>
       </tr>
     `;
-  }).join("");
+    })
+    .join("");
   if (nextHtml !== lastKelasBayanganKelasTableHtml || !body.children.length) {
     body.innerHTML = nextHtml;
     lastKelasBayanganKelasTableHtml = nextHtml;
@@ -640,7 +778,9 @@ function renderKelasBayanganKelasTable() {
     const activeSources = Object.entries(kelasBayanganSourceByLevel)
       .map(([level, kelas]) => `${level}: ${kelas}`)
       .join(" | ");
-    sourceInfo.innerText = activeSources ? `Sumber aktif ${activeSources}` : "Belum ada kelas sumber aktif";
+    sourceInfo.innerText = activeSources
+      ? `Sumber aktif ${activeSources}`
+      : "Belum ada kelas sumber aktif";
   }
   if (empty) empty.style.display = rows.length ? "none" : "block";
 }
@@ -649,9 +789,17 @@ function getKelasBayanganTargetOptions(sourceKelas, selectedValue = "") {
   const sourceParts = getKelasBayanganParts(sourceKelas);
   const selectedParts = getKelasBayanganParts(selectedValue);
   return sortKelasBayanganItems(semuaDataKelasBayanganKelas)
-    .map(item => getKelasBayanganParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`))
-    .filter(parts => parts.tingkat === sourceParts.tingkat && isRombelBayanganUtama(parts.rombel))
-    .map(parts => {
+    .map((item) =>
+      getKelasBayanganParts(
+        item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+      ),
+    )
+    .filter(
+      (parts) =>
+        parts.tingkat === sourceParts.tingkat &&
+        isRombelBayanganUtama(parts.rombel),
+    )
+    .map((parts) => {
       const selected = parts.kelas === selectedParts.kelas ? "selected" : "";
       return `<option value="${parts.kelas}" ${selected}>${parts.kelas}</option>`;
     })
@@ -664,12 +812,16 @@ function renderAnggotaKelasBayanganList(kelasValue) {
     return `<div class="empty-panel">Belum ada anggota kelas real ini.</div>`;
   }
 
-  return members.map(siswa => `
+  return members
+    .map(
+      (siswa) => `
     <div class="anggota-option">
       <strong>${escapeKelasBayanganHtml(siswa.nama || "-")}</strong>
       <small>${escapeKelasBayanganHtml(siswa.nipd || "-")} | Asli: ${escapeKelasBayanganHtml(siswa.kelas || "-")}${siswa.kelasAsliParts?.kelas !== getKelasBayanganParts(kelasValue).kelas ? " | Tambahan" : ""}</small>
     </div>
-  `).join("");
+  `,
+    )
+    .join("");
 }
 
 function renderAnggotaKelasBayanganSourceList(kelasValue) {
@@ -680,7 +832,9 @@ function renderAnggotaKelasBayanganSourceList(kelasValue) {
 
   return `
     <div class="kelas-bayangan-member-table">
-      ${members.map(siswa => `
+      ${members
+        .map(
+          (siswa) => `
         <div class="kelas-bayangan-member-row">
           <span>
             <strong>${escapeKelasBayanganHtml(siswa.nama || "-")}</strong>
@@ -688,7 +842,9 @@ function renderAnggotaKelasBayanganSourceList(kelasValue) {
           </span>
           <span class="kelas-bayangan-member-destination">${escapeKelasBayanganHtml(getKelasBayanganDestinationText(siswa))}</span>
         </div>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
   `;
 }
@@ -701,46 +857,69 @@ function getKelasBayanganDraftLists() {
   const sourceKelas = kelasBayanganAnggotaDraft.sourceKelas;
   const targetKelas = kelasBayanganAnggotaDraft.targetKelas;
   const targetSet = kelasBayanganAnggotaDraft.targetNipds;
-  const originalMembers = getKelasBayanganMembers(targetKelas)
-    .filter(siswa => siswa.kelasAsliParts?.kelas === targetKelas);
+  const originalMembers = getKelasBayanganMembers(targetKelas).filter(
+    (siswa) => siswa.kelasAsliParts?.kelas === targetKelas,
+  );
   const sourceRows = getKelasBayanganOriginalMembers(sourceKelas);
-  const sourceCandidates = sourceRows.filter(siswa => {
+  const sourceCandidates = sourceRows.filter((siswa) => {
     const nipd = String(siswa.nipd || "").trim();
     const saved = siswa.kelasBayanganSavedParts;
-    return nipd && (!saved.kelas || saved.kelas === targetKelas || saved.kelas === sourceKelas);
+    return (
+      nipd &&
+      (!saved.kelas ||
+        saved.kelas === targetKelas ||
+        saved.kelas === sourceKelas)
+    );
   });
 
-  const sourceMembers = sourceCandidates.filter(siswa => targetSet.has(String(siswa.nipd || "").trim()));
-  const unassigned = sourceCandidates.filter(siswa => !targetSet.has(String(siswa.nipd || "").trim()));
-  const byName = (a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+  const sourceMembers = sourceCandidates.filter((siswa) =>
+    targetSet.has(String(siswa.nipd || "").trim()),
+  );
+  const unassigned = sourceCandidates.filter(
+    (siswa) => !targetSet.has(String(siswa.nipd || "").trim()),
+  );
+  const byName = (a, b) =>
+    String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+      sensitivity: "base",
+    });
 
   return {
     unassigned: unassigned.sort(byName),
-    members: [...originalMembers.sort(byName), ...sourceMembers.sort(byName)]
+    members: [...originalMembers.sort(byName), ...sourceMembers.sort(byName)],
   };
 }
 
-function renderKelasBayanganDraftList(items, emptyText, actionLabel, actionName, targetKelas = "") {
+function renderKelasBayanganDraftList(
+  items,
+  emptyText,
+  actionLabel,
+  actionName,
+  targetKelas = "",
+) {
   if (items.length === 0) {
     return `<div class="empty-panel">${escapeKelasBayanganHtml(emptyText)}</div>`;
   }
 
-  return items.map(siswa => {
-    const nipd = String(siswa.nipd || "").trim();
-    const isOriginalTarget = targetKelas && siswa.kelasAsliParts?.kelas === targetKelas;
-    return `
+  return items
+    .map((siswa) => {
+      const nipd = String(siswa.nipd || "").trim();
+      const isOriginalTarget =
+        targetKelas && siswa.kelasAsliParts?.kelas === targetKelas;
+      return `
       <div class="anggota-option anggota-option-row">
         <span>
           <strong>${escapeKelasBayanganHtml(siswa.nama || "-")}</strong>
           <small>${escapeKelasBayanganHtml(nipd)} | Asli: ${escapeKelasBayanganHtml(siswa.kelas || "-")}${isOriginalTarget ? " | Anggota asli" : ""}</small>
         </span>
-        ${isOriginalTarget
-          ? `<button type="button" class="btn-secondary" disabled>Asli</button>`
-          : `<button type="button" class="btn-secondary" onclick="${actionName}('${escapeKelasBayanganJs(nipd)}')">${escapeKelasBayanganHtml(actionLabel)}</button>`
+        ${
+          isOriginalTarget
+            ? `<button type="button" class="btn-secondary" disabled>Asli</button>`
+            : `<button type="button" class="btn-secondary" onclick="${actionName}('${escapeKelasBayanganJs(nipd)}')">${escapeKelasBayanganHtml(actionLabel)}</button>`
         }
       </div>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 function renderKelasBayanganAnggotaDraftOptions() {
@@ -806,13 +985,17 @@ async function showAnggotaKelasBayangan(kelasValue) {
         <div class="anggota-modal-note">Daftar siswa kelas sumber dan keterangan kelas real tujuan.</div>
         <div class="anggota-list">${renderAnggotaKelasBayanganSourceList(kelasValue)}</div>
       `,
-      confirmButtonText: "Tutup"
+      confirmButtonText: "Tutup",
     });
     return;
   }
 
   if (!sourceParts.kelas || sourceParts.tingkat !== targetParts.tingkat) {
-    Swal.fire("Belum ada kelas sumber", "Klik Set sebagai kelas real pada kelas sumber di jenjang yang sama terlebih dahulu.", "warning");
+    Swal.fire(
+      "Belum ada kelas sumber",
+      "Klik Set sebagai kelas real pada kelas sumber di jenjang yang sama terlebih dahulu.",
+      "warning",
+    );
     return;
   }
 
@@ -821,10 +1004,12 @@ async function showAnggotaKelasBayangan(kelasValue) {
     targetKelas: targetParts.kelas,
     targetNipds: new Set(
       getKelasBayanganOriginalMembers(sourceParts.kelas)
-        .filter(siswa => siswa.kelasBayanganSavedParts?.kelas === targetParts.kelas)
-        .map(siswa => String(siswa.nipd || "").trim())
-        .filter(Boolean)
-    )
+        .filter(
+          (siswa) => siswa.kelasBayanganSavedParts?.kelas === targetParts.kelas,
+        )
+        .map((siswa) => String(siswa.nipd || "").trim())
+        .filter(Boolean),
+    ),
   };
 
   const result = await Swal.fire({
@@ -841,7 +1026,7 @@ async function showAnggotaKelasBayangan(kelasValue) {
     showCancelButton: true,
     confirmButtonText: "Simpan Anggota",
     cancelButtonText: "Batal",
-    preConfirm: () => Array.from(kelasBayanganAnggotaDraft?.targetNipds || [])
+    preConfirm: () => Array.from(kelasBayanganAnggotaDraft?.targetNipds || []),
   });
 
   const selectedNipds = result.value || [];
@@ -849,22 +1034,40 @@ async function showAnggotaKelasBayangan(kelasValue) {
   kelasBayanganAnggotaDraft = null;
 
   if (!result.isConfirmed || !draft) return;
-  await simpanAnggotaKelasBayangan(draft.sourceKelas, draft.targetKelas, selectedNipds);
+  await simpanAnggotaKelasBayangan(
+    draft.sourceKelas,
+    draft.targetKelas,
+    selectedNipds,
+  );
 }
 
-async function simpanAnggotaKelasBayangan(sourceKelas, targetKelas, selectedNipds) {
+async function simpanAnggotaKelasBayangan(
+  sourceKelas,
+  targetKelas,
+  selectedNipds,
+) {
   const sourceParts = getKelasBayanganParts(sourceKelas);
   const targetParts = getKelasBayanganParts(targetKelas);
-  const selectedSet = new Set(selectedNipds.map(value => String(value || "").trim()).filter(Boolean));
+  const selectedSet = new Set(
+    selectedNipds.map((value) => String(value || "").trim()).filter(Boolean),
+  );
   const sourceRows = getKelasBayanganOriginalMembers(sourceParts.kelas);
   const changes = new Map();
 
-  if (!sourceParts.kelas || !targetParts.kelas || sourceParts.tingkat !== targetParts.tingkat) {
-    Swal.fire("Belum valid", "Kelas sumber dan tujuan harus berada pada jenjang yang sama.", "warning");
+  if (
+    !sourceParts.kelas ||
+    !targetParts.kelas ||
+    sourceParts.tingkat !== targetParts.tingkat
+  ) {
+    Swal.fire(
+      "Belum valid",
+      "Kelas sumber dan tujuan harus berada pada jenjang yang sama.",
+      "warning",
+    );
     return;
   }
 
-  sourceRows.forEach(siswa => {
+  sourceRows.forEach((siswa) => {
     const nipd = String(siswa.nipd || "").trim();
     if (!nipd) return;
     const savedKelas = siswa.kelasBayanganSavedParts?.kelas || "";
@@ -884,7 +1087,10 @@ async function simpanAnggotaKelasBayangan(sourceKelas, targetKelas, selectedNipd
   }
 
   try {
-    Swal.fire({ title: "Menyimpan anggota kelas real...", didOpen: () => Swal.showLoading() });
+    Swal.fire({
+      title: "Menyimpan anggota kelas real...",
+      didOpen: () => Swal.showLoading(),
+    });
     const documentsApi = getKelasBayanganDocumentsApi();
     const batch = documentsApi.batch();
     changes.forEach((payload, nipd) => {
@@ -894,13 +1100,17 @@ async function simpanAnggotaKelasBayangan(sourceKelas, targetKelas, selectedNipd
           : documentsApi.collection("siswa").doc(nipd),
         {
           ...payload,
-          updated_at: new Date()
+          updated_at: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
     });
     await batch.commit();
-    Swal.fire("Berhasil", `${selectedSet.size} anggota kelas real tersimpan`, "success");
+    Swal.fire(
+      "Berhasil",
+      `${selectedSet.size} anggota kelas real tersimpan`,
+      "success",
+    );
   } catch (error) {
     console.error(error);
     Swal.fire("Gagal", "Anggota kelas real belum berhasil disimpan", "error");
@@ -908,13 +1118,19 @@ async function simpanAnggotaKelasBayangan(sourceKelas, targetKelas, selectedNipd
 }
 
 function makeMengajarBayanganDocId(tingkat, rombel, mapelKode) {
-  return `${String(tingkat || "").trim()}_${String(rombel || "").trim().toUpperCase()}_${String(mapelKode || "").trim().toUpperCase()}`;
+  return `${String(tingkat || "").trim()}_${String(rombel || "")
+    .trim()
+    .toUpperCase()}_${String(mapelKode || "")
+    .trim()
+    .toUpperCase()}`;
 }
 
 function listenMengajarBayangan(callback) {
-  return getKelasBayanganDocumentsApi().collection("mengajar_bayangan").onSnapshot(snapshot => {
-    callback(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-  });
+  return getKelasBayanganDocumentsApi()
+    .collection("mengajar_bayangan")
+    .onSnapshot((snapshot) => {
+      callback(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
 }
 
 async function ensureMapelBayanganClone() {
@@ -923,23 +1139,25 @@ async function ensureMapelBayanganClone() {
   try {
     const [originalSnapshot, bayanganSnapshot] = await Promise.all([
       getKelasBayanganDocumentsApi().collection("mapel").get(),
-      getKelasBayanganDocumentsApi().collection("mapel_bayangan").get()
+      getKelasBayanganDocumentsApi().collection("mapel_bayangan").get(),
     ]);
     if (!bayanganSnapshot.empty) return;
     if (originalSnapshot.empty) return;
 
     const documentsApi = getKelasBayanganDocumentsApi();
     const batch = documentsApi.batch();
-    originalSnapshot.docs.forEach(doc => {
+    originalSnapshot.docs.forEach((doc) => {
       const data = { id: doc.id, ...doc.data() };
-      const kode = String(data.kode_mapel || doc.id || "").trim().toUpperCase();
+      const kode = String(data.kode_mapel || doc.id || "")
+        .trim()
+        .toUpperCase();
       if (!kode) return;
       batch.set(documentsApi.collection("mapel_bayangan").doc(kode), {
         ...data,
         kode_mapel: kode,
         sumber_clone: "mapel",
         cloned_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
       });
     });
     await batch.commit();
@@ -962,30 +1180,37 @@ function loadRealtimeKelasBayanganMengajar() {
   if (unsubscribeMengajarBayanganMapel) unsubscribeMengajarBayanganMapel();
   if (unsubscribeMengajarBayanganGuru) unsubscribeMengajarBayanganGuru();
 
-  unsubscribeMengajarBayangan = listenMengajarBayangan(data => {
+  unsubscribeMengajarBayangan = listenMengajarBayangan((data) => {
     semuaDataMengajarBayangan = data;
     ensureKelasBayanganClones();
     renderMengajarBayanganMatrix();
   });
 
-  unsubscribeMengajarBayanganMapel = listenMapelBayangan(data => {
+  unsubscribeMengajarBayanganMapel = listenMapelBayangan((data) => {
     semuaDataMapel = data;
     ensureKelasBayanganClones();
     renderMengajarBayanganMatrix();
   });
 
-  unsubscribeMengajarBayanganGuru = listenGuru(data => {
+  unsubscribeMengajarBayanganGuru = listenGuru((data) => {
     semuaDataGuru = data;
     renderMengajarBayanganMatrix();
   });
 }
 
 function getMengajarBayanganRombels() {
-  const sourceKelas = getKelasBayanganSourceForLevel(kelasBayanganMengajarTingkat);
+  const sourceKelas = getKelasBayanganSourceForLevel(
+    kelasBayanganMengajarTingkat,
+  );
   return sortKelasBayanganItems(semuaDataKelasBayanganKelas)
-    .map(item => getKelasBayanganParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`))
-    .filter(parts => {
-      if (parts.tingkat !== kelasBayanganMengajarTingkat || !parts.rombel) return false;
+    .map((item) =>
+      getKelasBayanganParts(
+        item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+      ),
+    )
+    .filter((parts) => {
+      if (parts.tingkat !== kelasBayanganMengajarTingkat || !parts.rombel)
+        return false;
       if (sourceKelas && parts.kelas === sourceKelas) return false;
       if (!isRombelBayanganUtama(parts.rombel)) return false;
       return getKelasBayanganMembers(parts.kelas).length > 0;
@@ -994,30 +1219,53 @@ function getMengajarBayanganRombels() {
 }
 
 function getMengajarBayanganAssignment(tingkat, rombel, mapelKode) {
-  return semuaDataMengajarBayangan.find(item =>
-    String(item.tingkat || "") === String(tingkat || "") &&
-    String(item.rombel || "").toUpperCase() === String(rombel || "").toUpperCase() &&
-    String(item.mapel_kode || "").toUpperCase() === String(mapelKode || "").toUpperCase()
-  ) || null;
+  return (
+    semuaDataMengajarBayangan.find(
+      (item) =>
+        String(item.tingkat || "") === String(tingkat || "") &&
+        String(item.rombel || "").toUpperCase() ===
+          String(rombel || "").toUpperCase() &&
+        String(item.mapel_kode || "").toUpperCase() ===
+          String(mapelKode || "").toUpperCase(),
+    ) || null
+  );
 }
 
 function getMengajarBayanganSelectValue(tingkat, rombel, mapelKode) {
   const docId = makeMengajarBayanganDocId(tingkat, rombel, mapelKode);
-  if (Object.prototype.hasOwnProperty.call(pendingMengajarBayanganChanges, docId)) {
+  if (
+    Object.prototype.hasOwnProperty.call(pendingMengajarBayanganChanges, docId)
+  ) {
     return pendingMengajarBayanganChanges[docId].guru_kode ?? "";
   }
-  return getMengajarBayanganAssignment(tingkat, rombel, mapelKode)?.guru_kode || "";
+  return (
+    getMengajarBayanganAssignment(tingkat, rombel, mapelKode)?.guru_kode || ""
+  );
 }
 
 function getMengajarBayanganSearchMatchCount() {
   if (!mengajarBayanganSearchQuery) return 0;
   const rombels = getMengajarBayanganRombels();
   const mapels = getMengajarMapels();
-  return mapels.reduce((total, mapel) =>
-    total + rombels.reduce((rowTotal, parts) => {
-      const guruKode = getMengajarBayanganSelectValue(kelasBayanganMengajarTingkat, parts.rombel, mapel.kode_mapel);
-      return rowTotal + (typeof matchesMengajarGuruSearch === "function" && matchesMengajarGuruSearch(guruKode, mengajarBayanganSearchQuery) ? 1 : 0);
-    }, 0), 0);
+  return mapels.reduce(
+    (total, mapel) =>
+      total +
+      rombels.reduce((rowTotal, parts) => {
+        const guruKode = getMengajarBayanganSelectValue(
+          kelasBayanganMengajarTingkat,
+          parts.rombel,
+          mapel.kode_mapel,
+        );
+        return (
+          rowTotal +
+          (typeof matchesMengajarGuruSearch === "function" &&
+          matchesMengajarGuruSearch(guruKode, mengajarBayanganSearchQuery)
+            ? 1
+            : 0)
+        );
+      }, 0),
+    0,
+  );
 }
 
 function updateMengajarBayanganSearchStatus() {
@@ -1025,22 +1273,30 @@ function updateMengajarBayanganSearchStatus() {
   if (!info) return;
 
   if (!mengajarBayanganSearchQuery) {
-    info.innerText = "Cari nama atau kode guru untuk menyorot posisi di matriks.";
+    info.innerText =
+      "Cari nama atau kode guru untuk menyorot posisi di matriks.";
     return;
   }
 
   const count = getMengajarBayanganSearchMatchCount();
-  info.innerText = count > 0
-    ? `${count} posisi ditemukan untuk ${typeof getMengajarSearchGuruName === "function" ? getMengajarSearchGuruName(mengajarBayanganSearchQuery) : mengajarBayanganSearchQuery}.`
-    : `Tidak ada posisi untuk ${typeof getMengajarSearchGuruName === "function" ? getMengajarSearchGuruName(mengajarBayanganSearchQuery) : mengajarBayanganSearchQuery}.`;
+  info.innerText =
+    count > 0
+      ? `${count} posisi ditemukan untuk ${typeof getMengajarSearchGuruName === "function" ? getMengajarSearchGuruName(mengajarBayanganSearchQuery) : mengajarBayanganSearchQuery}.`
+      : `Tidak ada posisi untuk ${typeof getMengajarSearchGuruName === "function" ? getMengajarSearchGuruName(mengajarBayanganSearchQuery) : mengajarBayanganSearchQuery}.`;
 }
 
 function focusFirstMengajarBayanganSearchMatch() {
   if (!mengajarBayanganSearchQuery) return;
   requestAnimationFrame(() => {
-    const firstMatch = document.querySelector("#mengajarBayanganMatrixContainer .mengajar-grid-search-match");
+    const firstMatch = document.querySelector(
+      "#mengajarBayanganMatrixContainer .mengajar-grid-search-match",
+    );
     if (!firstMatch) return;
-    firstMatch.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" });
+    firstMatch.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "center",
+    });
   });
 }
 
@@ -1055,7 +1311,9 @@ function handleMengajarBayanganSearchKeydown(event) {
 }
 
 function submitMengajarBayanganSearch() {
-  mengajarBayanganSearchQuery = String(mengajarBayanganSearchDraft || "").trim();
+  mengajarBayanganSearchQuery = String(
+    mengajarBayanganSearchDraft || "",
+  ).trim();
   renderMengajarBayanganMatrix();
   focusFirstMengajarBayanganSearchMatch();
 }
@@ -1069,19 +1327,26 @@ function clearMengajarBayanganSearch() {
 }
 
 function buildMengajarBayanganPayload(tingkat, rombel, mapelKode, guruKode) {
-  const mapel = semuaDataMapel.find(item => item.kode_mapel === mapelKode);
-  const guru = semuaDataGuru.find(item => item.kode_guru === guruKode);
+  const mapel = semuaDataMapel.find((item) => item.kode_mapel === mapelKode);
+  const guru = semuaDataGuru.find((item) => item.kode_guru === guruKode);
 
   if (!guruKode) {
     return { __delete: true, tingkat, rombel, mapel_kode: mapelKode };
   }
 
-  if (mapel && !isKelasBayanganMapelApplicableForClass(mapel, tingkat, rombel)) {
-    return { __error: getKelasBayanganMapelDisabledReason(mapel, tingkat, rombel) };
+  if (
+    mapel &&
+    !isKelasBayanganMapelApplicableForClass(mapel, tingkat, rombel)
+  ) {
+    return {
+      __error: getKelasBayanganMapelDisabledReason(mapel, tingkat, rombel),
+    };
   }
 
   if (!guru) {
-    return { __error: `Guru tidak dikenali untuk ${mapel?.nama_mapel || mapelKode} kelas ${buildKelasName(tingkat, rombel)}.` };
+    return {
+      __error: `Guru tidak dikenali untuk ${mapel?.nama_mapel || mapelKode} kelas ${buildKelasName(tingkat, rombel)}.`,
+    };
   }
 
   return {
@@ -1094,19 +1359,26 @@ function buildMengajarBayanganPayload(tingkat, rombel, mapelKode, guruKode) {
     guru_nama: formatNamaGuru(guru),
     guru_nip: guru.nip || "",
     sumber: "kelas_bayangan",
-    updated_at: new Date()
+    updated_at: new Date(),
   };
 }
 
 function projectMengajarBayanganAssignments(preparedChanges = []) {
   const assignmentMap = new Map();
 
-  semuaDataMengajarBayangan.forEach(item => {
-    assignmentMap.set(makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode), { ...item, sumber: "kelas_bayangan" });
+  semuaDataMengajarBayangan.forEach((item) => {
+    assignmentMap.set(
+      makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode),
+      { ...item, sumber: "kelas_bayangan" },
+    );
   });
 
-  preparedChanges.forEach(item => {
-    const docId = makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode);
+  preparedChanges.forEach((item) => {
+    const docId = makeMengajarBayanganDocId(
+      item.tingkat,
+      item.rombel,
+      item.mapel_kode,
+    );
     if (item.__delete) {
       assignmentMap.delete(docId);
       return;
@@ -1114,11 +1386,20 @@ function projectMengajarBayanganAssignments(preparedChanges = []) {
     assignmentMap.set(docId, { ...assignmentMap.get(docId), ...item });
   });
 
-  return Array.from(assignmentMap.values()).filter(item => {
-    const mapel = semuaDataMapel.find(entry =>
-      String(entry.kode_mapel || entry.id || "").trim().toUpperCase() === String(item.mapel_kode || "").trim().toUpperCase()
+  return Array.from(assignmentMap.values()).filter((item) => {
+    const mapel = semuaDataMapel.find(
+      (entry) =>
+        String(entry.kode_mapel || entry.id || "")
+          .trim()
+          .toUpperCase() ===
+        String(item.mapel_kode || "")
+          .trim()
+          .toUpperCase(),
     );
-    return !mapel || isKelasBayanganMapelApplicableForClass(mapel, item.tingkat, item.rombel);
+    return (
+      !mapel ||
+      isKelasBayanganMapelApplicableForClass(mapel, item.tingkat, item.rombel)
+    );
   });
 }
 
@@ -1128,19 +1409,34 @@ function updateMengajarBayanganInfo() {
   const info = document.getElementById("jumlahMengajarBayanganInfo");
   const pending = document.getElementById("pendingMengajarBayanganInfo");
   if (info) info.innerText = `${mapelCount} mapel x ${kelasCount} kelas`;
-  if (pending) pending.innerText = `${Object.keys(pendingMengajarBayanganChanges).length} perubahan belum disimpan`;
+  if (pending)
+    pending.innerText = `${Object.keys(pendingMengajarBayanganChanges).length} perubahan belum disimpan`;
 }
 
-function handleMengajarBayanganSelectChange(tingkat, rombel, mapelKode, guruKode) {
-  const mapel = semuaDataMapel.find(item => String(item.kode_mapel || "").trim().toUpperCase() === String(mapelKode || "").trim().toUpperCase());
-  if (mapel && !isKelasBayanganMapelApplicableForClass(mapel, tingkat, rombel)) return;
+function handleMengajarBayanganSelectChange(
+  tingkat,
+  rombel,
+  mapelKode,
+  guruKode,
+) {
+  const mapel = semuaDataMapel.find(
+    (item) =>
+      String(item.kode_mapel || "")
+        .trim()
+        .toUpperCase() ===
+      String(mapelKode || "")
+        .trim()
+        .toUpperCase(),
+  );
+  if (mapel && !isKelasBayanganMapelApplicableForClass(mapel, tingkat, rombel))
+    return;
 
   const docId = makeMengajarBayanganDocId(tingkat, rombel, mapelKode);
   pendingMengajarBayanganChanges[docId] = {
     tingkat,
     rombel,
     mapel_kode: mapelKode,
-    guru_kode: guruKode
+    guru_kode: guruKode,
   };
   renderMengajarBayanganMatrix();
 }
@@ -1148,15 +1444,24 @@ function handleMengajarBayanganSelectChange(tingkat, rombel, mapelKode, guruKode
 function getProjectedGuruJPTotalsBayangan(assignments = []) {
   const totals = new Map();
 
-  assignments.forEach(item => {
+  assignments.forEach((item) => {
     const guruKode = String(item.guru_kode || "").trim();
-    const mapelKode = String(item.mapel_kode || "").trim().toUpperCase();
+    const mapelKode = String(item.mapel_kode || "")
+      .trim()
+      .toUpperCase();
     if (!guruKode || !mapelKode) return;
 
-    const mapel = semuaDataMapel.find(entry =>
-      String(entry.kode_mapel || entry.id || "").trim().toUpperCase() === mapelKode
+    const mapel = semuaDataMapel.find(
+      (entry) =>
+        String(entry.kode_mapel || entry.id || "")
+          .trim()
+          .toUpperCase() === mapelKode,
     );
-    if (mapel && !isKelasBayanganMapelApplicableForClass(mapel, item.tingkat, item.rombel)) return;
+    if (
+      mapel &&
+      !isKelasBayanganMapelApplicableForClass(mapel, item.tingkat, item.rombel)
+    )
+      return;
     totals.set(guruKode, (totals.get(guruKode) || 0) + Number(mapel?.jp || 0));
   });
 
@@ -1166,21 +1471,37 @@ function getProjectedGuruJPTotalsBayangan(assignments = []) {
 function getProjectedGuruOwnMapelJPTotalsBayangan(assignments = []) {
   const totals = new Map();
 
-  assignments.forEach(item => {
+  assignments.forEach((item) => {
     const guruKode = String(item.guru_kode || "").trim();
-    const mapelKode = String(item.mapel_kode || "").trim().toUpperCase();
+    const mapelKode = String(item.mapel_kode || "")
+      .trim()
+      .toUpperCase();
     if (!guruKode || !mapelKode) return;
 
-    const guru = semuaDataGuru.find(entry => String(entry.kode_guru || "").trim() === guruKode);
-    const mapel = semuaDataMapel.find(entry =>
-      String(entry.kode_mapel || entry.id || "").trim().toUpperCase() === mapelKode
+    const guru = semuaDataGuru.find(
+      (entry) => String(entry.kode_guru || "").trim() === guruKode,
     );
-    if (mapel && !isKelasBayanganMapelApplicableForClass(mapel, item.tingkat, item.rombel)) return;
-    const guruMapel = String(guru?.mata_pelajaran || "").trim().toLowerCase();
-    const isOwnMapel = guruMapel && (
-      guruMapel === mapelKode.toLowerCase() ||
-      guruMapel === String(mapel?.nama_mapel || "").trim().toLowerCase()
+    const mapel = semuaDataMapel.find(
+      (entry) =>
+        String(entry.kode_mapel || entry.id || "")
+          .trim()
+          .toUpperCase() === mapelKode,
     );
+    if (
+      mapel &&
+      !isKelasBayanganMapelApplicableForClass(mapel, item.tingkat, item.rombel)
+    )
+      return;
+    const guruMapel = String(guru?.mata_pelajaran || "")
+      .trim()
+      .toLowerCase();
+    const isOwnMapel =
+      guruMapel &&
+      (guruMapel === mapelKode.toLowerCase() ||
+        guruMapel ===
+          String(mapel?.nama_mapel || "")
+            .trim()
+            .toLowerCase());
     if (!isOwnMapel) return;
 
     totals.set(guruKode, (totals.get(guruKode) || 0) + Number(mapel?.jp || 0));
@@ -1193,28 +1514,40 @@ function buildMengajarBayanganSummaryHtml(assignments = []) {
   const totals = getProjectedGuruJPTotalsBayangan(assignments);
   const ownMapelTotals = getProjectedGuruOwnMapelJPTotalsBayangan(assignments);
   const summary = getMengajarGurus()
-    .map(guru => ({
+    .map((guru) => ({
       nama: formatNamaGuru(guru),
       jp: totals.get(guru.kode_guru || "") || 0,
       ownMapelJp: ownMapelTotals.get(guru.kode_guru || "") || 0,
-      status: getGuruJPStatus(totals.get(guru.kode_guru || "") || 0)
+      status: getGuruJPStatus(totals.get(guru.kode_guru || "") || 0),
     }))
     .sort((a, b) => {
       if (b.jp !== a.jp) return b.jp - a.jp;
       return compareValues(a.nama, b.nama, "asc");
     });
 
-  const overloadCount = summary.filter(item => item.jp >= MENGAJAR_DANGER_MIN_JP).length;
-  const warningCount = summary.filter(item => item.jp >= MENGAJAR_WARN_MIN_JP && item.jp <= MENGAJAR_WARN_MAX_JP).length;
-  const greenCount = summary.filter(item => item.jp >= MENGAJAR_GREEN_MIN_JP && item.jp <= MENGAJAR_GREEN_MAX_JP).length;
-  const items = summary.map(item => `
+  const overloadCount = summary.filter(
+    (item) => item.jp >= MENGAJAR_DANGER_MIN_JP,
+  ).length;
+  const warningCount = summary.filter(
+    (item) =>
+      item.jp >= MENGAJAR_WARN_MIN_JP && item.jp <= MENGAJAR_WARN_MAX_JP,
+  ).length;
+  const greenCount = summary.filter(
+    (item) =>
+      item.jp >= MENGAJAR_GREEN_MIN_JP && item.jp <= MENGAJAR_GREEN_MAX_JP,
+  ).length;
+  const items = summary
+    .map(
+      (item) => `
     <div class="mengajar-jp-item mengajar-jp-${item.status}">
       <div class="mengajar-jp-head">
         <strong>${escapeKelasBayanganHtml(item.nama || "-")}</strong>
         <span>${item.jp} JP | ${item.ownMapelJp} JP</span>
       </div>
     </div>
-  `).join("");
+  `,
+    )
+    .join("");
 
   return `
     <section class="mengajar-summary-panel">
@@ -1247,11 +1580,21 @@ function renderMengajarBayanganMatrix() {
   const mapels = getMengajarMapels();
   const projectedAssignments = projectMengajarBayanganAssignments(
     Object.values(pendingMengajarBayanganChanges)
-      .map(item => buildMengajarBayanganPayload(item.tingkat, item.rombel, item.mapel_kode, item.guru_kode))
-      .filter(item => !item.__error)
+      .map((item) =>
+        buildMengajarBayanganPayload(
+          item.tingkat,
+          item.rombel,
+          item.mapel_kode,
+          item.guru_kode,
+        ),
+      )
+      .filter((item) => !item.__error),
   );
-  const projectedTotals = getProjectedGuruJPTotalsBayangan(projectedAssignments);
-  const sourceKelas = getKelasBayanganSourceForLevel(kelasBayanganMengajarTingkat);
+  const projectedTotals =
+    getProjectedGuruJPTotalsBayangan(projectedAssignments);
+  const sourceKelas = getKelasBayanganSourceForLevel(
+    kelasBayanganMengajarTingkat,
+  );
 
   updateMengajarBayanganInfo();
   const summaryHtml = buildMengajarBayanganSummaryHtml(projectedAssignments);
@@ -1261,7 +1604,10 @@ function renderMengajarBayanganMatrix() {
       <div class="empty-panel">Belum ada kelas real aktif untuk tingkat ${kelasBayanganMengajarTingkat}.</div>
       ${summaryHtml}
     `;
-    if (nextHtml !== lastMengajarBayanganMatrixHtml || !container.children.length) {
+    if (
+      nextHtml !== lastMengajarBayanganMatrixHtml ||
+      !container.children.length
+    ) {
       container.innerHTML = nextHtml;
       lastMengajarBayanganMatrixHtml = nextHtml;
     }
@@ -1273,34 +1619,53 @@ function renderMengajarBayanganMatrix() {
       <div class="empty-panel">Belum ada data mapel.</div>
       ${summaryHtml}
     `;
-    if (nextHtml !== lastMengajarBayanganMatrixHtml || !container.children.length) {
+    if (
+      nextHtml !== lastMengajarBayanganMatrixHtml ||
+      !container.children.length
+    ) {
       container.innerHTML = nextHtml;
       lastMengajarBayanganMatrixHtml = nextHtml;
     }
     return;
   }
 
-  const headCols = rombels.map(parts => `<th>${escapeKelasBayanganHtml(parts.rombel)}</th>`).join("");
-  const bodyRows = mapels.map(mapel => {
-    const cells = rombels.map(parts => {
-      const isApplicable = isKelasBayanganMapelApplicableForClass(mapel, kelasBayanganMengajarTingkat, parts.rombel);
-      if (!isApplicable) {
-        return `
+  const headCols = rombels
+    .map((parts) => `<th>${escapeKelasBayanganHtml(parts.rombel)}</th>`)
+    .join("");
+  const bodyRows = mapels
+    .map((mapel) => {
+      const cells = rombels
+        .map((parts) => {
+          const isApplicable = isKelasBayanganMapelApplicableForClass(
+            mapel,
+            kelasBayanganMengajarTingkat,
+            parts.rombel,
+          );
+          if (!isApplicable) {
+            return `
           <td class="mengajar-grid-cell mengajar-grid-disabled">
             <select class="mengajar-cell-dropdown mengajar-cell-dropdown-disabled" title="${escapeKelasBayanganHtml(getKelasBayanganMapelDisabledReason(mapel, kelasBayanganMengajarTingkat, parts.rombel))}" disabled>
               <option>-</option>
             </select>
           </td>
         `;
-      }
+          }
 
-      const value = getMengajarBayanganSelectValue(kelasBayanganMengajarTingkat, parts.rombel, mapel.kode_mapel);
-      const totalJP = value ? projectedTotals.get(value) || 0 : 0;
-      const statusClass = value ? `mengajar-grid-${getGuruJPStatus(totalJP)}` : "";
-      const searchClass = typeof matchesMengajarGuruSearch === "function" && matchesMengajarGuruSearch(value, mengajarBayanganSearchQuery)
-        ? "mengajar-grid-search-match"
-        : "";
-      return `
+          const value = getMengajarBayanganSelectValue(
+            kelasBayanganMengajarTingkat,
+            parts.rombel,
+            mapel.kode_mapel,
+          );
+          const totalJP = value ? projectedTotals.get(value) || 0 : 0;
+          const statusClass = value
+            ? `mengajar-grid-${getGuruJPStatus(totalJP)}`
+            : "";
+          const searchClass =
+            typeof matchesMengajarGuruSearch === "function" &&
+            matchesMengajarGuruSearch(value, mengajarBayanganSearchQuery)
+              ? "mengajar-grid-search-match"
+              : "";
+          return `
         <td class="mengajar-grid-cell ${statusClass} ${searchClass}" data-guru-kode="${escapeKelasBayanganHtml(value)}">
           <select
             class="mengajar-cell-dropdown"
@@ -1311,21 +1676,25 @@ function renderMengajarBayanganMatrix() {
           </select>
         </td>
       `;
-    }).join("");
+        })
+        .join("");
 
-    return `
+      return `
       <tr>
         <td class="mengajar-mapel-cell"><strong>${escapeKelasBayanganHtml(mapel.kode_mapel)}</strong></td>
         ${cells}
       </tr>
     `;
-  }).join("");
+    })
+    .join("");
 
   const nextHtml = `
     <div class="matrix-toolbar-note">
-      ${sourceKelas
-        ? `Kelas sumber aktif: ${escapeKelasBayanganHtml(sourceKelas)}. Kelas sumber tidak ditampilkan sebagai kolom mengajar.`
-        : `Matriks memakai entitas kelas real terpisah dari pembagian mengajar asli.`}
+      ${
+        sourceKelas
+          ? `Kelas sumber aktif: ${escapeKelasBayanganHtml(sourceKelas)}. Kelas sumber tidak ditampilkan sebagai kolom mengajar.`
+          : `Matriks memakai entitas kelas real terpisah dari pembagian mengajar asli.`
+      }
     </div>
     <div class="table-container matrix-table-wrap">
       <table class="matrix-table">
@@ -1340,7 +1709,10 @@ function renderMengajarBayanganMatrix() {
     </div>
     ${summaryHtml}
   `;
-  if (nextHtml !== lastMengajarBayanganMatrixHtml || !container.querySelector("table")) {
+  if (
+    nextHtml !== lastMengajarBayanganMatrixHtml ||
+    !container.querySelector("table")
+  ) {
     container.innerHTML = nextHtml;
     lastMengajarBayanganMatrixHtml = nextHtml;
   }
@@ -1364,37 +1736,65 @@ function refreshMengajarBayanganPage() {
 async function saveAllMengajarBayangan() {
   const changes = Object.values(pendingMengajarBayanganChanges);
   if (changes.length === 0) {
-    Swal.fire("Tidak ada perubahan", "Ubah matriks kelas real terlebih dahulu.", "info");
+    Swal.fire(
+      "Tidak ada perubahan",
+      "Ubah matriks kelas real terlebih dahulu.",
+      "info",
+    );
     return;
   }
 
   try {
-    const prepared = changes.map(item => buildMengajarBayanganPayload(item.tingkat, item.rombel, item.mapel_kode, item.guru_kode));
-    const invalid = prepared.filter(item => item.__error);
+    const prepared = changes.map((item) =>
+      buildMengajarBayanganPayload(
+        item.tingkat,
+        item.rombel,
+        item.mapel_kode,
+        item.guru_kode,
+      ),
+    );
+    const invalid = prepared.filter((item) => item.__error);
     if (invalid.length > 0) {
-      Swal.fire("Ada guru yang belum cocok", invalid.slice(0, 5).map(item => item.__error).join("<br>"), "warning");
+      Swal.fire(
+        "Ada guru yang belum cocok",
+        invalid
+          .slice(0, 5)
+          .map((item) => item.__error)
+          .join("<br>"),
+        "warning",
+      );
       return;
     }
 
-    Swal.fire({ title: "Menyimpan pembagian mengajar kelas real...", didOpen: () => Swal.showLoading() });
+    Swal.fire({
+      title: "Menyimpan pembagian mengajar kelas real...",
+      didOpen: () => Swal.showLoading(),
+    });
     const batch = getKelasBayanganDocumentsApi().batch();
     let simpan = 0;
     let hapus = 0;
 
-    prepared.forEach(item => {
-      const ref = getKelasBayanganDocumentsApi().collection("mengajar_bayangan").doc(makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode));
+    prepared.forEach((item) => {
+      const ref = getKelasBayanganDocumentsApi()
+        .collection("mengajar_bayangan")
+        .doc(
+          makeMengajarBayanganDocId(item.tingkat, item.rombel, item.mapel_kode),
+        );
       if (item.__delete) {
         batch.delete(ref);
         hapus++;
       } else {
-        const existing = semuaDataMengajarBayangan.find(entry =>
-          String(entry.tingkat || "") === String(item.tingkat || "") &&
-          String(entry.rombel || "").toUpperCase() === String(item.rombel || "").toUpperCase() &&
-          String(entry.mapel_kode || "").toUpperCase() === String(item.mapel_kode || "").toUpperCase()
+        const existing = semuaDataMengajarBayangan.find(
+          (entry) =>
+            String(entry.tingkat || "") === String(item.tingkat || "") &&
+            String(entry.rombel || "").toUpperCase() ===
+              String(item.rombel || "").toUpperCase() &&
+            String(entry.mapel_kode || "").toUpperCase() ===
+              String(item.mapel_kode || "").toUpperCase(),
         );
         batch.set(ref, {
           ...item,
-          created_at: existing?.created_at || new Date()
+          created_at: existing?.created_at || new Date(),
         });
         simpan++;
       }
@@ -1406,7 +1806,11 @@ async function saveAllMengajarBayangan() {
     Swal.fire("Berhasil", `Tersimpan: ${simpan}, Dihapus: ${hapus}`, "success");
   } catch (error) {
     console.error(error);
-    Swal.fire("Gagal", "Pembagian mengajar kelas real belum berhasil disimpan", "error");
+    Swal.fire(
+      "Gagal",
+      "Pembagian mengajar kelas real belum berhasil disimpan",
+      "error",
+    );
   }
 }
 
@@ -1416,9 +1820,10 @@ function renderSetKelasBayanganList(kelasValue, targetKelas = "") {
     return `<div class="empty-panel">Belum ada anggota yang bisa dipindahkan.</div>`;
   }
 
-  return members.map(siswa => {
-    const nipd = String(siswa.nipd || "").trim();
-    return `
+  return members
+    .map((siswa) => {
+      const nipd = String(siswa.nipd || "").trim();
+      return `
       <div class="anggota-option anggota-option-row">
         <span>
           <strong>${escapeKelasBayanganHtml(siswa.nama || "-")}</strong>
@@ -1427,7 +1832,8 @@ function renderSetKelasBayanganList(kelasValue, targetKelas = "") {
         <button type="button" class="btn-secondary" onclick="moveSiswaKelasBayangan('${escapeKelasBayanganJs(nipd)}')">Pindahkan</button>
       </div>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 function refreshSetKelasBayanganModal(sourceKelas) {
@@ -1468,72 +1874,114 @@ function showSetKelasBayangan(kelasValue) {
       </div>
     `,
     showConfirmButton: false,
-    showCloseButton: true
+    showCloseButton: true,
   });
 }
 
 async function moveSiswaKelasBayangan(nipd) {
   const target = document.getElementById("setKelasBayanganTarget")?.value || "";
-  const siswa = semuaDataKelasBayanganSiswa.find(item => String(item.nipd || "") === String(nipd));
+  const siswa = semuaDataKelasBayanganSiswa.find(
+    (item) => String(item.nipd || "") === String(nipd),
+  );
   const targetParts = getKelasBayanganParts(target);
   const asliParts = getKelasBayanganParts(siswa?.kelas);
 
-  if (!siswa || !targetParts.kelas || targetParts.tingkat !== asliParts.tingkat || !isRombelBayanganUtama(targetParts.rombel)) {
-    Swal.fire("Belum valid", "Pilih kelas real tujuan A-H pada tingkat yang sama.", "warning");
+  if (
+    !siswa ||
+    !targetParts.kelas ||
+    targetParts.tingkat !== asliParts.tingkat ||
+    !isRombelBayanganUtama(targetParts.rombel)
+  ) {
+    Swal.fire(
+      "Belum valid",
+      "Pilih kelas real tujuan A-H pada tingkat yang sama.",
+      "warning",
+    );
     return;
   }
 
   await updateSiswa(nipd, {
     kelas_bayangan: targetParts.kelas,
-    updated_at: new Date()
+    updated_at: new Date(),
   });
 
-  Swal.fire("Tersimpan", `${siswa.nama || "Siswa"} dipindahkan ke ${targetParts.kelas}.`, "success");
+  Swal.fire(
+    "Tersimpan",
+    `${siswa.nama || "Siswa"} dipindahkan ke ${targetParts.kelas}.`,
+    "success",
+  );
 }
 
 async function saveKelasBayanganManual(nipd, selectId) {
   const select = document.getElementById(selectId);
   const target = select?.value || "";
-  const siswa = semuaDataKelasBayanganSiswa.find(item => String(item.nipd || "") === String(nipd));
+  const siswa = semuaDataKelasBayanganSiswa.find(
+    (item) => String(item.nipd || "") === String(nipd),
+  );
   const asliParts = getKelasBayanganParts(siswa?.kelas);
   const targetParts = getKelasBayanganParts(target);
 
-  if (!targetParts.kelas || targetParts.tingkat !== asliParts.tingkat || !isRombelBayanganUtama(targetParts.rombel)) {
-    Swal.fire("Belum valid", "Pilih kelas real A-H pada tingkat yang sama.", "warning");
+  if (
+    !targetParts.kelas ||
+    targetParts.tingkat !== asliParts.tingkat ||
+    !isRombelBayanganUtama(targetParts.rombel)
+  ) {
+    Swal.fire(
+      "Belum valid",
+      "Pilih kelas real A-H pada tingkat yang sama.",
+      "warning",
+    );
     return;
   }
 
   await updateSiswa(nipd, {
     kelas_bayangan: targetParts.kelas,
-    updated_at: new Date()
+    updated_at: new Date(),
   });
   Swal.fire("Tersimpan", "Kelas real siswa sudah diperbarui.", "success");
 }
 
 async function syncKelasBayanganUtama() {
   const candidates = semuaDataKelasBayanganSiswa
-    .map(siswa => ({ ...siswa, kelasAsliParts: getKelasBayanganParts(siswa.kelas) }))
-    .filter(siswa => siswa.nipd && isRombelBayanganUtama(siswa.kelasAsliParts.rombel) && !siswa.kelas_bayangan);
+    .map((siswa) => ({
+      ...siswa,
+      kelasAsliParts: getKelasBayanganParts(siswa.kelas),
+    }))
+    .filter(
+      (siswa) =>
+        siswa.nipd &&
+        isRombelBayanganUtama(siswa.kelasAsliParts.rombel) &&
+        !siswa.kelas_bayangan,
+    );
 
   if (candidates.length === 0) {
-    Swal.fire("Sudah sinkron", "Semua kelas asli A-H sudah menjadi kelas real.", "info");
+    Swal.fire(
+      "Sudah sinkron",
+      "Semua kelas asli A-H sudah menjadi kelas real.",
+      "info",
+    );
     return;
   }
 
   for (let index = 0; index < candidates.length; index += 450) {
     const documentsApi = getKelasBayanganDocumentsApi();
     const batch = documentsApi.batch();
-    candidates.slice(index, index + 450).forEach(siswa => {
-      const siswaRef = typeof getSemesterDocRef === "function"
-        ? getSemesterDocRef("siswa", siswa.nipd)
-        : documentsApi.collection("siswa").doc(siswa.nipd);
+    candidates.slice(index, index + 450).forEach((siswa) => {
+      const siswaRef =
+        typeof getSemesterDocRef === "function"
+          ? getSemesterDocRef("siswa", siswa.nipd)
+          : documentsApi.collection("siswa").doc(siswa.nipd);
       batch.update(siswaRef, {
         kelas_bayangan: siswa.kelasAsliParts.kelas,
-        updated_at: new Date()
+        updated_at: new Date(),
       });
     });
     await batch.commit();
   }
 
-  Swal.fire("Selesai", `${candidates.length} siswa A-H sudah disinkronkan.`, "success");
+  Swal.fire(
+    "Selesai",
+    `${candidates.length} siswa A-H sudah disinkronkan.`,
+    "success",
+  );
 }

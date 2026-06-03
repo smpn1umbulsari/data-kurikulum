@@ -853,11 +853,11 @@ function renderGuruEditRow(d) {
         <small class="swal-field-note">Otomatis</small>
       </td>
       <td>
-        <div class="table-actions">
-          <button class="btn-primary btn-inline-mapel btn-table-compact" onclick="saveGuruInline('${d.kode_guru}')">Simpan</button>
-          <button class="btn-secondary btn-inline-mapel btn-table-compact" onclick="cancelEditGuru()">Batal</button>
-          <button class="btn-secondary btn-inline-mapel btn-table-compact" onclick="showGuruJPRiwayat('${d.kode_guru}')">Riwayat JP</button>
-          <button class="btn-danger-lite btn-inline-mapel btn-table-compact" onclick="hapusGuru('${d.kode_guru}')">Hapus</button>
+        <div class="table-actions guru-row-actions">
+          <button class="btn-primary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-save" onclick="saveGuruInline('${d.kode_guru}')" title="Simpan" aria-label="Simpan">Simpan</button>
+          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-cancel" onclick="cancelEditGuru()" title="Batal" aria-label="Batal">Batal</button>
+          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-history" onclick="showGuruJPRiwayat('${d.kode_guru}')" title="Riwayat JP" aria-label="Riwayat JP">Riwayat JP</button>
+          <button class="btn-danger-lite btn-inline-mapel btn-table-compact table-action-icon-btn table-action-delete" onclick="hapusGuru('${d.kode_guru}')" title="Hapus" aria-label="Hapus">Hapus</button>
         </div>
       </td>
     </tr>
@@ -878,10 +878,10 @@ function renderGuruRow(d) {
       <td>${d.mata_pelajaran || "-"}</td>
       <td>${Number(d.jp || 0)}</td>
       <td>
-        <div class="table-actions">
-          <button class="btn-secondary btn-inline-mapel btn-table-compact" onclick="startEditGuru('${d.kode_guru}')">Edit</button>
-          <button class="btn-secondary btn-inline-mapel btn-table-compact" onclick="showGuruJPRiwayat('${d.kode_guru}')">Riwayat JP</button>
-          <button class="btn-danger-lite btn-inline-mapel btn-table-compact" onclick="hapusGuru('${d.kode_guru}')">Hapus</button>
+        <div class="table-actions guru-row-actions">
+          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-edit" onclick="startEditGuru('${d.kode_guru}')" title="Edit" aria-label="Edit">Edit</button>
+          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-history" onclick="showGuruJPRiwayat('${d.kode_guru}')" title="Riwayat JP" aria-label="Riwayat JP">Riwayat JP</button>
+          <button class="btn-danger-lite btn-inline-mapel btn-table-compact table-action-icon-btn table-action-delete" onclick="hapusGuru('${d.kode_guru}')" title="Hapus" aria-label="Hapus">Hapus</button>
         </div>
       </td>
     </tr>

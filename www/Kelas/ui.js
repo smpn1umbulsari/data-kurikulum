@@ -3,44 +3,57 @@ function renderKelasPage() {
   const isKoordinator = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
   const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
   return `
-    <div class="card">
-      <h2>Data Kelas</h2>
-      ${isKoordinator ? `<div class="matrix-toolbar-note">Koordinator hanya melihat kelas pada jenjang ${escapeKelasHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
-
-      <div class="toolbar">
-        <div class="toolbar-left"></div>
-        <div class="toolbar-right">
+    <div class="card kelas-module-panel">
+      <div class="kelas-module-header">
+        <div>
+          <span class="dashboard-eyebrow">Administrasi</span>
+          <h2>Data Kelas</h2>
+        </div>
+        <div class="kelas-toolbar-actions">
           ${isKoordinator ? "" : `
-            <button class="btn-secondary" onclick="downloadKelasTemplate()">Download Template</button>
-            <label class="btn-upload">
+            <button class="btn-secondary kelas-action-btn" onclick="downloadKelasTemplate()">
+              <span class="kelas-action-icon kelas-icon-download" aria-hidden="true"></span>
+              Template
+            </button>
+            <label class="btn-secondary kelas-action-btn kelas-upload-action">
+              <span class="kelas-action-icon kelas-icon-upload" aria-hidden="true"></span>
               Import
               <input type="file" accept=".xlsx, .xls" onchange="importKelasExcel(event)">
             </label>
           `}
+          <button class="btn-secondary kelas-action-btn" onclick="resetKelasFilter()">
+            <span class="kelas-action-icon kelas-icon-reset" aria-hidden="true"></span>
+            Reset
+          </button>
+          <button class="btn-secondary kelas-action-btn" onclick="refreshKelasTable()">
+            <span class="kelas-action-icon kelas-icon-refresh" aria-hidden="true"></span>
+            Refresh
+          </button>
         </div>
       </div>
 
-      <div class="toolbar-info">
+      ${isKoordinator ? `<div class="matrix-toolbar-note kelas-access-note">Koordinator hanya melihat kelas pada jenjang ${escapeKelasHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
+
+      <div class="kelas-table-meta">
         <span id="jumlahDataKelas">0 kelas</span>
-        <div class="page-size-control">
-          <label for="rowsPerPageKelas">Tampilkan</label>
+        <label class="page-size-control" for="rowsPerPageKelas">
+          <span>Rows per page</span>
           <select id="rowsPerPageKelas" onchange="setKelasRowsPerPage(this.value)">
             <option value="10" selected>10</option>
             <option value="20">20</option>
             <option value="50">50</option>
             <option value="100">100</option>
             <option value="200">200</option>
-            <option value="all">Semuanya</option>
+            <option value="all">Semua</option>
           </select>
-          <button class="btn-secondary" onclick="refreshKelasTable()">Refresh</button>
-        </div>
+        </label>
       </div>
 
       <div class="kelas-form-split">
         ${isKoordinator ? "" : `<div id="kelasCreateForm"></div>`}
       </div>
 
-      <div class="table-container">
+      <div class="table-container kelas-table-container">
         <table class="kelas-data-table">
           <thead>
             <tr>
@@ -54,7 +67,7 @@ function renderKelasPage() {
           <tbody id="tbodyKelas"></tbody>
         </table>
 
-        <div id="emptyStateKelas" style="display:none; text-align:center; padding:20px; color:#64748b;">
+        <div id="emptyStateKelas" class="kelas-empty-state" style="display:none;">
           Tidak ada data kelas
         </div>
       </div>

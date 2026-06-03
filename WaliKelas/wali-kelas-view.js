@@ -13,19 +13,19 @@
 
   function renderHeader(context) {
     return `
-      <div class="kelas-bayangan-head nilai-page-head">
+      <div class="wali-module-header">
         <div>
           <span class="dashboard-eyebrow">Wali Kelas</span>
           <h2>${context.escape(context.title)}</h2>
-          <p>${context.escape(context.description)}</p>
+          ${context.description ? `<p class="wali-module-description">${context.escape(context.description)}</p>` : ""}
         </div>
       </div>
-      <div class="nilai-control-panel wali-control-panel">
-        <label class="form-group">
+      <div class="wali-toolbar-panel">
+        <label class="wali-field">
           <span>Pilih kelas</span>
           <select id="waliKelasSelect" onchange="renderWaliKelasActivePage()">${context.selectOptionsHtml}</select>
         </label>
-        <div class="nilai-control-actions">${context.extraActions || ""}</div>
+        <div class="wali-toolbar-actions">${context.extraActions || ""}</div>
       </div>
     `;
   }
@@ -54,9 +54,10 @@
           </tr>
         </thead>
         <tbody>
-          ${context.students.map((siswa, index) => {
-            const counts = context.getCounts(context.kelas, siswa.nipd);
-            return `
+          ${context.students
+            .map((siswa, index) => {
+              const counts = context.getCounts(context.kelas, siswa.nipd);
+              return `
               <tr>
                 <td>${index + 1}</td>
                 <td class="wali-student-name">${context.escape(siswa.nama || "-")}</td>
@@ -65,7 +66,8 @@
                 <td class="wali-rekap-a"><input id="wali-rekap-a-${index}" class="wali-rekap-input" data-row="${index}" data-field="a" type="number" min="0" value="${counts.A}"></td>
               </tr>
             `;
-          }).join("")}
+            })
+            .join("")}
         </tbody>
       </table>
     `;
@@ -100,19 +102,32 @@
           </tr>
         </thead>
         <tbody>
-          ${context.assignments.map(item => {
-            const fields = [["uh_1", "UH 1"], ["uh_2", "UH 2"], ["uh_3", "UH 3"], ["pts", "PTS"]];
-            return `
+          ${context.assignments
+            .map((item) => {
+              const fields = [
+                ["uh_1", "UH 1"],
+                ["uh_2", "UH 2"],
+                ["uh_3", "UH 3"],
+                ["pts", "PTS"],
+              ];
+              return `
               <tr>
                 <td>${context.escape(context.getMapelName(item.mapel_kode))}</td>
                 <td>${context.escape(context.getGuruName(item))}</td>
-                ${fields.map(([field]) => {
-                  const result = context.getNilaiCount(context.kelas, item.mapel_kode, field);
-                  return `<td class="${context.getCompletenessClass(result.count, result.total)}">${context.formatCompletenessText(result.count, result.total)}</td>`;
-                }).join("")}
+                ${fields
+                  .map(([field]) => {
+                    const result = context.getNilaiCount(
+                      context.kelas,
+                      item.mapel_kode,
+                      field,
+                    );
+                    return `<td class="${context.getCompletenessClass(result.count, result.total)}">${context.formatCompletenessText(result.count, result.total)}</td>`;
+                  })
+                  .join("")}
               </tr>
             `;
-          }).join("")}
+            })
+            .join("")}
         </tbody>
       </table>
     `;
@@ -122,6 +137,6 @@
     renderPageShell,
     renderHeader,
     renderKehadiranTable,
-    renderKelengkapanTable
+    renderKelengkapanTable,
   };
 })(window);

@@ -11,7 +11,7 @@ let raporAdminSettings = {
   tanggal: new Date().toISOString().slice(0, 10),
   kepala_nama: "Dra. MAMIK SASMIATI, M.Pd",
   kepala_nip: "19660601 199003 2 010",
-  kepala_ttd: ""
+  kepala_ttd: "",
 };
 let unsubscribeRaporSiswa = null;
 let unsubscribeRaporMapel = null;
@@ -52,19 +52,27 @@ function getCurrentRaporUser() {
 }
 
 function getRaporKelasParts(kelasValue = "") {
-  const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const normalized = String(kelasValue || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const match = normalized.match(/([7-9])([A-Z]+)$/);
   return {
     tingkat: match ? match[1] : "",
     rombel: match ? match[2] : "",
-    kelas: match ? `${match[1]} ${match[2]}` : String(kelasValue || "").trim().toUpperCase()
+    kelas: match
+      ? `${match[1]} ${match[2]}`
+      : String(kelasValue || "")
+          .trim()
+          .toUpperCase(),
   };
 }
 
 function getRaporKelasBayanganParts(siswa) {
   const asli = getRaporKelasParts(siswa.kelas);
   const bayangan = getRaporKelasParts(siswa.kelas_bayangan);
-  if (bayangan.tingkat === asli.tingkat && /^[A-H]$/.test(bayangan.rombel)) return bayangan;
+  if (bayangan.tingkat === asli.tingkat && /^[A-H]$/.test(bayangan.rombel))
+    return bayangan;
   if (/^[A-H]$/.test(asli.rombel)) return asli;
   return { tingkat: asli.tingkat, rombel: "", kelas: "" };
 }
@@ -81,9 +89,14 @@ function getRaporCoordinatorWaliClassSet() {
   if (!kodeGuru) return new Set();
   return new Set(
     semuaDataRaporKelas
-      .filter(item => String(item.kode_guru || "").trim() === kodeGuru)
-      .map(item => getRaporKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas)
-      .filter(Boolean)
+      .filter((item) => String(item.kode_guru || "").trim() === kodeGuru)
+      .map(
+        (item) =>
+          getRaporKelasParts(
+            item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+          ).kelas,
+      )
+      .filter(Boolean),
   );
 }
 
@@ -91,39 +104,64 @@ function getRaporKelasList() {
   const user = getCurrentRaporUser();
   const role = user.role || "admin";
   const kelasSet = new Set();
-  const hasCoordinatorAccess = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
-  const coordinatorLevels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
+  const hasCoordinatorAccess =
+    typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+  const coordinatorLevels =
+    typeof getCurrentCoordinatorLevelsSync === "function"
+      ? getCurrentCoordinatorLevelsSync()
+      : [];
   const coordinatorWaliClasses = getRaporCoordinatorWaliClassSet();
 
   if (role === "admin" || role === "superadmin") {
-    semuaDataRaporSiswa.forEach(siswa => {
+    semuaDataRaporSiswa.forEach((siswa) => {
       const parts = getRaporKelasBayanganParts(siswa);
       if (parts.kelas) kelasSet.add(parts.kelas);
     });
   } else if (role === "guru" && hasCoordinatorAccess) {
-    semuaDataRaporSiswa.forEach(siswa => {
+    semuaDataRaporSiswa.forEach((siswa) => {
       const parts = getRaporKelasBayanganParts(siswa);
-      if (parts.kelas && (coordinatorLevels.includes(parts.tingkat) || coordinatorWaliClasses.has(parts.kelas))) kelasSet.add(parts.kelas);
+      if (
+        parts.kelas &&
+        (coordinatorLevels.includes(parts.tingkat) ||
+          coordinatorWaliClasses.has(parts.kelas))
+      )
+        kelasSet.add(parts.kelas);
     });
   } else if (role === "koordinator") {
-    semuaDataRaporSiswa.forEach(siswa => {
+    semuaDataRaporSiswa.forEach((siswa) => {
       const parts = getRaporKelasBayanganParts(siswa);
-      if (parts.kelas && (coordinatorLevels.includes(parts.tingkat) || coordinatorWaliClasses.has(parts.kelas))) kelasSet.add(parts.kelas);
+      if (
+        parts.kelas &&
+        (coordinatorLevels.includes(parts.tingkat) ||
+          coordinatorWaliClasses.has(parts.kelas))
+      )
+        kelasSet.add(parts.kelas);
     });
   } else if (role === "guru") {
     const kodeGuru = String(user.kode_guru || "").trim();
     semuaDataRaporKelas
-      .filter(item => String(item.kode_guru || "").trim() === kodeGuru)
-      .forEach(item => kelasSet.add(getRaporKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas));
+      .filter((item) => String(item.kode_guru || "").trim() === kodeGuru)
+      .forEach((item) =>
+        kelasSet.add(
+          getRaporKelasParts(
+            item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+          ).kelas,
+        ),
+      );
   }
 
   return Array.from(kelasSet)
     .filter(Boolean)
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    .sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    );
 }
 
 function getSelectedRaporKelas() {
-  return getRaporKelasParts(document.getElementById("raporKelasSelect")?.value || getPreferredRaporKelas()).kelas;
+  return getRaporKelasParts(
+    document.getElementById("raporKelasSelect")?.value ||
+      getPreferredRaporKelas(),
+  ).kelas;
 }
 
 function getPreferredRaporKelas() {
@@ -132,34 +170,65 @@ function getPreferredRaporKelas() {
   const user = getCurrentRaporUser();
   const kodeGuru = String(user.kode_guru || "").trim();
   const ownClass = semuaDataRaporKelas
-    .map(item => ({
+    .map((item) => ({
       kode_guru: String(item.kode_guru || "").trim(),
-      kelas: getRaporKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas
+      kelas: getRaporKelasParts(
+        item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+      ).kelas,
     }))
-    .find(item => item.kode_guru === kodeGuru && classes.includes(item.kelas))?.kelas;
+    .find(
+      (item) => item.kode_guru === kodeGuru && classes.includes(item.kelas),
+    )?.kelas;
   return ownClass || classes[0];
 }
 
 function getRaporStudentsByClass(kelasValue) {
   const target = getRaporKelasParts(kelasValue).kelas;
   return semuaDataRaporSiswa
-    .map(siswa => ({ ...siswa, kelasRaporParts: getRaporKelasBayanganParts(siswa) }))
-    .filter(siswa => siswa.kelasRaporParts.kelas === target)
-    .sort((a, b) => String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" }));
+    .map((siswa) => ({
+      ...siswa,
+      kelasRaporParts: getRaporKelasBayanganParts(siswa),
+    }))
+    .filter((siswa) => siswa.kelasRaporParts.kelas === target)
+    .sort((a, b) =>
+      String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+        sensitivity: "base",
+      }),
+    );
 }
 
 function getRaporMapelByKode(mapelKode) {
-  const target = String(mapelKode || "").trim().toUpperCase();
-  return semuaDataRaporMapel.find(item => String(item.kode_mapel || item.id || "").trim().toUpperCase() === target) || null;
+  const target = String(mapelKode || "")
+    .trim()
+    .toUpperCase();
+  return (
+    semuaDataRaporMapel.find(
+      (item) =>
+        String(item.kode_mapel || item.id || "")
+          .trim()
+          .toUpperCase() === target,
+    ) || null
+  );
 }
 
 function normalizeRaporAgama(value = "") {
-  return String(value || "").trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function getRaporMapelIndukKode(mapel = {}) {
-  const value = String(mapel.induk_mapel || mapel.induk || mapel.kode_induk || "").trim().toUpperCase();
-  return value || String(mapel.kode_mapel || mapel.id || "").trim().toUpperCase();
+  const value = String(
+    mapel.induk_mapel || mapel.induk || mapel.kode_induk || "",
+  )
+    .trim()
+    .toUpperCase();
+  return (
+    value ||
+    String(mapel.kode_mapel || mapel.id || "")
+      .trim()
+      .toUpperCase()
+  );
 }
 
 function isRaporMapelVisibleForSiswa(mapel, siswa) {
@@ -174,35 +243,50 @@ function getRaporMapelForClass(kelasValue, siswa = null) {
   const parts = getRaporKelasParts(kelasValue);
   const seen = new Set();
   const assignmentMapel = semuaDataRaporMengajar
-    .filter(item => String(item.tingkat || "") === parts.tingkat && String(item.rombel || "").toUpperCase() === parts.rombel)
-    .map(item => getRaporMapelByKode(item.mapel_kode) || {
-      kode_mapel: item.mapel_kode,
-      nama_mapel: item.mapel_nama || item.mapel_kode,
-      jp: item.jp || 0
-    });
+    .filter(
+      (item) =>
+        String(item.tingkat || "") === parts.tingkat &&
+        String(item.rombel || "").toUpperCase() === parts.rombel,
+    )
+    .map(
+      (item) =>
+        getRaporMapelByKode(item.mapel_kode) || {
+          kode_mapel: item.mapel_kode,
+          nama_mapel: item.mapel_nama || item.mapel_kode,
+          jp: item.jp || 0,
+        },
+    );
 
   const nilaiMapel = semuaDataRaporNilai
-    .filter(item => {
+    .filter((item) => {
       const itemKelas = getRaporKelasParts(item.kelas || "").kelas;
       const itemTingkat = String(item.tingkat || "").trim();
-      const itemRombel = String(item.rombel || "").trim().toUpperCase();
+      const itemRombel = String(item.rombel || "")
+        .trim()
+        .toUpperCase();
       const sameClass = itemKelas
         ? itemKelas === parts.kelas
         : itemTingkat === parts.tingkat && itemRombel === parts.rombel;
       if (!sameClass) return false;
-      if (siswa && String(item.nipd || "") !== String(siswa.nipd || "")) return false;
+      if (siswa && String(item.nipd || "") !== String(siswa.nipd || ""))
+        return false;
       return true;
     })
-    .map(item => getRaporMapelByKode(item.mapel_kode) || {
-      kode_mapel: item.mapel_kode,
-      nama_mapel: item.mapel_nama || item.mapel_kode,
-      jp: item.jp || 0
-    });
+    .map(
+      (item) =>
+        getRaporMapelByKode(item.mapel_kode) || {
+          kode_mapel: item.mapel_kode,
+          nama_mapel: item.mapel_nama || item.mapel_kode,
+          jp: item.jp || 0,
+        },
+    );
 
   return [...assignmentMapel, ...nilaiMapel]
-    .filter(item => isRaporMapelVisibleForSiswa(item, siswa))
-    .filter(item => {
-      const kode = String(item.kode_mapel || item.id || "").trim().toUpperCase();
+    .filter((item) => isRaporMapelVisibleForSiswa(item, siswa))
+    .filter((item) => {
+      const kode = String(item.kode_mapel || item.id || "")
+        .trim()
+        .toUpperCase();
       if (!kode || seen.has(kode)) return false;
       seen.add(kode);
       return true;
@@ -211,13 +295,17 @@ function getRaporMapelForClass(kelasValue, siswa = null) {
       const mapA = Number(a.mapping ?? Number.MAX_SAFE_INTEGER);
       const mapB = Number(b.mapping ?? Number.MAX_SAFE_INTEGER);
       if (mapA !== mapB) return mapA - mapB;
-      return String(a.kode_mapel || "").localeCompare(String(b.kode_mapel || ""), undefined, { sensitivity: "base" });
+      return String(a.kode_mapel || "").localeCompare(
+        String(b.kode_mapel || ""),
+        undefined,
+        { sensitivity: "base" },
+      );
     });
 }
 
 function setSemuaDataRaporNilai(items = []) {
   const byId = new Map();
-  items.forEach(item => {
+  items.forEach((item) => {
     if (!item?.id) return;
     const current = byId.get(item.id);
     const currentUpdatedAt = String(current?.updated_at || "");
@@ -245,10 +333,13 @@ function makeRaporNilaiDocId(kelasValue, mapelKode, nipd) {
   const baseId = [
     parts.tingkat,
     String(parts.rombel || "").toUpperCase(),
-    String(mapelKode || "").trim().toUpperCase(),
-    String(nipd || "").trim()
+    String(mapelKode || "")
+      .trim()
+      .toUpperCase(),
+    String(nipd || "").trim(),
   ].join("_");
-  const termId = typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
+  const termId =
+    typeof getActiveTermId === "function" ? getActiveTermId() : "legacy";
   return termId === "legacy" ? baseId : `${termId}_${baseId}`;
 }
 
@@ -259,13 +350,15 @@ async function hydrateRaporNilaiForClass(kelasValue, options = {}) {
   const key = [
     typeof getActiveTermId === "function" ? getActiveTermId() : "legacy",
     parts.tingkat,
-    parts.rombel
+    parts.rombel,
   ].join("|");
   if (!options.force && raporHydratedClassKeys.has(key)) return false;
-  if (!options.force && raporHydrationPromises.has(key)) return raporHydrationPromises.get(key);
+  if (!options.force && raporHydrationPromises.has(key))
+    return raporHydrationPromises.get(key);
 
   const supabaseClient = window.supabaseClient;
-  const documentsTable = window.supabaseConfig?.documentsTable || "app_documents";
+  const documentsTable =
+    window.supabaseConfig?.documentsTable || "app_documents";
   if (!supabaseClient?.from) return false;
 
   const promise = (async () => {
@@ -279,17 +372,18 @@ async function hydrateRaporNilaiForClass(kelasValue, options = {}) {
     if (error) throw error;
 
     const rows = (data || [])
-      .map(item => ({ id: item?.id || "", ...(item?.data || {}) }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
+      .map((item) => ({ id: item?.id || "", ...(item?.data || {}) }))
+      .filter((item) =>
+        typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true,
+      );
 
     const previousSerialized = JSON.stringify(semuaDataRaporNilai);
     setSemuaDataRaporNilai([...semuaDataRaporNilai, ...rows]);
     raporHydratedClassKeys.add(key);
     return JSON.stringify(semuaDataRaporNilai) !== previousSerialized;
-  })()
-    .finally(() => {
-      raporHydrationPromises.delete(key);
-    });
+  })().finally(() => {
+    raporHydrationPromises.delete(key);
+  });
 
   raporHydrationPromises.set(key, promise);
   return promise;
@@ -299,44 +393,56 @@ function ensureRaporNilaiHydrated(kelasValue, onDone = null) {
   const parts = getRaporKelasParts(kelasValue);
   if (!parts.tingkat || !parts.rombel) return;
   hydrateRaporNilaiForClass(parts.kelas)
-    .then(changed => {
+    .then((changed) => {
       if (changed && typeof onDone === "function") onDone();
     })
-    .catch(error => {
+    .catch((error) => {
       console.error("hydrate rapor nilai failed", error);
     });
 }
 
 function getRaporNilai(siswa, mapelKode) {
-  const kelas = siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
+  const kelas =
+    siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
   const kelasParts = getRaporKelasParts(kelas);
-  const targetMapel = String(mapelKode || "").trim().toUpperCase();
+  const targetMapel = String(mapelKode || "")
+    .trim()
+    .toUpperCase();
   const targetDocId = makeRaporNilaiDocId(kelas, targetMapel, siswa.nipd);
 
   for (let index = semuaDataRaporNilai.length - 1; index >= 0; index -= 1) {
-    if (String(semuaDataRaporNilai[index]?.id || "") === targetDocId) return semuaDataRaporNilai[index];
+    if (String(semuaDataRaporNilai[index]?.id || "") === targetDocId)
+      return semuaDataRaporNilai[index];
   }
 
-  const candidates = semuaDataRaporNilai.filter(item => {
+  const candidates = semuaDataRaporNilai.filter((item) => {
     if (!isRaporNilaiInActiveTerm(item)) return false;
     if (String(item.nipd || "") !== String(siswa.nipd || "")) return false;
-    if (String(item.mapel_kode || "").toUpperCase() !== targetMapel) return false;
+    if (String(item.mapel_kode || "").toUpperCase() !== targetMapel)
+      return false;
 
     const itemKelas = getRaporKelasParts(item.kelas || "").kelas;
-    if (itemKelas && itemKelas === String(kelas || "").toUpperCase()) return true;
+    if (itemKelas && itemKelas === String(kelas || "").toUpperCase())
+      return true;
 
     const itemTingkat = String(item.tingkat || "").trim();
-    const itemRombel = String(item.rombel || "").trim().toUpperCase();
-    return itemTingkat === kelasParts.tingkat && itemRombel === kelasParts.rombel;
+    const itemRombel = String(item.rombel || "")
+      .trim()
+      .toUpperCase();
+    return (
+      itemTingkat === kelasParts.tingkat && itemRombel === kelasParts.rombel
+    );
   });
 
   if (!candidates.length) return null;
 
-  return [...candidates].sort((a, b) => {
-    const timeA = Date.parse(String(a.updated_at || "")) || 0;
-    const timeB = Date.parse(String(b.updated_at || "")) || 0;
-    return timeB - timeA;
-  })[0] || null;
+  return (
+    [...candidates].sort((a, b) => {
+      const timeA = Date.parse(String(a.updated_at || "")) || 0;
+      const timeB = Date.parse(String(b.updated_at || "")) || 0;
+      return timeB - timeA;
+    })[0] || null
+  );
 }
 
 function getRaporNilaiValue(nilai, field) {
@@ -345,37 +451,62 @@ function getRaporNilaiValue(nilai, field) {
     uh_1: ["uh_1", "UH1", "UH_1", "uh1", "nilai"],
     uh_2: ["uh_2", "UH2", "UH_2", "uh2"],
     uh_3: ["uh_3", "UH3", "UH_3", "uh3"],
-    pts: ["pts", "PTS", "nilai_pts"]
+    pts: ["pts", "PTS", "nilai_pts"],
   }[field] || [field];
   for (const alias of aliases) {
-    if (nilai[alias] !== undefined && nilai[alias] !== null && nilai[alias] !== "") return nilai[alias];
+    if (
+      nilai[alias] !== undefined &&
+      nilai[alias] !== null &&
+      nilai[alias] !== ""
+    )
+      return nilai[alias];
   }
   return "";
 }
 
 function getRaporWaliKelas(kelasValue) {
   const target = getRaporKelasParts(kelasValue).kelas;
-  const kelas = semuaDataRaporKelas.find(item => getRaporKelasParts(item.kelas || `${item.tingkat || ""}${item.rombel || ""}`).kelas === target);
-  const guru = semuaDataRaporGuru.find(item => String(item.kode_guru || "") === String(kelas?.kode_guru || ""));
+  const kelas = semuaDataRaporKelas.find(
+    (item) =>
+      getRaporKelasParts(
+        item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
+      ).kelas === target,
+  );
+  const guru = semuaDataRaporGuru.find(
+    (item) => String(item.kode_guru || "") === String(kelas?.kode_guru || ""),
+  );
   return {
     kelas,
     guru,
-    nama: guru ? (typeof formatNamaGuru === "function" ? formatNamaGuru(guru) : guru.nama || kelas?.wali_kelas || "-") : kelas?.wali_kelas || "-",
-    nip: guru?.nip || "-"
+    nama: guru
+      ? typeof formatNamaGuru === "function"
+        ? formatNamaGuru(guru)
+        : guru.nama || kelas?.wali_kelas || "-"
+      : kelas?.wali_kelas || "-",
+    nip: guru?.nip || "-",
   };
 }
 
 function getRaporKehadiran(siswa) {
-  const kelas = siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
-  return semuaDataRaporKehadiran.find(item =>
-    String(item.nipd || "") === String(siswa.nipd || "") &&
-    getRaporKelasParts(item.kelas).kelas === kelas
-  ) || {};
+  const kelas =
+    siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
+  return (
+    semuaDataRaporKehadiran.find(
+      (item) =>
+        String(item.nipd || "") === String(siswa.nipd || "") &&
+        getRaporKelasParts(item.kelas).kelas === kelas,
+    ) || {}
+  );
 }
 
 function getRaporJenisKelaminLabel(siswa = {}) {
-  const raw = String(siswa.jenis_kelamin || siswa.jk || siswa.gender || siswa.kelamin || "").trim().toLowerCase();
-  if (["l", "lk", "laki", "laki-laki", "laki laki", "1"].includes(raw)) return "L";
+  const raw = String(
+    siswa.jenis_kelamin || siswa.jk || siswa.gender || siswa.kelamin || "",
+  )
+    .trim()
+    .toLowerCase();
+  if (["l", "lk", "laki", "laki-laki", "laki laki", "1"].includes(raw))
+    return "L";
   if (["p", "pr", "perempuan", "2"].includes(raw)) return "P";
   return "-";
 }
@@ -386,8 +517,13 @@ function getRaporCatatanKelasParts(value = "") {
 
 function makeRaporCatatanDocId(kelasValue, nipd) {
   const kelas = getRaporCatatanKelasParts(kelasValue).kelas;
-  const baseId = [kelas.replace(/\s+/g, ""), String(nipd || "").trim()].join("_");
-  const termId = typeof getRaporActiveTermId === "function" ? getRaporActiveTermId() : "legacy";
+  const baseId = [kelas.replace(/\s+/g, ""), String(nipd || "").trim()].join(
+    "_",
+  );
+  const termId =
+    typeof getRaporActiveTermId === "function"
+      ? getRaporActiveTermId()
+      : "legacy";
   return termId === "legacy" ? baseId : `${termId}_${baseId}`;
 }
 
@@ -407,7 +543,10 @@ function readRaporCatatanLocalCache() {
 
 function writeRaporCatatanLocalCache(records = []) {
   try {
-    localStorage.setItem(getRaporCatatanLocalCacheKey(), JSON.stringify(records));
+    localStorage.setItem(
+      getRaporCatatanLocalCacheKey(),
+      JSON.stringify(records),
+    );
   } catch (error) {
     console.error(error);
   }
@@ -415,7 +554,7 @@ function writeRaporCatatanLocalCache(records = []) {
 
 function mergeRaporCatatanRecords(records = []) {
   const byId = new Map();
-  records.forEach(record => {
+  records.forEach((record) => {
     if (!record?.id) return;
     byId.set(String(record.id), { ...record });
   });
@@ -425,26 +564,39 @@ function mergeRaporCatatanRecords(records = []) {
 function syncRaporCatatanLocalCache(record) {
   if (!record?.id) return;
   const nextRecord = { ...record };
-  const current = readRaporCatatanLocalCache().filter(item => String(item.id || "") !== String(nextRecord.id));
+  const current = readRaporCatatanLocalCache().filter(
+    (item) => String(item.id || "") !== String(nextRecord.id),
+  );
   current.unshift(nextRecord);
   writeRaporCatatanLocalCache(current);
 }
 
 function removeRaporCatatanLocalCache(docId) {
-  const next = readRaporCatatanLocalCache().filter(item => String(item.id || "") !== String(docId || ""));
+  const next = readRaporCatatanLocalCache().filter(
+    (item) => String(item.id || "") !== String(docId || ""),
+  );
   writeRaporCatatanLocalCache(next);
 }
 
 function getRaporCatatanRecord(siswaOrKelas, nipd = "") {
-  const siswa = typeof siswaOrKelas === "object" && siswaOrKelas !== null ? siswaOrKelas : null;
-  const kelas = siswa?.kelasRaporParts?.kelas || getRaporCatatanKelasParts(siswa?.kelas || siswaOrKelas || "").kelas;
+  const siswa =
+    typeof siswaOrKelas === "object" && siswaOrKelas !== null
+      ? siswaOrKelas
+      : null;
+  const kelas =
+    siswa?.kelasRaporParts?.kelas ||
+    getRaporCatatanKelasParts(siswa?.kelas || siswaOrKelas || "").kelas;
   const targetNipd = String(siswa?.nipd || nipd || "").trim();
   if (!kelas || !targetNipd) return null;
   const targetId = makeRaporCatatanDocId(kelas, targetNipd);
-  return semuaDataRaporCatatan.find(item =>
-    String(item.id || "") === targetId ||
-    (getRaporCatatanKelasParts(item.kelas || "").kelas === kelas && String(item.nipd || "").trim() === targetNipd)
-  ) || null;
+  return (
+    semuaDataRaporCatatan.find(
+      (item) =>
+        String(item.id || "") === targetId ||
+        (getRaporCatatanKelasParts(item.kelas || "").kelas === kelas &&
+          String(item.nipd || "").trim() === targetNipd),
+    ) || null
+  );
 }
 
 function getRaporCatatanText(siswa) {
@@ -468,18 +620,23 @@ function formatRaporCatatanHtml(value = "") {
 }
 
 function getRaporActiveTermPayload() {
-  const term = typeof getActiveSemesterContext === "function" ? getActiveSemesterContext() : { id: "legacy", semester: "", tahun: "" };
+  const term =
+    typeof getActiveSemesterContext === "function"
+      ? getActiveSemesterContext()
+      : { id: "legacy", semester: "", tahun: "" };
   return {
     term_id: term.id || "legacy",
     semester: term.semester || "",
-    tahun_pelajaran: term.tahun || ""
+    tahun_pelajaran: term.tahun || "",
   };
 }
 
 function setRaporCatatanNotice(message = "", kind = "info") {
   const text = String(message || "").trim();
   if (!text) return;
-  document.querySelectorAll(".admin-floating-toast").forEach(item => item.remove());
+  document
+    .querySelectorAll(".admin-floating-toast")
+    .forEach((item) => item.remove());
   const toast = document.createElement("div");
   toast.className = `admin-floating-toast ${kind === "error" ? "is-error" : ""}`;
   toast.textContent = text;
@@ -501,10 +658,13 @@ async function saveRaporCatatanForStudent(nipd) {
 async function saveRaporCatatanFromButton(buttonEl) {
   const row = buttonEl?.closest("tr");
   const textarea = row?.querySelector("textarea.rapor-catatan-input");
-  const nipd = String(buttonEl?.dataset?.nipd || textarea?.dataset?.nipd || "").trim();
+  const nipd = String(
+    buttonEl?.dataset?.nipd || textarea?.dataset?.nipd || "",
+  ).trim();
   if (textarea && nipd) {
     textarea.dataset.nipd = nipd;
-    const inputId = textarea.id || getRaporCatatanInputId(getSelectedRaporKelas(), nipd);
+    const inputId =
+      textarea.id || getRaporCatatanInputId(getSelectedRaporKelas(), nipd);
     if (!textarea.id) textarea.id = inputId;
   }
   return saveRaporCatatanForStudentWithInput(nipd, textarea || null);
@@ -519,14 +679,21 @@ async function saveRaporCatatanForStudentWithInput(nipd, inputElement = null) {
   setRaporCatatanNotice("Menjalankan simpan catatan...", "info");
   const kelas = getSelectedRaporKelas();
   const students = getRaporStudentsByClass(kelas);
-  const siswa = students.find(item => String(item.nipd || "") === String(nipd || ""));
+  const siswa = students.find(
+    (item) => String(item.nipd || "") === String(nipd || ""),
+  );
   if (!kelas || !siswa) {
     setRaporCatatanNotice("Pilih kelas terlebih dahulu.", "warning");
     return;
   }
 
   const inputId = getRaporCatatanInputId(kelas, nipd);
-  const input = inputElement || document.querySelector(`textarea.rapor-catatan-input[data-nipd="${String(nipd || "").replace(/"/g, '\\"')}"]`) || document.getElementById(inputId);
+  const input =
+    inputElement ||
+    document.querySelector(
+      `textarea.rapor-catatan-input[data-nipd="${String(nipd || "").replace(/"/g, '\\"')}"]`,
+    ) ||
+    document.getElementById(inputId);
   if (!input) {
     setRaporCatatanNotice("Kotak catatan tidak ditemukan.", "error");
     return;
@@ -546,29 +713,40 @@ async function saveRaporCatatanForStudentWithInput(nipd, inputElement = null) {
       nama_siswa: siswa.nama || "",
       catatan_wali_kelas: cleanRaporCatatanValue(input.value),
       updated_by: getCurrentRaporUser().username || "",
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
     const nextRecord = { id: docId, ...payload };
     semuaDataRaporCatatan = mergeRaporCatatanRecords([
-      ...semuaDataRaporCatatan.filter(item => String(item.id || "") !== String(docId)),
-      nextRecord
+      ...semuaDataRaporCatatan.filter(
+        (item) => String(item.id || "") !== String(docId),
+      ),
+      nextRecord,
     ]);
     syncRaporCatatanLocalCache(nextRecord);
     renderRaporPreview();
     setRaporCatatanRowStatus(nipd, "Tersimpan");
-    setRaporCatatanNotice(`Catatan untuk ${siswa.nama || "-"} sudah disimpan.`, "success");
-    void documentsApi.collection("rapor_catatan_wali").doc(docId).set(payload)
+    setRaporCatatanNotice(
+      `Catatan untuk ${siswa.nama || "-"} sudah disimpan.`,
+      "success",
+    );
+    void documentsApi
+      .collection("rapor_catatan_wali")
+      .doc(docId)
+      .set(payload)
       .then(() => {
         setRaporCatatanRowStatus(nipd, "Tersimpan");
       })
-      .catch(error => {
+      .catch((error) => {
         console.error(error);
         setRaporCatatanRowStatus(nipd, "Tersimpan lokal");
       });
   } catch (error) {
     console.error(error);
     setRaporCatatanRowStatus(nipd, "Gagal");
-    setRaporCatatanNotice("Catatan wali kelas belum berhasil disimpan.", "error");
+    setRaporCatatanNotice(
+      "Catatan wali kelas belum berhasil disimpan.",
+      "error",
+    );
   } finally {
     input.disabled = false;
   }
@@ -589,11 +767,14 @@ async function saveAllRaporCatatanForCurrentClass() {
   }
 
   const items = students
-    .map(siswa => {
+    .map((siswa) => {
       const nipd = String(siswa.nipd || "").trim();
       if (!nipd) return null;
       const inputId = getRaporCatatanInputId(kelas, nipd);
-      const input = document.querySelector(`textarea.rapor-catatan-input[data-nipd="${String(nipd || "").replace(/"/g, '\\"')}"]`) || document.getElementById(inputId);
+      const input =
+        document.querySelector(
+          `textarea.rapor-catatan-input[data-nipd="${String(nipd || "").replace(/"/g, '\\"')}"]`,
+        ) || document.getElementById(inputId);
       return input ? { siswa, nipd, input } : null;
     })
     .filter(Boolean);
@@ -627,7 +808,7 @@ async function saveAllRaporCatatanForCurrentClass() {
       nama_siswa: siswa.nama || "",
       catatan_wali_kelas: cleanRaporCatatanValue(input.value),
       updated_by: getCurrentRaporUser().username || "",
-      updated_at: new Date().toISOString()
+      updated_at: new Date().toISOString(),
     };
     const hasContent = Boolean(String(payload.catatan_wali_kelas || "").trim());
     if (hasContent) filled += 1;
@@ -638,15 +819,20 @@ async function saveAllRaporCatatanForCurrentClass() {
       setRaporCatatanRowStatus(nipd, "Menyimpan...");
       const nextRecord = { id: docId, ...payload };
       semuaDataRaporCatatan = mergeRaporCatatanRecords([
-        ...semuaDataRaporCatatan.filter(record => String(record.id || "") !== String(docId)),
-        nextRecord
+        ...semuaDataRaporCatatan.filter(
+          (record) => String(record.id || "") !== String(docId),
+        ),
+        nextRecord,
       ]);
       syncRaporCatatanLocalCache(nextRecord);
       renderRaporPreview();
       setRaporCatatanRowStatus(nipd, "Tersimpan");
       saved += 1;
-      void getRaporDocumentsApi().collection("rapor_catatan_wali").doc(docId).set(payload)
-        .catch(error => {
+      void getRaporDocumentsApi()
+        .collection("rapor_catatan_wali")
+        .doc(docId)
+        .set(payload)
+        .catch((error) => {
           console.error(error);
           setRaporCatatanRowStatus(nipd, "Tersimpan lokal");
         });
@@ -660,16 +846,24 @@ async function saveAllRaporCatatanForCurrentClass() {
   }
 
   if (failed === 0) {
-    setRaporCatatanNotice(`Selesai: ${filled} terisi, ${empty} kosong, ${saved} tersimpan.`, "success");
+    setRaporCatatanNotice(
+      `Selesai: ${filled} terisi, ${empty} kosong, ${saved} tersimpan.`,
+      "success",
+    );
   } else {
-    setRaporCatatanNotice(`Selesai: ${filled} terisi, ${empty} kosong, ${saved} tersimpan, ${failed} gagal.`, "warning");
+    setRaporCatatanNotice(
+      `Selesai: ${filled} terisi, ${empty} kosong, ${saved} tersimpan, ${failed} gagal.`,
+      "warning",
+    );
   }
 }
 
 async function deleteRaporCatatanForStudent(nipd) {
   const kelas = getSelectedRaporKelas();
   const students = getRaporStudentsByClass(kelas);
-  const siswa = students.find(item => String(item.nipd || "") === String(nipd || ""));
+  const siswa = students.find(
+    (item) => String(item.nipd || "") === String(nipd || ""),
+  );
   if (!kelas || !siswa) {
     setRaporCatatanNotice("Pilih kelas terlebih dahulu.", "warning");
     return;
@@ -684,20 +878,32 @@ async function deleteRaporCatatanForStudent(nipd) {
     setRaporCatatanRowStatus(nipd, "Menghapus...");
     setRaporCatatanNotice(`Menghapus catatan ${siswa.nama || "-"}...`, "info");
     removeRaporCatatanLocalCache(docId);
-    semuaDataRaporCatatan = semuaDataRaporCatatan.filter(item => String(item.id || "") !== String(docId));
+    semuaDataRaporCatatan = semuaDataRaporCatatan.filter(
+      (item) => String(item.id || "") !== String(docId),
+    );
     if (input) input.value = "";
     renderRaporCatatanPanel();
     renderRaporPreview();
     setRaporCatatanRowStatus(nipd, "Dihapus");
-    setRaporCatatanNotice(`Catatan untuk ${siswa.nama || "-"} sudah dihapus.`, "success");
-    void documentsApi.collection("rapor_catatan_wali").doc(docId).delete().catch(error => {
-      console.error(error);
-      setRaporCatatanRowStatus(nipd, "Dihapus lokal");
-    });
+    setRaporCatatanNotice(
+      `Catatan untuk ${siswa.nama || "-"} sudah dihapus.`,
+      "success",
+    );
+    void documentsApi
+      .collection("rapor_catatan_wali")
+      .doc(docId)
+      .delete()
+      .catch((error) => {
+        console.error(error);
+        setRaporCatatanRowStatus(nipd, "Dihapus lokal");
+      });
   } catch (error) {
     console.error(error);
     setRaporCatatanRowStatus(nipd, "Gagal");
-    setRaporCatatanNotice("Catatan wali kelas belum berhasil dihapus.", "error");
+    setRaporCatatanNotice(
+      "Catatan wali kelas belum berhasil dihapus.",
+      "error",
+    );
   } finally {
     if (input) input.disabled = false;
   }
@@ -706,7 +912,7 @@ async function deleteRaporCatatanForStudent(nipd) {
 function setRaporCatatanRowStatus(nipd, text) {
   const safeNipd = String(nipd || "").trim();
   if (!safeNipd) return;
-  document.querySelectorAll("[data-rapor-catatan-status]").forEach(node => {
+  document.querySelectorAll("[data-rapor-catatan-status]").forEach((node) => {
     if (String(node.dataset.raporCatatanStatus || "").trim() === safeNipd) {
       node.textContent = text || "";
     }
@@ -721,7 +927,8 @@ function bindRaporCatatanPanelEvents() {
 window.saveRaporCatatanForStudent = saveRaporCatatanForStudent;
 window.saveRaporCatatanFromButton = saveRaporCatatanFromButton;
 window.saveRaporCatatanFromTextarea = saveRaporCatatanFromTextarea;
-window.saveRaporCatatanForStudentWithInput = saveRaporCatatanForStudentWithInput;
+window.saveRaporCatatanForStudentWithInput =
+  saveRaporCatatanForStudentWithInput;
 window.saveAllRaporCatatanForCurrentClass = saveAllRaporCatatanForCurrentClass;
 window.deleteRaporCatatanForStudent = deleteRaporCatatanForStudent;
 
@@ -750,7 +957,7 @@ function renderRaporCatatanPanel() {
       <div class="rapor-catatan-meta">
         <strong>${escapeRaporHtml(kelas)}</strong>
         <span>${students.length} murid</span>
-        <button type="button" class="btn-primary" onclick="window.saveAllRaporCatatanForCurrentClass()">Simpan Semua</button>
+        <button type="button" class="btn-primary btn-action-save table-action-icon-btn table-action-save" onclick="window.saveAllRaporCatatanForCurrentClass()" title="Simpan Semua Catatan" aria-label="Simpan Semua Catatan Rapor"></button>
       </div>
     </div>
     <div class="table-container mapel-table-container">
@@ -765,9 +972,10 @@ function renderRaporCatatanPanel() {
           </tr>
         </thead>
         <tbody>
-          ${students.map((siswa, index) => {
-            const inputId = getRaporCatatanInputId(kelas, siswa.nipd);
-            return `
+          ${students
+            .map((siswa, index) => {
+              const inputId = getRaporCatatanInputId(kelas, siswa.nipd);
+              return `
               <tr>
                 <td>${index + 1}</td>
                 <td class="rapor-catatan-name">
@@ -779,12 +987,13 @@ function renderRaporCatatanPanel() {
                   <textarea id="${escapeRaporHtml(inputId)}" class="rapor-catatan-input" data-nipd="${escapeRaporHtml(siswa.nipd || "")}" rows="4" placeholder="Tulis catatan wali kelas dalam paragraf...">${escapeRaporHtml(getRaporCatatanText(siswa))}</textarea>
                 </td>
                 <td class="rapor-catatan-actions">
-                  <button type="button" class="btn-secondary" onclick="window.deleteRaporCatatanForStudent(this.dataset.nipd)" data-rapor-catatan-action="delete" data-nipd="${escapeRaporHtml(siswa.nipd || "")}">Hapus</button>
+                  <button type="button" class="btn-secondary btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="window.deleteRaporCatatanForStudent(this.dataset.nipd)" data-rapor-catatan-action="delete" data-nipd="${escapeRaporHtml(siswa.nipd || "")}" title="Hapus Catatan" aria-label="Hapus Catatan"></button>
                   <span class="rapor-catatan-status" data-rapor-catatan-status="${escapeRaporHtml(siswa.nipd || "")}">${escapeRaporHtml(getRaporCatatanText(siswa) ? "Tersimpan" : "")}</span>
                 </td>
               </tr>
             `;
-          }).join("")}
+            })
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -792,23 +1001,35 @@ function renderRaporCatatanPanel() {
 }
 
 function getRaporSettings() {
-  const activeTerm = typeof getActiveSemesterContext === "function" ? getActiveSemesterContext() : null;
+  const activeTerm =
+    typeof getActiveSemesterContext === "function"
+      ? getActiveSemesterContext()
+      : null;
   return {
     semester: activeTerm?.semester || raporAdminSettings.semester || "GENAP",
     tahun: activeTerm?.tahun || raporAdminSettings.tahun || "2025/2026",
     paper: localStorage.getItem("raporPaperSize") || "A4",
     useKepalaTtd: localStorage.getItem("raporUseKepalaTtd") === "true",
-    tanggal: raporAdminSettings.tanggal || new Date().toISOString().slice(0, 10),
+    tanggal:
+      raporAdminSettings.tanggal || new Date().toISOString().slice(0, 10),
     kepala_nama: raporAdminSettings.kepala_nama || "Dra. MAMIK SASMIATI, M.Pd",
     kepala_nip: raporAdminSettings.kepala_nip || "19660601 199003 2 010",
-    kepala_ttd: (typeof getKepalaSekolahTtdImage === "function" ? getKepalaSekolahTtdImage() : "") || raporAdminSettings.kepala_ttd || ""
+    kepala_ttd:
+      (typeof getKepalaSekolahTtdImage === "function"
+        ? getKepalaSekolahTtdImage()
+        : "") ||
+      raporAdminSettings.kepala_ttd ||
+      "",
   };
 }
 
 function formatRaporDisplayClass(kelasValue) {
   const parts = getRaporKelasParts(kelasValue);
-  const roman = { 7: "VII", 8: "VIII", 9: "IX" }[parts.tingkat] || parts.tingkat || "";
-  return roman && parts.rombel ? `${roman}.${parts.rombel}` : parts.kelas || "-";
+  const roman =
+    { 7: "VII", 8: "VIII", 9: "IX" }[parts.tingkat] || parts.tingkat || "";
+  return roman && parts.rombel
+    ? `${roman}.${parts.rombel}`
+    : parts.kelas || "-";
 }
 
 function setRaporPaperSize() {
@@ -818,11 +1039,18 @@ function setRaporPaperSize() {
     showFloatingToast("Pengaturan telah diset");
     return;
   }
-  Swal.fire("Diset", `Ukuran kertas rapor: ${value === "F4" ? "F4 / FLSA" : "A4"}`, "success");
+  Swal.fire(
+    "Diset",
+    `Ukuran kertas rapor: ${value === "F4" ? "F4 / FLSA" : "A4"}`,
+    "success",
+  );
 }
 
 function setRaporUseKepalaTtd(value) {
-  localStorage.setItem("raporUseKepalaTtd", value === "true" ? "true" : "false");
+  localStorage.setItem(
+    "raporUseKepalaTtd",
+    value === "true" ? "true" : "false",
+  );
   renderRaporPreview();
 }
 
@@ -866,8 +1094,8 @@ function renderAdminRaporPage() {
       </div>
 
       <div class="table-actions">
-        <button class="btn-primary" onclick="saveAdminRaporSettings()">Simpan Pengaturan</button>
-        <button class="btn-secondary" onclick="clearAdminRaporSignature()">Hapus TTD</button>
+        <button class="btn-primary btn-action-save table-action-icon-btn table-action-save" onclick="saveAdminRaporSettings()" title="Simpan Pengaturan" aria-label="Simpan Pengaturan Rapor"></button>
+        <button class="btn-danger-lite btn-action-delete table-action-icon-btn table-action-delete" onclick="clearAdminRaporSignature()" title="Hapus TTD" aria-label="Hapus TTD Kepala Sekolah"></button>
       </div>
     </div>
   `;
@@ -875,24 +1103,27 @@ function renderAdminRaporPage() {
 
 function loadRealtimeAdminRapor() {
   clearAdminRaporListeners();
-  unsubscribeAdminRaporSettings = getRaporDocumentsApi().collection("settings").doc("rapor").onSnapshot(snapshot => {
-    raporAdminSettings = {
-      ...raporAdminSettings,
-      ...(snapshot.exists ? snapshot.data() : {})
-    };
-    const tanggal = document.getElementById("adminRaporTanggal");
-    const nama = document.getElementById("adminRaporKepalaNama");
-    const nip = document.getElementById("adminRaporKepalaNip");
-    const preview = document.getElementById("adminRaporTtdPreview");
-    if (tanggal) tanggal.value = raporAdminSettings.tanggal || "";
-    if (nama) nama.value = raporAdminSettings.kepala_nama || "";
-    if (nip) nip.value = raporAdminSettings.kepala_nip || "";
-    if (preview) {
-      preview.innerHTML = raporAdminSettings.kepala_ttd
-        ? `<img src="${escapeRaporHtml(raporAdminSettings.kepala_ttd)}" alt="TTD Kepala Sekolah">`
-        : `<small>Belum ada gambar tanda tangan.</small>`;
-    }
-  });
+  unsubscribeAdminRaporSettings = getRaporDocumentsApi()
+    .collection("settings")
+    .doc("rapor")
+    .onSnapshot((snapshot) => {
+      raporAdminSettings = {
+        ...raporAdminSettings,
+        ...(snapshot.exists ? snapshot.data() : {}),
+      };
+      const tanggal = document.getElementById("adminRaporTanggal");
+      const nama = document.getElementById("adminRaporKepalaNama");
+      const nip = document.getElementById("adminRaporKepalaNip");
+      const preview = document.getElementById("adminRaporTtdPreview");
+      if (tanggal) tanggal.value = raporAdminSettings.tanggal || "";
+      if (nama) nama.value = raporAdminSettings.kepala_nama || "";
+      if (nip) nip.value = raporAdminSettings.kepala_nip || "";
+      if (preview) {
+        preview.innerHTML = raporAdminSettings.kepala_ttd
+          ? `<img src="${escapeRaporHtml(raporAdminSettings.kepala_ttd)}" alt="TTD Kepala Sekolah">`
+          : `<small>Belum ada gambar tanda tangan.</small>`;
+      }
+    });
 }
 
 function clearAdminRaporListeners() {
@@ -908,7 +1139,11 @@ function previewAdminRaporSignature(event) {
   if (!file || !preview) return;
   if (file.size > 900 * 1024) {
     event.target.value = "";
-    Swal.fire("Gambar terlalu besar", "Gunakan gambar TTD di bawah 900 KB.", "warning");
+    Swal.fire(
+      "Gambar terlalu besar",
+      "Gunakan gambar TTD di bawah 900 KB.",
+      "warning",
+    );
     return;
   }
   const reader = new FileReader();
@@ -920,36 +1155,51 @@ function previewAdminRaporSignature(event) {
 
 async function saveAdminRaporSettings() {
   const tanggal = document.getElementById("adminRaporTanggal")?.value || "";
-  const kepalaNama = document.getElementById("adminRaporKepalaNama")?.value.trim() || "";
-  const kepalaNip = document.getElementById("adminRaporKepalaNip")?.value.trim() || "";
-  const file = document.getElementById("adminRaporKepalaTtd")?.files?.[0] || null;
+  const kepalaNama =
+    document.getElementById("adminRaporKepalaNama")?.value.trim() || "";
+  const kepalaNip =
+    document.getElementById("adminRaporKepalaNip")?.value.trim() || "";
+  const file =
+    document.getElementById("adminRaporKepalaTtd")?.files?.[0] || null;
 
   if (!tanggal || !kepalaNama || !kepalaNip) {
-    Swal.fire("Lengkapi data", "Tanggal, nama kepala sekolah, dan NIP wajib diisi.", "warning");
+    Swal.fire(
+      "Lengkapi data",
+      "Tanggal, nama kepala sekolah, dan NIP wajib diisi.",
+      "warning",
+    );
     return;
   }
   if (file && file.size > 900 * 1024) {
-    Swal.fire("Gambar terlalu besar", "Gunakan gambar TTD di bawah 900 KB.", "warning");
+    Swal.fire(
+      "Gambar terlalu besar",
+      "Gunakan gambar TTD di bawah 900 KB.",
+      "warning",
+    );
     return;
   }
 
-  const readSignature = () => new Promise((resolve, reject) => {
-    if (!file) return resolve(raporAdminSettings.kepala_ttd || "");
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  const readSignature = () =>
+    new Promise((resolve, reject) => {
+      if (!file) return resolve(raporAdminSettings.kepala_ttd || "");
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   try {
     const kepalaTtd = await readSignature();
-    await getRaporDocumentsApi().collection("settings").doc("rapor").set({
-      tanggal,
-      kepala_nama: kepalaNama,
-      kepala_nip: kepalaNip,
-      kepala_ttd: kepalaTtd,
-      updated_at: new Date()
-    }, { merge: true });
+    await getRaporDocumentsApi().collection("settings").doc("rapor").set(
+      {
+        tanggal,
+        kepala_nama: kepalaNama,
+        kepala_nip: kepalaNip,
+        kepala_ttd: kepalaTtd,
+        updated_at: new Date(),
+      },
+      { merge: true },
+    );
     Swal.fire("Tersimpan", "Pengaturan rapor sudah diperbarui.", "success");
   } catch (error) {
     console.error(error);
@@ -958,10 +1208,13 @@ async function saveAdminRaporSettings() {
 }
 
 async function clearAdminRaporSignature() {
-  await getRaporDocumentsApi().collection("settings").doc("rapor").set({
-    kepala_ttd: "",
-    updated_at: new Date()
-  }, { merge: true });
+  await getRaporDocumentsApi().collection("settings").doc("rapor").set(
+    {
+      kepala_ttd: "",
+      updated_at: new Date(),
+    },
+    { merge: true },
+  );
   const input = document.getElementById("adminRaporKepalaTtd");
   if (input) input.value = "";
   Swal.fire("Dihapus", "TTD kepala sekolah sudah dihapus.", "success");
@@ -1005,7 +1258,7 @@ function renderCetakRaporPage() {
           </label>
         </div>
         <div class="nilai-control-actions rapor-print-actions">
-          <button type="button" class="btn-secondary" onclick="setRaporPaperSize()">Set</button>
+          <button type="button" class="btn-secondary btn-action-apply table-action-icon-btn table-action-apply" onclick="setRaporPaperSize()" title="Set Ukuran Kertas" aria-label="Set Ukuran Kertas Rapor"></button>
           <button type="button" class="btn-primary" onclick="printSelectedRapor()">Cetak</button>
           <button type="button" class="btn-secondary" onclick="printAllRaporInClass()">Cetak Semua</button>
         </div>
@@ -1019,64 +1272,126 @@ function renderCetakRaporPage() {
 
 function loadRealtimeCetakRapor() {
   clearCetakRaporListeners();
-  semuaDataRaporCatatan = mergeRaporCatatanRecords(readRaporCatatanLocalCache());
+  semuaDataRaporCatatan = mergeRaporCatatanRecords(
+    readRaporCatatanLocalCache(),
+  );
   if (typeof loadKepalaSekolahTtdSettings === "function") {
     loadKepalaSekolahTtdSettings().then(renderCetakRaporState);
   }
   const render = () => renderCetakRaporState();
   const documentsApi = getRaporDocumentsApi();
-  const siswaQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("siswa", "nama") : documentsApi.collection("siswa").orderBy("nama");
-  const kelasQuery = typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : documentsApi.collection("kelas");
-  unsubscribeRaporSiswa = siswaQuery.onSnapshot(snapshot => {
-    semuaDataRaporSiswa = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const siswaQuery =
+    typeof getSemesterCollectionQuery === "function"
+      ? getSemesterCollectionQuery("siswa", "nama")
+      : documentsApi.collection("siswa").orderBy("nama");
+  const kelasQuery =
+    typeof getSemesterCollectionQuery === "function"
+      ? getSemesterCollectionQuery("kelas")
+      : documentsApi.collection("kelas");
+  unsubscribeRaporSiswa = siswaQuery.onSnapshot((snapshot) => {
+    semuaDataRaporSiswa = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     render();
   });
-  unsubscribeRaporMapel = documentsApi.collection("mapel_bayangan").orderBy("kode_mapel").onSnapshot(snapshot => {
-    semuaDataRaporMapel = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  unsubscribeRaporMapel = documentsApi
+    .collection("mapel_bayangan")
+    .orderBy("kode_mapel")
+    .onSnapshot((snapshot) => {
+      semuaDataRaporMapel = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      render();
+    });
+  unsubscribeRaporMengajar = documentsApi
+    .collection("mengajar_bayangan")
+    .onSnapshot((snapshot) => {
+      semuaDataRaporMengajar = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      render();
+    });
+  unsubscribeRaporNilai = documentsApi
+    .collection("nilai")
+    .onSnapshot((snapshot) => {
+      setSemuaDataRaporNilai(
+        snapshot.docs
+          .map((doc) => ({ id: doc.id, ...doc.data() }))
+          .filter((item) =>
+            typeof isActiveTermDoc === "function"
+              ? isActiveTermDoc(item)
+              : true,
+          ),
+      );
+      render();
+    });
+  unsubscribeRaporKelas = kelasQuery.onSnapshot((snapshot) => {
+    semuaDataRaporKelas = snapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     render();
   });
-  unsubscribeRaporMengajar = documentsApi.collection("mengajar_bayangan").onSnapshot(snapshot => {
-    semuaDataRaporMengajar = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    render();
-  });
-  unsubscribeRaporNilai = documentsApi.collection("nilai").onSnapshot(snapshot => {
-    setSemuaDataRaporNilai(snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true));
-    render();
-  });
-  unsubscribeRaporKelas = kelasQuery.onSnapshot(snapshot => {
-    semuaDataRaporKelas = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    render();
-  });
-  unsubscribeRaporGuru = documentsApi.collection("guru").onSnapshot(snapshot => {
-    semuaDataRaporGuru = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    render();
-  });
-  unsubscribeRaporKehadiran = documentsApi.collection("kehadiran_rekap_siswa").onSnapshot(snapshot => {
-    semuaDataRaporKehadiran = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
-    render();
-  });
-  unsubscribeRaporCatatan = documentsApi.collection("rapor_catatan_wali").onSnapshot(snapshot => {
-    const remoteRecords = snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(item => typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true);
-    semuaDataRaporCatatan = mergeRaporCatatanRecords([...remoteRecords, ...readRaporCatatanLocalCache()]);
-    render();
-  });
-  unsubscribeRaporSettings = documentsApi.collection("settings").doc("rapor").onSnapshot(snapshot => {
-    raporAdminSettings = {
-      ...raporAdminSettings,
-      ...(snapshot.exists ? snapshot.data() : {})
-    };
-    render();
-  });
+  unsubscribeRaporGuru = documentsApi
+    .collection("guru")
+    .onSnapshot((snapshot) => {
+      semuaDataRaporGuru = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      render();
+    });
+  unsubscribeRaporKehadiran = documentsApi
+    .collection("kehadiran_rekap_siswa")
+    .onSnapshot((snapshot) => {
+      semuaDataRaporKehadiran = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((item) =>
+          typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true,
+        );
+      render();
+    });
+  unsubscribeRaporCatatan = documentsApi
+    .collection("rapor_catatan_wali")
+    .onSnapshot((snapshot) => {
+      const remoteRecords = snapshot.docs
+        .map((doc) => ({ id: doc.id, ...doc.data() }))
+        .filter((item) =>
+          typeof isActiveTermDoc === "function" ? isActiveTermDoc(item) : true,
+        );
+      semuaDataRaporCatatan = mergeRaporCatatanRecords([
+        ...remoteRecords,
+        ...readRaporCatatanLocalCache(),
+      ]);
+      render();
+    });
+  unsubscribeRaporSettings = documentsApi
+    .collection("settings")
+    .doc("rapor")
+    .onSnapshot((snapshot) => {
+      raporAdminSettings = {
+        ...raporAdminSettings,
+        ...(snapshot.exists ? snapshot.data() : {}),
+      };
+      render();
+    });
 }
 
 function clearCetakRaporListeners() {
-  [unsubscribeRaporSiswa, unsubscribeRaporMapel, unsubscribeRaporMengajar, unsubscribeRaporNilai, unsubscribeRaporKelas, unsubscribeRaporGuru, unsubscribeRaporKehadiran, unsubscribeRaporCatatan, unsubscribeRaporSettings].forEach(unsub => {
+  [
+    unsubscribeRaporSiswa,
+    unsubscribeRaporMapel,
+    unsubscribeRaporMengajar,
+    unsubscribeRaporNilai,
+    unsubscribeRaporKelas,
+    unsubscribeRaporGuru,
+    unsubscribeRaporKehadiran,
+    unsubscribeRaporCatatan,
+    unsubscribeRaporSettings,
+  ].forEach((unsub) => {
     if (unsub) unsub();
   });
   unsubscribeRaporSiswa = null;
@@ -1103,7 +1418,12 @@ function renderRaporClassOptions() {
   const current = select.value;
   const classes = getRaporKelasList();
   select.innerHTML = classes.length
-    ? classes.map(kelas => `<option value="${escapeRaporHtml(kelas)}">${escapeRaporHtml(kelas)}</option>`).join("")
+    ? classes
+        .map(
+          (kelas) =>
+            `<option value="${escapeRaporHtml(kelas)}">${escapeRaporHtml(kelas)}</option>`,
+        )
+        .join("")
     : `<option value="">Tidak ada kelas</option>`;
   const preferred = getPreferredRaporKelas();
   if (current && classes.includes(current)) select.value = current;
@@ -1117,9 +1437,15 @@ function renderRaporStudentOptions(shouldPreview = true) {
   const current = select.value;
   const students = getRaporStudentsByClass(selectedClass);
   select.innerHTML = students.length
-    ? students.map(siswa => `<option value="${escapeRaporHtml(siswa.nipd || "")}">${escapeRaporHtml(siswa.nama || "-")}</option>`).join("")
+    ? students
+        .map(
+          (siswa) =>
+            `<option value="${escapeRaporHtml(siswa.nipd || "")}">${escapeRaporHtml(siswa.nama || "-")}</option>`,
+        )
+        .join("")
     : `<option value="">Tidak ada siswa</option>`;
-  if (current && students.some(siswa => String(siswa.nipd || "") === current)) select.value = current;
+  if (current && students.some((siswa) => String(siswa.nipd || "") === current))
+    select.value = current;
   ensureRaporNilaiHydrated(selectedClass, () => renderRaporPreview());
   renderRaporCatatanPanel();
   if (shouldPreview) renderRaporPreview();
@@ -1130,7 +1456,9 @@ function getSelectedRaporStudents(all = false) {
   const students = getRaporStudentsByClass(kelas);
   if (all) return students;
   const nipd = document.getElementById("raporSiswaSelect")?.value || "";
-  return students.filter(siswa => String(siswa.nipd || "") === String(nipd || ""));
+  return students.filter(
+    (siswa) => String(siswa.nipd || "") === String(nipd || ""),
+  );
 }
 
 function renderRaporPreview() {
@@ -1141,7 +1469,9 @@ function renderRaporPreview() {
   const students = getRaporStudentsByClass(kelas);
   const mapel = getRaporMapelForClass(kelas);
   const selectedNipd = document.getElementById("raporSiswaSelect")?.value || "";
-  const selectedStudent = students.find(siswa => String(siswa.nipd || "") === String(selectedNipd || ""));
+  const selectedStudent = students.find(
+    (siswa) => String(siswa.nipd || "") === String(selectedNipd || ""),
+  );
   const catatan = selectedStudent ? getRaporCatatanText(selectedStudent) : "";
   info.innerHTML = `
     <span><strong>Kelas</strong>${escapeRaporHtml(kelas || "-")}</span>
@@ -1161,7 +1491,7 @@ function renderRaporPreview() {
 function getRaporLogoCandidates() {
   return {
     left: ["img/logo_pemda.png", "img/logo.png", "img/jember.png"],
-    right: ["img/logo_sekolah.png", "img/tutwuri.png", "img/kemdikbud.png"]
+    right: ["img/logo_sekolah.png", "img/tutwuri.png", "img/kemdikbud.png"],
   };
 }
 
@@ -1174,33 +1504,44 @@ function renderRaporLogo(position) {
 
 function formatRaporDate(dateValue) {
   if (window.AppUtils?.formatDateId) {
-    return window.AppUtils.formatDateId(dateValue, { day: "numeric", month: "long", year: "numeric" }, dateValue || "-");
+    return window.AppUtils.formatDateId(
+      dateValue,
+      { day: "numeric", month: "long", year: "numeric" },
+      dateValue || "-",
+    );
   }
   if (!dateValue) return "-";
   const date = new Date(`${dateValue}T00:00:00`);
   if (Number.isNaN(date.getTime())) return dateValue;
-  return date.toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  return date.toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function renderRaporRows(siswa, mapelList) {
   const groups = [
     { label: "Kelompok A", rows: [] },
-    { label: "Kelompok B", rows: [] }
+    { label: "Kelompok B", rows: [] },
   ];
   mapelList.forEach((mapel, index) => {
     const mapping = Number(mapel.mapping ?? index + 1);
     const groupName = String(mapel.kelompok || mapel.grup || "").toUpperCase();
-    const targetGroup = groupName.includes("B") || mapping > 7 ? groups[1] : groups[0];
+    const targetGroup =
+      groupName.includes("B") || mapping > 7 ? groups[1] : groups[0];
     targetGroup.rows.push(mapel);
   });
 
   let number = 1;
-  return groups.map(group => {
-    if (group.rows.length === 0) return "";
-    const header = `<tr class="rapor-group-row"><td colspan="6">${escapeRaporHtml(group.label)}</td></tr>`;
-    const rows = group.rows.map(mapel => {
-      const nilai = getRaporNilai(siswa, mapel.kode_mapel || mapel.id);
-      return `
+  return groups
+    .map((group) => {
+      if (group.rows.length === 0) return "";
+      const header = `<tr class="rapor-group-row"><td colspan="6">${escapeRaporHtml(group.label)}</td></tr>`;
+      const rows = group.rows
+        .map((mapel) => {
+          const nilai = getRaporNilai(siswa, mapel.kode_mapel || mapel.id);
+          return `
         <tr>
           <td>${number++}</td>
           <td>${escapeRaporHtml(mapel.nama_mapel || mapel.kode_mapel || "-")}</td>
@@ -1210,19 +1551,23 @@ function renderRaporRows(siswa, mapelList) {
           <td>${escapeRaporHtml(getRaporNilaiValue(nilai, "pts") || "")}</td>
         </tr>
       `;
-    }).join("");
-    return header + rows;
-  }).join("");
+        })
+        .join("");
+      return header + rows;
+    })
+    .join("");
 }
 
 function renderRaporPage(siswa) {
   const settings = getRaporSettings();
-  const kelasBayangan = siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
+  const kelasBayangan =
+    siswa.kelasRaporParts?.kelas || getRaporKelasBayanganParts(siswa).kelas;
   const kelasAsli = getRaporKelasAsliParts(siswa).kelas || kelasBayangan;
   const mapelList = getRaporMapelForClass(kelasBayangan, siswa);
   const wali = getRaporWaliKelas(kelasAsli);
   const kehadiran = getRaporKehadiran(siswa);
-  const nomorInduk = [siswa.nipd, siswa.nisn].filter(Boolean).join(" / ") || "-";
+  const nomorInduk =
+    [siswa.nipd, siswa.nisn].filter(Boolean).join(" / ") || "-";
 
   return `
     <section class="rapor-print-page">
@@ -1316,7 +1661,14 @@ function renderRaporPage(siswa) {
 }
 
 function getRaporPrintHtml(students) {
-  const pages = students.map(siswa => renderRaporPage({ ...siswa, kelasRaporParts: getRaporKelasBayanganParts(siswa) })).join("");
+  const pages = students
+    .map((siswa) =>
+      renderRaporPage({
+        ...siswa,
+        kelasRaporParts: getRaporKelasBayanganParts(siswa),
+      }),
+    )
+    .join("");
   const settings = getRaporSettings();
   const isF4 = settings.paper === "F4";
   const paperWidth = isF4 ? "215mm" : "210mm";
@@ -1401,14 +1753,18 @@ function openRaporPrint(students) {
       popupBlockedMessage: "Izinkan popup browser untuk mencetak rapor.",
       autoPrint: true,
       printDelayMs: 400,
-      fallbackDelayMs: 900
+      fallbackDelayMs: 900,
     });
     return;
   }
 
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
-    Swal.fire("Popup diblokir", "Izinkan popup browser untuk mencetak rapor.", "warning");
+    Swal.fire(
+      "Popup diblokir",
+      "Izinkan popup browser untuk mencetak rapor.",
+      "warning",
+    );
     return;
   }
   printWindow.document.open();
@@ -1430,6 +1786,8 @@ async function printAllRaporInClass() {
 
 async function printRaporByNipd(nipd) {
   await hydrateRaporNilaiForClass(getSelectedRaporKelas());
-  const siswa = getRaporStudentsByClass(getSelectedRaporKelas()).filter(item => String(item.nipd || "") === String(nipd || ""));
+  const siswa = getRaporStudentsByClass(getSelectedRaporKelas()).filter(
+    (item) => String(item.nipd || "") === String(nipd || ""),
+  );
   openRaporPrint(siswa);
 }

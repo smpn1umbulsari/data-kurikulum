@@ -3,30 +3,49 @@
 
   function renderUserRows(context) {
     const rows = [...context.users].sort((a, b) =>
-      String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" })
+      String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+        sensitivity: "base",
+      }),
     );
 
     if (rows.length === 0) {
       return `<tr><td colspan="${context.canManageAiPrompt ? 7 : 6}" class="empty-cell">Belum ada pengguna. Klik Tambah dari Data Guru.</td></tr>`;
     }
 
-    return rows.map(user => {
-      const safeId = context.escape(user.id || context.makeUserDocId(user.username));
-      const rawId = String(user.id || context.makeUserDocId(user.username));
-      const safeIdJs = rawId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
-      const isEditing = context.currentEditId === rawId;
-      const isAdminRole = String(user.role || "").trim().toLowerCase() === "admin";
-      const canAccessPrompt = user.can_generate_prompt !== false || isAdminRole;
-      const presence = typeof context.getPresenceForUser === "function" ? context.getPresenceForUser(user) : null;
-      const isOnline = typeof context.isPresenceOnline === "function" ? context.isPresenceOnline(presence) : Boolean(presence?.online);
-      const onlineLabel = typeof context.formatPresenceLabel === "function"
-        ? context.formatPresenceLabel(presence)
-        : (isOnline ? "Online" : "Offline");
-      const onlineMeta = presence && typeof context.formatPresenceAge === "function"
-        ? context.formatPresenceAge(presence.last_seen_at)
-        : "";
-      const onlineClass = isOnline ? "status-active" : "status-offline";
-      return `
+    return rows
+      .map((user) => {
+        const safeId = context.escape(
+          user.id || context.makeUserDocId(user.username),
+        );
+        const rawId = String(user.id || context.makeUserDocId(user.username));
+        const safeIdJs = rawId.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+        const isEditing = context.currentEditId === rawId;
+        const isAdminRole =
+          String(user.role || "")
+            .trim()
+            .toLowerCase() === "admin";
+        const canAccessPrompt =
+          user.can_generate_prompt !== false || isAdminRole;
+        const presence =
+          typeof context.getPresenceForUser === "function"
+            ? context.getPresenceForUser(user)
+            : null;
+        const isOnline =
+          typeof context.isPresenceOnline === "function"
+            ? context.isPresenceOnline(presence)
+            : Boolean(presence?.online);
+        const onlineLabel =
+          typeof context.formatPresenceLabel === "function"
+            ? context.formatPresenceLabel(presence)
+            : isOnline
+              ? "Online"
+              : "Offline";
+        const onlineMeta =
+          presence && typeof context.formatPresenceAge === "function"
+            ? context.formatPresenceAge(presence.last_seen_at)
+            : "";
+        const onlineClass = isOnline ? "status-active" : "status-offline";
+        return `
         <tr class="${isEditing ? "table-edit-row admin-user-edit-row" : ""}" data-admin-user-id="${safeId}">
           <td class="admin-user-name">
             <strong>${context.escape(user.nama || "-")}</strong>
@@ -36,14 +55,16 @@
           <td><input class="admin-user-input" id="userPassword-${safeId}" value="${context.escape(user.password || "")}" ${isEditing ? "" : "readonly"}></td>
           <td>
             <select class="admin-user-select" id="userRole-${safeId}" ${isEditing ? "" : "disabled"}>
-              ${context.roles.map(role => `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`).join("")}
+              ${context.roles.map((role) => `<option value="${role}" ${user.role === role ? "selected" : ""}>${role}</option>`).join("")}
             </select>
           </td>
         <td>
           <span class="status-pill ${onlineClass}">${context.escape(onlineLabel)}</span>
             ${onlineMeta ? `<small class="admin-user-online-meta">${context.escape(onlineMeta)}</small>` : ""}
           </td>
-          ${context.canManageAiPrompt ? `<td>
+          ${
+            context.canManageAiPrompt
+              ? `<td>
             <label class="admin-user-feature-toggle ${isAdminRole ? "is-locked" : ""}">
               <input
                 type="checkbox"
@@ -52,28 +73,36 @@
                 ${isAdminRole ? "checked disabled" : ""}
                 onchange="this.nextElementSibling.textContent = this.checked ? 'Aktif' : 'Nonaktif'; toggleUserGeneratePromptAccess('${safeIdJs}', this.checked)"
               >
-              <span>${isAdminRole ? "Selalu aktif" : (canAccessPrompt ? "Aktif" : "Nonaktif")}</span>
+              <span>${isAdminRole ? "Selalu aktif" : canAccessPrompt ? "Aktif" : "Nonaktif"}</span>
             </label>
-          </td>` : ""}
+          </td>`
+              : ""
+          }
           <td>
             <div class="admin-user-actions">
-              ${isEditing ? `
-                <button class="btn-primary btn-table-compact" onclick="saveUser('${safeIdJs}')">Simpan</button>
-                <button class="btn-secondary btn-table-compact" onclick="cancelEditAdminUser()">Batal</button>
-              ` : `
-                <button class="btn-secondary btn-table-compact" onclick="editAdminUser('${safeIdJs}')">Edit</button>
-              `}
-              <button class="btn-secondary btn-table-compact" onclick="resetSingleUserPassword('${safeIdJs}')">Reset</button>
-              <button class="btn-danger btn-table-compact" onclick="deleteUser('${safeIdJs}')">Hapus</button>
+              ${
+                isEditing
+                  ? `
+                <button class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveUser('${safeIdJs}')" title="Simpan" aria-label="Simpan"></button>
+                <button class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onclick="cancelEditAdminUser()" title="Batal" aria-label="Batal"></button>
+              `
+                  : `
+                <button class="btn-secondary btn-table-compact btn-action-edit table-action-icon-btn table-action-edit" onclick="editAdminUser('${safeIdJs}')" title="Edit" aria-label="Edit"></button>
+              `
+              }
+              <button class="btn-secondary btn-table-compact btn-action-reset table-action-icon-btn table-action-reset" onclick="resetSingleUserPassword('${safeIdJs}')" title="Reset Password" aria-label="Reset Password"></button>
+              <button class="btn-danger btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="deleteUser('${safeIdJs}')" title="Hapus" aria-label="Hapus"></button>
             </div>
           </td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   function renderUserPage(context) {
-    const activeTab = context.activeTab === "tambah-manual" ? "tambah-manual" : "daftar-user";
+    const activeTab =
+      context.activeTab === "tambah-manual" ? "tambah-manual" : "daftar-user";
     return `
       <div class="card">
         <div class="kelas-bayangan-head">
@@ -129,7 +158,7 @@
             <label class="form-group">
               <span>Role</span>
               <select id="newUserRole" onchange="handleAdminRoleSourceChange(); fillAdminUserFromSource()">
-                ${context.roles.map(role => `<option value="${role}">${role}</option>`).join("")}
+                ${context.roles.map((role) => `<option value="${role}">${role}</option>`).join("")}
               </select>
             </label>
             <label class="form-group">
@@ -163,6 +192,6 @@
 
   global.AdminUsersView = {
     renderUserRows,
-    renderUserPage
+    renderUserPage,
   };
 })(window);

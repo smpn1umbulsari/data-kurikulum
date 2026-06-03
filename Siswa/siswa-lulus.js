@@ -45,35 +45,52 @@ function escapeSiswaLulusHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+function renderSiswaLulusTabs() {
+  if (typeof renderSiswaModuleTabs === "function") return renderSiswaModuleTabs("siswa-lulus");
+  return `
+    <div class="siswa-module-tabs" role="tablist" aria-label="Navigasi data siswa">
+      <button type="button" class="siswa-module-tab" role="tab" aria-selected="false" onclick="loadPage('lihat')">Siswa Aktif</button>
+      <button type="button" class="siswa-module-tab active" role="tab" aria-selected="true" onclick="loadPage('siswa-lulus')">Siswa Lulus</button>
+    </div>
+  `;
+}
+
 function renderSiswaLulusPage() {
   const activeTahun = getSiswaLulusActiveTahun();
   const tahunOptions = [...new Set(getVisibleSiswaLulusData().map(item => item.tahun_pelajaran_lulus).filter(Boolean))]
     .sort((a, b) => String(b).localeCompare(String(a), undefined, { numeric: true }));
   if (siswaLulusTahun && !tahunOptions.includes(siswaLulusTahun)) siswaLulusTahun = "";
   return `
-    <div class="card">
-      <div class="kelas-bayangan-head nilai-page-head">
+    <div class="card siswa-module-panel siswa-lulus-panel">
+      <div class="siswa-module-header">
         <div>
-          <span class="dashboard-eyebrow">Data Siswa</span>
+          <span class="dashboard-eyebrow">Akademik</span>
           <h2>Siswa Lulus</h2>
           <p>Menampilkan data kelulusan sebelum tahun pelajaran yang sedang dibuka${activeTahun ? ` (${escapeSiswaLulusHtml(activeTahun)})` : ""}.</p>
         </div>
       </div>
 
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <input id="siswaLulusSearch" placeholder="Cari nama / NIPD / NISN" value="${escapeSiswaLulusHtml(siswaLulusSearch)}" oninput="setSiswaLulusSearch(this.value)">
-        </div>
-        <div class="toolbar-right">
-          <select id="siswaLulusTahun" onchange="setSiswaLulusTahun(this.value)">
-            <option value="">Semua Tahun Sebelumnya</option>
-            ${tahunOptions.map(tahun => `<option value="${escapeSiswaLulusHtml(tahun)}" ${tahun === siswaLulusTahun ? "selected" : ""}>${escapeSiswaLulusHtml(tahun)}</option>`).join("")}
-          </select>
+      ${renderSiswaLulusTabs()}
+
+      <div class="siswa-toolbar-panel siswa-lulus-toolbar">
+        <div class="siswa-filter-grid siswa-lulus-filter-grid">
+          <label class="siswa-field siswa-field-search" for="siswaLulusSearch">
+            <span>Pencarian</span>
+            <input id="siswaLulusSearch" placeholder="Cari nama, NIPD, atau NISN..." value="${escapeSiswaLulusHtml(siswaLulusSearch)}" oninput="setSiswaLulusSearch(this.value)">
+          </label>
+
+          <label class="siswa-field" for="siswaLulusTahun">
+            <span>Tahun Lulus</span>
+            <select id="siswaLulusTahun" onchange="setSiswaLulusTahun(this.value)">
+              <option value="">Semua Tahun Sebelumnya</option>
+              ${tahunOptions.map(tahun => `<option value="${escapeSiswaLulusHtml(tahun)}" ${tahun === siswaLulusTahun ? "selected" : ""}>${escapeSiswaLulusHtml(tahun)}</option>`).join("")}
+            </select>
+          </label>
         </div>
       </div>
 
-      <div class="table-container">
-        <table>
+      <div class="table-container siswa-table-container">
+        <table class="siswa-compact-table siswa-lulus-table">
           <thead>
             <tr>
               <th>No</th>

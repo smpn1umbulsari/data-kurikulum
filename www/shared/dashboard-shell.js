@@ -317,10 +317,10 @@
     if (["admin-user", "admin-hierarki"].includes(page)) return false;
     if (role === "guru") {
       if (shell.canUseCoordinatorAccess()) {
-        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+        return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "tugas-tambahan", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "nilai-rapor", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
       }
       if (WALI_PAGE_IDS.includes(page)) return shell.hasWaliAccess();
-      return ["nilai-input-guru", "nilai-input-semester-guru", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
+      return ["guru-lihat", "tugas-tambahan", "nilai-input-guru", "nilai-input-semester-guru", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     }
     if (role === "koordinator") return ["input", "lihat", "kelas", "kelas-bayangan-siswa", "nilai-input", "nilai-input-semester", "nilai-input-guru", "nilai-input-semester-guru", "rekap-nilai", "wali-rekap-nilai", "wali-kehadiran", "wali-kelengkapan", "ai-soal", "generate-perangkat-pembelajaran"].includes(page);
     if (role === "urusan") return !["guru-input", "guru-lihat", "input", "lihat", "nilai-input", "nilai-rapor"].includes(page) || ["ai-soal", "generate-perangkat-pembelajaran"].includes(page);

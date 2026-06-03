@@ -95,9 +95,19 @@ function sortTugasTambahan(data) {
   });
 }
 
+function renderTugasTambahanModuleTabs() {
+  if (typeof renderGuruModuleTabs === "function") return renderGuruModuleTabs("tugas-tambahan");
+  return `
+    <div class="siswa-module-tabs guru-module-tabs" role="tablist" aria-label="Navigasi guru dan tugas tambahan">
+      <button type="button" class="siswa-module-tab guru-module-tab" role="tab" aria-selected="false" onclick="loadPage('guru-lihat')">Data Guru</button>
+      <button type="button" class="siswa-module-tab guru-module-tab active" role="tab" aria-selected="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+    </div>
+  `;
+}
+
 function renderTugasTambahanPage() {
   return `
-    <div class="card">
+    <div class="card guru-module-panel tugas-tambahan-module-panel">
       <div class="kelas-bayangan-head">
         <div>
           <span class="dashboard-eyebrow">Pembagian Tugas dan Mengajar</span>
@@ -105,6 +115,8 @@ function renderTugasTambahanPage() {
           <p>Daftar tugas tambahan utama dan ekuivalen beserta jumlah JP.</p>
         </div>
       </div>
+
+      ${renderTugasTambahanModuleTabs()}
 
       <div class="toolbar-info">
         <span id="jumlahDataTugasTambahan">0 tugas tambahan</span>

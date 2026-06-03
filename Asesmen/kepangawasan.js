@@ -1454,7 +1454,7 @@
     return `
       <div class="kepangawasan-grid kepangawasan-grid-single">
         <section class="card kepangawasan-panel">
-          <div class="asesmen-page-head kepangawasan-head">
+          <div class="asesmen-module-header kepangawasan-page-head">
             <div>
               <span class="dashboard-eyebrow">Asesmen</span>
               <h2>Jadwal Ujian</h2>
@@ -1600,7 +1600,7 @@
     return `
       <div class="kepangawasan-grid kepangawasan-grid-single">
         <section class="card kepangawasan-panel">
-          <div class="asesmen-page-head kepangawasan-head">
+          <div class="asesmen-module-header kepangawasan-page-head">
             <div>
               <span class="dashboard-eyebrow">Asesmen</span>
               <h2>Jadwal Mengawasi</h2>
@@ -1919,7 +1919,7 @@
     return `
       <div class="kepangawasan-grid kepangawasan-grid-single">
         <section class="card kepangawasan-panel">
-          <div class="asesmen-page-head kepangawasan-head">
+          <div class="asesmen-module-header kepangawasan-page-head">
             <div>
               <span class="dashboard-eyebrow">Asesmen</span>
               <h2>Pembagian Ruang</h2>
@@ -2107,7 +2107,7 @@
     return `
       <div class="kepangawasan-grid kepangawasan-grid-single">
         <section class="card kepangawasan-panel">
-          <div class="asesmen-page-head kepangawasan-head">
+          <div class="asesmen-module-header kepangawasan-page-head">
             <div>
               <span class="dashboard-eyebrow">Asesmen</span>
               <h2>Kartu Pengawas</h2>

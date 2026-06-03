@@ -5,14 +5,15 @@
     const value = context.getSetting("Keterangan", "Akhir Tahun");
     const options = context.keteranganOptions;
     const hasStoredValue = options.includes(value);
-    const extraOption = value && !hasStoredValue
-      ? `<option value="${context.escape(value)}" selected>${context.escape(value)}</option>`
-      : "";
+    const extraOption =
+      value && !hasStoredValue
+        ? `<option value="${context.escape(value)}" selected>${context.escape(value)}</option>`
+        : "";
 
     return `
       <select class="kelas-inline-select" onchange="setAdministrasiAsesmenSetting('Keterangan', this.value)">
         ${extraOption}
-        ${options.map(option => `<option value="${context.escape(option)}" ${option === value ? "selected" : ""}>${context.escape(option)}</option>`).join("")}
+        ${options.map((option) => `<option value="${context.escape(option)}" ${option === value ? "selected" : ""}>${context.escape(option)}</option>`).join("")}
       </select>
     `;
   }
@@ -20,7 +21,7 @@
   function renderAdministrasiPage(context) {
     return `
       <div class="card">
-        <div class="asesmen-page-head">
+        <div class="asesmen-module-header">
           <div>
             <span class="dashboard-eyebrow">Asesmen</span>
             <h2>Administrasi</h2>
@@ -56,27 +57,27 @@
             <tbody>
               <tr>
                 <td class="asesmen-admin-name-cell">Daftar Peserta</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-secondary btn-table-compact" onclick="exportDaftarPesertaAsesmenExcel()">Download Excel</button></td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-secondary btn-table-compact btn-action-download table-action-icon-btn table-action-download" onclick="exportDaftarPesertaAsesmenExcel()" title="Download Excel" aria-label="Download Excel"></button></td>
               </tr>
               <tr>
                 <td class="asesmen-admin-name-cell">Tempel Kaca</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportTempelKacaPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportTempelKacaPDF()" title="Export PDF" aria-label="Export PDF Tempel Kaca"></button></td>
               </tr>
               <tr>
                 <td class="asesmen-admin-name-cell">Data Map</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportDataMapPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportDataMapPDF()" title="Export PDF" aria-label="Export PDF Data Map"></button></td>
               </tr>
               <tr>
                 <td class="asesmen-admin-name-cell">Denah Peserta</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportDenahPesertaPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportDenahPesertaPDF()" title="Export PDF" aria-label="Export PDF Denah Peserta"></button></td>
               </tr>
               <tr>
                 <td class="asesmen-admin-name-cell">Label 121</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="promptExportLabel121PDF()">Export PDF</button></td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="promptExportLabel121PDF()" title="Export PDF" aria-label="Export PDF Label 121"></button></td>
               </tr>
               <tr>
                 <td class="asesmen-admin-name-cell">Kartu Peserta</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="promptExportKartuPesertaPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="promptExportKartuPesertaPDF()" title="Export PDF" aria-label="Export PDF Kartu Peserta"></button></td>
               </tr>
             </tbody>
           </table>
@@ -92,7 +93,7 @@
 
     const filledCounts = settings.manualCounts
       .slice(0, context.jumlahRuangUjian)
-      .map(value => Math.min(Math.max(Number(value) || 0, 0), 20));
+      .map((value) => Math.min(Math.max(Number(value) || 0, 0), 20));
 
     return `
       <div class="asesmen-manual-summary">
@@ -112,7 +113,9 @@
     const isEnabled = context.draftSettings[level].enabled !== false;
     return `
       <div class="asesmen-range-grid">
-        ${ranges.map((range, index) => `
+        ${ranges
+          .map(
+            (range, index) => `
           <div class="asesmen-range-group">
             <span>Rentang ${index + 1}</span>
             <input
@@ -132,7 +135,9 @@
               oninput="setAsesmenRoomRange('${level}', ${index}, 'end', this.value)"
             >
           </div>
-        `).join("")}
+        `,
+          )
+          .join("")}
       </div>
     `;
   }
@@ -181,7 +186,7 @@
   function renderPembagianPage(context) {
     return `
       <div class="card">
-        <div class="asesmen-page-head">
+        <div class="asesmen-module-header">
           <div>
             <span class="dashboard-eyebrow">Asesmen</span>
             <h2>Pembagian Ruang</h2>
@@ -225,7 +230,7 @@
         </div>
 
         <div class="asesmen-level-grid">
-          ${[7, 8, 9].map(level => renderLevelPanel(context, level)).join("")}
+          ${[7, 8, 9].map((level) => renderLevelPanel(context, level)).join("")}
         </div>
 
         <section class="asesmen-arrangement">
@@ -247,6 +252,6 @@
     renderManualInputs,
     renderRoomRangeInputs,
     renderLevelPanel,
-    renderPembagianPage
+    renderPembagianPage,
   };
 })(window);

@@ -1029,7 +1029,7 @@ function renderAdministrasiAsesmenPage() {
   }
   return `
     <div class="card">
-      <div class="asesmen-page-head">
+      <div class="asesmen-module-header">
         <div>
           <span class="dashboard-eyebrow">Asesmen</span>
           <h2>Administrasi</h2>
@@ -1065,7 +1065,7 @@ function renderAdministrasiAsesmenPage() {
           <tbody>
             <tr>
               <td>Tempel Kaca</td>
-              <td><button type="button" class="btn-primary btn-table-compact" onclick="exportTempelKacaPDF()">Export PDF</button></td>
+              <td><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportTempelKacaPDF()" title="Export PDF" aria-label="Export PDF Tempel Kaca"></button></td>
             </tr>
             <tr>
               <td>Label 121</td>
@@ -1137,7 +1137,7 @@ function renderAsesmenManualInputs(level) {
     <div class="asesmen-manual-summary">
       <div class="asesmen-manual-summary-head">
         <span>Manual per ruang</span>
-          <button type="button" class="btn-secondary btn-table-compact" onclick="openAsesmenManualCountDialog('${level}')" ${isEnabled ? "" : "disabled"}>Set Pembagian Manual</button>
+          <button type="button" class="btn-secondary btn-table-compact table-action-icon-btn table-action-apply" onclick="openAsesmenManualCountDialog('${level}')" title="Set Pembagian Manual" aria-label="Set Pembagian Manual" ${isEnabled ? "" : "disabled"}></button>
       </div>
       <div class="asesmen-level-summary">
         ${Array.from({ length: jumlahRuangUjian }, (_, index) => `<span>Ruang ${index + 1}: ${filledCounts[index] || 0}</span>`).join("")}
@@ -1233,7 +1233,7 @@ function renderAsesmenLevelPanel(level) {
       ${renderAsesmenManualInputs(level)}
 
       <div class="asesmen-panel-actions">
-        <button type="button" class="btn-primary btn-table-compact" onclick="applyAsesmenLevelSettings('${level}')" ${isEnabled ? "" : "disabled"}>Set Kelas ${level}</button>
+        <button type="button" class="btn-primary btn-table-compact table-action-icon-btn table-action-apply" onclick="applyAsesmenLevelSettings('${level}')" title="Set Kelas ${level}" aria-label="Set Kelas ${level}" ${isEnabled ? "" : "disabled"}></button>
         <span class="mapel-row-hint">${isEnabled ? "Perubahan panel ini diterapkan setelah klik Set." : `Kelas ${level} nonaktif dan dikeluarkan dari pembagian ruang.`}</span>
       </div>
 
@@ -1256,7 +1256,7 @@ function renderPembagianRuangPage() {
   }
   return `
     <div class="card">
-      <div class="asesmen-page-head">
+      <div class="asesmen-module-header">
         <div>
           <span class="dashboard-eyebrow">Asesmen</span>
           <h2>Pembagian Ruang</h2>
@@ -1290,7 +1290,7 @@ function renderPembagianRuangPage() {
                 <option value="asli" ${draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
               </select>
             </label>
-            <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()">Set</button>
+            <button type="button" class="btn-primary table-action-icon-btn table-action-apply" onclick="applyJumlahRuangUjian()" title="Set Pengaturan" aria-label="Set Pengaturan"></button>
           </div>
         </label>
       </div>

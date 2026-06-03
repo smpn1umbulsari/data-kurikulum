@@ -1,0 +1,29 @@
+﻿Rencana Perbaikan UI
+
+1. Hasil audit singkat
+- UI inti sudah fungsional, tetapi belum seragam di semua halaman.
+- Sidebar terlalu padat dan berisi banyak grup serta submenu.
+- Home dashboard paling matang, tetapi masih terlalu ramai untuk beberapa role.
+- Login punya visual kuat, namun terasa terlalu berat untuk halaman masuk.
+- Mobile sudah dibantu dengan stylesheet khusus, tetapi masih banyak pola desktop yang hanya di-override.
+- Layar data besar seperti nilai dan rapor paling rawan karena density tinggi dan tabel lebar.
+
+2. Prioritas perbaikan
+- Konsolidasi stylesheet inti agar source of truth lebih jelas.
+- Ringkas sidebar dan permudah scanning menu.
+- Standarkan header, toolbar, empty state, dan tabel pada semua modul.
+- Ubah mobile menjadi layout yang benar-benar disederhanakan, bukan sekadar override.
+- Kurangi beban visual login agar akses form lebih cepat.
+
+3. Urutan kerja
+- Fase 1: rapikan token desain, tombol, input, tabel, dan warna dasar.
+- Fase 2: sederhanakan shell dashboard, topbar, dan sidebar.
+- Fase 3: seragamkan layout modul data untuk siswa, guru, kelas, mapel, dan nilai.
+- Fase 4: optimalkan halaman mobile untuk layar kecil dan tabel besar.
+- Fase 5: audit akhir aksesibilitas, dark mode, spacing, dan state kosong.
+
+4. Target hasil
+- Navigasi lebih cepat dipahami.
+- Semua modul terasa satu sistem.
+- Mobile lebih ringan dan lebih mudah dipakai.
+- Halaman data padat tetap usable tanpa banyak geser atau kebingungan.

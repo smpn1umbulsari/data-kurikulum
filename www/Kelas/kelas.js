@@ -609,7 +609,7 @@ function renderKelasCreateForm() {
   const autoRombel = getCurrentDraftRombel();
 
   return `
-    <div class="kelas-form-panel">
+    <div class="kelas-form-panel kelas-create-panel">
       <span class="mapel-row-hint">Data Kelas</span>
       <h3>Tambah kelas</h3>
       <div class="kelas-form-grid">
@@ -628,7 +628,7 @@ function renderKelasCreateForm() {
         </div>
       </div>
 
-      <div class="kelas-form-actions">
+      <div class="kelas-form-actions kelas-create-actions">
         <button id="btnSimpanKelas" class="btn-primary" onclick="simpanKelasData()">Tambah Kelas</button>
         <button class="btn-secondary" onclick="showAcakWaliKelasModal()">Acak Wali Kelas</button>
         <button class="btn-secondary" onclick="undoAcakWaliKelas()" ${hasAcakWaliUndo() ? "" : "disabled"}>Undo Acak</button>
@@ -754,7 +754,7 @@ function renderKelasRow(item, nomor) {
     const currentTingkat = parts.tingkat || "7";
     const currentRombel = parts.rombel || getNextRombelForTingkat(currentTingkat, item.kelas);
     return `
-      <tr class="table-edit-row mapel-edit-row" data-kelas-id="${escapeKelasHtml(item.kelas || parts.kelas)}">
+      <tr class="table-edit-row mapel-edit-row kelas-edit-row" data-kelas-id="${escapeKelasHtml(item.kelas || parts.kelas)}">
         <td>
           <select id="editTingkatKelas" onchange="syncEditKelasAutoField('${kelasJs}')" onkeydown="handleKelasEditKey(event, '${kelasJs}')">
             <option value="7" ${currentTingkat === "7" ? "selected" : ""}>7</option>
@@ -770,9 +770,9 @@ function renderKelasRow(item, nomor) {
         </td>
         <td>${jumlahAnggota} siswa</td>
         <td>
-          <div class="table-action-stack">
-            <button class="btn-primary btn-table-compact btn-action-save" onclick="saveEditKelas('${kelasJs}')">Simpan</button>
-            <button class="btn-secondary btn-table-compact btn-action-cancel" onclick="cancelEditKelas()">Batal</button>
+          <div class="table-action-stack kelas-row-actions">
+            <button class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveEditKelas('${kelasJs}')" title="Simpan" aria-label="Simpan">Simpan</button>
+            <button class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onclick="cancelEditKelas()" title="Batal" aria-label="Batal">Batal</button>
           </div>
         </td>
       </tr>
@@ -786,11 +786,11 @@ function renderKelasRow(item, nomor) {
       <td>${renderWaliKelasDisplay(item)}</td>
       <td>${jumlahAnggota} siswa</td>
       <td>
-        <div class="table-action-stack">
-          <button class="btn-secondary btn-table-compact btn-action-members" onclick="showAnggotaKelas('${kelasJs}')">Anggota</button>
+        <div class="table-action-stack kelas-row-actions">
+          <button class="btn-secondary btn-table-compact btn-action-members table-action-icon-btn table-action-members" onclick="showAnggotaKelas('${kelasJs}')" title="Anggota" aria-label="Anggota">Anggota</button>
           ${isReadOnly ? "" : `
-            <button class="btn-secondary btn-table-compact btn-action-edit" onclick="editKelas('${kelasJs}')">Edit</button>
-            <button class="btn-secondary btn-table-compact btn-action-delete" onclick="hapusKelas('${kelasJs}')">Hapus</button>
+            <button class="btn-secondary btn-table-compact btn-action-edit table-action-icon-btn table-action-edit" onclick="editKelas('${kelasJs}')" title="Edit" aria-label="Edit">Edit</button>
+            <button class="btn-secondary btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="hapusKelas('${kelasJs}')" title="Hapus" aria-label="Hapus">Hapus</button>
           `}
         </div>
       </td>

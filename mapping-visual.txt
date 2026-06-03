@@ -1,0 +1,349 @@
+﻿# Mapping Visual Project
+
+Dokumen ini memetakan hubungan antar file utama agar alur runtime dan titik ketergantungan lebih mudah dibaca.
+
+## 1. Alur Entry Point
+
+`index.html` -> cek login dan maintenance -> arahkan ke `login.html`, `dashboard.html`, atau `maintenance.html`
+
+`login.html` -> baca konfigurasi Supabase + maintenance mode -> proses login -> simpan state ke `localStorage` -> redirect ke `dashboard.html`
+
+`dashboard.html` -> muat CSS + shared core + seluruh modul domain -> jalankan `DashboardShell.bootstrap()` -> aktifkan router dan render halaman awal
+
+`maintenance.html` -> tampilkan halaman pembatasan akses saat maintenance aktif
+
+## 2. Alur Runtime Dashboard
+
+`dashboard.html`
+- memuat `shared/app-utils.js`
+- memuat `shared/app-dom.js`
+- memuat `shared/app-router.js`
+- memuat `shared/dashboard-shell.js`
+- memuat `shared/dashboard-data.js`
+- memuat `shared/dashboard-home.js`
+- memuat `shared/dashboard-routes.js`
+- memuat modul domain `Siswa/`, `Guru/`, `Kelas/`, `Mapel/`, `Nilai/`, `Rekap/`, `Kurikulum/`, `Admin/`, `WaliKelas/`, `Mengajar/`, `Asesmen/`
+
+`DashboardShell.bootstrap()`
+- membaca user dari `localStorage`
+- menentukan role dan akses menu
+- mengatur presence tracking
+- memilih route aktif
+- memanggil render function modul melalui router
+
+`AppRouter.navigate()`
+- menjalankan `beforeEnter()` bila ada
+- mengubah judul halaman
+- mengisi `content.innerHTML`
+- menjalankan `afterEnter()` bila ada
+
+## 3. Lapisan Shared
+
+### Utilitas dasar
+
+`shared/app-utils.js`
+- dipakai oleh banyak modul untuk escape HTML, parse kelas, simpan/ambil JSON, format tanggal
+- menjadi helper umum untuk render, tabel, dan parsing data
+
+`shared/app-dom.js`
+- dipakai oleh shell dan modul untuk manipulasi DOM ringan
+- menyediakan helper text, html, display, dan class body
+
+### Routing dan modul
+
+`shared/app-router.js`
+- menerima route registry dari `shared/dashboard-routes.js`
+- menjadi penghubung antara page key dan render function
+
+`shared/dashboard-routes.js`
+- memetakan key halaman ke title, beforeEnter, render, afterEnter
+- menjadi pusat rute untuk seluruh domain
+
+`shared/dashboard-module-loader.js`
+- dipakai saat perlu load script modul secara dinamis
+- cocok untuk halaman yang tidak dimuat langsung sejak awal
+
+### Shell dan state global
+
+`shared/dashboard-shell.js`
+- mengatur logout
+- membaca user dan role aktif
+- presence tracking user online
+- akses menu berbasis role dan coordinator level
+- helper kondisi dashboard
+
+`shared/dashboard-home.js`
+- menyiapkan home dashboard
+- menyimpan snapshot tampilan dan cache ringkas
+- mengambil data summary untuk dashboard
+
+`shared/dashboard-home-data.js`
+- memasok data agregat untuk home
+
+`shared/dashboard-data.js`
+- membungkus query collection dengan aturan umum, terutama untuk kelas dan siswa yang mengikuti semester aktif
+
+`shared/responsive-tables.js`
+- memperhalus tabel agar adaptif terhadap tampilan mobile
+- menambahkan class khusus pada tabel nilai dan tabel biasa
+
+`shared/maintenance-mode.js`
+- menentukan apakah aplikasi dalam mode maintenance
+- dipakai oleh `index.html`, `login.html`, dan shell untuk gating akses
+
+`shared/supabase-documents.js`
+- abstraksi data utama yang dipakai hampir semua modul CRUD
+
+## 4. Lapisan Koneksi Data
+
+`src/supabase-client.js`
+- inisialisasi client Supabase
+
+`src/bootstrap.js`
+- menempelkan client Supabase ke `window.supabaseClient` untuk kompatibilitas legacy
+- dipakai terutama saat transisi dari script global ke ES module
+
+`supabase-config.js`
+- sumber konfigurasi runtime untuk API URL dan anon key
+
+`supabase-firestore-compat.js`
+- adapter agar kode lama yang menyerupai Firestore tetap bisa berjalan di Supabase
+
+## 5. Hubungan Modul Domain
+
+### Siswa
+
+`Siswa/ui.js`
+- render form, tabel, tab, toolbar, dan filter siswa
+- sangat bergantung pada helper shared dan fungsi CRUD
+
+`Siswa/crud.js`
+- simpan, update, hapus, dan fetch data siswa
+
+`Siswa/murid.js`
+- logika data siswa yang lebih domain-specific
+
+`Siswa/validation.js`
+- validasi input siswa
+
+`Siswa/excel.js`
+- import/export spreadsheet siswa
+
+`Siswa/kelas-bayangan.js`
+- mengelola kelas bayangan dan pemetaan siswa
+
+`Siswa/siswa-lulus.js`
+- halaman dan flow siswa lulus
+
+Relasi penting:
+- `Siswa/ui.js` memanggil `renderTable`, `renderForm`, `loadPage`, dan fungsi filter global
+- `dashboard.html` harus memuat script siswa sebelum route `input` atau `lihat` dipakai
+
+### Guru
+
+`Guru/ui.js`
+- render form dan tabel guru
+
+`Guru/crud.js`
+- operasi CRUD guru
+
+`Guru/guru.js`
+- logika format nama, mapel, dan transformasi guru
+
+`Guru/validation.js`
+- validasi data guru
+
+Relasi penting:
+- `Guru/ui.js` mengikuti pola halaman data yang mirip dengan siswa, tetapi masih punya class spesifik sendiri
+- menu dashboard memanggil page guru melalui router dan render global
+
+### Kelas
+
+`Kelas/ui.js`
+- render halaman data kelas dan toolbar
+
+`Kelas/crud.js`
+- operasi CRUD kelas
+
+`Kelas/kelas.js`
+- logika utama data kelas, wali, template, dan utilitas export
+
+Relasi penting:
+- dipakai oleh route kelas dan juga berpengaruh ke modul nilai serta rekap
+
+### Mapel
+
+`Mapel/ui.js`
+- render halaman mapel dan tabel master
+
+`Mapel/crud.js`
+- CRUD mapel
+
+`Mapel/mapel.js`
+- logika domain mapel, termasuk template import dan sinkronisasi
+
+Relasi penting:
+- menjadi sumber data untuk `Mengajar/`, `Nilai/`, dan beberapa halaman rekap
+
+### Mengajar dan Tugas Tambahan
+
+`Mengajar/ui.js`
+- render pembagian mengajar
+
+`Mengajar/crud.js`
+- CRUD data mengajar
+
+`Mengajar/mengajar.js`
+- logika pembagian mengajar
+
+`TugasTambahan/tugas-tambahan.js`
+- data tugas tambahan guru
+
+Relasi penting:
+- sering memakai data guru dan mapel
+- route-nya dikelola oleh `shared/dashboard-routes.js`
+
+### Nilai dan Rapor
+
+`Nilai/nilai.js`
+- modul terbesar untuk input nilai
+- memegang state, cache, mode input, render, dan logika sinkronisasi
+
+`Nilai/nilai-data.js`
+- helper data nilai
+
+`Nilai/rapor.js`
+- render rapor, catatan, dan print/export
+
+`Rekap/rekap.js`
+- rekap nilai lintas kelas/mapel
+
+`Rekap/rekap-v2.js`
+- varian atau penerus rekap
+
+`WaliKelas/wali-kelas.js`
+- absensi, rekap, dan tampilan wali kelas
+
+`WaliKelas/wali-kelas-view.js`
+- view layer wali kelas
+
+`WaliKelas/wali-kelas-service.js`
+- service/data layer wali kelas
+
+Relasi penting:
+- `Nilai/nilai.js` dan `Nilai/rapor.js` berbagi banyak konsep nilai, kelas, mapel, dan mode akses
+- ini area paling rapat karena logic dan UI bercampur cukup kuat
+
+### Kurikulum
+
+`Kurikulum/kalender-pendidikan.js`
+- kalender pendidikan, preview, pencetakan, dan tampilan periodik
+
+`Semester/semester.js`
+- memilih semester aktif dan konteks tahun ajaran
+
+`Kurikulum/dashboard.html`
+- entry terpisah untuk modul kurikulum bila dijalankan standalone
+
+Relasi penting:
+- modul kalender sering menghasilkan markup besar dan print view sendiri
+- sangat bergantung pada data semester aktif dan logo/asset sekolah
+
+### Admin
+
+`Admin/users.js`
+- halaman akun dan pengguna
+
+`Admin/admin-users-view.js`
+- render view pengguna
+
+`Admin/admin-users-service.js`
+- service CRUD user dan identity
+
+`Admin/admin-users-identity.js`
+- identitas dan relasi pengguna
+
+`Admin/backup.js`
+- backup dan restore
+
+`Admin/quota.js`
+- quota Supabase
+
+`Admin/data-health.js`
+- pemeriksaan kesehatan data
+
+`Admin/audit-log.js`
+- log aktivitas
+
+Relasi penting:
+- banyak bagian admin memanfaatkan shell dan data service yang sama
+- halaman admin cenderung memakai state dan akses yang paling sensitif
+
+### Asesmen
+
+`Asesmen/soal-ai.js`
+- generate prompt / soal AI
+
+`Asesmen/pembagian-ruang.js`
+- entry pembagian ruang asesmen
+
+`Asesmen/pembagian-ruang-view.js`
+- view pembagian ruang
+
+`Asesmen/pembagian-ruang-service.js`
+- service pembagian ruang
+
+`Asesmen/pembagian-ruang-store.js`
+- store state pembagian ruang
+
+`Asesmen/pembagian-ruang-v2.js`
+- versi lanjutan pembagian ruang
+
+`Asesmen/kepangawasan.js`
+- kepangawasan asesmen
+
+`Asesmen/administrasi-settings.js`
+- pengaturan administrasi asesmen
+
+`Asesmen/generate-pengawasan-apps-script.js`
+- generator Apps Script
+
+`Asesmen/Code.gs`
+- skrip Google Apps Script utama
+
+Relasi penting:
+- area ini campuran antara UI web dan generator script eksternal
+- struktur state dan view lebih tersebar dibanding modul lain
+
+## 6. Lapisan Styling
+
+`css/design-system.css`
+- sumber token dan komponen modern
+- paling layak dijadikan baseline utama
+
+`style.css`
+- masih memegang banyak legacy style
+- mengandung banyak section besar yang menimpa komponen modern
+
+`mobile-redesign.css`
+- lapisan koreksi khusus mobile
+- banyak override penting untuk shell dan tabel
+
+Relasi styling:
+- `css/design-system.css` memberi fondasi
+- `style.css` masih memuat banyak komponen lama dan variasi halaman
+- `mobile-redesign.css` menambal perilaku layar kecil di atas keduanya
+
+## 7. Jalur Yang Paling Rapuh
+
+1. `dashboard.html` -> script order -> `shared/dashboard-routes.js` -> modul domain global
+2. `style.css` -> override besar -> bertabrakan dengan `css/design-system.css`
+3. `Nilai/nilai.js` -> cache/state banyak -> rentan regresi saat refactor UI
+4. `Kurikulum/kalender-pendidikan.js` -> markup print besar -> sulit dipisah tanpa retesting visual
+5. Root vs `www/` -> perubahan bisa tidak sinkron kalau tidak dicek dua sisi
+
+## 8. Kesimpulan Struktur
+
+- Arsitektur saat ini sudah punya fondasi shared yang cukup jelas.
+- Problem utamanya bukan ketiadaan struktur, tetapi campuran antara sistem baru dan legacy global yang masih hidup berdampingan.
+- Titik refactor terbaik adalah `css/design-system.css`, `shared/dashboard-shell.js`, `shared/dashboard-routes.js`, lalu modul data padat seperti `Siswa`, `Guru`, `Kelas`, `Mapel`, dan `Nilai`.

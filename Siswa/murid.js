@@ -469,7 +469,8 @@ function resetFilter() {
   document.getElementById("filterTingkat").value = levels.length === 1 ? levels[0] : "";
   populateSiswaFilterKelasOptions(levels.length === 1 ? levels[0] : "", "");
   document.getElementById("filterKelas").value = "";
-  document.getElementById("filterJK").value = "";
+  const filterJK = document.getElementById("filterJK");
+  if (filterJK) filterJK.value = "";
   document.getElementById("filterAgama").value = "";
 
   currentPage = 1;

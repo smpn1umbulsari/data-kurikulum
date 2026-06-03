@@ -21,20 +21,31 @@ function escapeRekapHtml(value) {
 
 function renderRekapTugasMengajarPage() {
   return `
-    <div class="card">
-      <div class="kelas-bayangan-head">
+    <div class="card rekap-module-panel">
+      <div class="rekap-module-header">
         <div>
           <span class="dashboard-eyebrow">Rekap</span>
           <h2>Rekap Tugas dan Mengajar</h2>
-          <p>Ringkasan tugas mengajar, tugas tambahan, dan total JP setiap guru.</p>
+        </div>
+        <div class="rekap-toolbar-actions">
+          <button class="btn-secondary rekap-action-btn" onclick="refreshRekapTable()">
+            <span class="rekap-action-icon rekap-icon-refresh" aria-hidden="true"></span>
+            Refresh
+          </button>
         </div>
       </div>
 
-      <div class="toolbar-info">
+      <p class="rekap-module-description">Ringkasan tugas mengajar, tugas tambahan, dan total JP setiap guru.</p>
+
+      <div class="rekap-table-meta">
         <span id="rekapTugasMengajarInfo">Memuat data rekap...</span>
       </div>
 
       <div id="rekapTugasMengajarContainer"></div>
+
+      <div id="emptyStateRekap" class="rekap-empty-state" style="display:none;">
+        Belum ada data guru untuk direkap.
+      </div>
     </div>
   `;
 }
@@ -46,30 +57,40 @@ function loadRealtimeRekapTugasMengajar() {
   if (unsubscribeRekapTugasTambahan) unsubscribeRekapTugasTambahan();
   if (unsubscribeRekapGuruTugasTambahan) unsubscribeRekapGuruTugasTambahan();
 
-  unsubscribeRekapGuru = listenGuru(data => {
+  unsubscribeRekapGuru = listenGuru((data) => {
     semuaDataRekapGuru = data;
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapMengajar = listenMengajar(data => {
+  unsubscribeRekapMengajar = listenMengajar((data) => {
     semuaDataRekapMengajar = data;
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapMapel = listenMapel(data => {
+  unsubscribeRekapMapel = listenMapel((data) => {
     semuaDataRekapMapel = data;
     renderRekapTugasMengajarTable();
   });
 
-  unsubscribeRekapTugasTambahan = getRekapDocumentsApi().collection("tugas_tambahan").onSnapshot(snapshot => {
-    semuaDataRekapTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRekapTugasMengajarTable();
-  });
+  unsubscribeRekapTugasTambahan = getRekapDocumentsApi()
+    .collection("tugas_tambahan")
+    .onSnapshot((snapshot) => {
+      semuaDataRekapTugasTambahan = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      renderRekapTugasMengajarTable();
+    });
 
-  unsubscribeRekapGuruTugasTambahan = getRekapDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
-    semuaDataRekapGuruTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderRekapTugasMengajarTable();
-  });
+  unsubscribeRekapGuruTugasTambahan = getRekapDocumentsApi()
+    .collection("guru_tugas_tambahan")
+    .onSnapshot((snapshot) => {
+      semuaDataRekapGuruTugasTambahan = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      renderRekapTugasMengajarTable();
+    });
 }
 
 function renderRekapTugasMengajarTable() {
@@ -120,14 +141,18 @@ function renderRekapTugasMengajarTable() {
 
 function getSortedRekapGuru() {
   return [...semuaDataRekapGuru].sort((a, b) =>
-    String(a.kode_guru || "").localeCompare(String(b.kode_guru || ""), undefined, { numeric: true, sensitivity: "base" })
+    String(a.kode_guru || "").localeCompare(
+      String(b.kode_guru || ""),
+      undefined,
+      { numeric: true, sensitivity: "base" },
+    ),
   );
 }
 
 function getRekapNamaGuru(guru) {
   if (typeof formatNamaGuru === "function") return formatNamaGuru(guru);
   return [guru?.gelar_depan, guru?.nama, guru?.gelar_belakang]
-    .map(value => String(value || "").trim())
+    .map((value) => String(value || "").trim())
     .filter(Boolean)
     .join(" ");
 }
@@ -162,17 +187,22 @@ function renderRekapGuruRow(guru, index) {
 
 function getRekapMengajarSummary(guruKode) {
   const levels = {
-    "7": { rombels: new Set(), jp: 0 },
-    "8": { rombels: new Set(), jp: 0 },
-    "9": { rombels: new Set(), jp: 0 }
+    7: { rombels: new Set(), jp: 0 },
+    8: { rombels: new Set(), jp: 0 },
+    9: { rombels: new Set(), jp: 0 },
   };
 
-  semuaDataRekapMengajar.forEach(item => {
-    if (String(item.guru_kode || "").trim() !== String(guruKode || "").trim()) return;
-    const tingkat = String(item.tingkat || getRekapKelasParts(item).tingkat || "").trim();
+  semuaDataRekapMengajar.forEach((item) => {
+    if (String(item.guru_kode || "").trim() !== String(guruKode || "").trim())
+      return;
+    const tingkat = String(
+      item.tingkat || getRekapKelasParts(item).tingkat || "",
+    ).trim();
     if (!levels[tingkat]) return;
 
-    const rombel = String(item.rombel || getRekapKelasParts(item).rombel || "").trim().toUpperCase();
+    const rombel = String(item.rombel || getRekapKelasParts(item).rombel || "")
+      .trim()
+      .toUpperCase();
     if (rombel) levels[tingkat].rombels.add(rombel);
 
     const mapel = getRekapMapel(item.mapel_kode);
@@ -181,40 +211,72 @@ function getRekapMengajarSummary(guruKode) {
 
   return {
     levels: {
-      "7": { kelas: formatRekapRombelRanges([...levels["7"].rombels]), jp: levels["7"].jp },
-      "8": { kelas: formatRekapRombelRanges([...levels["8"].rombels]), jp: levels["8"].jp },
-      "9": { kelas: formatRekapRombelRanges([...levels["9"].rombels]), jp: levels["9"].jp }
+      7: {
+        kelas: formatRekapRombelRanges([...levels["7"].rombels]),
+        jp: levels["7"].jp,
+      },
+      8: {
+        kelas: formatRekapRombelRanges([...levels["8"].rombels]),
+        jp: levels["8"].jp,
+      },
+      9: {
+        kelas: formatRekapRombelRanges([...levels["9"].rombels]),
+        jp: levels["9"].jp,
+      },
     },
-    total: levels["7"].jp + levels["8"].jp + levels["9"].jp
+    total: levels["7"].jp + levels["8"].jp + levels["9"].jp,
   };
 }
 
 function getRekapKelasParts(item) {
-  const raw = String(item?.kelas || "").trim().toUpperCase();
+  const raw = String(item?.kelas || "")
+    .trim()
+    .toUpperCase();
   const match = raw.match(/^(\d+)\s*([A-Z]+)$/);
   if (!match) return { tingkat: "", rombel: "" };
   return { tingkat: match[1], rombel: match[2] };
 }
 
 function getRekapMapel(mapelKode) {
-  const kode = String(mapelKode || "").trim().toUpperCase();
-  return semuaDataRekapMapel.find(item => String(item.kode_mapel || "").trim().toUpperCase() === kode) || null;
+  const kode = String(mapelKode || "")
+    .trim()
+    .toUpperCase();
+  return (
+    semuaDataRekapMapel.find(
+      (item) =>
+        String(item.kode_mapel || "")
+          .trim()
+          .toUpperCase() === kode,
+    ) || null
+  );
 }
 
 function formatRekapRombelRanges(rombels) {
-  const clean = [...new Set(rombels.map(item => String(item || "").trim().toUpperCase()).filter(Boolean))];
+  const clean = [
+    ...new Set(
+      rombels
+        .map((item) =>
+          String(item || "")
+            .trim()
+            .toUpperCase(),
+        )
+        .filter(Boolean),
+    ),
+  ];
   const singleLetters = clean
-    .filter(item => /^[A-Z]$/.test(item))
+    .filter((item) => /^[A-Z]$/.test(item))
     .sort((a, b) => a.localeCompare(b));
   const others = clean
-    .filter(item => !/^[A-Z]$/.test(item))
-    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+    .filter((item) => !/^[A-Z]$/.test(item))
+    .sort((a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }),
+    );
 
   const ranges = [];
   let start = null;
   let previous = null;
 
-  singleLetters.forEach(letter => {
+  singleLetters.forEach((letter) => {
     const code = letter.charCodeAt(0);
     if (!start) {
       start = letter;
@@ -237,21 +299,24 @@ function formatRekapRombelRanges(rombels) {
 }
 
 function getRekapTugasTambahanSummary(guruKode) {
-  const assignment = semuaDataRekapGuruTugasTambahan.find(item =>
-    String(item.guru_kode || item.id || "").trim() === String(guruKode || "").trim()
-  ) || {};
+  const assignment =
+    semuaDataRekapGuruTugasTambahan.find(
+      (item) =>
+        String(item.guru_kode || item.id || "").trim() ===
+        String(guruKode || "").trim(),
+    ) || {};
   const utama = getRekapTaskNames(assignment, ["utama_id"], ["utama_nama"]);
   const ekuivalen = getRekapTaskNames(
     assignment,
     ["ekuivalen_1_id", "ekuivalen_2_id", "ekuivalen_3_id"],
-    ["ekuivalen_1_nama", "ekuivalen_2_nama", "ekuivalen_3_nama"]
+    ["ekuivalen_1_nama", "ekuivalen_2_nama", "ekuivalen_3_nama"],
   );
   const sekolah = getRekapTaskNames(
     assignment,
     ["sekolah_1_id", "sekolah_2_id", "sekolah_3_id"],
     ["sekolah_1_nama", "sekolah_2_nama", "sekolah_3_nama"],
     ["sekolah_id"],
-    ["sekolah_nama"]
+    ["sekolah_nama"],
   );
 
   return {
@@ -260,39 +325,58 @@ function getRekapTugasTambahanSummary(guruKode) {
     sekolah,
     totalJp: Number.isFinite(Number(assignment.jp_tugas_tambahan))
       ? Number(assignment.jp_tugas_tambahan || 0)
-      : calculateRekapTugasTambahanJp([...utama.ids, ...ekuivalen.ids, ...sekolah.ids])
+      : calculateRekapTugasTambahanJp([
+          ...utama.ids,
+          ...ekuivalen.ids,
+          ...sekolah.ids,
+        ]),
   };
 }
 
-function getRekapTaskNames(assignment, idFields, nameFields, legacyIdFields = [], legacyNameFields = []) {
-  const ids = [...new Set([...idFields, ...legacyIdFields]
-    .map(field => String(assignment[field] || "").trim())
-    .filter(Boolean))];
+function getRekapTaskNames(
+  assignment,
+  idFields,
+  nameFields,
+  legacyIdFields = [],
+  legacyNameFields = [],
+) {
+  const ids = [
+    ...new Set(
+      [...idFields, ...legacyIdFields]
+        .map((field) => String(assignment[field] || "").trim())
+        .filter(Boolean),
+    ),
+  ];
   const fallbackNames = [...nameFields, ...legacyNameFields]
-    .map(field => String(assignment[field] || "").trim())
+    .map((field) => String(assignment[field] || "").trim())
     .filter(Boolean);
-  const names = ids.map((id, index) => {
-    const item = getRekapTugasTambahanById(id);
-    return item?.nama || fallbackNames[index] || "";
-  }).filter(Boolean);
+  const names = ids
+    .map((id, index) => {
+      const item = getRekapTugasTambahanById(id);
+      return item?.nama || fallbackNames[index] || "";
+    })
+    .filter(Boolean);
   return {
     ids,
-    names: [...new Set(names)]
+    names: [...new Set(names)],
   };
 }
 
 function getRekapTugasTambahanById(id) {
-  return semuaDataRekapTugasTambahan.find(item => item.id === id) || null;
+  return semuaDataRekapTugasTambahan.find((item) => item.id === id) || null;
 }
 
 function calculateRekapTugasTambahanJp(ids) {
-  return ids.reduce((sum, id) => sum + Number(getRekapTugasTambahanById(id)?.jp || 0), 0);
+  return ids.reduce(
+    (sum, id) => sum + Number(getRekapTugasTambahanById(id)?.jp || 0),
+    0,
+  );
 }
 
 function renderRekapTaskList(taskGroup) {
   const names = Array.isArray(taskGroup) ? taskGroup : taskGroup.names || [];
   if (names.length === 0) return `<span class="muted-text">-</span>`;
-  return `<div class="rekap-task-list">${names.map(name => `<span>${escapeRekapHtml(name)}</span>`).join("")}</div>`;
+  return `<div class="rekap-task-list">${names.map((name) => `<span>${escapeRekapHtml(name)}</span>`).join("")}</div>`;
 }
 function getRekapDocumentsApi() {
   return window.SupabaseDocuments;

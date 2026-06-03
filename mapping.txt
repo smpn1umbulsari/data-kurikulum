@@ -1,0 +1,161 @@
+﻿# Mapping Kode Project
+
+Dokumen ini memetakan struktur kode saat ini per file dan per lapisan, supaya refactor bisa dilakukan tanpa kehilangan konteks arsitektur.
+
+## 1. Entry Point Utama
+
+- `index.html` - redirect awal; memilih `login.html`, `dashboard.html`, atau `maintenance.html` berdasarkan status login dan maintenance mode.
+- `login.html` - halaman masuk utama; berisi UI login, maintenance alert, dan bootstrapping otentikasi.
+- `dashboard.html` - shell aplikasi utama; memuat layout dashboard, script domain, router, shell, dan render awal.
+- `maintenance.html` - halaman maintenance untuk user non-admin.
+
+## 2. Mirror Deployment `www/`
+
+- `www/index.html` - mirror entry point untuk build web/Capacitor.
+- `www/login.html` - mirror halaman login.
+- `www/dashboard.html` - mirror shell dashboard.
+- `www/maintenance.html` - mirror maintenance page.
+- `www/404.html` - halaman fallback deploy web.
+- `www/vendor/supabase.js` - vendor Supabase untuk build offline/webpack-less.
+- `www/vendor/sweetalert2.all.min.js` - vendor SweetAlert2 untuk build mirror.
+
+## 3. Shared Runtime Core
+
+- `shared/app-utils.js` - helper utilitas umum: escaping HTML, parsing kelas, storage JSON, dan format tanggal.
+- `shared/app-dom.js` - helper DOM dasar: get/set text, html, display, dan body class.
+- `shared/app-router.js` - router client-side berbasis registry page -> route config.
+- `shared/app-loading.js` - state/loading overlay global.
+- `shared/app-lifecycle.js` - lifecycle aplikasi dan hook bootstrap/ready.
+- `shared/app-print.js` - helper print/export tampilan.
+- `shared/dashboard-data.js` - helper query collection untuk dashboard.
+- `shared/dashboard-home-data.js` - pengambilan data home/dashboard.
+- `shared/dashboard-home.js` - render dan refresh home dashboard, termasuk cache snapshot.
+- `shared/dashboard-module-loader.js` - lazy loader script modul per halaman.
+- `shared/dashboard-routes.js` - definisi route, judul, `beforeEnter`, `render`, `afterEnter`.
+- `shared/dashboard-shell.js` - shell state: logout, presence tracking, akses role, helper dashboard.
+- `shared/maintenance-mode.js` - state maintenance dan logika akses maintenance.
+- `shared/network-traffic.js` - indikator/kontrol aktivitas network bila dipakai.
+- `shared/responsive-tables.js` - enhancement tabel menjadi lebih ramah mobile.
+- `shared/spreadsheet-libs.js` - loader/library XLSX atau spreadsheet helper.
+- `shared/supabase-documents.js` - adapter data Supabase document-style.
+- `shared/guru-offline.js` - dukungan offline untuk modul guru atau caching spesifik.
+
+## 4. Bootstrap Dan Koneksi Data
+
+- `src/bootstrap.js` - bootstrap Supabase client ke `window` untuk kompatibilitas legacy.
+- `src/supabase-client.js` - inisialisasi client Supabase.
+- `supabase-config.js` - konfigurasi runtime Supabase.
+- `supabase-config.example.js` - contoh konfigurasi.
+- `supabase-firestore-compat.js` - compat layer gaya Firestore untuk Supabase.
+- `supabase-schema.sql` - skema database.
+
+## 5. Dashboard Shell Dan UI Inti
+
+- `dashboard.html` - shell utama root; memuat CSS, script shared, script domain, lalu bootstrap `DashboardShell`.
+- `style.css` - stylesheet utama legacy + banyak modul visual besar.
+- `css/design-system.css` - design system baru; token, layout shell, button, form, tabel, sidebar, topbar.
+- `mobile-redesign.css` - lapisan override mobile/responsive tambahan.
+- `inline-notification.js` - notifikasi inline di shell atau modul.
+- `ttd-ks.js` - helper tanda tangan kepala sekolah atau preview terkait.
+
+## 6. Modul Siswa
+
+- `Siswa/ui.js` - render form, tabel, tab, dan toolbar data siswa.
+- `Siswa/crud.js` - operasi CRUD siswa.
+- `Siswa/murid.js` - logika data/transformasi siswa aktif.
+- `Siswa/validation.js` - validasi field siswa.
+- `Siswa/excel.js` - import/export Excel data siswa.
+- `Siswa/kelas-bayangan.js` - logika kelas bayangan / pembagian kelas.
+- `Siswa/siswa-lulus.js` - halaman dan aksi siswa lulus.
+
+## 7. Modul Guru
+
+- `Guru/ui.js` - render form dan tabel data guru.
+- `Guru/crud.js` - operasi CRUD guru.
+- `Guru/guru.js` - logika data guru, termasuk format nama dan relasi mapel.
+- `Guru/validation.js` - validasi data guru.
+
+## 8. Modul Kelas
+
+- `Kelas/ui.js` - render halaman data kelas.
+- `Kelas/crud.js` - operasi CRUD kelas.
+- `Kelas/kelas.js` - logika data kelas, wali kelas, dan export/template.
+
+## 9. Modul Mapel
+
+- `Mapel/ui.js` - render halaman data mapel.
+- `Mapel/crud.js` - operasi CRUD mapel.
+- `Mapel/mapel.js` - logika data mapel, template, dan sinkronisasi.
+
+## 10. Modul Mengajar Dan Tugas Tambahan
+
+- `Mengajar/ui.js` - render tampilan pembagian mengajar.
+- `Mengajar/crud.js` - operasi data mengajar.
+- `Mengajar/mengajar.js` - logika pembagian mengajar.
+- `TugasTambahan/tugas-tambahan.js` - modul tugas tambahan guru.
+
+## 11. Modul Nilai Dan Rapor
+
+- `Nilai/nilai.js` - modul inti input nilai; state mode, cache, render, dan penyimpanan.
+- `Nilai/nilai-data.js` - helper data nilai.
+- `Nilai/rapor.js` - modul rapor, catatan, dan print/export.
+- `Rekap/rekap.js` - rekap nilai lintas modul.
+- `Rekap/rekap-v2.js` - versi rekap alternatif atau pengembangan baru.
+- `WaliKelas/wali-kelas.js` - modul wali kelas untuk absensi/rekap.
+- `WaliKelas/wali-kelas-view.js` - view layer wali kelas.
+- `WaliKelas/wali-kelas-service.js` - service/data layer wali kelas.
+
+## 12. Modul Kurikulum
+
+- `Kurikulum/kalender-pendidikan.js` - kalender pendidikan, preview, print, dan layout padat.
+- `Semester/semester.js` - manajemen semester / tahun ajaran aktif.
+- `Kurikulum/dashboard.html` - entry HTML khusus modul kurikulum bila dipakai terpisah.
+
+## 13. Modul Admin
+
+- `Admin/users.js` - halaman utama akun dan pengguna.
+- `Admin/admin-users-view.js` - view pengguna admin.
+- `Admin/admin-users-service.js` - service CRUD/akses pengguna admin.
+- `Admin/admin-users-identity.js` - identitas / mapping user admin.
+- `Admin/backup.js` - backup dan restore.
+- `Admin/quota.js` - quota / batas Supabase.
+- `Admin/data-health.js` - health check data.
+- `Admin/audit-log.js` - log audit aktivitas.
+
+## 14. Modul Asesmen
+
+- `Asesmen/soal-ai.js` - generator prompt atau soal AI.
+- `Asesmen/pembagian-ruang.js` - entry pembagian ruang asesmen.
+- `Asesmen/pembagian-ruang-view.js` - view pembagian ruang.
+- `Asesmen/pembagian-ruang-service.js` - service pembagian ruang.
+- `Asesmen/pembagian-ruang-store.js` - store/state pembagian ruang.
+- `Asesmen/pembagian-ruang-v2.js` - versi lanjutan pembagian ruang.
+- `Asesmen/kepangawasan.js` - modul kepangawasan asesmen.
+- `Asesmen/administrasi-settings.js` - pengaturan administrasi asesmen.
+- `Asesmen/generate-pengawasan-apps-script.js` - generator Apps Script.
+- `Asesmen/Code.gs` - skrip Google Apps Script utama.
+
+## 15. Infrastruktur Tambahan
+
+- `scripts/prepare-capacitor-web.js` - prep build web untuk Capacitor.
+- `scripts/mass-update-pts-kelas9.js` - utility mass update data tertentu.
+- `tests/smoke-foundation.js` - smoke test fondasi UI/runtime.
+- `README.md` - dokumentasi umum.
+- `CHANGELOG.md` - riwayat perubahan.
+- `ROLLBACK.md` - panduan rollback.
+- `SUPABASE_MIGRATION.md` - panduan migrasi Supabase.
+- `MANUAL_GURU_KOORDINATOR.md` - manual operasional role koordinator/guru.
+- `ANALISIS_DESAIN_UI.md` - catatan analisis desain sebelumnya.
+
+## 16. Backup Dan Snapshot
+
+- `_backup_*` - snapshot perubahan UI dan refactor sebelumnya.
+- `backups/` - backup berbasis release atau perubahan penting.
+- `Backup/` dan `backups/` - folder cadangan tambahan yang dipakai untuk arsip kerja.
+
+## 17. Catatan Struktur
+
+- Banyak modul masih bergantung pada global function dan urutan load script di `dashboard.html`.
+- `css/design-system.css` adalah fondasi yang paling layak dijadikan sumber kebenaran baru.
+- `style.css` masih memuat banyak pola lama, jadi refactor UI harus memperhitungkan override yang ada di bawahnya.
+- Versi `www/` harus dianggap mirror deploy, bukan salinan yang bisa diabaikan.

@@ -4,7 +4,7 @@ let semesterAdminState = {
   semester: "GENAP",
   tahun: "2025/2026",
   guru_pts_input_active: true,
-  list: []
+  list: [],
 };
 let unsubscribeAdminSemesterSettings = null;
 const GURU_NILAI_INPUT_MODE_KEY = "guruNilaiInputMode";
@@ -20,17 +20,21 @@ function getDefaultSemesterContext() {
     tahun: "2025/2026",
     label: "GENAP - 2025/2026",
     legacy: true,
-    is_active: true
+    is_active: true,
   };
 }
 
 function normalizeSemesterText(value) {
-  const text = String(value || "").trim().toUpperCase();
+  const text = String(value || "")
+    .trim()
+    .toUpperCase();
   return text === "GANJIL" ? "GANJIL" : "GENAP";
 }
 
 function normalizeTahunPelajaran(value) {
-  return String(value || "").trim().replace(/\s+/g, "");
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "");
 }
 
 function makeSemesterId(semester, tahun) {
@@ -67,7 +71,11 @@ function isActiveTermDoc(item = {}) {
 
 function getLiveSemesterId(settings = semesterAdminState) {
   const list = getSemesterSettingsList(settings);
-  return [...list].sort(compareSemesterEntries).at(-1)?.id || settings.live_id || getDefaultSemesterContext().id;
+  return (
+    [...list].sort(compareSemesterEntries).at(-1)?.id ||
+    settings.live_id ||
+    getDefaultSemesterContext().id
+  );
 }
 
 function compareSemesterEntries(a, b) {
@@ -75,7 +83,10 @@ function compareSemesterEntries(a, b) {
   const yearB = Number(String(b?.tahun || "").match(/\d{4}/)?.[0] || 0);
   if (yearA !== yearB) return yearA - yearB;
   const order = { GANJIL: 1, GENAP: 2 };
-  return (order[normalizeSemesterText(a?.semester)] || 0) - (order[normalizeSemesterText(b?.semester)] || 0);
+  return (
+    (order[normalizeSemesterText(a?.semester)] || 0) -
+    (order[normalizeSemesterText(b?.semester)] || 0)
+  );
 }
 
 function shouldUseSemesterSnapshot() {
@@ -86,7 +97,10 @@ function shouldUseSemesterSnapshot() {
 function getSemesterCollectionRef(collectionName, termId = getActiveTermId()) {
   const documentsApi = getSemesterDocumentsApi();
   if (termId && termId !== "legacy") {
-    return documentsApi.collection("semester_data").doc(termId).collection(collectionName);
+    return documentsApi
+      .collection("semester_data")
+      .doc(termId)
+      .collection(collectionName);
   }
   return documentsApi.collection(collectionName);
 }
@@ -122,7 +136,10 @@ function getStoredGuruNilaiInputMode() {
 
 function storeGuruNilaiInputMode(mode) {
   try {
-    localStorage.setItem(GURU_NILAI_INPUT_MODE_KEY, mode === "semester" ? "semester" : "pts");
+    localStorage.setItem(
+      GURU_NILAI_INPUT_MODE_KEY,
+      mode === "semester" ? "semester" : "pts",
+    );
   } catch {
     // ignore storage errors
   }
@@ -131,7 +148,9 @@ function storeGuruNilaiInputMode(mode) {
 function getGuruNilaiInputMode(settings = semesterAdminState) {
   const storedMode = getStoredGuruNilaiInputMode();
   if (storedMode === "semester" || storedMode === "pts") return storedMode;
-  return normalizeGuruNilaiInputActive(settings?.guru_pts_input_active) ? "pts" : "semester";
+  return normalizeGuruNilaiInputActive(settings?.guru_pts_input_active)
+    ? "pts"
+    : "semester";
 }
 
 function isGuruPtsInputActive(settings = semesterAdminState) {
@@ -139,22 +158,31 @@ function isGuruPtsInputActive(settings = semesterAdminState) {
 }
 
 function syncSemesterFeatureFlags(data = {}) {
-  const guruPtsInputActive = normalizeGuruNilaiInputActive(data.guru_pts_input_active);
+  const guruPtsInputActive = normalizeGuruNilaiInputActive(
+    data.guru_pts_input_active,
+  );
   semesterAdminState = {
     ...semesterAdminState,
     ...data,
-    guru_pts_input_active: guruPtsInputActive
+    guru_pts_input_active: guruPtsInputActive,
   };
   storeGuruNilaiInputMode(guruPtsInputActive ? "pts" : "semester");
   return semesterAdminState;
 }
 
 async function loadGuruNilaiInputAccessSetting(force = false) {
-  if (!force && (getStoredGuruNilaiInputMode() === "pts" || getStoredGuruNilaiInputMode() === "semester")) {
+  if (
+    !force &&
+    (getStoredGuruNilaiInputMode() === "pts" ||
+      getStoredGuruNilaiInputMode() === "semester")
+  ) {
     return isGuruPtsInputActive();
   }
   try {
-    const snapshot = await getSemesterDocumentsApi().collection("settings").doc("semester").get();
+    const snapshot = await getSemesterDocumentsApi()
+      .collection("settings")
+      .doc("semester")
+      .get();
     syncSemesterFeatureFlags(snapshot.exists ? snapshot.data() : {});
   } catch (error) {
     console.warn("loadGuruNilaiInputAccessSetting failed", error);
@@ -171,34 +199,49 @@ function getNextSemesterContext(current = semesterAdminState) {
       semester: "GENAP",
       tahun,
       label: makeSemesterLabel("GENAP", tahun),
-      previous_id: current.active_id || current.id || "legacy"
+      previous_id: current.active_id || current.id || "legacy",
     };
   }
 
   const match = tahun.match(/^(\d{4})\/(\d{4})$/);
-  const nextTahun = match ? `${Number(match[1]) + 1}/${Number(match[2]) + 1}` : tahun;
+  const nextTahun = match
+    ? `${Number(match[1]) + 1}/${Number(match[2]) + 1}`
+    : tahun;
   return {
     id: makeSemesterId("GANJIL", nextTahun),
     semester: "GANJIL",
     tahun: nextTahun,
     label: makeSemesterLabel("GANJIL", nextTahun),
-    previous_id: current.active_id || current.id || "legacy"
+    previous_id: current.active_id || current.id || "legacy",
   };
 }
 
 function mergeSemesterList(list, item) {
-  const next = getSemesterSettingsList({ list }).filter(entry => entry.id !== item.id);
-  next.push({ ...item, label: item.label || makeSemesterLabel(item.semester, item.tahun) });
-  return next.sort((a, b) => String(a.tahun || "").localeCompare(String(b.tahun || ""), undefined, { numeric: true }) || String(a.semester || "").localeCompare(String(b.semester || "")));
+  const next = getSemesterSettingsList({ list }).filter(
+    (entry) => entry.id !== item.id,
+  );
+  next.push({
+    ...item,
+    label: item.label || makeSemesterLabel(item.semester, item.tahun),
+  });
+  return next.sort(
+    (a, b) =>
+      String(a.tahun || "").localeCompare(String(b.tahun || ""), undefined, {
+        numeric: true,
+      }) || String(a.semester || "").localeCompare(String(b.semester || "")),
+  );
 }
 
 function renderAdminSemesterPage() {
-  const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
+  const active =
+    getSemesterSettingsList().find(
+      (item) => item.id === semesterAdminState.active_id,
+    ) || getDefaultSemesterContext();
   const next = getNextSemesterContext({
     ...active,
     active_id: active.id,
     semester: semesterAdminState.semester || active.semester,
-    tahun: semesterAdminState.tahun || active.tahun
+    tahun: semesterAdminState.tahun || active.tahun,
   });
 
   return `
@@ -219,7 +262,12 @@ function renderAdminSemesterPage() {
           <label class="form-group">
             <span>Pilih semester aktif</span>
             <select id="adminSemesterActiveSelect">
-              ${getSemesterSettingsList().map(item => `<option value="${escapeSemesterHtml(item.id)}" ${item.id === active.id ? "selected" : ""}>${escapeSemesterHtml(item.label || makeSemesterLabel(item.semester, item.tahun))}</option>`).join("")}
+              ${getSemesterSettingsList()
+                .map(
+                  (item) =>
+                    `<option value="${escapeSemesterHtml(item.id)}" ${item.id === active.id ? "selected" : ""}>${escapeSemesterHtml(item.label || makeSemesterLabel(item.semester, item.tahun))}</option>`,
+                )
+                .join("")}
             </select>
           </label>
           <button class="btn-secondary" onclick="setAdminActiveSemester()">Set Aktif</button>
@@ -228,9 +276,11 @@ function renderAdminSemesterPage() {
         <section class="semester-admin-panel">
           <span class="dashboard-eyebrow">Semester Berikutnya</span>
           <h3>${escapeSemesterHtml(next.label)}</h3>
-          <p>${normalizeSemesterText(active.semester) === "GENAP"
-            ? "Transisi Genap ke Ganjil akan menaikkan kelas siswa dan mengosongkan wali kelas."
-            : "Transisi Ganjil ke Genap mempertahankan siswa dan wali kelas."}</p>
+          <p>${
+            normalizeSemesterText(active.semester) === "GENAP"
+              ? "Transisi Genap ke Ganjil akan menaikkan kelas siswa dan mengosongkan wali kelas."
+              : "Transisi Ganjil ke Genap mempertahankan siswa dan wali kelas."
+          }</p>
           <button class="btn-primary" onclick="createNextSemester()">Tambah Semester Berikutnya</button>
         </section>
 
@@ -276,18 +326,24 @@ function renderAdminSemesterPage() {
             </tr>
           </thead>
           <tbody>
-            ${getSemesterSettingsList().map(item => `
+            ${getSemesterSettingsList()
+              .map(
+                (item) => `
               <tr>
                 <td>${escapeSemesterHtml(item.semester || "-")}</td>
                 <td>${escapeSemesterHtml(item.tahun || "-")}</td>
-                <td>${item.id === active.id ? "<span class=\"status-pill status-active\">Aktif</span>" : "-"}</td>
+                <td>${item.id === active.id ? '<span class="status-pill status-active">Aktif</span>' : "-"}</td>
                 <td>
-                  ${item.id === active.id
-                    ? `<button class="btn-secondary btn-table-compact" disabled>Aktif</button>`
-                    : `<button class="btn-danger btn-table-compact" onclick="deleteSemester('${escapeSemesterJs(item.id)}')">Hapus</button>`}
+                  ${
+                    item.id === active.id
+                      ? `<span class="status-pill status-active">Aktif</span>`
+                      : `<button class="btn-danger btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="deleteSemester('${escapeSemesterJs(item.id)}')" title="Hapus" aria-label="Hapus"></button>`
+                  }
                 </td>
               </tr>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -312,36 +368,49 @@ function escapeSemesterJs(value) {
 
 function loadRealtimeAdminSemester() {
   clearAdminSemesterListeners();
-  unsubscribeAdminSemesterSettings = getSemesterDocumentsApi().collection("settings").doc("semester").onSnapshot(snapshot => {
-    const data = snapshot.exists ? snapshot.data() : {};
-    syncSemesterFeatureFlags({
-      ...data,
-      list: getSemesterSettingsList(data)
+  unsubscribeAdminSemesterSettings = getSemesterDocumentsApi()
+    .collection("settings")
+    .doc("semester")
+    .onSnapshot((snapshot) => {
+      const data = snapshot.exists ? snapshot.data() : {};
+      syncSemesterFeatureFlags({
+        ...data,
+        list: getSemesterSettingsList(data),
+      });
+      if (!semesterAdminState.live_id) {
+        semesterAdminState.live_id = getLiveSemesterId(semesterAdminState);
+      }
+      const content = document.getElementById("content");
+      if (content) content.innerHTML = renderAdminSemesterPage();
     });
-    if (!semesterAdminState.live_id) {
-      semesterAdminState.live_id = getLiveSemesterId(semesterAdminState);
-    }
-    const content = document.getElementById("content");
-    if (content) content.innerHTML = renderAdminSemesterPage();
-  });
 }
 
 async function setGuruPtsInputActive(isActive) {
   const nextValue = Boolean(isActive);
-  await getSemesterDocumentsApi().collection("settings").doc("semester").set({
-    guru_pts_input_active: nextValue,
-    updated_at: new Date()
-  }, { merge: true });
+  await getSemesterDocumentsApi().collection("settings").doc("semester").set(
+    {
+      guru_pts_input_active: nextValue,
+      updated_at: new Date(),
+    },
+    { merge: true },
+  );
   syncSemesterFeatureFlags({ guru_pts_input_active: nextValue });
-  const label = nextValue ? "Input Nilai PTS aktif untuk guru." : "Input Nilai Semester aktif untuk guru.";
-  const toggleLabel = document.querySelector("#guruPtsInputToggle + .kepangawasan-toggle-track + .kepangawasan-toggle-label");
-  if (toggleLabel) toggleLabel.textContent = `Input Nilai PTS ${nextValue ? "Aktif" : "Nonaktif"}`;
+  const label = nextValue
+    ? "Input Nilai PTS aktif untuk guru."
+    : "Input Nilai Semester aktif untuk guru.";
+  const toggleLabel = document.querySelector(
+    "#guruPtsInputToggle + .kepangawasan-toggle-track + .kepangawasan-toggle-label",
+  );
+  if (toggleLabel)
+    toggleLabel.textContent = `Input Nilai PTS ${nextValue ? "Aktif" : "Nonaktif"}`;
   if (window.DashboardShell?.applyRoleAccess) {
     window.DashboardShell.applyRoleAccess({
       document,
       getRole: () => {
         try {
-          return JSON.parse(localStorage.getItem("appUser") || "{}")?.role || "";
+          return (
+            JSON.parse(localStorage.getItem("appUser") || "{}")?.role || ""
+          );
         } catch {
           return "";
         }
@@ -353,7 +422,10 @@ async function setGuruPtsInputActive(isActive) {
           return {};
         }
       },
-      getCollectionQuery: typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery : undefined
+      getCollectionQuery:
+        typeof getSemesterCollectionQuery === "function"
+          ? getSemesterCollectionQuery
+          : undefined,
     });
   }
   if (typeof window.renderNilaiTableState === "function") {
@@ -374,39 +446,52 @@ function clearAdminSemesterListeners() {
 
 async function setAdminActiveSemester() {
   const id = document.getElementById("adminSemesterActiveSelect")?.value || "";
-  const selected = getSemesterSettingsList().find(item => item.id === id);
+  const selected = getSemesterSettingsList().find((item) => item.id === id);
   if (!selected) {
     Swal.fire("Pilih semester", "", "warning");
     return;
   }
 
   await ensureSemesterDataExists(selected);
-  await getSemesterDocumentsApi().collection("settings").doc("semester").set({
-    active_id: selected.id,
-    semester: selected.semester,
-    tahun: selected.tahun,
-    live_id: getLiveSemesterId(),
-    list: getSemesterSettingsList(),
-    updated_at: new Date()
-  }, { merge: true });
+  await getSemesterDocumentsApi().collection("settings").doc("semester").set(
+    {
+      active_id: selected.id,
+      semester: selected.semester,
+      tahun: selected.tahun,
+      live_id: getLiveSemesterId(),
+      list: getSemesterSettingsList(),
+      updated_at: new Date(),
+    },
+    { merge: true },
+  );
   const liveId = getLiveSemesterId();
-  localStorage.setItem("appSemester", JSON.stringify({
-    ...selected,
-    is_active: selected.id === liveId,
-    use_snapshot: false,
-    active_id: selected.id,
-    live_id: liveId
-  }));
-  Swal.fire("Diset", `Semester aktif: ${selected.label || makeSemesterLabel(selected.semester, selected.tahun)}`, "success");
+  localStorage.setItem(
+    "appSemester",
+    JSON.stringify({
+      ...selected,
+      is_active: selected.id === liveId,
+      use_snapshot: false,
+      active_id: selected.id,
+      live_id: liveId,
+    }),
+  );
+  Swal.fire(
+    "Diset",
+    `Semester aktif: ${selected.label || makeSemesterLabel(selected.semester, selected.tahun)}`,
+    "success",
+  );
 }
 
 async function createNextSemester() {
-  const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
+  const active =
+    getSemesterSettingsList().find(
+      (item) => item.id === semesterAdminState.active_id,
+    ) || getDefaultSemesterContext();
   const next = getNextSemesterContext({
     ...active,
     active_id: active.id,
     semester: semesterAdminState.semester || active.semester,
-    tahun: semesterAdminState.tahun || active.tahun
+    tahun: semesterAdminState.tahun || active.tahun,
   });
   const isYearChange = normalizeSemesterText(active.semester) === "GENAP";
   const confirm = await Swal.fire({
@@ -420,7 +505,7 @@ async function createNextSemester() {
     showCancelButton: true,
     confirmButtonText: "Proses",
     cancelButtonText: "Batal",
-    inputValidator: value => !value ? "Password wajib diisi" : undefined
+    inputValidator: (value) => (!value ? "Password wajib diisi" : undefined),
   });
   if (!confirm.isConfirmed) return;
 
@@ -431,25 +516,39 @@ async function createNextSemester() {
   }
 
   try {
-    Swal.fire({ title: "Memproses semester...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    Swal.fire({
+      title: "Memproses semester...",
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false,
+    });
     await createNextSemesterData(active, next, isYearChange);
 
     const nextList = mergeSemesterList(getSemesterSettingsList(), next);
     await markSemesterDataInitialized(next.id);
-    await getSemesterDocumentsApi().collection("settings").doc("semester").set({
-      active_id: next.id,
-      live_id: next.id,
-      semester: next.semester,
-      tahun: next.tahun,
-      list: nextList,
-      updated_at: new Date()
-    }, { merge: true });
-    await getSemesterDocumentsApi().collection("settings").doc("rapor").set({
-      semester: next.semester,
-      tahun: next.tahun,
-      updated_at: new Date()
-    }, { merge: true });
-    await Swal.fire("Berhasil", `${next.label} sudah dibuat dan dijadikan aktif. Silakan login ulang.`, "success");
+    await getSemesterDocumentsApi().collection("settings").doc("semester").set(
+      {
+        active_id: next.id,
+        live_id: next.id,
+        semester: next.semester,
+        tahun: next.tahun,
+        list: nextList,
+        updated_at: new Date(),
+      },
+      { merge: true },
+    );
+    await getSemesterDocumentsApi().collection("settings").doc("rapor").set(
+      {
+        semester: next.semester,
+        tahun: next.tahun,
+        updated_at: new Date(),
+      },
+      { merge: true },
+    );
+    await Swal.fire(
+      "Berhasil",
+      `${next.label} sudah dibuat dan dijadikan aktif. Silakan login ulang.`,
+      "success",
+    );
     localStorage.removeItem("login");
     localStorage.removeItem("appUser");
     localStorage.removeItem("appSemester");
@@ -461,29 +560,51 @@ async function createNextSemester() {
 }
 
 async function verifyAdminSemesterPassword(password) {
-  const user = typeof getCurrentAppUser === "function" ? getCurrentAppUser() : {};
-  const username = String(user.username || "").trim().toLowerCase();
+  const user =
+    typeof getCurrentAppUser === "function" ? getCurrentAppUser() : {};
+  const username = String(user.username || "")
+    .trim()
+    .toLowerCase();
   if (!password) return false;
-  const superadminHash = "d0a2c27c72bfaafc9a4bb5866fe95eedab9db8acbeb1ff9f1f445281c44ce2aa";
-  const hashPassword = async value => {
+  const superadminHash =
+    "d0a2c27c72bfaafc9a4bb5866fe95eedab9db8acbeb1ff9f1f445281c44ce2aa";
+  const hashPassword = async (value) => {
     if (!window.crypto?.subtle) return "";
     const bytes = new TextEncoder().encode(String(value || ""));
     const buffer = await window.crypto.subtle.digest("SHA-256", bytes);
-    return Array.from(new Uint8Array(buffer)).map(byte => byte.toString(16).padStart(2, "0")).join("");
+    return Array.from(new Uint8Array(buffer))
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
   };
-  if (username === "superadmin" && await hashPassword(password) === superadminHash) {
+  if (
+    username === "superadmin" &&
+    (await hashPassword(password)) === superadminHash
+  ) {
     return true;
   }
   if (!user.id && username === "admin") {
     return password === "admin123" || password === "guruspenturi";
   }
   if (!username) return false;
-  const snapshot = await getSemesterDocumentsApi().collection("users").where("username", "==", username).limit(1).get();
+  const snapshot = await getSemesterDocumentsApi()
+    .collection("users")
+    .where("username", "==", username)
+    .limit(1)
+    .get();
   if (snapshot.empty) {
-    return username === "admin" && (password === "admin123" || password === "guruspenturi");
+    return (
+      username === "admin" &&
+      (password === "admin123" || password === "guruspenturi")
+    );
   }
   const adminUser = snapshot.docs[0].data();
-  return ["admin", "superadmin"].includes(String(adminUser.role || "").trim().toLowerCase()) && String(adminUser.password || "") === password;
+  return (
+    ["admin", "superadmin"].includes(
+      String(adminUser.role || "")
+        .trim()
+        .toLowerCase(),
+    ) && String(adminUser.password || "") === password
+  );
 }
 
 async function ensureActiveSemesterDataAvailable() {
@@ -495,12 +616,18 @@ async function ensureActiveSemesterDataAvailable() {
 async function ensureSemesterDataExists(term) {
   const termId = term?.id || "";
   if (!termId || termId === "legacy") return;
-  const metaRef = getSemesterDocumentsApi().collection("semester_data").doc(termId);
+  const metaRef = getSemesterDocumentsApi()
+    .collection("semester_data")
+    .doc(termId);
   const meta = await metaRef.get();
   if (meta.exists && meta.data()?.initialized === true) return;
 
-  const siswaCheck = await getSemesterCollectionRef("siswa", termId).limit(1).get();
-  const kelasCheck = await getSemesterCollectionRef("kelas", termId).limit(1).get();
+  const siswaCheck = await getSemesterCollectionRef("siswa", termId)
+    .limit(1)
+    .get();
+  const kelasCheck = await getSemesterCollectionRef("kelas", termId)
+    .limit(1)
+    .get();
   if (siswaCheck.empty) await copyMainCollectionToSemester(termId, "siswa");
   if (kelasCheck.empty) await copyMainCollectionToSemester(termId, "kelas");
   await markSemesterDataInitialized(termId);
@@ -508,10 +635,13 @@ async function ensureSemesterDataExists(term) {
 
 async function markSemesterDataInitialized(termId) {
   if (!termId || termId === "legacy") return;
-  await getSemesterDocumentsApi().collection("semester_data").doc(termId).set({
-    initialized: true,
-    initialized_at: new Date()
-  }, { merge: true });
+  await getSemesterDocumentsApi().collection("semester_data").doc(termId).set(
+    {
+      initialized: true,
+      initialized_at: new Date(),
+    },
+    { merge: true },
+  );
 }
 
 async function copyMainCollectionToSemester(termId, collectionName) {
@@ -519,30 +649,39 @@ async function copyMainCollectionToSemester(termId, collectionName) {
   const snapshot = await documentsApi.collection(collectionName).get();
   for (let index = 0; index < snapshot.docs.length; index += 450) {
     const batch = documentsApi.batch();
-    snapshot.docs.slice(index, index + 450).forEach(doc => {
-      batch.set(getSemesterDocRef(collectionName, doc.id, termId), {
-        ...doc.data(),
-        id_asli: doc.id,
-        term_id: termId,
-        initialized_from_main_at: new Date()
-      }, { merge: true });
+    snapshot.docs.slice(index, index + 450).forEach((doc) => {
+      batch.set(
+        getSemesterDocRef(collectionName, doc.id, termId),
+        {
+          ...doc.data(),
+          id_asli: doc.id,
+          term_id: termId,
+          initialized_from_main_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   }
 }
 
 async function deleteSemester(id) {
-  const target = getSemesterSettingsList().find(item => item.id === id);
+  const target = getSemesterSettingsList().find((item) => item.id === id);
   if (!target) {
     Swal.fire("Semester tidak ditemukan", "", "warning");
     return;
   }
   if (target.id === semesterAdminState.active_id) {
-    Swal.fire("Tidak bisa dihapus", "Semester aktif tidak bisa dihapus.", "warning");
+    Swal.fire(
+      "Tidak bisa dihapus",
+      "Semester aktif tidak bisa dihapus.",
+      "warning",
+    );
     return;
   }
 
-  const label = target.label || makeSemesterLabel(target.semester, target.tahun);
+  const label =
+    target.label || makeSemesterLabel(target.semester, target.tahun);
   const confirm = await Swal.fire({
     title: `Hapus ${label}?`,
     html: "Masukkan password admin untuk menghapus semester dari daftar. Data kelulusan yang dibuat untuk semester ini ikut dibersihkan.",
@@ -552,7 +691,7 @@ async function deleteSemester(id) {
     showCancelButton: true,
     confirmButtonText: "Hapus",
     cancelButtonText: "Batal",
-    inputValidator: value => !value ? "Password wajib diisi" : undefined
+    inputValidator: (value) => (!value ? "Password wajib diisi" : undefined),
   });
   if (!confirm.isConfirmed) return;
 
@@ -562,40 +701,61 @@ async function deleteSemester(id) {
     return;
   }
 
-  const nextList = getSemesterSettingsList().filter(item => item.id !== target.id);
+  const nextList = getSemesterSettingsList().filter(
+    (item) => item.id !== target.id,
+  );
   const cleanupCount = await cleanupGraduatedStudentsForDeletedSemester(target);
-  await getSemesterDocumentsApi().collection("settings").doc("semester").set({
-    list: nextList,
-    updated_at: new Date()
-  }, { merge: true });
-  Swal.fire("Dihapus", `${label} dihapus dari daftar semester. ${cleanupCount} data kelulusan ikut dibersihkan.`, "success");
+  await getSemesterDocumentsApi().collection("settings").doc("semester").set(
+    {
+      list: nextList,
+      updated_at: new Date(),
+    },
+    { merge: true },
+  );
+  Swal.fire(
+    "Dihapus",
+    `${label} dihapus dari daftar semester. ${cleanupCount} data kelulusan ikut dibersihkan.`,
+    "success",
+  );
 }
 
 async function cleanupGraduatedStudentsForDeletedSemester(term) {
   if (!term?.id) return 0;
   const snapshots = [];
-  snapshots.push(await getSemesterDocumentsApi().collection("siswa_lulus").where("term_id", "==", term.id).get());
+  snapshots.push(
+    await getSemesterDocumentsApi()
+      .collection("siswa_lulus")
+      .where("term_id", "==", term.id)
+      .get(),
+  );
 
   if (normalizeSemesterText(term.semester) === "GANJIL") {
-    const previous = getSemesterSettingsList().find(item => item.id === term.previous_id);
-    const tahunLulus = normalizeTahunPelajaran(previous?.tahun || getPreviousTahunPelajaran(term.tahun));
+    const previous = getSemesterSettingsList().find(
+      (item) => item.id === term.previous_id,
+    );
+    const tahunLulus = normalizeTahunPelajaran(
+      previous?.tahun || getPreviousTahunPelajaran(term.tahun),
+    );
     if (tahunLulus) {
-      snapshots.push(await getSemesterDocumentsApi().collection("siswa_lulus")
-        .where("tahun_pelajaran_lulus", "==", tahunLulus)
-        .get());
+      snapshots.push(
+        await getSemesterDocumentsApi()
+          .collection("siswa_lulus")
+          .where("tahun_pelajaran_lulus", "==", tahunLulus)
+          .get(),
+      );
     }
   }
 
   const docs = new Map();
-  snapshots.forEach(snapshot => {
-    snapshot.docs.forEach(doc => docs.set(doc.ref.path, doc));
+  snapshots.forEach((snapshot) => {
+    snapshot.docs.forEach((doc) => docs.set(doc.ref.path, doc));
   });
 
   const allDocs = [...docs.values()];
   let count = 0;
   for (let index = 0; index < allDocs.length; index += 450) {
     const batch = getSemesterDocumentsApi().batch();
-    allDocs.slice(index, index + 450).forEach(doc => {
+    allDocs.slice(index, index + 450).forEach((doc) => {
       count++;
       batch.delete(doc.ref);
     });
@@ -605,7 +765,10 @@ async function cleanupGraduatedStudentsForDeletedSemester(term) {
 }
 
 function promoteKelasValue(kelasValue) {
-  const raw = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const raw = String(kelasValue || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const match = raw.match(/^([7-9])([A-Z]+)$/);
   if (!match) return kelasValue || "";
   const nextLevel = Number(match[1]) + 1;
@@ -614,7 +777,10 @@ function promoteKelasValue(kelasValue) {
 }
 
 function demoteKelasValue(kelasValue) {
-  const raw = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const raw = String(kelasValue || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const match = raw.match(/^([7-9])([A-Z]+)$/);
   if (!match) return kelasValue || "";
   const previousLevel = Number(match[1]) - 1;
@@ -630,12 +796,19 @@ function getPreviousTahunPelajaran(value) {
 }
 
 function getSemesterKelasParts(kelasValue = "") {
-  const raw = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const raw = String(kelasValue || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const match = raw.match(/^([7-9])([A-Z]+)$/);
   return {
     tingkat: match ? match[1] : "",
     rombel: match ? match[2] : "",
-    kelas: match ? `${match[1]} ${match[2]}` : String(kelasValue || "").trim().toUpperCase()
+    kelas: match
+      ? `${match[1]} ${match[2]}`
+      : String(kelasValue || "")
+          .trim()
+          .toUpperCase(),
   };
 }
 
@@ -646,7 +819,10 @@ function makeSiswaLulusDocId(tahunPelajaran, nipd) {
 async function getSemesterSourceSnapshot(term, collectionName) {
   const termId = term?.id || getActiveTermId();
   if (termId && termId !== "legacy") {
-    const semesterSnapshot = await getSemesterCollectionRef(collectionName, termId).get();
+    const semesterSnapshot = await getSemesterCollectionRef(
+      collectionName,
+      termId,
+    ).get();
     if (!semesterSnapshot.empty) return semesterSnapshot;
   }
   return getSemesterDocumentsApi().collection(collectionName).get();
@@ -661,94 +837,135 @@ async function cloneKelasForNextSemester(active, next, clearWali) {
   const snapshot = await getSemesterSourceSnapshot(active, "kelas");
   for (let index = 0; index < snapshot.docs.length; index += 450) {
     const batch = getSemesterDocumentsApi().batch();
-    snapshot.docs.slice(index, index + 450).forEach(doc => {
+    snapshot.docs.slice(index, index + 450).forEach((doc) => {
       const data = doc.data();
-      batch.set(getSemesterDocRef("kelas", data.kelas || doc.id, next.id), {
-        ...data,
-        kode_guru: clearWali ? "" : data.kode_guru || "",
-        wali_kelas: clearWali ? "" : data.wali_kelas || "",
-        term_id: next.id,
-        previous_term_id: active.id || "",
-        updated_at: new Date()
-      }, { merge: true });
+      batch.set(
+        getSemesterDocRef("kelas", data.kelas || doc.id, next.id),
+        {
+          ...data,
+          kode_guru: clearWali ? "" : data.kode_guru || "",
+          wali_kelas: clearWali ? "" : data.wali_kelas || "",
+          term_id: next.id,
+          previous_term_id: active.id || "",
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   }
 }
 
 async function cloneSiswaForNextSemester(active, next, promote) {
-  const tahunLulus = normalizeTahunPelajaran(active.tahun || semesterAdminState.tahun || "2025/2026");
+  const tahunLulus = normalizeTahunPelajaran(
+    active.tahun || semesterAdminState.tahun || "2025/2026",
+  );
   const snapshot = await getSemesterSourceSnapshot(active, "siswa");
   for (let index = 0; index < snapshot.docs.length; index += 225) {
     const documentsApi = getSemesterDocumentsApi();
     const batch = documentsApi.batch();
-    snapshot.docs.slice(index, index + 225).forEach(doc => {
+    snapshot.docs.slice(index, index + 225).forEach((doc) => {
       const data = doc.data();
       const nipd = data.nipd || doc.id;
       if (!nipd) return;
       const kelasParts = getSemesterKelasParts(data.kelas);
       if (promote && kelasParts.tingkat === "9") {
-        batch.set(documentsApi.collection("siswa_lulus").doc(makeSiswaLulusDocId(tahunLulus, nipd)), {
-          ...data,
-          nipd,
-          kelas_lulus: kelasParts.kelas || data.kelas || "",
-          kelas_bayangan_lulus: data.kelas_bayangan || "",
-          tahun_pelajaran_lulus: tahunLulus,
-          term_id: next.id,
-          lulus_at: new Date()
-        }, { merge: true });
+        batch.set(
+          documentsApi
+            .collection("siswa_lulus")
+            .doc(makeSiswaLulusDocId(tahunLulus, nipd)),
+          {
+            ...data,
+            nipd,
+            kelas_lulus: kelasParts.kelas || data.kelas || "",
+            kelas_bayangan_lulus: data.kelas_bayangan || "",
+            tahun_pelajaran_lulus: tahunLulus,
+            term_id: next.id,
+            lulus_at: new Date(),
+          },
+          { merge: true },
+        );
         return;
       }
-      batch.set(getSemesterDocRef("siswa", nipd, next.id), {
-        ...data,
-        nipd,
-        kelas: promote ? promoteKelasValue(data.kelas) : data.kelas || "",
-        kelas_bayangan: promote ? promoteKelasValue(data.kelas_bayangan) : data.kelas_bayangan || "",
-        term_id: next.id,
-        previous_term_id: active.id || "",
-        updated_at: new Date()
-      }, { merge: true });
+      batch.set(
+        getSemesterDocRef("siswa", nipd, next.id),
+        {
+          ...data,
+          nipd,
+          kelas: promote ? promoteKelasValue(data.kelas) : data.kelas || "",
+          kelas_bayangan: promote
+            ? promoteKelasValue(data.kelas_bayangan)
+            : data.kelas_bayangan || "",
+          term_id: next.id,
+          previous_term_id: active.id || "",
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   }
 }
 
 async function promoteStudentsForNewYear() {
-  const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
-  const tahunLulus = normalizeTahunPelajaran(active.tahun || semesterAdminState.tahun || "2025/2026");
+  const active =
+    getSemesterSettingsList().find(
+      (item) => item.id === semesterAdminState.active_id,
+    ) || getDefaultSemesterContext();
+  const tahunLulus = normalizeTahunPelajaran(
+    active.tahun || semesterAdminState.tahun || "2025/2026",
+  );
   const documentsApi = getSemesterDocumentsApi();
   const snapshot = await documentsApi.collection("siswa").get();
   for (let index = 0; index < snapshot.docs.length; index += 450) {
     const batch = documentsApi.batch();
-    snapshot.docs.slice(index, index + 450).forEach(doc => {
+    snapshot.docs.slice(index, index + 450).forEach((doc) => {
       const data = doc.data();
       const kelasParts = getSemesterKelasParts(data.kelas);
       if (kelasParts.tingkat === "9") {
-        const lulusRef = documentsApi.collection("siswa_lulus").doc(makeSiswaLulusDocId(tahunLulus, data.nipd || doc.id));
-        batch.set(lulusRef, {
-          ...data,
-          nipd: data.nipd || doc.id,
-          kelas_lulus: kelasParts.kelas || data.kelas || "",
-          kelas_bayangan_lulus: data.kelas_bayangan || "",
-          tahun_pelajaran_lulus: tahunLulus,
-          lulus_at: new Date()
-        }, { merge: true });
+        const lulusRef = documentsApi
+          .collection("siswa_lulus")
+          .doc(makeSiswaLulusDocId(tahunLulus, data.nipd || doc.id));
+        batch.set(
+          lulusRef,
+          {
+            ...data,
+            nipd: data.nipd || doc.id,
+            kelas_lulus: kelasParts.kelas || data.kelas || "",
+            kelas_bayangan_lulus: data.kelas_bayangan || "",
+            tahun_pelajaran_lulus: tahunLulus,
+            lulus_at: new Date(),
+          },
+          { merge: true },
+        );
       }
-      batch.set(doc.ref, {
-        kelas: kelasParts.tingkat === "9" ? "" : promoteKelasValue(data.kelas),
-        kelas_bayangan: kelasParts.tingkat === "9" ? "" : promoteKelasValue(data.kelas_bayangan),
-        updated_at: new Date()
-      }, { merge: true });
+      batch.set(
+        doc.ref,
+        {
+          kelas:
+            kelasParts.tingkat === "9" ? "" : promoteKelasValue(data.kelas),
+          kelas_bayangan:
+            kelasParts.tingkat === "9"
+              ? ""
+              : promoteKelasValue(data.kelas_bayangan),
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   }
 }
 
 async function rollbackStudentPromotion() {
-  const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
-  const defaultTahunLulus = normalizeSemesterText(active.semester) === "GANJIL"
-    ? getPreviousTahunPelajaran(active.tahun)
-    : normalizeTahunPelajaran(active.tahun || "2025/2026");
+  const active =
+    getSemesterSettingsList().find(
+      (item) => item.id === semesterAdminState.active_id,
+    ) || getDefaultSemesterContext();
+  const defaultTahunLulus =
+    normalizeSemesterText(active.semester) === "GANJIL"
+      ? getPreviousTahunPelajaran(active.tahun)
+      : normalizeTahunPelajaran(active.tahun || "2025/2026");
   const confirm = await Swal.fire({
     title: "Turunkan kelas siswa?",
     html: "Masukkan password admin. Siswa kelas 8 turun ke kelas 7, kelas 9 turun ke kelas 8, dan siswa lulus tahun pelajaran yang dipilih dikembalikan ke kelas 9.",
@@ -758,7 +975,7 @@ async function rollbackStudentPromotion() {
     showCancelButton: true,
     confirmButtonText: "Lanjut",
     cancelButtonText: "Batal",
-    inputValidator: value => !value ? "Password wajib diisi" : undefined
+    inputValidator: (value) => (!value ? "Password wajib diisi" : undefined),
   });
   if (!confirm.isConfirmed) return;
 
@@ -776,16 +993,25 @@ async function rollbackStudentPromotion() {
     showCancelButton: true,
     confirmButtonText: "Turunkan",
     cancelButtonText: "Batal",
-    inputValidator: value => !value ? "Tahun pelajaran wajib diisi" : undefined
+    inputValidator: (value) =>
+      !value ? "Tahun pelajaran wajib diisi" : undefined,
   });
   if (!tahunPrompt.isConfirmed) return;
 
   const tahunLulus = normalizeTahunPelajaran(tahunPrompt.value);
   try {
-    Swal.fire({ title: "Menurunkan kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    Swal.fire({
+      title: "Menurunkan kelas...",
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false,
+    });
     const siswaCount = await demoteActiveStudents();
     const lulusCount = await restoreGraduatedStudents(tahunLulus);
-    Swal.fire("Selesai", `${siswaCount} siswa aktif diturunkan. ${lulusCount} siswa lulus dikembalikan ke kelas 9.`, "success");
+    Swal.fire(
+      "Selesai",
+      `${siswaCount} siswa aktif diturunkan. ${lulusCount} siswa lulus dikembalikan ke kelas 9.`,
+      "success",
+    );
   } catch (error) {
     console.error(error);
     Swal.fire("Gagal menurunkan kelas", error.message || "", "error");
@@ -793,21 +1019,28 @@ async function rollbackStudentPromotion() {
 }
 
 async function demoteActiveStudents() {
-  const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
+  const active =
+    getSemesterSettingsList().find(
+      (item) => item.id === semesterAdminState.active_id,
+    ) || getDefaultSemesterContext();
   const snapshot = await getSemesterSourceSnapshot(active, "siswa");
   let count = 0;
   for (let index = 0; index < snapshot.docs.length; index += 450) {
     const batch = getSemesterDocumentsApi().batch();
-    snapshot.docs.slice(index, index + 450).forEach(doc => {
+    snapshot.docs.slice(index, index + 450).forEach((doc) => {
       const data = doc.data();
       const kelasParts = getSemesterKelasParts(data.kelas);
       if (!["8", "9"].includes(kelasParts.tingkat)) return;
       count++;
-      batch.set(getSemesterDocRef("siswa", data.nipd || doc.id, active.id), {
-        kelas: demoteKelasValue(data.kelas),
-        kelas_bayangan: demoteKelasValue(data.kelas_bayangan),
-        updated_at: new Date()
-      }, { merge: true });
+      batch.set(
+        getSemesterDocRef("siswa", data.nipd || doc.id, active.id),
+        {
+          kelas: demoteKelasValue(data.kelas),
+          kelas_bayangan: demoteKelasValue(data.kelas_bayangan),
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   }
@@ -815,24 +1048,33 @@ async function demoteActiveStudents() {
 }
 
 async function restoreGraduatedStudents(tahunLulus) {
-  const snapshot = await getSemesterDocumentsApi().collection("siswa_lulus")
+  const snapshot = await getSemesterDocumentsApi()
+    .collection("siswa_lulus")
     .where("tahun_pelajaran_lulus", "==", tahunLulus)
     .get();
   let count = 0;
   for (let index = 0; index < snapshot.docs.length; index += 225) {
     const batch = getSemesterDocumentsApi().batch();
-    snapshot.docs.slice(index, index + 225).forEach(doc => {
+    snapshot.docs.slice(index, index + 225).forEach((doc) => {
       const data = doc.data();
       const nipd = data.nipd || doc.id;
       if (!nipd) return;
       count++;
-      batch.set(getSemesterDocRef("siswa", nipd), {
-        ...data,
-        kelas: data.kelas_lulus || data.kelas || "",
-        kelas_bayangan: data.kelas_bayangan_lulus || data.kelas_bayangan || data.kelas_lulus || "",
-        restored_from_lulus: tahunLulus,
-        updated_at: new Date()
-      }, { merge: true });
+      batch.set(
+        getSemesterDocRef("siswa", nipd),
+        {
+          ...data,
+          kelas: data.kelas_lulus || data.kelas || "",
+          kelas_bayangan:
+            data.kelas_bayangan_lulus ||
+            data.kelas_bayangan ||
+            data.kelas_lulus ||
+            "",
+          restored_from_lulus: tahunLulus,
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
       batch.delete(doc.ref);
     });
     await batch.commit();
@@ -848,7 +1090,7 @@ function getPreviousSemesterContext(current = semesterAdminState) {
       id: makeSemesterId("GANJIL", tahun),
       semester: "GANJIL",
       tahun,
-      label: makeSemesterLabel("GANJIL", tahun)
+      label: makeSemesterLabel("GANJIL", tahun),
     };
   }
   const previousTahun = getPreviousTahunPelajaran(tahun);
@@ -856,7 +1098,7 @@ function getPreviousSemesterContext(current = semesterAdminState) {
     id: makeSemesterId("GENAP", previousTahun),
     semester: "GENAP",
     tahun: previousTahun,
-    label: makeSemesterLabel("GENAP", previousTahun)
+    label: makeSemesterLabel("GENAP", previousTahun),
   };
 }
 
@@ -868,12 +1110,15 @@ function cloneStudentForPreviousSnapshot(data) {
     kelas: demoteKelasValue(data.kelas),
     kelas_bayangan: demoteKelasValue(data.kelas_bayangan),
     restored_snapshot_from: data.kelas || "",
-    snapshotted_at: new Date()
+    snapshotted_at: new Date(),
   };
 }
 
 async function repairPreviousSemesterSnapshot() {
-  const active = getSemesterSettingsList().find(item => item.id === semesterAdminState.active_id) || getDefaultSemesterContext();
+  const active =
+    getSemesterSettingsList().find(
+      (item) => item.id === semesterAdminState.active_id,
+    ) || getDefaultSemesterContext();
   const previous = getPreviousSemesterContext(active);
   const confirm = await Swal.fire({
     title: `Perbaiki ${previous.label}?`,
@@ -884,7 +1129,7 @@ async function repairPreviousSemesterSnapshot() {
     showCancelButton: true,
     confirmButtonText: "Perbaiki",
     cancelButtonText: "Batal",
-    inputValidator: value => !value ? "Password wajib diisi" : undefined
+    inputValidator: (value) => (!value ? "Password wajib diisi" : undefined),
   });
   if (!confirm.isConfirmed) return;
 
@@ -895,10 +1140,18 @@ async function repairPreviousSemesterSnapshot() {
   }
 
   try {
-    Swal.fire({ title: "Memperbaiki snapshot...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    Swal.fire({
+      title: "Memperbaiki snapshot...",
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false,
+    });
     const siswaCount = await rebuildPreviousSiswaSnapshot(previous, active);
     const kelasCount = await snapshotSemesterCollection(previous.id, "kelas");
-    Swal.fire("Selesai", `Snapshot ${previous.label} diperbaiki. Siswa: ${siswaCount}. Kelas: ${kelasCount}.`, "success");
+    Swal.fire(
+      "Selesai",
+      `Snapshot ${previous.label} diperbaiki. Siswa: ${siswaCount}. Kelas: ${kelasCount}.`,
+      "success",
+    );
   } catch (error) {
     console.error(error);
     Swal.fire("Gagal memperbaiki snapshot", error.message || "", "error");
@@ -911,47 +1164,65 @@ async function rebuildPreviousSiswaSnapshot(previous, active) {
   const siswaSnapshot = await documentsApi.collection("siswa").get();
   for (let index = 0; index < siswaSnapshot.docs.length; index += 450) {
     const batch = documentsApi.batch();
-    siswaSnapshot.docs.slice(index, index + 450).forEach(doc => {
-      const previousData = cloneStudentForPreviousSnapshot({ id: doc.id, ...doc.data() });
+    siswaSnapshot.docs.slice(index, index + 450).forEach((doc) => {
+      const previousData = cloneStudentForPreviousSnapshot({
+        id: doc.id,
+        ...doc.data(),
+      });
       if (!previousData) return;
       count++;
       batch.set(
-        documentsApi.collection("semester_data").doc(previous.id).collection("siswa").doc(doc.id),
+        documentsApi
+          .collection("semester_data")
+          .doc(previous.id)
+          .collection("siswa")
+          .doc(doc.id),
         {
           ...previousData,
           id_asli: doc.id,
-          term_id: previous.id
+          term_id: previous.id,
         },
-        { merge: true }
+        { merge: true },
       );
     });
     await batch.commit();
   }
 
   if (normalizeSemesterText(previous.semester) === "GENAP") {
-    const tahunLulus = normalizeTahunPelajaran(previous.tahun || active.tahun || "");
-    const lulusSnapshot = await documentsApi.collection("siswa_lulus")
+    const tahunLulus = normalizeTahunPelajaran(
+      previous.tahun || active.tahun || "",
+    );
+    const lulusSnapshot = await documentsApi
+      .collection("siswa_lulus")
       .where("tahun_pelajaran_lulus", "==", tahunLulus)
       .get();
     for (let index = 0; index < lulusSnapshot.docs.length; index += 450) {
       const batch = documentsApi.batch();
-      lulusSnapshot.docs.slice(index, index + 450).forEach(doc => {
+      lulusSnapshot.docs.slice(index, index + 450).forEach((doc) => {
         const data = doc.data();
         const nipd = data.nipd || doc.id;
         if (!nipd) return;
         count++;
         batch.set(
-          documentsApi.collection("semester_data").doc(previous.id).collection("siswa").doc(nipd),
+          documentsApi
+            .collection("semester_data")
+            .doc(previous.id)
+            .collection("siswa")
+            .doc(nipd),
           {
             ...data,
             nipd,
             kelas: data.kelas_lulus || data.kelas || "",
-            kelas_bayangan: data.kelas_bayangan_lulus || data.kelas_bayangan || data.kelas_lulus || "",
+            kelas_bayangan:
+              data.kelas_bayangan_lulus ||
+              data.kelas_bayangan ||
+              data.kelas_lulus ||
+              "",
             id_asli: nipd,
             term_id: previous.id,
-            snapshotted_at: new Date()
+            snapshotted_at: new Date(),
           },
-          { merge: true }
+          { merge: true },
         );
       });
       await batch.commit();
@@ -972,17 +1243,21 @@ async function snapshotSemesterCollection(termId, collectionName) {
   let count = 0;
   for (let index = 0; index < snapshot.docs.length; index += 450) {
     const batch = documentsApi.batch();
-    snapshot.docs.slice(index, index + 450).forEach(doc => {
+    snapshot.docs.slice(index, index + 450).forEach((doc) => {
       count++;
       batch.set(
-        documentsApi.collection("semester_data").doc(termId).collection(collectionName).doc(doc.id),
+        documentsApi
+          .collection("semester_data")
+          .doc(termId)
+          .collection(collectionName)
+          .doc(doc.id),
         {
           ...doc.data(),
           id_asli: doc.id,
           term_id: termId,
-          snapshotted_at: new Date()
+          snapshotted_at: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
     });
     await batch.commit();
@@ -995,12 +1270,16 @@ async function clearAllWaliKelas() {
   const snapshot = await documentsApi.collection("kelas").get();
   for (let index = 0; index < snapshot.docs.length; index += 450) {
     const batch = documentsApi.batch();
-    snapshot.docs.slice(index, index + 450).forEach(doc => {
-      batch.set(doc.ref, {
-        kode_guru: "",
-        wali_kelas: "",
-        updated_at: new Date()
-      }, { merge: true });
+    snapshot.docs.slice(index, index + 450).forEach((doc) => {
+      batch.set(
+        doc.ref,
+        {
+          kode_guru: "",
+          wali_kelas: "",
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   }
