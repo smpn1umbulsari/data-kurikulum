@@ -26,6 +26,24 @@ let lastKelasBayanganSummaryHtml = "";
 let lastKelasBayanganTableHtml = "";
 let lastKelasBayanganKelasTableHtml = "";
 let lastMengajarBayanganMatrixHtml = "";
+let kelasBayanganActiveTab = "siswa"; // "datakelas" | "siswa" | "mengajar"
+
+function setKelasBayanganTab(tabId) {
+  kelasBayanganActiveTab = tabId;
+  renderKelasBayanganPage();
+}
+
+function isKelasBayanganDataKelasMode() {
+  return kelasBayanganActiveTab === "datakelas";
+}
+
+function isKelasBayanganSiswaMode() {
+  return kelasBayanganActiveTab === "siswa";
+}
+
+function isKelasBayanganMengajarMode() {
+  return kelasBayanganActiveTab === "mengajar";
+}
 
 function getKelasBayanganDocumentsApi() {
   return window.SupabaseDocuments;
@@ -297,23 +315,23 @@ function sortKelasBayanganItems(data) {
 
 function renderKelasBayanganDataKelasPage() {
   return `
-    <div class="card">
-      <div class="kelas-bayangan-head">
-        <div>
+    <section class="app-page app-page--data kelas-bayangan-module-panel">
+      <header class="app-page-header kelas-bayangan-head">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Kelas Real</span>
           <h2>Data Kelas Real</h2>
           <p>Daftar ini mengambil kelas asli sebagai acuan. Gunakan anggota dan set kelas real untuk memindahkan siswa ke kelas real lain.</p>
         </div>
-      </div>
+      </header>
 
-      <div class="toolbar-info">
+      <div class="status-strip toolbar-info">
         <span id="jumlahDataKelasBayangan">0 kelas</span>
         <span id="kelasBayanganSourceInfo" class="kelas-bayangan-active-info">Belum ada kelas sumber aktif</span>
         <button class="btn-secondary" onclick="refreshKelasBayangan()">Refresh</button>
       </div>
 
       <div class="table-container">
-        <table>
+        <table class="data-table kelas-data-table">
           <thead>
             <tr>
               <th>Tingkat</th>
@@ -324,29 +342,31 @@ function renderKelasBayanganDataKelasPage() {
           </thead>
           <tbody id="kelasBayanganKelasBody"></tbody>
         </table>
-        <div id="kelasBayanganKelasEmpty" class="empty-panel" style="display:none;">Tidak ada data kelas.</div>
+        <div id="kelasBayanganKelasEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data kelas.</div>
       </div>
-    </div>
+    </section>
   `;
 }
 
 function renderKelasBayanganSiswaPage() {
   return `
-    <div class="card">
-      <div class="kelas-bayangan-head">
-        <div>
+    <section class="app-page app-page--data kelas-bayangan-module-panel">
+      <header class="app-page-header kelas-bayangan-head">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Kelas Real</span>
           <h2>Data Siswa Kelas Real</h2>
           <p>Kelas asli A-H menjadi acuan otomatis. Siswa dari kelas I dibagi manual ke kelas real A-H.</p>
         </div>
-        <button class="btn-icon-only btn-primary" onclick="syncKelasBayanganUtama()" title="Sinkronkan A-H" aria-label="Sinkronkan A-H"></button>
-      </div>
+        <div class="app-page-actions">
+          <button class="btn-icon-only btn-primary" onclick="syncKelasBayanganUtama()" title="Sinkronkan A-H" aria-label="Sinkronkan A-H"></button>
+        </div>
+      </header>
 
       <div class="matrix-toolbar-note">
         Gunakan menu ini sebagai acuan Pembagian Ruang. Siswa kelas I yang belum dipilih belum ikut masuk susunan ruang ujian.
       </div>
 
-      <div class="toolbar">
+      <section class="control-panel toolbar">
         <div class="toolbar-left">
           <input id="kelasBayanganSearch" placeholder="Cari nama atau NIPD..." oninput="setKelasBayanganSearch(this.value)">
         </div>
@@ -368,12 +388,12 @@ function renderKelasBayanganSiswaPage() {
               .join("")}
           </select>
         </div>
-      </div>
+      </section>
 
-      <div class="kelas-bayangan-summary" id="kelasBayanganSummary"></div>
+      <div class="status-strip kelas-bayangan-summary" id="kelasBayanganSummary"></div>
 
       <div class="table-container">
-        <table>
+        <table class="data-table siswa-compact-table">
           <thead>
             <tr>
               <th>NIPD</th>
@@ -386,9 +406,9 @@ function renderKelasBayanganSiswaPage() {
           </thead>
           <tbody id="kelasBayanganBody"></tbody>
         </table>
-        <div id="kelasBayanganEmpty" class="empty-panel" style="display:none;">Tidak ada data siswa.</div>
+        <div id="kelasBayanganEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data siswa.</div>
       </div>
-    </div>
+    </section>
   `;
 }
 
@@ -440,7 +460,167 @@ function renderKelasBayanganMengajarPage() {
 }
 
 function renderKelasBayanganPage() {
-  return renderKelasBayanganSiswaPage();
+  const isDataKelasMode = isKelasBayanganDataKelasMode();
+  const isSiswaMode = isKelasBayanganSiswaMode();
+  const isMengajarMode = isKelasBayanganMengajarMode();
+
+  return `
+    <section class="app-page app-page--data kelas-bayangan-module-panel">
+      <header class="app-page-header kelas-bayangan-head">
+        <div class="app-page-title">
+          <span class="dashboard-eyebrow">Kelas Real</span>
+          <h2>Kelas Bayangan</h2>
+          <p>Kelola distribusi siswa ke kelas real A-H.</p>
+        </div>
+      </header>
+
+      <nav class="module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+        <button type="button" class="module-tab ${isDataKelasMode ? "active" : ""}"
+                role="tab" aria-selected="${isDataKelasMode}"
+                onclick="setKelasBayanganTab('datakelas')">
+          Data Kelas
+        </button>
+        <button type="button" class="module-tab ${isSiswaMode ? "active" : ""}"
+                role="tab" aria-selected="${isSiswaMode}"
+                onclick="setKelasBayanganTab('siswa')">
+          Siswa
+        </button>
+        <button type="button" class="module-tab ${isMengajarMode ? "active" : ""}"
+                role="tab" aria-selected="${isMengajarMode}"
+                onclick="setKelasBayanganTab('mengajar')">
+          Mengajar
+        </button>
+      </nav>
+
+      ${isDataKelasMode ? renderKelasBayanganDataKelasContent() : ""}
+      ${isSiswaMode ? renderKelasBayanganSiswaContent() : ""}
+      ${isMengajarMode ? renderKelasBayanganMengajarContent() : ""}
+    </section>
+  `;
+}
+
+function renderKelasBayanganDataKelasContent() {
+  return `
+    <div class="status-strip toolbar-info">
+      <span id="jumlahDataKelasBayangan">0 kelas</span>
+      <span id="kelasBayanganSourceInfo" class="kelas-bayangan-active-info">Belum ada kelas sumber aktif</span>
+      <button class="btn-secondary" onclick="refreshKelasBayangan()">Refresh</button>
+    </div>
+
+    <div class="table-container">
+      <table class="data-table kelas-data-table">
+        <thead>
+          <tr>
+            <th>Tingkat</th>
+            <th>Kelas</th>
+            <th>Anggota Real</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="kelasBayanganKelasBody"></tbody>
+      </table>
+      <div id="kelasBayanganKelasEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data kelas.</div>
+    </div>
+  `;
+}
+
+function renderKelasBayanganSiswaContent() {
+  return `
+    <div class="matrix-toolbar-note">
+      Gunakan menu ini sebagai acuan Pembagian Ruang. Siswa kelas I yang belum dipilih belum ikut masuk susunan ruang ujian.
+    </div>
+
+    <div class="app-page-actions">
+      <button class="btn-icon-only btn-primary" onclick="syncKelasBayanganUtama()" title="Sinkronkan A-H" aria-label="Sinkronkan A-H"></button>
+    </div>
+
+    <section class="control-panel toolbar">
+      <div class="toolbar-left">
+        <input id="kelasBayanganSearch" placeholder="Cari nama atau NIPD..." oninput="setKelasBayanganSearch(this.value)">
+      </div>
+      <div class="toolbar-right">
+        <select id="kelasBayanganTingkat" onchange="setKelasBayanganTingkat(this.value)">
+          <option value="">Semua Tingkat</option>
+          <option value="7">Tingkat 7</option>
+          <option value="8">Tingkat 8</option>
+          <option value="9">Tingkat 9</option>
+        </select>
+        <select id="kelasBayanganRombel" onchange="setKelasBayanganRombel(this.value)">
+          <option value="">Semua Rombel Asli</option>
+          ${"ABCDEFGHI"
+            .split("")
+            .map(
+              (rombel) => `<option value="${rombel}">Kelas ${rombel}</option>`,
+            )
+            .join("")}
+        </select>
+      </div>
+    </section>
+
+    <div class="status-strip kelas-bayangan-summary" id="kelasBayanganSummary"></div>
+
+    <div class="table-container">
+      <table class="data-table siswa-compact-table">
+        <thead>
+          <tr>
+            <th>NIPD</th>
+            <th>Nama</th>
+            <th>Kelas Asli</th>
+            <th>Kelas Real</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody id="kelasBayanganBody"></tbody>
+      </table>
+      <div id="kelasBayanganEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data siswa.</div>
+    </div>
+  `;
+}
+
+function renderKelasBayanganMengajarContent() {
+  return `
+    <div class="card">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <div class="page-size-control">
+            <label for="tingkatMengajarBayangan">Tingkat</label>
+            <select id="tingkatMengajarBayangan" onchange="setMengajarBayanganTingkat(this.value)">
+              <option value="7" ${kelasBayanganMengajarTingkat === "7" ? "selected" : ""}>7</option>
+              <option value="8" ${kelasBayanganMengajarTingkat === "8" ? "selected" : ""}>8</option>
+              <option value="9" ${kelasBayanganMengajarTingkat === "9" ? "selected" : ""}>9</option>
+            </select>
+          </div>
+        </div>
+        <div class="toolbar-right">
+          <button class="btn-icon-only btn-primary" onclick="saveAllMengajarBayangan()" title="Simpan Semua" aria-label="Simpan Semua"></button>
+        </div>
+      </div>
+
+      <div class="toolbar-info">
+        <span id="jumlahMengajarBayanganInfo">0 mapel x 0 kelas</span>
+        <div class="page-size-control">
+          <span id="pendingMengajarBayanganInfo">0 perubahan belum disimpan</span>
+          <button class="btn-secondary" onclick="refreshMengajarBayanganPage()">Refresh</button>
+        </div>
+      </div>
+
+      <div class="matrix-search-bar">
+        <select id="mengajarBayanganSearchInput" class="matrix-search-input" onchange="handleMengajarBayanganSearchInput(this.value)" onkeydown="handleMengajarBayanganSearchKeydown(event)">
+          ${typeof getMengajarSearchGuruOptions === "function" ? getMengajarSearchGuruOptions(true, mengajarBayanganSearchDraft) : '<option value="">Pilih guru untuk dicari</option>'}
+        </select>
+        <button class="btn-secondary" onclick="submitMengajarBayanganSearch()">Cari</button>
+        <button class="btn-secondary" onclick="clearMengajarBayanganSearch()">Reset</button>
+        <small id="mengajarBayanganSearchInfo" class="matrix-search-info">Pilih nama guru untuk menyorot posisinya di matriks.</small>
+      </div>
+
+      <div class="matrix-toolbar-note">
+        Nilai awal mengikuti Pembagian Mengajar kelas asli. PABP yang tidak sesuai agama siswa di kelas real akan disamarkan.
+      </div>
+
+      <div id="mengajarBayanganMatrixContainer"></div>
+    </div>
+  `;
 }
 
 function loadRealtimeKelasBayangan() {

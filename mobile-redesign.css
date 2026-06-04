@@ -1167,6 +1167,99 @@ body.dark .nilai-table td:nth-child(2) {
 }
 
 /* =====================================================
+   KELAS STATISTIK CONTAINER
+   ===================================================== */
+
+.kelas-statistik-container {
+  padding: var(--gs-space-3) 0;
+}
+
+.kelas-statistik-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gs-space-3);
+  margin-bottom: var(--gs-space-4);
+}
+
+.kelas-statistik-card {
+  background: var(--gs-surface);
+  border: 1px solid var(--gs-border);
+  border-radius: var(--gs-radius-md);
+  padding: var(--gs-space-4);
+  text-align: center;
+}
+
+.kelas-statistik-level {
+  font-size: 0.75rem;
+  color: var(--gs-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--gs-space-2);
+}
+
+.kelas-statistik-count {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--gs-primary);
+  line-height: 1;
+}
+
+.kelas-statistik-label {
+  font-size: 0.875rem;
+  color: var(--gs-text-muted);
+  margin-top: var(--gs-space-1);
+}
+
+.kelas-statistik-detail {
+  font-size: 0.75rem;
+  color: var(--gs-text-secondary);
+  margin-top: var(--gs-space-1);
+}
+
+.kelas-statistik-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--gs-space-3);
+  margin-bottom: var(--gs-space-4);
+}
+
+.kelas-statistik-summary-item {
+  background: var(--gs-surface);
+  border: 1px solid var(--gs-border);
+  border-radius: var(--gs-radius-md);
+  padding: var(--gs-space-3);
+  text-align: center;
+}
+
+.kelas-statistik-summary-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--gs-text);
+}
+
+.kelas-statistik-summary-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--gs-text-muted);
+  margin-top: var(--gs-space-1);
+}
+
+.kelas-statistik-warning .kelas-statistik-summary-value {
+  color: var(--gs-warning);
+}
+
+.kelas-statistik-note {
+  font-size: 0.875rem;
+  color: var(--gs-text-muted);
+  text-align: center;
+  padding: var(--gs-space-3);
+  background: var(--gs-surface);
+  border-radius: var(--gs-radius-md);
+  border: 1px solid var(--gs-border);
+}
+
+/* =====================================================
    UTILITY CLASSES FOR MOBILE
    ===================================================== */
 

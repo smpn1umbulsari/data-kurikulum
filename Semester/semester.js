@@ -8,6 +8,16 @@ let semesterAdminState = {
 };
 let unsubscribeAdminSemesterSettings = null;
 const GURU_NILAI_INPUT_MODE_KEY = "guruNilaiInputMode";
+let semesterActiveTab = "kelola"; // "kelola" | "pengaturan"
+
+function setSemesterTab(tabId) {
+  semesterActiveTab = tabId;
+  renderAdminSemesterPage();
+}
+
+function isSemesterPengaturanMode() {
+  return semesterActiveTab === "pengaturan";
+}
 
 function getSemesterDocumentsApi() {
   return window.SupabaseDocuments;
@@ -233,6 +243,8 @@ function mergeSemesterList(list, item) {
 }
 
 function renderAdminSemesterPage() {
+  const isKelolaMode = semesterActiveTab === "kelola";
+  const isPengaturanMode = semesterActiveTab === "pengaturan";
   const active =
     getSemesterSettingsList().find(
       (item) => item.id === semesterAdminState.active_id,
@@ -245,15 +257,31 @@ function renderAdminSemesterPage() {
   });
 
   return `
-    <div class="card">
-      <div class="kelas-bayangan-head nilai-page-head">
-        <div>
+    <section class="app-page app-page--data semester-page">
+      <header class="app-page-header kelas-bayangan-head nilai-page-head">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Admin</span>
           <h2>Semester dan Tahun Pelajaran</h2>
           <p>Atur semester aktif yang dipilih pengguna saat login dan proses perpindahan semester.</p>
         </div>
-      </div>
+      </header>
 
+      <nav class="module-tabs" role="tablist" aria-label="Mode semester">
+        <button type="button" class="module-tab ${isKelolaMode ? "active" : ""}"
+                role="tab" aria-selected="${isKelolaMode}"
+                onclick="setSemesterTab('kelola')">
+          Kelola
+        </button>
+        <button type="button" class="module-tab ${isPengaturanMode ? "active" : ""}"
+                role="tab" aria-selected="${isPengaturanMode}"
+                onclick="setSemesterTab('pengaturan')">
+          Pengaturan
+        </button>
+      </nav>
+
+      ${
+        isPengaturanMode
+          ? `
       <div class="semester-admin-grid">
         <section class="semester-admin-panel">
           <span class="dashboard-eyebrow">Semester Aktif</span>
@@ -314,7 +342,13 @@ function renderAdminSemesterPage() {
           <small class="field-help-text">${isGuruPtsInputActive() ? "Guru membuka panel input PTS." : "Guru membuka panel input semester."}</small>
         </section>
       </div>
+      `
+          : ""
+      }
 
+      ${
+        isKelolaMode
+          ? `
       <div class="table-container mapel-table-container">
         <table class="mapel-table semester-admin-table">
           <thead>
@@ -347,7 +381,10 @@ function renderAdminSemesterPage() {
           </tbody>
         </table>
       </div>
-    </div>
+      `
+          : ""
+      }
+    </section>
   `;
 }
 

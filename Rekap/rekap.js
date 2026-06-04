@@ -9,6 +9,80 @@ let unsubscribeRekapMengajar = null;
 let unsubscribeRekapMapel = null;
 let unsubscribeRekapTugasTambahan = null;
 let unsubscribeRekapGuruTugasTambahan = null;
+let rekapActiveTab = "mengajar"; // "mengajar" | "ringkasan"
+
+function setRekapTab(tabId) {
+  rekapActiveTab = tabId;
+  renderRekapTugasMengajarPage();
+}
+
+function isRekapRingkasanMode() {
+  return rekapActiveTab === "ringkasan";
+}
+
+function renderRekapRingkasanSummary() {
+  const gurus = getSortedRekapGuru();
+  const totals = { mengajar: 0, tugasTambahan: 0, grandTotal: 0 };
+  const levelSummary = { 7: 0, 8: 0, 9: 0 };
+
+  gurus.forEach((guru) => {
+    const guruKode = String(guru.kode_guru || "").trim();
+    const mengajar = getRekapMengajarSummary(guruKode);
+    const tugas = getRekapTugasTambahanSummary(guruKode);
+    totals.mengajar += mengajar.total;
+    totals.tugasTambahan += tugas.totalJp;
+    totals.grandTotal += mengajar.total + tugas.totalJp;
+    levelSummary[7] += mengajar.levels["7"].jp;
+    levelSummary[8] += mengajar.levels["8"].jp;
+    levelSummary[9] += mengajar.levels["9"].jp;
+  });
+
+  return { gurus: gurus.length, totals, levelSummary };
+}
+
+function renderRekapRingkasanPage() {
+  const stats = renderRekapRingkasanSummary();
+  const levelCards = ["7", "8", "9"]
+    .map(
+      (level) => `
+    <div class="kelas-statistik-card">
+      <div class="kelas-statistik-level">Tingkat ${level}</div>
+      <div class="kelas-statistik-count">${stats.levelSummary[level] || 0}</div>
+      <div class="kelas-statistik-label">JP Mengajar</div>
+    </div>
+  `,
+    )
+    .join("");
+
+  return `
+    <div class="kelas-statistik-container">
+      <div class="kelas-statistik-grid">
+        ${levelCards}
+      </div>
+      <div class="kelas-statistik-summary">
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.gurus}</span>
+          <span class="kelas-statistik-summary-label">Total Guru</span>
+        </div>
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.totals.mengajar}</span>
+          <span class="kelas-statistik-summary-label">JP Mengajar</span>
+        </div>
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.totals.tugasTambahan}</span>
+          <span class="kelas-statistik-summary-label">JP Tugas Tambahan</span>
+        </div>
+        <div class="kelas-statistik-summary-item kelas-statistik-warning">
+          <span class="kelas-statistik-summary-value">${stats.totals.grandTotal}</span>
+          <span class="kelas-statistik-summary-label">Total JP</span>
+        </div>
+      </div>
+      <div class="kelas-statistik-note">
+        Gunakan tab Rekap Mengajar untuk detail tugas mengajar per guru.
+      </div>
+    </div>
+  `;
+}
 
 function escapeRekapHtml(value) {
   return String(value ?? "")
@@ -20,33 +94,65 @@ function escapeRekapHtml(value) {
 }
 
 function renderRekapTugasMengajarPage() {
+  const isMengajarMode = rekapActiveTab === "mengajar";
+  const isRingkasanMode = rekapActiveTab === "ringkasan";
+
   return `
-    <div class="card rekap-module-panel">
-      <div class="rekap-module-header">
-        <div>
+    <section class="app-page app-page--data rekap-module-panel">
+      <header class="app-page-header rekap-module-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Rekap</span>
           <h2>Rekap Tugas dan Mengajar</h2>
+          <p>Ringkasan tugas mengajar, tugas tambahan, dan total JP setiap guru.</p>
         </div>
-        <div class="rekap-toolbar-actions">
-          <button class="btn-secondary rekap-action-btn" onclick="refreshRekapTable()">
-            <span class="rekap-action-icon rekap-icon-refresh" aria-hidden="true"></span>
-            Refresh
-          </button>
-        </div>
+      </header>
+
+      <nav class="module-tabs" role="tablist" aria-label="Mode rekap">
+        <button type="button" class="module-tab ${isMengajarMode ? "active" : ""}"
+                role="tab" aria-selected="${isMengajarMode}"
+                onclick="setRekapTab('mengajar')">
+          Rekap Mengajar
+        </button>
+        <button type="button" class="module-tab ${isRingkasanMode ? "active" : ""}"
+                role="tab" aria-selected="${isRingkasanMode}"
+                onclick="setRekapTab('ringkasan')">
+          Ringkasan JP
+        </button>
+      </nav>
+
+      ${
+        isMengajarMode
+          ? `
+      <div class="app-page-actions">
+        <button class="btn-secondary rekap-action-btn" onclick="refreshRekapTable()">
+          <span class="rekap-action-icon rekap-icon-refresh" aria-hidden="true"></span>
+          Refresh
+        </button>
       </div>
 
-      <p class="rekap-module-description">Ringkasan tugas mengajar, tugas tambahan, dan total JP setiap guru.</p>
-
-      <div class="rekap-table-meta">
+      <div class="status-strip rekap-table-meta">
         <span id="rekapTugasMengajarInfo">Memuat data rekap...</span>
       </div>
 
       <div id="rekapTugasMengajarContainer"></div>
 
-      <div id="emptyStateRekap" class="rekap-empty-state" style="display:none;">
+      <div id="emptyStateRekap" class="empty-state rekap-empty-state" style="display:none;">
         Belum ada data guru untuk direkap.
       </div>
-    </div>
+      `
+          : ""
+      }
+
+      ${
+        isRingkasanMode
+          ? `
+      <div id="rekapRingkasanContainer">
+        ${renderRekapRingkasanPage()}
+      </div>
+      `
+          : ""
+      }
+    </section>
   `;
 }
 

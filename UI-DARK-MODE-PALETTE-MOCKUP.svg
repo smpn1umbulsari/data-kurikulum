@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <defs>
+    <style>
+      .bg{fill:#0b1120}
+      .surface{fill:#111827;stroke:#334155;stroke-width:1.5}
+      .surface2{fill:#0f172a;stroke:#334155;stroke-width:1.5}
+      .muted{fill:#1e293b}
+      .text{fill:#f8fafc;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .secondary{fill:#dbe4ef;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .hint{fill:#9aa8bb;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .label{font-size:20px;font-weight:800}
+      .small{font-size:15px;font-weight:650}
+      .tiny{font-size:13px;font-weight:650}
+      .title{font-size:34px;font-weight:850}
+      .subtitle{font-size:17px;font-weight:600}
+      .code{font-size:14px;font-weight:750}
+      .shadow{filter:url(#shadow)}
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" flood-color="#000000" flood-opacity=".28"/>
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1600" height="1100"/>
+  <text x="70" y="74" class="text title">Rekomendasi Dark Mode: Clean Slate, Tegas, Tidak Neon</text>
+  <text x="70" y="108" class="hint subtitle">Slate gelap sebagai fondasi, aksen modul kecil untuk orientasi, status tetap universal.</text>
+
+  <g transform="translate(70 150)">
+    <rect class="surface shadow" rx="8" width="1460" height="250"/>
+    <text x="28" y="42" class="text label">1. Core Dark System Palette</text>
+    <text x="28" y="70" class="hint small">Empat tingkat permukaan membuat batas jelas tanpa warna ramai.</text>
+    <g transform="translate(28 105)">
+      <g>
+        <rect width="128" height="82" rx="8" fill="#0b1120" stroke="#334155"/>
+        <text x="12" y="112" class="secondary tiny">App BG</text>
+        <text x="12" y="132" class="hint code">#0B1120</text>
+      </g>
+      <g transform="translate(158 0)">
+        <rect width="128" height="82" rx="8" fill="#0f172a" stroke="#334155"/>
+        <text x="12" y="112" class="secondary tiny">Chrome</text>
+        <text x="12" y="132" class="hint code">#0F172A</text>
+      </g>
+      <g transform="translate(316 0)">
+        <rect width="128" height="82" rx="8" fill="#111827" stroke="#334155"/>
+        <text x="12" y="112" class="secondary tiny">Surface</text>
+        <text x="12" y="132" class="hint code">#111827</text>
+      </g>
+      <g transform="translate(474 0)">
+        <rect width="128" height="82" rx="8" fill="#1e293b" stroke="#334155"/>
+        <text x="12" y="112" class="secondary tiny">Table Head</text>
+        <text x="12" y="132" class="hint code">#1E293B</text>
+      </g>
+      <g transform="translate(632 0)">
+        <rect width="128" height="82" rx="8" fill="#334155"/>
+        <text x="12" y="112" class="secondary tiny">Border</text>
+        <text x="12" y="132" class="hint code">#334155</text>
+      </g>
+      <g transform="translate(790 0)">
+        <rect width="128" height="82" rx="8" fill="#64748b"/>
+        <text x="12" y="112" class="secondary tiny">Strong</text>
+        <text x="12" y="132" class="hint code">#64748B</text>
+      </g>
+      <g transform="translate(948 0)">
+        <rect width="128" height="82" rx="8" fill="#f8fafc"/>
+        <text x="12" y="112" class="secondary tiny">Text</text>
+        <text x="12" y="132" class="hint code">#F8FAFC</text>
+      </g>
+      <g transform="translate(1106 0)">
+        <rect width="128" height="82" rx="8" fill="#60a5fa"/>
+        <text x="12" y="112" class="secondary tiny">Primary</text>
+        <text x="12" y="132" class="hint code">#60A5FA</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(70 440)">
+    <rect class="surface shadow" rx="8" width="705" height="585"/>
+    <text x="28" y="42" class="text label">2. Module Accent Dark</text>
+    <text x="28" y="70" class="hint small">Aksen lebih terang dari light mode, tetapi dipakai kecil dan tidak neon.</text>
+
+    <g transform="translate(28 105)">
+      <g>
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#5eead4"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(45,212,191,.14)" stroke="#5eead4"/>
+        <text x="58" y="27" class="text small">Siswa / Akademik</text>
+        <text x="58" y="48" class="hint code">#5EEAD4</text>
+      </g>
+      <g transform="translate(345 0)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#a5b4fc"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(129,140,248,.16)" stroke="#a5b4fc"/>
+        <text x="58" y="27" class="text small">Guru / Mengajar</text>
+        <text x="58" y="48" class="hint code">#A5B4FC</text>
+      </g>
+
+      <g transform="translate(0 82)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#86efac"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(74,222,128,.14)" stroke="#86efac"/>
+        <text x="58" y="27" class="text small">Kelas / Wali</text>
+        <text x="58" y="48" class="hint code">#86EFAC</text>
+      </g>
+      <g transform="translate(345 82)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#7dd3fc"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(56,189,248,.14)" stroke="#7dd3fc"/>
+        <text x="58" y="27" class="text small">Mapel / Kurikulum</text>
+        <text x="58" y="48" class="hint code">#7DD3FC</text>
+      </g>
+
+      <g transform="translate(0 164)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#fbbf24"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(251,191,36,.16)" stroke="#fbbf24"/>
+        <text x="58" y="27" class="text small">Nilai / Rapor</text>
+        <text x="58" y="48" class="hint code">#FBBF24</text>
+      </g>
+      <g transform="translate(345 164)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#c4b5fd"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(167,139,250,.16)" stroke="#c4b5fd"/>
+        <text x="58" y="27" class="text small">Asesmen</text>
+        <text x="58" y="48" class="hint code">#C4B5FD</text>
+      </g>
+
+      <g transform="translate(0 246)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#fdba74"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(251,146,60,.15)" stroke="#fdba74"/>
+        <text x="58" y="27" class="text small">Rekap / Tugas</text>
+        <text x="58" y="48" class="hint code">#FDBA74</text>
+      </g>
+      <g transform="translate(345 246)">
+        <rect width="315" height="64" rx="8" fill="#111827" stroke="#334155"/>
+        <rect width="6" height="64" rx="3" fill="#cbd5e1"/>
+        <circle cx="34" cy="32" r="13" fill="rgba(148,163,184,.14)" stroke="#cbd5e1"/>
+        <text x="58" y="27" class="text small">Admin / Utility</text>
+        <text x="58" y="48" class="hint code">#CBD5E1</text>
+      </g>
+    </g>
+
+    <g transform="translate(28 475)">
+      <rect width="660" height="70" rx="8" fill="rgba(244,63,94,.18)" stroke="rgba(251,113,133,.38)"/>
+      <rect width="6" height="70" rx="3" fill="#fda4af"/>
+      <text x="24" y="28" class="text small">Status tetap universal</text>
+      <text x="24" y="50" class="hint tiny">Danger tidak mengikuti warna modul. Ini menjaga risiko tetap terbaca cepat.</text>
+    </g>
+  </g>
+
+  <g transform="translate(825 440)">
+    <rect class="surface shadow" rx="8" width="705" height="585"/>
+    <text x="28" y="42" class="text label">3. Contoh Dark Layout Modul Nilai</text>
+    <text x="28" y="70" class="hint small">Panel gelap bertingkat, border jelas, aksen amber hanya sebagai orientasi.</text>
+
+    <g transform="translate(28 104)">
+      <rect width="650" height="420" rx="8" fill="#0b1120" stroke="#334155"/>
+      <rect x="24" y="24" width="602" height="76" rx="8" fill="#111827" stroke="#334155"/>
+      <rect x="24" y="24" width="5" height="76" rx="3" fill="#fbbf24"/>
+      <text x="48" y="52" fill="#fbbf24" font-family="Inter,Segoe UI,Arial" font-size="13" font-weight="800">NILAI</text>
+      <text x="48" y="78" class="text label">Input Nilai</text>
+      <rect x="494" y="44" width="108" height="34" rx="6" fill="#60a5fa"/>
+      <text x="524" y="66" fill="#07111f" font-family="Inter,Segoe UI,Arial" font-size="13" font-weight="850">Simpan</text>
+
+      <rect x="24" y="118" width="602" height="82" rx="8" fill="#111827" stroke="#334155"/>
+      <rect x="24" y="118" width="602" height="3" rx="2" fill="#fbbf24"/>
+      <rect x="48" y="146" width="170" height="34" rx="6" fill="#0f172a" stroke="#475569"/>
+      <text x="64" y="168" class="hint tiny">Kelas: 7A</text>
+      <rect x="232" y="146" width="170" height="34" rx="6" fill="#0f172a" stroke="#475569"/>
+      <text x="248" y="168" class="hint tiny">Mapel: IPA</text>
+      <rect x="416" y="146" width="118" height="34" rx="6" fill="rgba(251,191,36,.16)" stroke="rgba(251,191,36,.36)"/>
+      <text x="438" y="168" fill="#fbbf24" font-family="Inter,Segoe UI,Arial" font-size="13" font-weight="800">Draft aktif</text>
+
+      <rect x="24" y="218" width="602" height="178" rx="8" fill="#111827" stroke="#334155"/>
+      <rect x="24" y="218" width="602" height="40" rx="8" fill="#1e293b" stroke="#334155"/>
+      <text x="48" y="243" class="secondary tiny">No</text>
+      <text x="96" y="243" class="secondary tiny">Nama Siswa</text>
+      <text x="350" y="243" class="secondary tiny">Nilai</text>
+      <text x="492" y="243" class="secondary tiny">Status</text>
+      <line x1="24" y1="258" x2="626" y2="258" stroke="#64748b"/>
+      <text x="48" y="291" class="text tiny">1</text>
+      <text x="96" y="291" class="text tiny">Ahmad Zaki</text>
+      <rect x="338" y="272" width="72" height="30" rx="6" fill="#0f172a" stroke="#475569"/>
+      <text x="360" y="292" class="text tiny">88</text>
+      <rect x="482" y="272" width="86" height="28" rx="14" fill="rgba(34,197,94,.16)" stroke="rgba(74,222,128,.35)"/>
+      <text x="505" y="291" fill="#86efac" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">OK</text>
+      <line x1="24" y1="316" x2="626" y2="316" stroke="#334155"/>
+      <rect x="24" y="316" width="602" height="49" fill="#0f172a" opacity=".9"/>
+      <text x="48" y="349" class="text tiny">2</text>
+      <text x="96" y="349" class="text tiny">Bunga Laras</text>
+      <rect x="338" y="330" width="72" height="30" rx="6" fill="#0f172a" stroke="#475569"/>
+      <text x="360" y="350" class="text tiny">-</text>
+      <rect x="482" y="330" width="86" height="28" rx="14" fill="rgba(251,191,36,.16)" stroke="rgba(251,191,36,.36)"/>
+      <text x="498" y="349" fill="#fbbf24" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">Belum</text>
+    </g>
+  </g>
+</svg>

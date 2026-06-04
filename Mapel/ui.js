@@ -1,57 +1,80 @@
 // ================= UI MAPEL =================
+function setMapelTab(tabId) {
+  mapelActiveTab = tabId;
+  renderMapelPage();
+}
+
 function renderMapelPage() {
-  const isBayangan =
-    typeof getActiveMapelCollectionName === "function" &&
-    getActiveMapelCollectionName() === "mapel_bayangan";
+  const isBayangan = mapelActiveTab === "bayangan";
   return `
-    <div class="card mapel-module-panel">
-      <div class="mapel-module-header">
-        <div>
+    <section class="app-page app-page--data mapel-module-panel">
+      <header class="app-page-header mapel-module-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Akademik</span>
-          <h2>${isBayangan ? "Data Mata Pelajaran Kelas Bayangan" : "Data Mata Pelajaran"}</h2>
+          <h2>Data Mata Pelajaran</h2>
         </div>
-        <div class="mapel-toolbar-actions">
-          ${
-            isBayangan
-              ? `
-            <button class="btn-secondary mapel-action-btn" onclick="syncMapelBayanganManual()">
-              <span class="mapel-action-icon mapel-icon-sync" aria-hidden="true"></span>
-              Sinkron dari Data Mapel Asli
-            </button>
-          `
-              : `
-            <button class="btn-secondary mapel-action-btn" onclick="downloadMapelTemplate()">
-              <span class="mapel-action-icon mapel-icon-download" aria-hidden="true"></span>
-              Template
-            </button>
-            <label class="btn-secondary mapel-action-btn mapel-upload-action">
-              <span class="mapel-action-icon mapel-icon-upload" aria-hidden="true"></span>
-              Import
-              <input type="file" accept=".xlsx, .xls" onchange="importMapelExcel(event)">
-            </label>
-          `
-          }
-          <button class="btn-secondary mapel-action-btn" onclick="resetMapelFilter()">
-            <span class="mapel-action-icon mapel-icon-reset" aria-hidden="true"></span>
-            Reset
-          </button>
-          <button class="btn-secondary mapel-action-btn" onclick="refreshMapelTable()">
-            <span class="mapel-action-icon mapel-icon-refresh" aria-hidden="true"></span>
-            Refresh
+        <div class="app-page-actions">
+          <button class="btn-primary mapel-action-btn" onclick="loadPage('mapel-input')">
+            <span class="mapel-action-icon mapel-icon-plus" aria-hidden="true"></span>
+            Tambah Mapel
           </button>
         </div>
+      </header>
+
+      <nav class="module-tabs" role="tablist" aria-label="Mode mapel">
+        <button type="button" class="module-tab ${!isBayangan ? "active" : ""}" 
+                role="tab" aria-selected="${!isBayangan}" 
+                onclick="setMapelTab('asli')">
+          Mapel Asli
+        </button>
+        <button type="button" class="module-tab ${isBayangan ? "active" : ""}" 
+                role="tab" aria-selected="${isBayangan}" 
+                onclick="setMapelTab('bayangan')">
+          Mapel Bayangan
+        </button>
+      </nav>
+
+      <div class="action-bar mapel-toolbar-actions">
+        ${
+          isBayangan
+            ? `
+          <button class="btn-secondary mapel-action-btn" onclick="syncMapelBayanganManual()">
+            <span class="mapel-action-icon mapel-icon-sync" aria-hidden="true"></span>
+            Sinkron dari Data Mapel Asli
+          </button>
+        `
+            : `
+          <button class="btn-secondary mapel-action-btn" onclick="downloadMapelTemplate()">
+            <span class="mapel-action-icon mapel-icon-download" aria-hidden="true"></span>
+            Template
+          </button>
+          <label class="btn-secondary mapel-action-btn mapel-upload-action">
+            <span class="mapel-action-icon mapel-icon-upload" aria-hidden="true"></span>
+            Import
+            <input type="file" accept=".xlsx, .xls" onchange="importMapelExcel(event)">
+          </label>
+        `
+        }
+        <button class="btn-secondary mapel-action-btn" onclick="resetMapelFilter()">
+          <span class="mapel-action-icon mapel-icon-reset" aria-hidden="true"></span>
+          Reset
+        </button>
+        <button class="btn-secondary mapel-action-btn" onclick="refreshMapelTable()">
+          <span class="mapel-action-icon mapel-icon-refresh" aria-hidden="true"></span>
+          Refresh
+        </button>
       </div>
 
       ${isBayangan ? `<div class="matrix-toolbar-note mapel-access-note">Disalin dari Data Mapel asli. Yang bisa diubah hanya JP.</div>` : ""}
 
-      <div class="mapel-toolbar-panel">
+      <section class="control-panel mapel-toolbar-panel">
         <label class="mapel-field mapel-field-search" for="searchMapel">
           <span>Pencarian</span>
           <input id="searchMapel" placeholder="Cari kode atau nama mapel..." oninput="handleMapelSearch()">
         </label>
-      </div>
+      </section>
 
-      <div class="mapel-table-meta">
+      <div class="status-strip mapel-table-meta">
         <span id="jumlahDataMapel">0 mapel</span>
         <label class="page-size-control" for="rowsPerPageMapel">
           <span>Rows per page</span>
@@ -67,7 +90,7 @@ function renderMapelPage() {
       </div>
 
       <div class="table-container mapel-table-container">
-        <table class="mapel-table mapel-master-table">
+        <table class="data-table mapel-table mapel-master-table">
           <colgroup>
             <col class="mapel-master-col-map">
             <col class="mapel-master-col-induk">
@@ -89,12 +112,12 @@ function renderMapelPage() {
           <tbody id="tbodyMapel"></tbody>
         </table>
 
-        <div id="emptyStateMapel" class="mapel-empty-state" style="display:none;">
+        <div id="emptyStateMapel" class="empty-state mapel-empty-state" style="display:none;">
           Tidak ada data mata pelajaran
         </div>
       </div>
 
       <div id="tablePaginationMapel" class="pagination-wrap"></div>
-    </div>
+    </section>
   `;
 }

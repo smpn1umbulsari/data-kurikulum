@@ -9,6 +9,7 @@ let mapelSortField = "mapping";
 let mapelSortDirection = "asc";
 let isSyncingMapelBayangan = false;
 let lastMapelTableRenderKey = "";
+let mapelActiveTab = "asli"; // "asli" | "bayangan"
 const INDUK_MAPEL_OPTIONS = [
   { kode: "PABP", nama: "Pendidikan Agama dan Budi Pekerti" },
   { kode: "PP", nama: "Pendidikan Pancasila" },
@@ -470,10 +471,7 @@ function setMapelPage(page) {
 }
 
 function isMapelBayanganMode() {
-  return (
-    typeof getActiveMapelCollectionName === "function" &&
-    getActiveMapelCollectionName() === "mapel_bayangan"
-  );
+  return mapelActiveTab === "bayangan";
 }
 
 async function syncMapelBayanganFromOriginal({

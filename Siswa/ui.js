@@ -177,50 +177,52 @@ function renderTable() {
       ? getCurrentCoordinatorLevelsSync()
       : [];
   return `
-    <div class="card siswa-module-panel">
-      <div class="siswa-module-header">
-        <div>
-          <span class="dashboard-eyebrow">Akademik</span>
+    <section class="app-page app-page--data siswa-module-panel">
+      <!-- HEADER BARU: Identitas + Tab digabung -->
+      <header class="siswa-new-header">
+        <div class="siswa-new-header-left">
+          <span class="dashboard-eyebrow siswa-accent-text">Akademik</span>
           <h2>Data Siswa</h2>
         </div>
-        <button class="btn-primary siswa-primary-action" onclick="loadPage('input')">
+        <div class="siswa-new-header-right">
+          ${renderSiswaModuleTabs("lihat")}
+        </div>
+      </header>
+
+      <!-- TOMBOL CEPAT BARU: Semua tombol di satu baris -->
+      <div class="siswa-action-bar">
+        <button class="btn-primary siswa-action-add" onclick="loadPage('input')">
           <span class="siswa-action-icon siswa-icon-plus" aria-hidden="true"></span>
           Tambah Siswa
         </button>
-      </div>
-
-      <div class="siswa-module-subbar">
-        ${renderSiswaModuleTabs("lihat")}
-        <div class="siswa-toolbar-actions">
-          ${
-            isKoordinator
-              ? ""
-              : `
-            <button class="btn-secondary siswa-action-btn" onclick="downloadSiswaTemplate()">
-              <span class="siswa-action-icon siswa-icon-download" aria-hidden="true"></span>
-              Template
-            </button>
-            <label class="btn-secondary siswa-action-btn siswa-upload-action">
-              <span class="siswa-action-icon siswa-icon-upload" aria-hidden="true"></span>
-              Import
-              <input type="file" accept=".xlsx, .xls" onchange="importExcel(event)">
-            </label>
-          `
-          }
-          <button class="btn-secondary siswa-action-btn" onclick="resetFilter()">
-            <span class="siswa-action-icon siswa-icon-reset" aria-hidden="true"></span>
-            Reset
+        ${
+          isKoordinator
+            ? ""
+            : `
+          <button class="btn-secondary siswa-action-btn" onclick="downloadSiswaTemplate()">
+            <span class="siswa-action-icon siswa-icon-download" aria-hidden="true"></span>
+            Template
           </button>
-          <button class="btn-secondary siswa-action-btn" onclick="refreshSiswaTable()">
-            <span class="siswa-action-icon siswa-icon-refresh" aria-hidden="true"></span>
-            Refresh
-          </button>
-        </div>
+          <label class="btn-secondary siswa-action-btn siswa-upload-action">
+            <span class="siswa-action-icon siswa-icon-upload" aria-hidden="true"></span>
+            Import
+            <input type="file" accept=".xlsx, .xls" onchange="importExcel(event)">
+          </label>
+        `
+        }
+        <button class="btn-secondary siswa-action-btn" onclick="resetFilter()">
+          <span class="siswa-action-icon siswa-icon-reset" aria-hidden="true"></span>
+          Reset
+        </button>
+        <button class="btn-secondary siswa-action-btn" onclick="refreshSiswaTable()">
+          <span class="siswa-action-icon siswa-icon-refresh" aria-hidden="true"></span>
+          Refresh
+        </button>
       </div>
 
       ${isKoordinator ? `<div class="matrix-toolbar-note siswa-access-note">Akses koordinator dibatasi ke jenjang ${escapeSiswaHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
 
-      <div class="siswa-toolbar-panel">
+      <section class="control-panel siswa-toolbar-panel">
         <div class="siswa-filter-grid">
           <label class="siswa-field siswa-field-search" for="search">
             <span>Pencarian</span>
@@ -257,9 +259,9 @@ function renderTable() {
             </select>
           </label>
         </div>
-      </div>
+      </section>
 
-      <div class="siswa-table-meta">
+      <div class="status-strip siswa-table-meta">
         <span id="jumlahData">0 siswa</span>
         <label class="page-size-control" for="rowsPerPage">
           <span>Rows per page</span>
@@ -275,7 +277,7 @@ function renderTable() {
       </div>
 
       <div class="table-container siswa-table-container">
-        <table class="siswa-compact-table">
+        <table class="data-table siswa-compact-table">
           <thead>
             <tr>
               <th class="sortable-header siswa-col-nipd ${siswaSortField === "nipd" ? "active" : ""}" onclick="setSiswaSort('nipd')">NIPD${siswaSortField === "nipd" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
@@ -290,14 +292,14 @@ function renderTable() {
           <tbody id="tbody"></tbody>
         </table>
 
-        <div id="emptyState" class="siswa-empty-state" style="display:none;">
+        <div id="emptyState" class="empty-state siswa-empty-state" style="display:none;">
           Tidak ada data
         </div>
       </div>
 
       <div id="tablePagination" class="pagination-wrap"></div>
 
-    </div>
+    </section>
 
     <div id="previewModal" class="preview-modal" style="display:none;" onclick="handlePreviewBackdrop(event)">
       <div class="preview-modal-content">

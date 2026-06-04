@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1120" viewBox="0 0 1440 1120">
+  <defs>
+    <style>
+      .bg{fill:#f6f8fb}
+      .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.4}
+      .panel-strong{fill:#fff;stroke:#94a3b8;stroke-width:1.5}
+      .muted{fill:#f1f5f9}
+      .text{fill:#0f172a;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .secondary{fill:#334155;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .hint{fill:#64748b;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .accent{fill:#0f766e}
+      .accent-soft{fill:#ccfbf1}
+      .primary{fill:#1d4ed8}
+      .title{font-size:32px;font-weight:850}
+      .label{font-size:13px;font-weight:850;letter-spacing:.08em}
+      .body{font-size:16px;font-weight:700}
+      .small{font-size:13px;font-weight:700}
+      .tiny{font-size:12px;font-weight:650}
+      .shadow{filter:url(#shadow)}
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity=".07"/>
+    </filter>
+  </defs>
+
+  <rect class="bg" width="1440" height="1120"/>
+
+  <text x="72" y="64" class="text title">Mockup Layout Data Siswa</text>
+  <text x="72" y="94" class="hint body">Urutan: Header + Tab, Tombol Cepat, Filter, Info Data, Tabel Siswa.</text>
+
+  <g transform="translate(72 130)">
+    <rect width="1296" height="120" rx="8" class="panel shadow"/>
+    <rect width="5" height="120" rx="3" fill="#0f766e"/>
+    <text x="30" y="38" class="accent label">AKADEMIK</text>
+    <text x="30" y="76" class="text title">Data Siswa</text>
+
+    <g transform="translate(930 35)">
+      <rect width="150" height="42" rx="7" class="accent-soft" stroke="#0f766e"/>
+      <text x="36" y="27" class="accent body">Siswa Aktif</text>
+      <rect x="162" width="150" height="42" rx="7" fill="#fff" stroke="#cbd5e1"/>
+      <text x="198" y="27" class="secondary body">Siswa Lulus</text>
+    </g>
+  </g>
+
+  <g transform="translate(72 274)">
+    <rect width="1296" height="92" rx="8" class="panel"/>
+    <text x="24" y="31" class="secondary small">Tombol Cepat</text>
+    <g transform="translate(24 45)">
+      <rect width="142" height="34" rx="7" class="primary"/>
+      <text x="28" y="23" fill="#fff" font-family="Inter,Segoe UI,Arial" font-size="13" font-weight="800">+ Tambah Siswa</text>
+      <rect x="158" width="110" height="34" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="183" y="23" class="secondary small">Template</text>
+      <rect x="280" width="96" height="34" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="310" y="23" class="secondary small">Import</text>
+      <rect x="388" width="88" height="34" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="416" y="23" class="secondary small">Reset</text>
+      <rect x="488" width="96" height="34" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="514" y="23" class="secondary small">Refresh</text>
+    </g>
+  </g>
+
+  <g transform="translate(72 390)">
+    <rect width="1296" height="130" rx="8" class="panel"/>
+    <text x="24" y="31" class="secondary small">Filter</text>
+    <g transform="translate(24 52)">
+      <g>
+        <text x="0" y="0" class="hint tiny">Pencarian</text>
+        <rect y="12" width="440" height="44" rx="7" fill="#fff" stroke="#94a3b8"/>
+        <text x="16" y="40" class="hint small">Cari nama, NIPD, atau NISN...</text>
+      </g>
+      <g transform="translate(464 0)">
+        <text x="0" y="0" class="hint tiny">Tingkat</text>
+        <rect y="12" width="230" height="44" rx="7" fill="#fff" stroke="#94a3b8"/>
+        <text x="16" y="40" class="secondary small">Semua Tingkat</text>
+      </g>
+      <g transform="translate(718 0)">
+        <text x="0" y="0" class="hint tiny">Kelas</text>
+        <rect y="12" width="230" height="44" rx="7" fill="#fff" stroke="#94a3b8"/>
+        <text x="16" y="40" class="secondary small">Semua Kelas</text>
+      </g>
+      <g transform="translate(972 0)">
+        <text x="0" y="0" class="hint tiny">Agama</text>
+        <rect y="12" width="252" height="44" rx="7" fill="#fff" stroke="#94a3b8"/>
+        <text x="16" y="40" class="secondary small">Semua Agama</text>
+      </g>
+    </g>
+  </g>
+
+  <g transform="translate(72 544)">
+    <rect width="1296" height="66" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+    <text x="24" y="41" class="text body">128 siswa</text>
+    <text x="1030" y="41" class="hint small">Rows per page</text>
+    <rect x="1144" y="16" width="120" height="34" rx="7" fill="#fff" stroke="#94a3b8"/>
+    <text x="1194" y="38" class="secondary small">10</text>
+  </g>
+
+  <g transform="translate(72 634)">
+    <rect width="1296" height="390" rx="8" class="panel-strong shadow"/>
+    <rect width="1296" height="52" rx="8" class="muted"/>
+    <line x1="0" y1="52" x2="1296" y2="52" stroke="#94a3b8" stroke-width="1.5"/>
+
+    <text x="28" y="33" class="secondary small">NIPD</text>
+    <text x="170" y="33" class="secondary small">NISN</text>
+    <text x="330" y="33" class="secondary small">Nama</text>
+    <text x="750" y="33" class="secondary small">JK</text>
+    <text x="850" y="33" class="secondary small">Agama</text>
+    <text x="1010" y="33" class="secondary small">Kelas</text>
+    <text x="1170" y="33" class="secondary small">Aksi</text>
+
+    <g transform="translate(0 52)">
+      <rect width="1296" height="56" fill="#fff"/>
+      <text x="28" y="35" class="text small">2324001</text>
+      <text x="170" y="35" class="text small">0081234567</text>
+      <text x="330" y="35" class="text small">Ahmad Zaki Pratama</text>
+      <text x="750" y="35" class="text small">L</text>
+      <text x="850" y="35" class="text small">Islam</text>
+      <text x="1010" y="35" class="text small">7A</text>
+      <circle cx="1186" cy="28" r="15" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1228" cy="28" r="15" fill="#fee2e2" stroke="#fca5a5"/>
+      <line x1="0" y1="56" x2="1296" y2="56" stroke="#e2e8f0"/>
+    </g>
+
+    <g transform="translate(0 108)">
+      <rect width="1296" height="56" fill="#f8fafc"/>
+      <text x="28" y="35" class="text small">2324002</text>
+      <text x="170" y="35" class="text small">0081234568</text>
+      <text x="330" y="35" class="text small">Bunga Larasati</text>
+      <text x="750" y="35" class="text small">P</text>
+      <text x="850" y="35" class="text small">Islam</text>
+      <text x="1010" y="35" class="text small">7A</text>
+      <circle cx="1186" cy="28" r="15" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1228" cy="28" r="15" fill="#fee2e2" stroke="#fca5a5"/>
+      <line x1="0" y1="56" x2="1296" y2="56" stroke="#e2e8f0"/>
+    </g>
+
+    <g transform="translate(0 164)">
+      <rect width="1296" height="56" fill="#fff"/>
+      <text x="28" y="35" class="text small">2324003</text>
+      <text x="170" y="35" class="text small">0081234569</text>
+      <text x="330" y="35" class="text small">Candra Wijaya</text>
+      <text x="750" y="35" class="text small">L</text>
+      <text x="850" y="35" class="text small">Kristen</text>
+      <text x="1010" y="35" class="text small">8B</text>
+      <circle cx="1186" cy="28" r="15" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1228" cy="28" r="15" fill="#fee2e2" stroke="#fca5a5"/>
+      <line x1="0" y1="56" x2="1296" y2="56" stroke="#e2e8f0"/>
+    </g>
+
+    <g transform="translate(0 310)">
+      <line x1="0" y1="0" x2="1296" y2="0" stroke="#cbd5e1"/>
+      <rect x="1014" y="24" width="72" height="34" rx="7" fill="#fff" stroke="#cbd5e1"/>
+      <text x="1038" y="46" class="hint small">Prev</text>
+      <text x="1106" y="46" class="hint small">Halaman 1 dari 13</text>
+      <rect x="1224" y="24" width="60" height="34" rx="7" fill="#fff" stroke="#cbd5e1"/>
+      <text x="1242" y="46" class="hint small">Next</text>
+    </g>
+  </g>
+</svg>

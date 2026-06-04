@@ -126,47 +126,49 @@ function renderGuruModuleTabs(activeRoute = "guru-lihat") {
 
 function renderGuruTable() {
   return `
-    <div class="card guru-module-panel">
-      <div class="guru-module-header">
-        <div>
+    <section class="app-page app-page--data guru-module-panel">
+      <header class="app-page-header guru-module-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Administrasi</span>
           <h2>Data Guru</h2>
         </div>
-        <button class="btn-primary guru-primary-action" onclick="loadPage('guru-input')">
-          <span class="guru-action-icon guru-icon-plus" aria-hidden="true"></span>
-          Tambah Guru
-        </button>
-        <div class="guru-toolbar-actions">
-          <button class="btn-secondary guru-action-btn" onclick="downloadGuruTemplate()">
-            <span class="guru-action-icon guru-icon-download" aria-hidden="true"></span>
-            Template
-          </button>
-          <label class="btn-secondary guru-action-btn guru-upload-action">
-            <span class="guru-action-icon guru-icon-upload" aria-hidden="true"></span>
-            Import
-            <input type="file" accept=".xlsx, .xls" onchange="importGuruExcel(event)">
-          </label>
-          <button class="btn-secondary guru-action-btn" onclick="resetGuruFilter()">
-            <span class="guru-action-icon guru-icon-reset" aria-hidden="true"></span>
-            Reset
-          </button>
-          <button class="btn-secondary guru-action-btn" onclick="refreshGuruTable()">
-            <span class="guru-action-icon guru-icon-refresh" aria-hidden="true"></span>
-            Refresh
+        <div class="app-page-actions">
+          <button class="btn-primary guru-primary-action" onclick="loadPage('guru-input')">
+            <span class="guru-action-icon guru-icon-plus" aria-hidden="true"></span>
+            Tambah Guru
           </button>
         </div>
-      </div>
+      </header>
 
       ${renderGuruModuleTabs("guru-lihat")}
+      <div class="action-bar guru-toolbar-actions">
+        <button class="btn-secondary guru-action-btn" onclick="downloadGuruTemplate()">
+          <span class="guru-action-icon guru-icon-download" aria-hidden="true"></span>
+          Template
+        </button>
+        <label class="btn-secondary guru-action-btn guru-upload-action">
+          <span class="guru-action-icon guru-icon-upload" aria-hidden="true"></span>
+          Import
+          <input type="file" accept=".xlsx, .xls" onchange="importGuruExcel(event)">
+        </label>
+        <button class="btn-secondary guru-action-btn" onclick="resetGuruFilter()">
+          <span class="guru-action-icon guru-icon-reset" aria-hidden="true"></span>
+          Reset
+        </button>
+        <button class="btn-secondary guru-action-btn" onclick="refreshGuruTable()">
+          <span class="guru-action-icon guru-icon-refresh" aria-hidden="true"></span>
+          Refresh
+        </button>
+      </div>
 
-      <div class="guru-toolbar-panel">
+      <section class="control-panel guru-toolbar-panel">
         <label class="guru-field guru-field-search" for="searchGuru">
           <span>Pencarian</span>
           <input id="searchGuru" placeholder="Cari guru, kode, NIP, status, atau mapel..." oninput="handleGuruSearch()">
         </label>
-      </div>
+      </section>
 
-      <div class="guru-table-meta">
+      <div class="status-strip guru-table-meta">
         <span id="jumlahDataGuru">0 guru</span>
         <label class="page-size-control" for="rowsPerPageGuru">
           <span>Rows per page</span>
@@ -182,7 +184,7 @@ function renderGuruTable() {
       </div>
 
       <div class="table-container guru-table-container">
-        <table class="guru-compact-table">
+        <table class="data-table guru-compact-table">
           <thead>
             <tr>
               ${renderSortableHeader("Kode", "kode_guru", guruSortField, guruSortDirection, "setGuruSort")}
@@ -197,12 +199,12 @@ function renderGuruTable() {
           <tbody id="tbodyGuru"></tbody>
         </table>
 
-        <div id="emptyStateGuru" class="guru-empty-state" style="display:none;">
+        <div id="emptyStateGuru" class="empty-state guru-empty-state" style="display:none;">
           Tidak ada data guru
         </div>
       </div>
 
       <div id="tablePaginationGuru" class="pagination-wrap"></div>
-    </div>
+    </section>
   `;
 }

@@ -1,19 +1,24 @@
-// ================= UI MENGAJAR =================
+// ================= UI MENGAJAR (UI-6 Phase 5: Matrix Shell) =================
 function renderMengajarPage() {
   return `
     <div class="card">
-      <h2>Pembagian Mengajar Guru</h2>
+      <header class="asesmen-module-header Mengajar-module-header">
+        <div>
+          <span class="dashboard-eyebrow">Mengajar</span>
+          <h2>Pembagian Mengajar Guru</h2>
+        </div>
+      </header>
 
-      <div class="toolbar">
+      <div class="control-panel matrix-layout-toolbar">
         <div class="toolbar-left">
-          <div class="page-size-control">
-            <label for="tingkatMengajar">Tingkat</label>
+          <label class="form-group">
+            <span>Tingkat</span>
             <select id="tingkatMengajar" onchange="setMengajarTingkat(this.value)">
               <option value="7" ${mengajarSelectedTingkat === "7" ? "selected" : ""}>7</option>
               <option value="8" ${mengajarSelectedTingkat === "8" ? "selected" : ""}>8</option>
               <option value="9" ${mengajarSelectedTingkat === "9" ? "selected" : ""}>9</option>
             </select>
-          </div>
+          </label>
         </div>
         <div class="toolbar-right">
           <button class="btn-secondary" onclick="syncMengajarAsliFromBayangan()">Sinkron dari Kelas Bayangan</button>
@@ -29,12 +34,10 @@ function renderMengajarPage() {
         </div>
       </div>
 
-      <div class="toolbar-info">
+      <div class="status-strip matrix-layout-summary">
         <span id="jumlahMengajarInfo">0 mapel x 0 kelas</span>
-        <div class="page-size-control">
-          <span id="pendingMengajarInfo">0 perubahan belum disimpan</span>
-          <button class="btn-secondary" onclick="refreshMengajarPage()">Refresh</button>
-        </div>
+        <span id="pendingMengajarInfo">0 perubahan belum disimpan</span>
+        <button class="btn-secondary" onclick="refreshMengajarPage()">Refresh</button>
       </div>
 
       <div class="matrix-search-bar">

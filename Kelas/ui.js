@@ -1,16 +1,50 @@
 // ================= UI KELAS =================
+function setKelasTab(tabId) {
+  kelasActiveTab = tabId;
+  renderKelasPage();
+}
+
 function renderKelasPage() {
-  const isKoordinator = typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
-  const levels = typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : [];
+  const isDataMode = kelasActiveTab === "data";
+  const isStatistikMode = kelasActiveTab === "statistik";
+  const isKoordinator =
+    typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+  const levels =
+    typeof getCurrentCoordinatorLevelsSync === "function"
+      ? getCurrentCoordinatorLevelsSync()
+      : [];
+
   return `
-    <div class="card kelas-module-panel">
-      <div class="kelas-module-header">
-        <div>
+    <section class="app-page app-page--data kelas-module-panel">
+      <header class="app-page-header kelas-module-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Administrasi</span>
           <h2>Data Kelas</h2>
         </div>
-        <div class="kelas-toolbar-actions">
-          ${isKoordinator ? "" : `
+      </header>
+
+      <nav class="module-tabs" role="tablist" aria-label="Mode kelas">
+        <button type="button" class="module-tab ${isDataMode ? "active" : ""}"
+                role="tab" aria-selected="${isDataMode}"
+                onclick="setKelasTab('data')">
+          Data Kelas
+        </button>
+        <button type="button" class="module-tab ${isStatistikMode ? "active" : ""}"
+                role="tab" aria-selected="${isStatistikMode}"
+                onclick="setKelasTab('statistik')">
+          Statistik
+        </button>
+      </nav>
+
+      ${
+        isDataMode
+          ? `
+      <div class="app-page-actions">
+        <div class="action-bar kelas-toolbar-actions">
+          ${
+            isKoordinator
+              ? ""
+              : `
             <button class="btn-secondary kelas-action-btn" onclick="downloadKelasTemplate()">
               <span class="kelas-action-icon kelas-icon-download" aria-hidden="true"></span>
               Template
@@ -20,7 +54,8 @@ function renderKelasPage() {
               Import
               <input type="file" accept=".xlsx, .xls" onchange="importKelasExcel(event)">
             </label>
-          `}
+          `
+          }
           <button class="btn-secondary kelas-action-btn" onclick="resetKelasFilter()">
             <span class="kelas-action-icon kelas-icon-reset" aria-hidden="true"></span>
             Reset
@@ -34,7 +69,7 @@ function renderKelasPage() {
 
       ${isKoordinator ? `<div class="matrix-toolbar-note kelas-access-note">Koordinator hanya melihat kelas pada jenjang ${escapeKelasHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
 
-      <div class="kelas-table-meta">
+      <div class="status-strip kelas-table-meta">
         <span id="jumlahDataKelas">0 kelas</span>
         <label class="page-size-control" for="rowsPerPageKelas">
           <span>Rows per page</span>
@@ -54,7 +89,7 @@ function renderKelasPage() {
       </div>
 
       <div class="table-container kelas-table-container">
-        <table class="kelas-data-table">
+        <table class="data-table kelas-data-table">
           <thead>
             <tr>
               ${renderSortableHeader("Tingkat", "tingkat", kelasSortField, kelasSortDirection, "setKelasSort")}
@@ -67,12 +102,25 @@ function renderKelasPage() {
           <tbody id="tbodyKelas"></tbody>
         </table>
 
-        <div id="emptyStateKelas" class="kelas-empty-state" style="display:none;">
+        <div id="emptyStateKelas" class="empty-state kelas-empty-state" style="display:none;">
           Tidak ada data kelas
         </div>
       </div>
 
       <div id="tablePaginationKelas" class="pagination-wrap"></div>
-    </div>
+      `
+          : ""
+      }
+
+      ${
+        isStatistikMode
+          ? `
+      <div id="kelasStatistikContainer">
+        ${renderKelasStatistikPage()}
+      </div>
+      `
+          : ""
+      }
+    </section>
   `;
 }

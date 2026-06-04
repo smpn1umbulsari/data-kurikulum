@@ -135,18 +135,21 @@ function renderTugasTambahanModuleTabs() {
 
 function renderTugasTambahanPage() {
   return `
-    <div class="card guru-module-panel tugas-tambahan-module-panel">
-      <div class="kelas-bayangan-head">
-        <div>
+    <section class="app-page app-page--data guru-module-panel tugas-tambahan-module-panel">
+      <header class="app-page-header kelas-bayangan-head">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Pembagian Tugas dan Mengajar</span>
           <h2>Tugas Tambahan</h2>
           <p>Daftar tugas tambahan utama dan ekuivalen beserta jumlah JP.</p>
         </div>
-      </div>
+      </header>
 
-      ${renderTugasTambahanModuleTabs()}
+      <nav class="module-tabs" role="tablist" aria-label="Navigasi tugas tambahan">
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('guru-lihat')">Data Guru</button>
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+      </nav>
 
-      <div class="toolbar-info">
+      <div class="status-strip toolbar-info">
         <span id="jumlahDataTugasTambahan">0 tugas tambahan</span>
       </div>
 
@@ -158,7 +161,7 @@ function renderTugasTambahanPage() {
       <div id="tugasTambahanTabContent">
         ${tugasTambahanActiveTab === "guru" ? renderTugasTambahanGuruTab() : renderTugasTambahanDaftarTab()}
       </div>
-    </div>
+    </section>
   `;
 }
 

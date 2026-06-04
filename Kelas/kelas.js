@@ -32,6 +32,7 @@ const guruKelasByKodeCache = new Map();
 const siswaCountByKelasCache = new Map();
 const mengajarGuruCodesByKelasCache = new Map();
 const usedWaliCodesCache = new Map();
+let kelasActiveTab = "data"; // "data" | "statistik"
 
 function isKelasCoordinatorViewOnly() {
   return (
@@ -2139,6 +2140,101 @@ async function hapusKelas(namaKelas) {
     Swal.fire("Gagal", "Data kelas belum berhasil dihapus", "error");
   }
 }
+function setKelasTab(tabId) {
+  kelasActiveTab = tabId;
+  renderKelasPage();
+}
+
+function isKelasStatistikMode() {
+  return kelasActiveTab === "statistik";
+}
+
+function renderKelasStatistikSummary() {
+  const levels = { 7: 0, 8: 0, 9: 0 };
+  const rombelCounts = { 7: 0, 8: 0, 9: 0 };
+  let totalSiswa = 0;
+  let kelasTanpaWali = 0;
+
+  semuaDataKelas.forEach((item) => {
+    const parts = getStoredKelasParts(item);
+    if (!parts.tingkat || !parts.rombel) return;
+    const level = parts.tingkat;
+    if (!levels[level]) return;
+    levels[level]++;
+    rombelCounts[level] = rombelCounts[level] || {};
+    rombelCounts[level][parts.rombel] = true;
+    if (!item.kode_guru || !item.wali_kelas) kelasTanpaWali++;
+  });
+
+  daftarSiswaKelas.forEach((siswa) => {
+    if (siswa.kelas && getSiswaKelasValue(siswa)) totalSiswa++;
+  });
+
+  return {
+    levels,
+    rombelCounts,
+    totalSiswa,
+    kelasTanpaWali,
+    totalKelas: semuaDataKelas.filter(
+      (item) => getStoredKelasParts(item).rombel,
+    ).length,
+  };
+}
+
+function renderKelasStatistikPage() {
+  const stats = renderKelasStatistikSummary();
+  const isKoordinator = isKelasCoordinatorViewOnly();
+
+  const levelCards = ["7", "8", "9"]
+    .map((level) => {
+      const rombelCount = Object.keys(stats.rombelCounts[level] || {}).length;
+      return `
+      <div class="kelas-statistik-card">
+        <div class="kelas-statistik-level">Tingkat ${level}</div>
+        <div class="kelas-statistik-count">${stats.levels[level] || 0}</div>
+        <div class="kelas-statistik-label">kelas</div>
+        <div class="kelas-statistik-detail">${rombelCount} rombel</div>
+      </div>
+    `;
+    })
+    .join("");
+
+  return `
+    <div class="kelas-statistik-container">
+      <div class="kelas-statistik-grid">
+        ${levelCards}
+      </div>
+      <div class="kelas-statistik-summary">
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.totalKelas}</span>
+          <span class="kelas-statistik-summary-label">Total Kelas</span>
+        </div>
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.totalSiswa}</span>
+          <span class="kelas-statistik-summary-label">Total Siswa</span>
+        </div>
+        <div class="kelas-statistik-summary-item ${stats.kelasTanpaWali > 0 ? "kelas-statistik-warning" : ""}">
+          <span class="kelas-statistik-summary-value">${stats.kelasTanpaWali}</span>
+          <span class="kelas-statistik-summary-label">Kelas Tanpa Wali</span>
+        </div>
+      </div>
+      ${
+        !isKoordinator
+          ? `
+      <div class="kelas-statistik-note">
+        Gunakan tab Data Kelas untuk mengelola data kelas dan wali kelas.
+      </div>
+      `
+          : `
+      <div class="kelas-statistik-note">
+        Coordinator hanya dapat melihat data kelas pada jenjang tertentu.
+      </div>
+      `
+      }
+    </div>
+  `;
+}
+
 function getKelasPageDocumentsApi() {
   return window.SupabaseDocuments;
 }
