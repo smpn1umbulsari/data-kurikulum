@@ -50,9 +50,10 @@
                 id="userAiPrompt-${safeId}"
                 ${canAccessPrompt ? "checked" : ""}
                 ${isAdminRole ? "checked disabled" : ""}
-                onchange="this.nextElementSibling.textContent = this.checked ? 'Aktif' : 'Nonaktif'; toggleUserGeneratePromptAccess('${safeIdJs}', this.checked)"
+                onchange="this.parentElement.querySelector('.admin-user-feature-toggle-label').textContent = this.checked ? 'Aktif' : 'Nonaktif'; toggleUserGeneratePromptAccess('${safeIdJs}', this.checked)"
               >
-              <span>${isAdminRole ? "Selalu aktif" : (canAccessPrompt ? "Aktif" : "Nonaktif")}</span>
+              <span class="admin-user-feature-toggle-track" aria-hidden="true"></span>
+              <span class="admin-user-feature-toggle-label">${isAdminRole ? "Selalu aktif" : (canAccessPrompt ? "Aktif" : "Nonaktif")}</span>
             </label>
           </td>` : ""}
           <td>

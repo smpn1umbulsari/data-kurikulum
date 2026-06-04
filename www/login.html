@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>Login Guru Spenturi</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="vendor/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=20260408a"></script>
   <script src="shared/supabase-documents.js?v=20260421d"></script>
   <script src="shared/maintenance-mode.js?v=20260411b"></script>
@@ -18,7 +18,8 @@
         radial-gradient(circle at top, rgba(17, 24, 39, 0.08), transparent 42%),
         linear-gradient(160deg, #f8fafc 0%, #dbeafe 55%, #e2e8f0 100%);
       min-height: 100vh;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
     }
 
     .login-page {
@@ -38,13 +39,10 @@
       align-items: center;
       justify-content: center;
       background:
-        radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.3), transparent 22%),
-        radial-gradient(circle at 15% 25%, rgba(250, 204, 21, 0.22), transparent 24%),
-        radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.2), transparent 26%),
-        linear-gradient(145deg, #0f172a 0%, #1d4ed8 48%, #0f766e 100%);
+        linear-gradient(145deg, rgba(15, 23, 42, 0.98) 0%, rgba(29, 78, 216, 0.94) 52%, rgba(15, 118, 110, 0.94) 100%);
       z-index: 2;
       overflow: hidden;
-      transition: opacity 0.9s ease, visibility 0.9s ease;
+      transition: opacity 0.35s ease, visibility 0.35s ease;
     }
 
     body.login-ready .login-intro,
@@ -59,17 +57,13 @@
       text-align: center;
       color: #fff;
       width: min(720px, calc(100vw - 40px));
-      padding: 40px 28px;
-      animation: loginIntroFloat 1s ease both;
+      padding: 28px 24px;
+      animation: loginIntroFloat 0.45s ease both;
       z-index: 2;
     }
 
     .login-intro-orb {
-      position: absolute;
-      border-radius: 999px;
-      filter: blur(2px);
-      opacity: 0.75;
-      animation: introOrbFloat 6s ease-in-out infinite;
+      display: none;
     }
 
     .login-intro-orb-a {
@@ -90,29 +84,22 @@
     }
 
     .login-intro-grid {
-      position: absolute;
-      inset: 0;
-      background-image:
-        linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
-      background-size: 42px 42px;
-      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.85), transparent 92%);
-      opacity: 0.45;
+      display: none;
     }
 
     .login-intro-logos {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 28px;
+      margin-bottom: 20px;
     }
 
     .login-intro-logo {
-      width: min(168px, 34vw);
+      width: min(120px, 28vw);
       height: auto;
       object-fit: contain;
       filter: drop-shadow(0 14px 22px rgba(15, 23, 42, 0.28));
-      animation: loginIntroPulse 1.5s ease-in-out infinite alternate;
+      animation: none;
     }
 
     .login-intro-kicker {
@@ -120,7 +107,7 @@
       align-items: center;
       justify-content: center;
       padding: 9px 16px;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
       border-radius: 999px;
       border: 1px solid rgba(255, 255, 255, 0.18);
       background: rgba(255, 255, 255, 0.12);
@@ -134,7 +121,7 @@
 
     .login-intro-title {
       margin: 0;
-      font-size: clamp(34px, 4vw, 52px);
+      font-size: clamp(30px, 4vw, 46px);
       font-weight: 800;
       letter-spacing: 0.5px;
       line-height: 1.05;
@@ -151,16 +138,7 @@
     }
 
     .login-intro-shine {
-      position: absolute;
-      width: 180px;
-      height: 180px;
-      top: 60px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 999px;
-      background: radial-gradient(circle, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0));
-      opacity: 0.8;
-      animation: introShine 3s ease-in-out infinite;
+      display: none;
     }
 
     .login-box {
@@ -183,7 +161,7 @@
 
     .login-form-logo {
       display: block;
-      width: 82px;
+      width: 78px;
       height: auto;
       margin: 0 auto 16px;
       object-fit: contain;
@@ -201,6 +179,19 @@
       margin: 0 0 20px;
       color: #64748b;
       font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
     }
 
     .login-maintenance-alert {
@@ -254,12 +245,23 @@
     input,
     select {
       width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
+      min-height: 46px;
+      padding: 11px 12px;
+      margin-bottom: 14px;
+      border-radius: 10px;
+      border: 1px solid #cbd5e1;
       box-sizing: border-box;
       background: #fff;
+      color: #0f172a;
+      font-size: 15px;
+    }
+
+    input:focus,
+    select:focus,
+    button:focus-visible {
+      outline: 3px solid rgba(37, 99, 235, 0.24);
+      outline-offset: 2px;
+      border-color: #2563eb;
     }
 
     .password-field {
@@ -280,7 +282,7 @@
       width: auto;
       min-width: 58px;
       padding: 6px 10px;
-      border-radius: 5px;
+      border-radius: 10px;
       background: #e5eefc;
       color: #1d4ed8;
       font-size: 12px;
@@ -294,12 +296,14 @@
 
     button {
       width: 100%;
-      padding: 10px;
+      min-height: 46px;
+      padding: 11px 12px;
       background: #007bff;
       color: white;
       border: none;
-      border-radius: 5px;
+      border-radius: 10px;
       cursor: pointer;
+      font-weight: 700;
     }
 
     button:hover {
@@ -311,6 +315,8 @@
       font-size: 14px;
       text-align: center;
       display: none;
+      margin-top: 12px;
+      line-height: 1.5;
     }
 
     @keyframes loginIntroFloat {
@@ -365,16 +371,7 @@
     }
 
     .login-intro::after {
-      content: "";
-      position: absolute;
-      top: -10%;
-      left: -15%;
-      width: 34%;
-      height: 120%;
-      background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0));
-      animation: introSweep 2.6s ease-in-out infinite;
-      opacity: 0.65;
-      pointer-events: none;
+      content: none;
     }
 
     @media (max-width: 640px) {
@@ -406,9 +403,6 @@
 
       .login-intro {
         background:
-          radial-gradient(circle at 50% 18%, rgba(255, 255, 255, 0.12), transparent 22%),
-          radial-gradient(circle at 15% 25%, rgba(250, 204, 21, 0.14), transparent 24%),
-          radial-gradient(circle at 85% 20%, rgba(59, 130, 246, 0.16), transparent 26%),
           linear-gradient(145deg, #020617 0%, #0f172a 42%, #1d4ed8 100%);
       }
 
@@ -465,10 +459,10 @@
       }
 
       input:focus,
-      select:focus {
-        outline: none;
+      select:focus,
+      button:focus-visible {
         border-color: rgba(96, 165, 250, 0.72);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+        outline-color: rgba(96, 165, 250, 0.28);
       }
 
       .password-toggle {
@@ -523,13 +517,9 @@
         padding: calc(18px + env(safe-area-inset-top, 0px)) 14px calc(18px + env(safe-area-inset-bottom, 0px));
       }
 
-      .login-intro {
-        border-radius: 0 0 30px 30px;
-      }
-
       .login-intro-panel {
         width: min(100%, 420px);
-        padding: 32px 18px;
+        padding: 26px 18px;
       }
 
       .login-intro-title {
@@ -551,7 +541,7 @@
       }
 
       .login-form-logo {
-        width: 76px;
+        width: 72px;
       }
 
       h2 {
@@ -567,7 +557,7 @@
       select,
       button {
         min-height: 50px;
-        border-radius: 16px;
+        border-radius: 14px;
         font-size: 16px;
       }
 
@@ -614,30 +604,34 @@
     </div>
   </div>
 
-  <div class="login-box" id="loginBox">
+  <main class="login-box" id="loginBox" aria-labelledby="loginTitle">
     <img src="img/logo_sekolah.png" alt="Logo Sekolah" class="login-form-logo">
-    <h2>Login</h2>
+    <h2 id="loginTitle">Login</h2>
+    <p class="login-subtitle">Masuk ke dashboard kurikulum SMP Negeri 1 Umbulsari.</p>
 
     <div class="login-maintenance-alert" id="loginMaintenanceAlert" role="status" aria-live="polite">
-      <div class="login-maintenance-icon" aria-hidden="true">🛠</div>
+      <div class="login-maintenance-icon" aria-hidden="true">!</div>
       <div class="login-maintenance-copy">
         <strong>Maintenance</strong>
         <p id="loginMaintenanceMessage">Sistem sedang dalam perawatan dan perbaikan.</p>
       </div>
     </div>
 
-    <select id="semesterLogin">
+    <label class="sr-only" for="semesterLogin">Semester</label>
+    <select id="semesterLogin" aria-label="Pilih semester">
       <option value="">Memuat semester...</option>
     </select>
-    <input type="text" id="username" placeholder="Username">
+    <label class="sr-only" for="username">Username</label>
+    <input type="text" id="username" placeholder="Username" autocomplete="username" aria-describedby="error">
     <div class="password-field">
-      <input type="password" id="password" placeholder="Password">
-      <button type="button" id="togglePasswordBtn" class="password-toggle" onclick="togglePasswordVisibility()">Lihat</button>
+      <label class="sr-only" for="password">Password</label>
+      <input type="password" id="password" placeholder="Password" autocomplete="current-password" aria-describedby="error">
+      <button type="button" id="togglePasswordBtn" class="password-toggle" onclick="togglePasswordVisibility()" aria-label="Lihat password">Lihat</button>
     </div>
-    <button onclick="login()">Masuk</button>
+    <button type="button" onclick="login()">Masuk</button>
 
-    <div class="error" id="error">Username atau password salah</div>
-  </div>
+    <div class="error" id="error" role="alert" aria-live="assertive">Username atau password salah</div>
+  </main>
 </div>
 
 <script>
@@ -862,7 +856,7 @@
     if (!intro || !box) return;
 
     const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const introDuration = reduceMotion ? 80 : 3000;
+    const introDuration = reduceMotion ? 80 : 900;
 
     document.body.classList.remove("login-ready");
 

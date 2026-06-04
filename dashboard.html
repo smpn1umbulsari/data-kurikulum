@@ -153,6 +153,22 @@
               <span>Absensi Siswa</span>
             </button>
           </div>
+          <div
+            class="menu-group role-menu role-admin role-superadmin role-urusan"
+          >
+            <button
+              class="menu menu-parent"
+              data-menu-icon="file"
+              onclick="toggleMenu('submenuAsesmen', this)"
+            >
+              <span>Asesmen</span>
+              <span class="menu-caret">+</span>
+            </button>
+            <div class="submenu" id="submenuAsesmen">
+              <button onclick="loadPage('pembagian-ruang')">Kepesertaan</button>
+              <button onclick="loadPage('kepangawasan')">Kepengawasan</button>
+            </div>
+          </div>
 
           <div class="sidebar-section-label">Administrasi</div>
           <div

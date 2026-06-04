@@ -14,94 +14,102 @@ Audit ini memecah pekerjaan menjadi langkah kecil yang bisa dikerjakan bertahap 
 
 ---
 
-## Status Saat Ini (Per 4 Juni 2026, 04:24)
+## Status Saat Ini (Per 4 Juni 2026, 07:30)
 
 ### ✅ SUDAH SELESAI
 
-| Tahap | Modul                      | Detail                                    |
-| ----- | -------------------------- | ----------------------------------------- |
-| UI-1  | Fondasi Desain             | CSS token, tombol, input, tabel, warna    |
-| UI-2  | Shell Dashboard            | Topbar, sidebar, navigasi                 |
-| UI-3  | Batch 1-5 (CSS Foundation) | Module header, empty state, panel kontrol |
-| UI-3  | Batch 3 (Tombol Ikon)      | Semua prioritas selesai                   |
-
-### ✅ SUDAH SELESAI
-
-| Tahap | Modul            | Detail                                               |
-| ----- | ---------------- | ---------------------------------------------------- |
-| UI-1  | Fondasi Desain   | CSS token, tombol, input, tabel, warna               |
-| UI-2  | Shell Dashboard  | Topbar, sidebar, navigasi                            |
-| UI-3  | Batch 1-5        | CSS Foundation - Module header, empty state, panel   |
-| UI-3  | Batch 3 (Tombol) | Semua modul utama → ikon                             |
-| UI-3  | Batch 4 (Khusus) | kelas-bayangan.js, audit-log.js, acak-wali.js → ikon |
-
-### 🔄 SEDANG DIKERJAKAN
-
-| Tahap | Batch   | Detail                          |
-| ----- | ------- | ------------------------------- |
-| UI-3  | Batch 5 | Validasi dan sinkronisasi final |
+| Tahap | Batch           | Detail                                                     |
+| ----- | --------------- | ---------------------------------------------------------- |
+| UI-1  | Fondasi Desain  | CSS token, tombol, input, tabel, warna                     |
+| UI-2  | Shell Dashboard | Topbar, sidebar, navigasi                                  |
+| UI-3  | Batch 1-5       | CSS Foundation - Module header, empty state, panel         |
+| UI-3  | Batch 3         | Semua modul utama → ikon                                   |
+| UI-3  | Batch 4         | Tabel Khusus (kelas-bayangan, audit-log, acak-wali) → ikon |
+| UI-3  | Batch 5         | Validasi dan sinkronisasi final - COMMIT                   |
+| UI-4  | Mobile Redesign | Breakpoint, shell mobile, tabel card-like, rekap table     |
 
 ### ⏳ BELUM DIMULAI
 
-| Tahap | Detail                                                         |
-| ----- | -------------------------------------------------------------- |
-| UI-4  | Mobile redesign (mobile-redesign.css, tabel padat, responsive) |
-| UI-5  | Login & aksesibilitas (login.html, maintenance, dark mode)     |
+| Tahap | Detail                                                     |
+| ----- | ---------------------------------------------------------- |
+| UI-5  | Login & aksesibilitas (login.html, maintenance, dark mode) |
 
 ---
 
-## Yang Sedang Dikerjakan: UI-3 Batch 4
+## Yang Sedang Dikerjakan: UI-4 Mobile Redesign - ✅ SELESAI
 
-### Scope Tabel Khusus
+### Scope Mobile Redesign
 
-**Objective:** Audit markup dan tombol ikon di tabel khusus.
+**Objective:** Buat pengalaman mobile jadi sederhana, tidak bergantung penuh pada desktop override.
 
-**File yang perlu diubah:**
+**File yang diubah: mobile-redesign.css**
 
-#### Tabel Acak Wali (Kelas/kelas.js)
+#### ✅ 1. Evaluasi Breakpoint
 
-- [ ] Tombol "Simpan Calon" → ikon
-- [ ] Tombol "Acak" → ikon
+- [x] Breakpoint utama: 820px dan 430px (konsisten)
+- [x] design-system.css breakpoint: 900px, 820px, 768px, 520px (OK)
 
-#### Kelas Bayangan (Siswa/kelas-bayangan.js)
+#### ✅ 2. Shell Mobile
 
-- [ ] Audit markup konsistensi
+- [x] Topbar - sticky, touch target 52px
+- [x] Sidebar - mobile drawer dengan overlay
+- [x] Content padding - calc untuk mobile nav
+- [x] Action bar - full width buttons
 
-#### Audit Log (Admin/audit-log.js)
+#### ✅ 3. Tabel Padat → Card-like
 
-- [ ] Tombol "Rollback Nilai" → ikon
+- [x] siswa-compact-table, guru-compact-table, kelas-data-table
+- [x] responsive-data-table dengan ::before data-label
+- [x] nilai-table - sticky columns
+- [x] **rekap-table - BARU: scroll horizontal + card-like di 430px**
 
-**Progress batch ini:**
+#### ✅ 4. Prioritas Ruang Baca
 
-- [x] Fondasi CSS ikon (design-system.css lines 2247-2292)
-- [x] Siswa/ui.js - hapus teks tombol (Simpan, Batal, Edit, Hapus)
-- [x] Guru/guru.js - hapus teks tombol (Edit, Riwayat JP, Hapus, Simpan, Batal)
-- [x] Mapel/mapel.js - tombol "Tambah" → ikon
-- [x] Prioritas 2: Admin/admin-users-view.js - Simpan, Batal, Edit, Reset, Hapus → ikon
-- [x] Prioritas 2: Semester/semester.js - Hapus → ikon, status Aktif → badge
-- [x] Prioritas 3: Asesmen/pembagian-ruang-view.js - Export/Download → ikon
-- [x] Prioritas 3: Kurikulum/kalender-pendidikan.js - hapus item → ikon
-- [x] Prioritas 3: Nilai/rapor.js - simpan pengaturan, hapus TTD, simpan semua, set → ikon
-- [x] Prioritas 3: Asesmen/pembagian-ruang-v2.js - semua tombol Set → ikon
-- [x] Prioritas 4: Tabel Acak Wali (Kelas/kelas.js) - ✅ SUDAH IKON (line 1630-1631)
-- [x] Prioritas 4: Siswa/kelas-bayangan.js - "Sinkronkan", "Simpan Semua", "Simpan" → ikon
-- [x] Prioritas 4: Admin/audit-log.js - "Rollback Nilai" → ikon
-- [x] Validasi dan sinkronisasi - ✅ SEMUA ITEM UI-3 BATCH 4 SELESAI
+- [x] Touch-friendly min-height: 50px untuk inputs
+- [x] word-break dan overflow-wrap untuk teks panjang
+- [x] clamp() untuk font-size responsive
+
+#### ✅ 5. Audit Input Mobile
+
+- [x] min-height: 50px untuk input, select, textarea
+- [x] font-size: 1rem untuk prevent zoom
+- [x] Toolbar controls 44px minimum
+
+**Progress - SEMUA ITEM SELESAI:**
+
+- [x] Fondasi mobile-redesign.css review - ✅ SUDAH KOMPREHENSIF
+- [x] Breakpoint audit dan cleanup - ✅ KONSISTEN
+- [x] Shell mobile simplification - ✅ TOUCH TARGET OK
+- [x] Tabel card-like conversion - ✅ TERMASUK REKAP TABLE
+- [x] Input component audit - ✅ MIN-HEIGHT OK
+- [x] Dark mode mobile - ✅ ADJUSTMENT ADA
+- [x] Rekap table mobile styles - ✅ BARU DITAMBAHKAN
 
 ---
 
-## Yang Akan Dikerjakan Setelah UI-3 Batch 4
+## Yang Akan Dikerjakan Setelah UI-4
 
-1. **UI-4:** Mobile redesign
-   - Evaluasi breakpoint
-   - Sederhanakan shell mobile
-   - Ubah tabel padat jadi card-like
-   - Audit komponen input
+### UI-5: Login & Aksesibilitas
 
-2. **UI-5:** Login & aksesibilitas
-   - Ringankan login.html
-   - Audit aksesibilitas
-   - Audit spacing dan dark mode
+1. Ringankan login.html
+   - Kurangi beban visual intro
+   - Form lebih cepat terlihat
+
+2. Rapikan hirarki visual login
+   - Judul, subjudul, form, alert maintenance jelas
+   - Elemen penting tidak tertutup animasi
+
+3. Audit aksesibilitas dasar
+   - Fokus keyboard, kontras, label, target sentuh
+   - State aktif dan disabled jelas
+
+4. Audit spacing dan keterbacaan
+   - Teks tidak terlalu rapat
+   - Container tidak terlalu padat
+
+5. Audit dark mode dan state kosong
+   - Warna tidak pecah saat dark mode
+   - Empty state, loading, error state ada arah
 
 ---
 
@@ -119,7 +127,7 @@ Audit ini memecah pekerjaan menjadi langkah kecil yang bisa dikerjakan bertahap 
 - [x] Sidebar navigation consistency
 - [x] Header patterns
 
-## UI-3 (Modul Data) - 🔄 DALAM PENGERJAAN
+## UI-3 (Modul Data) - ✅ SELESAI
 
 ### Batch 1-5 (CSS Foundation) - ✅ SELESAI
 
@@ -128,35 +136,27 @@ Audit ini memecah pekerjaan menjadi langkah kecil yang bisa dikerjakan bertahap 
 
 ### Batch 2 (Empty States & Panel Kontrol) - ✅ SELESAI
 
-#### Temuan:
+- [x] Resolve duplikasi `.empty-panel` di `style.css`
+- [x] Check semua modul empty-state consistency
+- [x] Panel kontrol patterns
+- [x] Loading spinner consistency
+- [x] Table consistency check
 
-- ✅ `style.css:5654` - `.empty-panel` sudah disederhanakan, inherit dari design-system
-- ✅ `design-system.css:1602` - `.empty-state, .empty-panel` pattern standar
+### Batch 3-5 (Tombol Ikon & Validasi) - ✅ SELESAI
 
-#### Action Items - Semua SELESAI:
+- [x] Semua modul utama → ikon
+- [x] Tabel khusus → ikon
+- [x] Validasi dan sinkronisasi final
 
-- [x] Resolve duplikasi `.empty-panel` di `style.css` - SELESAI
-- [x] Check semua modul empty-state consistency - SELESAI
-  - ✅ Siswa: `.siswa-empty-state` (line 2781)
-  - ✅ Guru: `.guru-empty-state` (line 2782)
-  - ✅ Kelas: `.kelas-empty-state` (line 2783)
-  - ✅ Mapel: `.mapel-empty-state` (line 2784)
-  - ✅ WaliKelas: `.wali-empty-state` (line 2785)
-  - ✅ Nilai: uses `.empty-panel` consistent (line 1603-1611)
-  - ✅ Rekap: `.rekap-empty-state` (line 2924)
-- [x] Panel kontrol patterns - SELESAI (design-system.css lines 2383-3044)
-- [x] Loading spinner consistency - SELESAI (.is-loading pattern di design-system)
-- [x] Table consistency check - SELESAI
-  - ✅ .table-container (line 2110)
-  - ✅ Table padding uniformity (th: var(--gs-space-3), td: var(--gs-space-3) var(--gs-space-2))
-  - ✅ Zebra striping (line 2163)
-  - ✅ Hover state (line 2158)
+## UI-4 (Mobile) - ✅ SELESAI
 
-### Batch 3 (Tombol Ikon) - ✅ SELESAI
-
-Lihat section "Yang Sedang Dikerjakan" di atas.
-
-## UI-4 (Mobile) - ⏳ BELUM DIMULAI
+- [x] Breakpoint audit (820px, 430px)
+- [x] Shell mobile (topbar, sidebar, content padding)
+- [x] Tabel card-like (responsive-data-table, compact tables)
+- [x] Nilai table mobile (sticky columns)
+- [x] Rekap table mobile (scroll + card-like)
+- [x] Input touch targets (min-height 50px)
+- [x] Dark mode mobile adjustments
 
 ## UI-5 (Login & Aksesibilitas) - ⏳ BELUM DIMULAI
 
@@ -164,7 +164,5 @@ Lihat section "Yang Sedang Dikerjakan" di atas.
 
 ## Task Files
 
-- [UI-3-TASK-BATCH2.md](./UI-3-TASK-BATCH2.md) - Empty States & Panel Kontrol
-- [UI-3-TASK-BATCH3.md](./UI-3-TASK-BATCH3.md) - Table Consistency & Tombol Ikon
-- [UI-4.md](./UI-4.md) - Mobile
+- [UI-4.md](./UI-4.md) - Mobile Redesign - ✅ SELESAI
 - [UI-5.md](./UI-5.md) - Login & Aksesibilitas

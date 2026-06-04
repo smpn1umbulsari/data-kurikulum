@@ -38,13 +38,13 @@
         afterEnter: () => global.loadRealtimeKalenderPendidikan()
       },
       "pembagian-ruang": {
-        title: "Kepersetaan",
+        title: "Kepesertaan",
         beforeEnter: () => typeof global.setAsesmenPageTab === "function" && global.setAsesmenPageTab("pembagian-ruang", { skipReload: true }),
         render: () => global.renderKepersetaanPage(),
         afterEnter: () => global.loadRealtimePembagianRuang()
       },
       "kepangawasan": {
-        title: "Kepangawasan Asesmen",
+        title: "Kepengawasan Asesmen",
         render: () => global.renderKepangawasanPage(),
         afterEnter: () => global.loadRealtimeKepangawasan()
       },
@@ -175,7 +175,7 @@
         afterEnter: () => global.loadRealtimeRekapNilai()
       },
       "asesmen-administrasi": {
-        title: "Kepersetaan",
+        title: "Kepesertaan",
         beforeEnter: () => typeof global.setAsesmenPageTab === "function" && global.setAsesmenPageTab("administrasi", { skipReload: true }),
         render: () => global.renderKepersetaanPage(),
         afterEnter: () => global.loadRealtimeAdministrasiAsesmen()
