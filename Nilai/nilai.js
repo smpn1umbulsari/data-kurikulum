@@ -856,33 +856,23 @@ function renderInputNilaiPage() {
   const showOfflineDraft =
     canUseNilaiOfflineDraft() && window.isGuruSpenturiNativeApp?.();
   return `
-    <div class="card">
-      <div class="nilai-module-header">
-        <div>
+    <section class="app-page app-page--module nilai-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header nilai-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Nilai</span>
           <h2 id="nilaiModeTitle">${escapeNilaiHtml(getNilaiInputModeLabel())}</h2>
           <p id="nilaiModeDescription"></p>
         </div>
-      </div>
+      </header>
 
-      <div class="nilai-control-panel">
-        <label class="form-group">
-          <span>Pilih kelas dan mapel</span>
-          <select id="nilaiAssignmentSelect" onchange="handleNilaiAssignmentChange()"></select>
-        </label>
-        ${
-          showModeSelector
-            ? `
-        <label class="form-group">
-          <span>Mode input</span>
-          <select id="nilaiModeSelect" onchange="handleNilaiModeSelectorChange(event)">
-            <option value="pts">PTS</option>
-            <option value="semester">Semester</option>
-          </select>
-        </label>`
-            : ""
-        }
-        <div class="nilai-control-actions">
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar nilai-toolbar">
+        <!-- toolbar-row--actions -->
+        <div class="toolbar-row toolbar-row--actions">
+          <button type="button" class="btn-primary nilai-action-btn nilai-action-save" onclick="saveNilaiAssignment()">Simpan Nilai</button>
+          <button type="button" class="btn-secondary nilai-action-btn nilai-action-import" onclick="triggerNilaiImport()">Import Nilai</button>
+          
           <details class="nilai-download-menu nilai-action-group nilai-action-group-download" id="nilaiDownloadMenu">
             <summary class="btn-secondary nilai-action-btn nilai-action-download">Download</summary>
             <div class="nilai-download-menu-panel">
@@ -890,7 +880,7 @@ function renderInputNilaiPage() {
               <button type="button" id="nilaiRaporDownloadBtn" class="btn-rapor-download" onclick="promptDownloadNilaiRapor()" ${modeRules.canDownloadRapor ? "" : "hidden"}>Nilai Rapor</button>
             </div>
           </details>
-          <button type="button" class="btn-secondary nilai-action-btn nilai-action-import" onclick="triggerNilaiImport()">Import Nilai</button>
+
           ${
             showOfflineDraft
               ? `
@@ -903,15 +893,44 @@ function renderInputNilaiPage() {
           </details>`
               : ""
           }
-          <button type="button" class="btn-primary nilai-action-btn nilai-action-save" onclick="saveNilaiAssignment()">Simpan Nilai</button>
+          
           <input id="nilaiImportInput" type="file" accept=".xlsx,.xls" onchange="importNilaiExcel(event)" hidden>
         </div>
-      </div>
 
-      <div id="nilaiAssignmentInfo" class="nilai-assignment-info">Memuat data pembagian mengajar...</div>
+        <!-- toolbar-row--filters -->
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="siswa-field" for="nilaiAssignmentSelect">
+            <span>Pilih Kelas dan Mapel</span>
+            <select id="nilaiAssignmentSelect" onchange="handleNilaiAssignmentChange()"></select>
+          </label>
+
+          ${
+            showModeSelector
+              ? `
+          <label class="siswa-field" for="nilaiModeSelect">
+            <span>Mode Input</span>
+            <select id="nilaiModeSelect" onchange="handleNilaiModeSelectorChange(event)">
+              <option value="pts">PTS</option>
+              <option value="semester">Semester</option>
+            </select>
+          </label>`
+              : ""
+          }
+
+          <div class="toolbar-row--info-inline">
+            <span id="nilaiAssignmentInfo">Memuat data pembagian mengajar...</span>
+          </div>
+        </div>
+      </section>
+
       ${showOfflineDraft ? `<div id="nilaiOfflineDraftInfo" class="nilai-offline-note" hidden></div>` : ""}
 
-      <div id="nilaiTableContainer" class="table-container mapel-table-container"></div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content nilai-content">
+        <div style="padding: var(--gs-space-4);">
+          <div id="nilaiTableContainer" class="table-container mapel-table-container"></div>
+        </div>
+      </section>
 
       <div id="nilaiSavingOverlay" class="nilai-saving-overlay" style="display:none;" aria-hidden="true">
         <div class="nilai-saving-card">
@@ -926,7 +945,7 @@ function renderInputNilaiPage() {
           <div id="nilaiPreviewContainer"></div>
         </div>
       </div>
-    </div>
+    </section>
   `;
 }
 
@@ -948,28 +967,39 @@ function renderRekapNilaiPage() {
             ? `Koordinator melihat rekap nilai sesuai jenjang ${(typeof getCurrentCoordinatorLevelsSync === "function" ? getCurrentCoordinatorLevelsSync() : []).join(", ") || "-"}.`
             : "Admin dapat melihat rekap nilai seluruh kelas.";
   return `
-    <div class="card">
-      <div class="nilai-module-header">
-        <div>
+    <section class="app-page app-page--module nilai-rekap-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header nilai-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Nilai</span>
           <h2>Rekap Nilai per Kelas</h2>
           <p>${roleDescription}</p>
         </div>
-      </div>
+      </header>
 
-      <div class="nilai-control-panel">
-        <label class="form-group">
-          <span>Pilih kelas</span>
-          <select id="nilaiRekapClassSelect" onchange="renderRekapNilaiState()"></select>
-        </label>
-        <div class="nilai-control-actions">
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar nilai-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
           <button type="button" class="btn-secondary" onclick="exportRekapNilaiExcel()">Export Excel</button>
         </div>
-      </div>
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="siswa-field" for="nilaiRekapClassSelect">
+            <span>Pilih Kelas</span>
+            <select id="nilaiRekapClassSelect" onchange="renderRekapNilaiState()"></select>
+          </label>
+          <div class="toolbar-row--info-inline">
+            <span id="nilaiRekapInfo">Memuat data rekap nilai...</span>
+          </div>
+        </div>
+      </section>
 
-      <div id="nilaiRekapInfo" class="nilai-assignment-info">Memuat data rekap nilai...</div>
-      <div id="nilaiRekapContainer" class="table-container mapel-table-container"></div>
-    </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content nilai-content">
+        <div style="padding: var(--gs-space-4);">
+          <div id="nilaiRekapContainer" class="table-container mapel-table-container"></div>
+        </div>
+      </section>
+    </section>
   `;
 }
 

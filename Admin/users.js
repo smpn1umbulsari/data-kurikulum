@@ -1213,22 +1213,29 @@ function renderAdminUserPage() {
 
 function renderAdminHierarchyPage() {
   return `
-    <div class="card">
-      <div class="kelas-bayangan-head">
-        <div>
+    <section class="app-page app-page--module admin-hierarchy-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header admin-hierarchy-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Admin</span>
           <h2>Pengguna Hierarki</h2>
           <p>Kelola pengguna berdasarkan role admin, guru, urusan, dan siswa.</p>
         </div>
-      </div>
+      </header>
 
-      ${renderAdminPresenceSummaryHtml()}
-      <div class="dashboard-card-lite admin-hierarchy-note">
-        Form tambah manual dipindahkan ke menu <strong>User</strong> agar menu hirarki fokus pada koordinator dan ringkasan role.
-      </div>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar admin-hierarchy-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <span class="matrix-toolbar-note">Form tambah manual dipindahkan ke menu <strong>User</strong> agar menu hirarki fokus pada koordinator dan ringkasan role.</span>
+        </div>
+      </section>
 
-      <div id="adminHierarchySections" class="dashboard-grid"></div>
-    </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content admin-hierarchy-content" style="padding: var(--gs-space-4);">
+        ${renderAdminPresenceSummaryHtml()}
+        <div id="adminHierarchySections" class="dashboard-grid" style="margin-top: var(--gs-space-4);"></div>
+      </section>
+    </section>
   `;
 }
 

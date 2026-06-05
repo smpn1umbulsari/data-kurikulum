@@ -3,30 +3,37 @@
 
   function renderPageShell() {
     return `
-      <div class="card">
+      <section class="app-page app-page--module wali-page">
         <div id="waliKelasPageShell">
           <div class="empty-panel">Memuat data wali kelas...</div>
         </div>
-      </div>
+      </section>
     `;
   }
 
   function renderHeader(context) {
     return `
-      <div class="wali-module-header">
-        <div>
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header wali-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Wali Kelas</span>
           <h2>${context.escape(context.title)}</h2>
-          ${context.description ? `<p class="wali-module-description">${context.escape(context.description)}</p>` : ""}
+          ${context.description ? `<p>${context.escape(context.description)}</p>` : ""}
         </div>
-      </div>
-      <div class="wali-toolbar-panel">
-        <label class="wali-field">
-          <span>Pilih kelas</span>
-          <select id="waliKelasSelect" onchange="renderWaliKelasActivePage()">${context.selectOptionsHtml}</select>
-        </label>
-        <div class="wali-toolbar-actions">${context.extraActions || ""}</div>
-      </div>
+      </header>
+
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar wali-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          ${context.extraActions || ""}
+        </div>
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="siswa-field" for="waliKelasSelect">
+            <span>Pilih Kelas</span>
+            <select id="waliKelasSelect" onchange="renderWaliKelasActivePage()">${context.selectOptionsHtml}</select>
+          </label>
+        </div>
+      </section>
     `;
   }
 

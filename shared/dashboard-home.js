@@ -534,16 +534,20 @@
 
   function renderRekapNilaiPlaceholder(levels = []) {
     return `
-      <div class="card">
-        <div class="kelas-bayangan-head nilai-page-head">
-          <div>
+      <section class="app-page app-page--module rekap-nilai-placeholder-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header rekap-nilai-placeholder-header">
+          <div class="app-page-title">
             <span class="dashboard-eyebrow">Nilai</span>
             <h2>Rekap Nilai</h2>
             <p>Halaman ini sedang disiapkan${levels.length ? ` untuk jenjang ${escapeHtml(levels.join(", "))}` : ""}.</p>
           </div>
-        </div>
-        <div class="empty-panel">Menu rekap nilai masih dikosongkan dulu sesuai permintaan.</div>
-      </div>
+        </header>
+        <!-- UI-8: Panel 4 - Content -->
+        <section class="app-panel app-panel--content rekap-nilai-placeholder-content" style="padding: var(--gs-space-4);">
+          <div class="empty-panel">Menu rekap nilai masih dikosongkan dulu sesuai permintaan.</div>
+        </section>
+      </section>
     `;
   }
 

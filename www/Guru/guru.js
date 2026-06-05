@@ -30,7 +30,10 @@ function escapeGuruHtml(value) {
 function stripGuruTitlesFromName(value = "") {
   return String(value || "")
     .replace(/\b(Drs?|Dra|Prof|Hj?|Ir)\.?(?=\s|,|$)/gi, " ")
-    .replace(/\b(S|M|D)\.?\s?(Pd|Si|Ag|Kom|H|E|Ak|Ikom|Hum|Kes|Kep|Farm|T|Sc|A)\.?(?=\s|,|$)/gi, " ")
+    .replace(
+      /\b(S|M|D)\.?\s?(Pd|Si|Ag|Kom|H|E|Ak|Ikom|Hum|Kes|Kep|Farm|T|Sc|A)\.?(?=\s|,|$)/gi,
+      " ",
+    )
     .replace(/,\s*/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -43,22 +46,34 @@ function getGuruSortName(guru = {}) {
 }
 
 function normalizeGuruStatus(value = "") {
-  const normalized = String(value || "").trim().toUpperCase().replace(/\s+/g, " ");
+  const normalized = String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
   if (GURU_STATUS_OPTIONS.includes(normalized)) return normalized;
   if (normalized.replace(/\s+/g, "") === "PPPKPW") return "PPPK PW";
   return "PNS";
 }
 
 function normalizeGuruNamaValue(namaValue = "") {
-  const raw = String(namaValue || "").trim().replace(/\s+/g, " ");
+  const raw = String(namaValue || "")
+    .trim()
+    .replace(/\s+/g, " ");
   if (!raw) return "";
   return raw
     .toLowerCase()
     .split(" ")
-    .map(word => word
-      .split(/([-'])/)
-      .map(part => (/^[-']$/.test(part) ? part : (part ? part.charAt(0).toUpperCase() + part.slice(1) : "")))
-      .join("")
+    .map((word) =>
+      word
+        .split(/([-'])/)
+        .map((part) =>
+          /^[-']$/.test(part)
+            ? part
+            : part
+              ? part.charAt(0).toUpperCase() + part.slice(1)
+              : "",
+        )
+        .join(""),
     )
     .join(" ");
 }
@@ -80,9 +95,10 @@ function normalizeGuruNipValue(nipValue = "", statusValue = "PNS") {
 
 function applyGuruStatusNipUi(statusValue = "PNS", options = {}) {
   const status = normalizeGuruStatus(statusValue);
-  const input = typeof options.inputId === "string"
-    ? document.getElementById(options.inputId)
-    : (options.input || document.getElementById("nipGuru"));
+  const input =
+    typeof options.inputId === "string"
+      ? document.getElementById(options.inputId)
+      : options.input || document.getElementById("nipGuru");
   if (!input) return;
 
   if (status === "GB") {
@@ -109,15 +125,16 @@ function handleInlineGuruStatusChange(selectEl) {
 
 function renderGuruStatusOptions(selectedValue = "PNS") {
   const selectedStatus = normalizeGuruStatus(selectedValue);
-  return GURU_STATUS_OPTIONS
-    .map(status => `<option value="${status}" ${status === selectedStatus ? "selected" : ""}>${status}</option>`)
-    .join("");
+  return GURU_STATUS_OPTIONS.map(
+    (status) =>
+      `<option value="${status}" ${status === selectedStatus ? "selected" : ""}>${status}</option>`,
+  ).join("");
 }
 
 function queueGuruRowFocus(kodeGuru, options = {}) {
   pendingGuruRowFocus = {
     kodeGuru: String(kodeGuru || ""),
-    focusInput: Boolean(options.focusInput)
+    focusInput: Boolean(options.focusInput),
   };
 }
 
@@ -127,11 +144,16 @@ function flushGuruRowFocus() {
   pendingGuruRowFocus = null;
 
   requestAnimationFrame(() => {
-    const row = Array.from(document.querySelectorAll("#tbodyGuru tr[data-guru-kode]"))
-      .find(item => item.getAttribute("data-guru-kode") === kodeGuru);
+    const row = Array.from(
+      document.querySelectorAll("#tbodyGuru tr[data-guru-kode]"),
+    ).find((item) => item.getAttribute("data-guru-kode") === kodeGuru);
     if (!row) return;
 
-    row.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+    row.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+      inline: "nearest",
+    });
     row.classList.add("guru-row-focus-pulse");
     window.setTimeout(() => row.classList.remove("guru-row-focus-pulse"), 1400);
 
@@ -145,8 +167,14 @@ function flushGuruRowFocus() {
 function sortGuruData(data) {
   return [...data].sort((a, b) => {
     if (guruSortField === "nama_lengkap") {
-      return compareValues(getGuruSortName(a), getGuruSortName(b), guruSortDirection) ||
-        compareValues(formatNamaGuru(a), formatNamaGuru(b), guruSortDirection);
+      return (
+        compareValues(
+          getGuruSortName(a),
+          getGuruSortName(b),
+          guruSortDirection,
+        ) ||
+        compareValues(formatNamaGuru(a), formatNamaGuru(b), guruSortDirection)
+      );
     }
 
     return compareValues(a[guruSortField], b[guruSortField], guruSortDirection);
@@ -178,7 +206,7 @@ function renderGuruTableState() {
     const theadRow = table?.querySelector("thead tr");
     if (theadRow) {
       theadRow.innerHTML = `
-        ${renderSortableHeader("Kode Guru", "kode_guru", guruSortField, guruSortDirection, "setGuruSort")}
+        ${renderSortableHeader("Kode", "kode_guru", guruSortField, guruSortDirection, "setGuruSort")}
         ${renderSortableHeader("Nama dengan Gelar", "nama_lengkap", guruSortField, guruSortDirection, "setGuruSort")}
         ${renderSortableHeader("NIP", "nip", guruSortField, guruSortDirection, "setGuruSort")}
         ${renderSortableHeader("Status", "status", guruSortField, guruSortDirection, "setGuruSort")}
@@ -196,28 +224,45 @@ function renderGuruTableState() {
 }
 
 function renderGuruMapelOptions(selectedValue = "") {
-  const normalizedSelected = String(selectedValue || "").trim().toLowerCase();
-  const placeholder = semuaMapelGuru.length > 0 ? "Pilih mata pelajaran" : "Belum ada data mapel";
+  const normalizedSelected = String(selectedValue || "")
+    .trim()
+    .toLowerCase();
+  const placeholder =
+    semuaMapelGuru.length > 0 ? "Pilih mata pelajaran" : "Belum ada data mapel";
   const options = [`<option value="">${placeholder}</option>`];
 
-  semuaMapelGuru.forEach(item => {
+  semuaMapelGuru.forEach((item) => {
     const kodeMapel = String(item.kode_mapel || "").trim();
     const namaMapel = String(item.nama_mapel || "").trim();
     if (!kodeMapel) return;
-    const selected = [kodeMapel, namaMapel]
-      .some(value => String(value || "").trim().toLowerCase() === normalizedSelected)
+    const selected = [kodeMapel, namaMapel].some(
+      (value) =>
+        String(value || "")
+          .trim()
+          .toLowerCase() === normalizedSelected,
+    )
       ? "selected"
       : "";
     const label = namaMapel ? `${kodeMapel} - ${namaMapel}` : kodeMapel;
-    options.push(`<option value="${escapeGuruHtml(kodeMapel)}" ${selected}>${escapeGuruHtml(label)}</option>`);
+    options.push(
+      `<option value="${escapeGuruHtml(kodeMapel)}" ${selected}>${escapeGuruHtml(label)}</option>`,
+    );
   });
 
-  if (selectedValue && !semuaMapelGuru.some(item =>
-    [item.kode_mapel, item.nama_mapel].some(value =>
-      String(value || "").trim().toLowerCase() === normalizedSelected
+  if (
+    selectedValue &&
+    !semuaMapelGuru.some((item) =>
+      [item.kode_mapel, item.nama_mapel].some(
+        (value) =>
+          String(value || "")
+            .trim()
+            .toLowerCase() === normalizedSelected,
+      ),
     )
-  )) {
-    options.push(`<option value="${escapeGuruHtml(selectedValue)}" selected>${escapeGuruHtml(selectedValue)}</option>`);
+  ) {
+    options.push(
+      `<option value="${escapeGuruHtml(selectedValue)}" selected>${escapeGuruHtml(selectedValue)}</option>`,
+    );
   }
 
   return options.join("");
@@ -233,7 +278,7 @@ function populateGuruMapelSelect(selectedValue = "") {
 function loadGuruMapelOptions() {
   if (unsubscribeGuruMapelOptions) unsubscribeGuruMapelOptions();
 
-  unsubscribeGuruMapelOptions = listenMapel(data => {
+  unsubscribeGuruMapelOptions = listenMapel((data) => {
     semuaMapelGuru = data;
     populateGuruMapelSelect();
   });
@@ -248,7 +293,10 @@ function normalizeGuruHeader(text) {
 
 function getGuruCellValue(row, aliases) {
   const normalizedRow = Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [normalizeGuruHeader(key), value])
+    Object.entries(row).map(([key, value]) => [
+      normalizeGuruHeader(key),
+      value,
+    ]),
   );
 
   for (const alias of aliases) {
@@ -263,15 +311,17 @@ function getGuruCellValue(row, aliases) {
 
 async function downloadGuruTemplate() {
   await ensureSpreadsheetLibraries();
-  const worksheet = XLSX.utils.aoa_to_sheet([[
-    "KODE_GURU",
-    "NAMA",
-    "GELAR_DEPAN",
-    "GELAR_BELAKANG",
-    "NIP",
-    "STATUS",
-    "MATA_PELAJARAN"
-  ]]);
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    [
+      "KODE_GURU",
+      "NAMA",
+      "GELAR_DEPAN",
+      "GELAR_BELAKANG",
+      "NIP",
+      "STATUS",
+      "MATA_PELAJARAN",
+    ],
+  ]);
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
@@ -287,12 +337,14 @@ async function ensureGuruMapelOptions() {
   if (semuaMapelGuru.length > 0) return;
 
   const snapshot = await getGuruPageDocumentsApi().collection("mapel").get();
-  semuaMapelGuru = snapshot.docs.map(doc => doc.data()).sort((a, b) => {
-    const mappingA = Number(a.mapping ?? Number.MAX_SAFE_INTEGER);
-    const mappingB = Number(b.mapping ?? Number.MAX_SAFE_INTEGER);
-    if (mappingA !== mappingB) return mappingA - mappingB;
-    return compareValues(a.nama_mapel, b.nama_mapel, "asc");
-  });
+  semuaMapelGuru = snapshot.docs
+    .map((doc) => doc.data())
+    .sort((a, b) => {
+      const mappingA = Number(a.mapping ?? Number.MAX_SAFE_INTEGER);
+      const mappingB = Number(b.mapping ?? Number.MAX_SAFE_INTEGER);
+      if (mappingA !== mappingB) return mappingA - mappingB;
+      return compareValues(a.nama_mapel, b.nama_mapel, "asc");
+    });
 }
 
 async function importGuruExcel(event) {
@@ -309,33 +361,62 @@ async function importGuruExcel(event) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(sheet);
 
-      const parsed = json.map(row => {
-        const kodeGuru = String(getGuruCellValue(row, ["KODE_GURU", "KODE GURU", "KODE"])).trim();
-        const nama = normalizeGuruNamaValue(getGuruCellValue(row, ["NAMA", "NAMA_GURU", "NAMA GURU"]));
-        const gelarDepan = String(getGuruCellValue(row, ["GELAR_DEPAN", "GELAR DEPAN"])).trim();
-        const gelarBelakang = String(getGuruCellValue(row, ["GELAR_BELAKANG", "GELAR BELAKANG"])).trim();
-        const nip = String(getGuruCellValue(row, ["NIP"])).trim();
-        const status = normalizeGuruStatus(getGuruCellValue(row, ["STATUS", "STATUS_GURU", "STATUS GURU"]));
-        const mataPelajaran = String(getGuruCellValue(row, ["MATA_PELAJARAN", "MATA PELAJARAN", "MAPEL"])).trim();
+      const parsed = json
+        .map((row) => {
+          const kodeGuru = String(
+            getGuruCellValue(row, ["KODE_GURU", "KODE GURU", "KODE"]),
+          ).trim();
+          const nama = normalizeGuruNamaValue(
+            getGuruCellValue(row, ["NAMA", "NAMA_GURU", "NAMA GURU"]),
+          );
+          const gelarDepan = String(
+            getGuruCellValue(row, ["GELAR_DEPAN", "GELAR DEPAN"]),
+          ).trim();
+          const gelarBelakang = String(
+            getGuruCellValue(row, ["GELAR_BELAKANG", "GELAR BELAKANG"]),
+          ).trim();
+          const nip = String(getGuruCellValue(row, ["NIP"])).trim();
+          const status = normalizeGuruStatus(
+            getGuruCellValue(row, ["STATUS", "STATUS_GURU", "STATUS GURU"]),
+          );
+          const mataPelajaran = String(
+            getGuruCellValue(row, [
+              "MATA_PELAJARAN",
+              "MATA PELAJARAN",
+              "MAPEL",
+            ]),
+          ).trim();
 
-        return {
-          kode_guru: kodeGuru,
-          nama,
-          gelar_depan: gelarDepan,
-          gelar_belakang: gelarBelakang,
-          nip,
-          status,
-          mata_pelajaran: mataPelajaran,
-          nama_lengkap: [gelarDepan, nama, gelarBelakang].filter(Boolean).join(" ")
-        };
-      }).filter(item => item.kode_guru || item.nama || item.nip || item.mata_pelajaran);
+          return {
+            kode_guru: kodeGuru,
+            nama,
+            gelar_depan: gelarDepan,
+            gelar_belakang: gelarBelakang,
+            nip,
+            status,
+            mata_pelajaran: mataPelajaran,
+            nama_lengkap: [gelarDepan, nama, gelarBelakang]
+              .filter(Boolean)
+              .join(" "),
+          };
+        })
+        .filter(
+          (item) =>
+            item.kode_guru || item.nama || item.nip || item.mata_pelajaran,
+        );
 
-      const validRows = parsed.filter(item => item.kode_guru && item.nama && item.mata_pelajaran);
+      const validRows = parsed.filter(
+        (item) => item.kode_guru && item.nama && item.mata_pelajaran,
+      );
       const invalidRows = parsed.length - validRows.length;
 
       if (validRows.length === 0) {
         event.target.value = "";
-        Swal.fire("Import guru gagal", "Tidak ada data valid yang bisa diimport.", "error");
+        Swal.fire(
+          "Import guru gagal",
+          "Tidak ada data valid yang bisa diimport.",
+          "error",
+        );
         return;
       }
 
@@ -345,7 +426,7 @@ async function importGuruExcel(event) {
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Import",
-        cancelButtonText: "Batal"
+        cancelButtonText: "Batal",
       });
 
       if (!confirm.isConfirmed) {
@@ -355,7 +436,7 @@ async function importGuruExcel(event) {
 
       Swal.fire({
         title: "Mengimport guru...",
-        didOpen: () => Swal.showLoading()
+        didOpen: () => Swal.showLoading(),
       });
 
       let berhasil = 0;
@@ -363,13 +444,20 @@ async function importGuruExcel(event) {
 
       for (const guru of validRows) {
         try {
-          const existing = semuaDataGuru.find(item => item.kode_guru === guru.kode_guru);
-          await getGuruPageDocumentsApi().collection("guru").doc(guru.kode_guru).set({
-            ...guru,
-            jp: Number(existing?.jp || 0),
-            created_at: existing ? existing.created_at || new Date() : new Date(),
-            updated_at: new Date()
-          });
+          const existing = semuaDataGuru.find(
+            (item) => item.kode_guru === guru.kode_guru,
+          );
+          await getGuruPageDocumentsApi()
+            .collection("guru")
+            .doc(guru.kode_guru)
+            .set({
+              ...guru,
+              jp: Number(existing?.jp || 0),
+              created_at: existing
+                ? existing.created_at || new Date()
+                : new Date(),
+              updated_at: new Date(),
+            });
           berhasil++;
         } catch (error) {
           console.error(error);
@@ -381,7 +469,7 @@ async function importGuruExcel(event) {
         title: "Import guru selesai",
         html: `Berhasil: ${berhasil}<br>Gagal: ${gagal}<br>Tidak lengkap: ${invalidRows}`,
         icon: "success",
-        confirmButtonText: "OK"
+        confirmButtonText: "OK",
       });
 
       event.target.value = "";
@@ -397,13 +485,15 @@ async function importGuruExcel(event) {
 
 function formatNamaGuru(guru) {
   const parts = [guru.gelar_depan, guru.nama, guru.gelar_belakang]
-    .map(value => String(value || "").trim())
+    .map((value) => String(value || "").trim())
     .filter(Boolean);
   return parts.join(" ");
 }
 
 function getGuruRowsPerPageValue() {
-  return rowsPerPageGuru === "all" ? Number.MAX_SAFE_INTEGER : Number(rowsPerPageGuru);
+  return rowsPerPageGuru === "all"
+    ? Number.MAX_SAFE_INTEGER
+    : Number(rowsPerPageGuru);
 }
 
 function setGuruRowsPerPage(value) {
@@ -413,16 +503,21 @@ function setGuruRowsPerPage(value) {
 }
 
 function setGuruPage(page) {
-  const keyword = document.getElementById("searchGuru")?.value?.toLowerCase() || "";
-  const hasil = semuaDataGuru.filter(d =>
-    (d.kode_guru || "").toLowerCase().includes(keyword) ||
-    formatNamaGuru(d).toLowerCase().includes(keyword) ||
-    (d.nip || "").toLowerCase().includes(keyword) ||
-    getGuruStatus(d).toLowerCase().includes(keyword) ||
-    (d.mata_pelajaran || "").toLowerCase().includes(keyword)
+  const keyword =
+    document.getElementById("searchGuru")?.value?.toLowerCase() || "";
+  const hasil = semuaDataGuru.filter(
+    (d) =>
+      (d.kode_guru || "").toLowerCase().includes(keyword) ||
+      formatNamaGuru(d).toLowerCase().includes(keyword) ||
+      (d.nip || "").toLowerCase().includes(keyword) ||
+      getGuruStatus(d).toLowerCase().includes(keyword) ||
+      (d.mata_pelajaran || "").toLowerCase().includes(keyword),
   );
 
-  const totalPages = Math.max(1, Math.ceil(hasil.length / getGuruRowsPerPageValue()));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(hasil.length / getGuruRowsPerPageValue()),
+  );
   currentPageGuru = Math.min(Math.max(1, page), totalPages);
   renderGuruFiltered();
 }
@@ -430,13 +525,13 @@ function setGuruPage(page) {
 function loadRealtimeGuru() {
   if (unsubscribeGuru) unsubscribeGuru();
 
-  unsubscribeGuru = listenGuru(data => {
+  unsubscribeGuru = listenGuru((data) => {
     ensureGuruStatusDefaults(data);
     ensureGuruNamaDefaults(data);
-    semuaDataGuru = data.map(guru => ({
+    semuaDataGuru = data.map((guru) => ({
       ...guru,
       nama: normalizeGuruNamaValue(guru.nama),
-      status: getGuruStatus(guru)
+      status: getGuruStatus(guru),
     }));
     renderGuruFiltered();
   });
@@ -444,9 +539,10 @@ function loadRealtimeGuru() {
 
 async function ensureGuruNamaDefaults(data = []) {
   if (hasBackfilledGuruNama || isBackfillingGuruNama) return;
-  const changedGuru = data.filter(guru =>
-    String(guru?.kode_guru || "").trim() &&
-    normalizeGuruNamaValue(guru.nama) !== String(guru?.nama || "").trim()
+  const changedGuru = data.filter(
+    (guru) =>
+      String(guru?.kode_guru || "").trim() &&
+      normalizeGuruNamaValue(guru.nama) !== String(guru?.nama || "").trim(),
   );
 
   if (changedGuru.length === 0) {
@@ -458,17 +554,21 @@ async function ensureGuruNamaDefaults(data = []) {
   try {
     const documentsApi = getGuruPageDocumentsApi();
     const batch = documentsApi.batch();
-    changedGuru.forEach(guru => {
+    changedGuru.forEach((guru) => {
       const normalizedNama = normalizeGuruNamaValue(guru.nama);
-      batch.set(documentsApi.collection("guru").doc(String(guru.kode_guru).trim()), {
-        ...guru,
-        nama: normalizedNama,
-        nama_lengkap: [guru.gelar_depan, normalizedNama, guru.gelar_belakang]
-          .map(value => String(value || "").trim())
-          .filter(Boolean)
-          .join(" "),
-        updated_at: new Date()
-      }, { merge: true });
+      batch.set(
+        documentsApi.collection("guru").doc(String(guru.kode_guru).trim()),
+        {
+          ...guru,
+          nama: normalizedNama,
+          nama_lengkap: [guru.gelar_depan, normalizedNama, guru.gelar_belakang]
+            .map((value) => String(value || "").trim())
+            .filter(Boolean)
+            .join(" "),
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
     hasBackfilledGuruNama = true;
@@ -481,9 +581,10 @@ async function ensureGuruNamaDefaults(data = []) {
 
 async function ensureGuruStatusDefaults(data = []) {
   if (hasBackfilledGuruStatus || isBackfillingGuruStatus) return;
-  const missingStatus = data.filter(guru =>
-    String(guru?.kode_guru || "").trim() &&
-    String(guru?.status || "").trim() === ""
+  const missingStatus = data.filter(
+    (guru) =>
+      String(guru?.kode_guru || "").trim() &&
+      String(guru?.status || "").trim() === "",
   );
 
   if (missingStatus.length === 0) {
@@ -495,13 +596,16 @@ async function ensureGuruStatusDefaults(data = []) {
   try {
     const documentsApi = getGuruPageDocumentsApi();
     const batch = documentsApi.batch();
-    missingStatus.forEach(guru => {
+    missingStatus.forEach((guru) => {
       const { id, ...guruData } = guru;
-      batch.set(documentsApi.collection("guru").doc(String(guru.kode_guru).trim()), {
-        ...guruData,
-        status: "PNS",
-        updated_at: new Date()
-      });
+      batch.set(
+        documentsApi.collection("guru").doc(String(guru.kode_guru).trim()),
+        {
+          ...guruData,
+          status: "PNS",
+          updated_at: new Date(),
+        },
+      );
     });
     await batch.commit();
     hasBackfilledGuruStatus = true;
@@ -513,19 +617,26 @@ async function ensureGuruStatusDefaults(data = []) {
 }
 
 function renderGuruFiltered() {
-  const keyword = document.getElementById("searchGuru")?.value?.toLowerCase() || "";
-  const hasil = sortGuruData(semuaDataGuru.filter(d =>
-    (d.kode_guru || "").toLowerCase().includes(keyword) ||
-    formatNamaGuru(d).toLowerCase().includes(keyword) ||
-    (d.nip || "").toLowerCase().includes(keyword) ||
-    getGuruStatus(d).toLowerCase().includes(keyword) ||
-    (d.mata_pelajaran || "").toLowerCase().includes(keyword)
-  ));
+  const keyword =
+    document.getElementById("searchGuru")?.value?.toLowerCase() || "";
+  const hasil = sortGuruData(
+    semuaDataGuru.filter(
+      (d) =>
+        (d.kode_guru || "").toLowerCase().includes(keyword) ||
+        formatNamaGuru(d).toLowerCase().includes(keyword) ||
+        (d.nip || "").toLowerCase().includes(keyword) ||
+        getGuruStatus(d).toLowerCase().includes(keyword) ||
+        (d.mata_pelajaran || "").toLowerCase().includes(keyword),
+    ),
+  );
 
   const tbody = document.getElementById("tbodyGuru");
   const empty = document.getElementById("emptyStateGuru");
   const effectiveRowsPerPage = getGuruRowsPerPageValue();
-  const totalPages = Math.max(1, Math.ceil(hasil.length / effectiveRowsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(hasil.length / effectiveRowsPerPage),
+  );
 
   if (!tbody) return;
 
@@ -540,17 +651,21 @@ function renderGuruFiltered() {
     effectiveRowsPerPage,
     keyword,
     currentEditGuru: currentEditGuru || "",
-    rows: pagedData.map(item => [
-      item.kode_guru,
-      item.nama,
-      item.nama_lengkap,
-      item.nip,
-      getGuruStatus(item),
-      item.mata_pelajaran,
-      item.jp,
-      item.updated_at || item.created_at || ""
-    ].map(value => String(value ?? "")).join("|")),
-    total: hasil.length
+    rows: pagedData.map((item) =>
+      [
+        item.kode_guru,
+        item.nama,
+        item.nama_lengkap,
+        item.nip,
+        getGuruStatus(item),
+        item.mata_pelajaran,
+        item.jp,
+        item.updated_at || item.created_at || "",
+      ]
+        .map((value) => String(value ?? ""))
+        .join("|"),
+    ),
+    total: hasil.length,
   });
 
   if (renderKey !== lastGuruTableRenderKey || !tbody.children.length) {
@@ -568,7 +683,12 @@ function renderGuruFiltered() {
     if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
-  renderPagination("tablePaginationGuru", currentPageGuru, totalPages, "setGuruPage");
+  renderPagination(
+    "tablePaginationGuru",
+    currentPageGuru,
+    totalPages,
+    "setGuruPage",
+  );
   flushGuruRowFocus();
 }
 
@@ -611,8 +731,14 @@ async function simpanGuruData() {
     status: normalizeGuruStatus(statusGuruEl?.value || "PNS"),
     mata_pelajaran: mapelGuruEl.value.trim(),
     jp: 0,
-    nama_lengkap: [gelarDepanEl.value.trim(), normalizeGuruNamaValue(namaGuruEl.value), gelarBelakangEl.value.trim()].filter(Boolean).join(" "),
-    created_at: new Date()
+    nama_lengkap: [
+      gelarDepanEl.value.trim(),
+      normalizeGuruNamaValue(namaGuruEl.value),
+      gelarBelakangEl.value.trim(),
+    ]
+      .filter(Boolean)
+      .join(" "),
+    created_at: new Date(),
   };
   data.nip = normalizeGuruNipValue(nipGuruEl.value, data.status);
 
@@ -636,7 +762,6 @@ async function simpanGuruData() {
     applyGuruStatusNipUi("PNS");
     mapelGuruEl.value = "";
     populateGuruMapelSelect();
-
   } catch {
     Swal.fire("Gagal", "Data guru belum berhasil disimpan", "error");
   } finally {
@@ -650,15 +775,22 @@ async function simpanGuruData() {
 }
 
 async function hapusGuru(kodeGuru) {
-  const assignmentSnapshot = await getGuruPageDocumentsApi().collection("mengajar").where("guru_kode", "==", kodeGuru).get();
+  const assignmentSnapshot = await getGuruPageDocumentsApi()
+    .collection("mengajar")
+    .where("guru_kode", "==", kodeGuru)
+    .get();
   if (!assignmentSnapshot.empty) {
-    Swal.fire("Guru masih dipakai", "Hapus dulu pembagian mengajar guru ini sebelum menghapus data guru.", "warning");
+    Swal.fire(
+      "Guru masih dipakai",
+      "Hapus dulu pembagian mengajar guru ini sebelum menghapus data guru.",
+      "warning",
+    );
     return;
   }
 
   const confirm = await Swal.fire({
     title: "Hapus data guru?",
-    showCancelButton: true
+    showCancelButton: true,
   });
 
   if (!confirm.isConfirmed) return;
@@ -666,7 +798,7 @@ async function hapusGuru(kodeGuru) {
 }
 
 async function startEditGuru(kodeGuru) {
-  const guru = semuaDataGuru.find(item => item.kode_guru === kodeGuru);
+  const guru = semuaDataGuru.find((item) => item.kode_guru === kodeGuru);
   if (!guru) {
     Swal.fire("Data guru tidak ditemukan", "", "error");
     return;
@@ -689,12 +821,22 @@ function cancelEditGuru() {
 }
 
 async function saveGuruInline(kodeGuru) {
-  const nama = normalizeGuruNamaValue(document.getElementById("inlineNamaGuru")?.value || "");
-  const status = normalizeGuruStatus(document.getElementById("inlineStatusGuru")?.value || "PNS");
-  const nip = normalizeGuruNipValue(document.getElementById("inlineNipGuru")?.value || "", status);
-  const gelarDepan = document.getElementById("inlineGelarDepanGuru")?.value.trim() || "";
-  const gelarBelakang = document.getElementById("inlineGelarBelakangGuru")?.value.trim() || "";
-  const mataPelajaran = document.getElementById("inlineMapelGuru")?.value.trim() || "";
+  const nama = normalizeGuruNamaValue(
+    document.getElementById("inlineNamaGuru")?.value || "",
+  );
+  const status = normalizeGuruStatus(
+    document.getElementById("inlineStatusGuru")?.value || "PNS",
+  );
+  const nip = normalizeGuruNipValue(
+    document.getElementById("inlineNipGuru")?.value || "",
+    status,
+  );
+  const gelarDepan =
+    document.getElementById("inlineGelarDepanGuru")?.value.trim() || "";
+  const gelarBelakang =
+    document.getElementById("inlineGelarBelakangGuru")?.value.trim() || "";
+  const mataPelajaran =
+    document.getElementById("inlineMapelGuru")?.value.trim() || "";
 
   if (!nama) {
     Swal.fire("Nama wajib diisi", "", "warning");
@@ -716,11 +858,12 @@ async function saveGuruInline(kodeGuru) {
     return;
   }
 
-  const duplicateNip = semuaDataGuru.some(item =>
-    item.kode_guru !== kodeGuru &&
-    String(item.nip || "").trim() !== "" &&
-    String(item.nip || "").trim() !== "-" &&
-    String(item.nip || "").trim() === nip
+  const duplicateNip = semuaDataGuru.some(
+    (item) =>
+      item.kode_guru !== kodeGuru &&
+      String(item.nip || "").trim() !== "" &&
+      String(item.nip || "").trim() !== "-" &&
+      String(item.nip || "").trim() === nip,
   );
 
   if (duplicateNip) {
@@ -741,7 +884,7 @@ async function saveGuruInline(kodeGuru) {
     gelar_belakang: gelarBelakang,
     mata_pelajaran: mataPelajaran,
     nama_lengkap: [gelarDepan, nama, gelarBelakang].filter(Boolean).join(" "),
-    updated_at: new Date()
+    updated_at: new Date(),
   };
 
   try {
@@ -750,7 +893,11 @@ async function saveGuruInline(kodeGuru) {
     queueGuruRowFocus(kodeGuru);
     renderGuruFiltered();
     if (typeof showInlineSaveNotificationForData === "function") {
-      showInlineSaveNotificationForData("data-guru-kode", kodeGuru, "Tersimpan");
+      showInlineSaveNotificationForData(
+        "data-guru-kode",
+        kodeGuru,
+        "Tersimpan",
+      );
     }
   } catch (error) {
     console.error(error);
@@ -759,7 +906,7 @@ async function saveGuruInline(kodeGuru) {
 }
 
 async function showGuruJPRiwayat(kodeGuru) {
-  const guru = semuaDataGuru.find(item => item.kode_guru === kodeGuru);
+  const guru = semuaDataGuru.find((item) => item.kode_guru === kodeGuru);
   if (!guru) {
     Swal.fire("Data guru tidak ditemukan", "", "error");
     return;
@@ -767,40 +914,62 @@ async function showGuruJPRiwayat(kodeGuru) {
 
   try {
     const [mengajarSnapshot, mapelSnapshot] = await Promise.all([
-      getGuruPageDocumentsApi().collection("mengajar").where("guru_kode", "==", kodeGuru).get(),
-      getGuruPageDocumentsApi().collection("mapel").get()
+      getGuruPageDocumentsApi()
+        .collection("mengajar")
+        .where("guru_kode", "==", kodeGuru)
+        .get(),
+      getGuruPageDocumentsApi().collection("mapel").get(),
     ]);
 
     const mapelLookup = new Map(
-      mapelSnapshot.docs.map(doc => {
+      mapelSnapshot.docs.map((doc) => {
         const data = doc.data();
-        return [String(data.kode_mapel || "").trim().toUpperCase(), Number(data.jp || 0)];
-      })
+        return [
+          String(data.kode_mapel || "")
+            .trim()
+            .toUpperCase(),
+          Number(data.jp || 0),
+        ];
+      }),
     );
 
     const rows = mengajarSnapshot.docs
-      .map(doc => doc.data())
-      .map(item => ({
+      .map((doc) => doc.data())
+      .map((item) => ({
         kelas: item.kelas || buildKelasName(item.tingkat, item.rombel),
         mapel: item.mapel_nama || item.mapel_kode || "-",
-        jp: mapelLookup.get(String(item.mapel_kode || "").trim().toUpperCase()) || 0
+        jp:
+          mapelLookup.get(
+            String(item.mapel_kode || "")
+              .trim()
+              .toUpperCase(),
+          ) || 0,
       }))
-      .sort((a, b) => compareValues(a.kelas, b.kelas, "asc") || compareValues(a.mapel, b.mapel, "asc"));
+      .sort(
+        (a, b) =>
+          compareValues(a.kelas, b.kelas, "asc") ||
+          compareValues(a.mapel, b.mapel, "asc"),
+      );
 
     const totalJP = rows.reduce((sum, item) => sum + Number(item.jp || 0), 0);
-    const tableRows = rows.map(item => `
+    const tableRows = rows
+      .map(
+        (item) => `
       <tr>
         <td>${escapeGuruHtml(item.kelas)}</td>
         <td>${escapeGuruHtml(item.mapel)}</td>
         <td>${item.jp}</td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
 
     await Swal.fire({
       title: `Riwayat JP ${escapeGuruHtml(formatNamaGuru(guru) || guru.kode_guru || "")}`,
       width: 720,
-      html: rows.length > 0
-        ? `
+      html:
+        rows.length > 0
+          ? `
           <div class="guru-riwayat-summary">Total JP saat ini: <strong>${totalJP} JP</strong></div>
           <div class="table-container guru-riwayat-table">
             <table>
@@ -815,8 +984,8 @@ async function showGuruJPRiwayat(kodeGuru) {
             </table>
           </div>
         `
-        : `<div class="empty-panel">Belum ada pembagian mengajar untuk guru ini.</div>`,
-      confirmButtonText: "Tutup"
+          : `<div class="empty-panel">Belum ada pembagian mengajar untuk guru ini.</div>`,
+      confirmButtonText: "Tutup",
     });
   } catch (error) {
     console.error(error);
@@ -837,7 +1006,7 @@ function renderGuruEditRow(d) {
           </div>
         </div>
       </td>
-      <td><input id="inlineNipGuru" value="${escapeGuruHtml(isGuruStatusGB(d) ? "-" : (d.nip || ""))}" placeholder="${isGuruStatusGB(d) ? "Otomatis '-' untuk GB" : "NIP"}" ${isGuruStatusGB(d) ? "readonly" : ""}></td>
+      <td><input id="inlineNipGuru" value="${escapeGuruHtml(isGuruStatusGB(d) ? "-" : d.nip || "")}" placeholder="${isGuruStatusGB(d) ? "Otomatis '-' untuk GB" : "NIP"}" ${isGuruStatusGB(d) ? "readonly" : ""}></td>
       <td>
         <select id="inlineStatusGuru" onchange="handleInlineGuruStatusChange(this)">
           ${renderGuruStatusOptions(d.status || "PNS")}
@@ -854,10 +1023,10 @@ function renderGuruEditRow(d) {
       </td>
       <td>
         <div class="table-actions guru-row-actions">
-          <button class="btn-primary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-save" onclick="saveGuruInline('${d.kode_guru}')" title="Simpan" aria-label="Simpan">Simpan</button>
-          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-cancel" onclick="cancelEditGuru()" title="Batal" aria-label="Batal">Batal</button>
-          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-history" onclick="showGuruJPRiwayat('${d.kode_guru}')" title="Riwayat JP" aria-label="Riwayat JP">Riwayat JP</button>
-          <button class="btn-danger-lite btn-inline-mapel btn-table-compact table-action-icon-btn table-action-delete" onclick="hapusGuru('${d.kode_guru}')" title="Hapus" aria-label="Hapus">Hapus</button>
+<button type="button" class="btn-primary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-save" onclick="saveGuruInline('${d.kode_guru}')" title="Simpan" aria-label="Simpan"></button>
+<button type="button" class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-cancel" onclick="cancelEditGuru()" title="Batal" aria-label="Batal"></button>
+<button type="button" class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-history" onclick="showGuruJPRiwayat('${d.kode_guru}')" title="Riwayat JP" aria-label="Riwayat JP"></button>
+<button type="button" class="btn-danger-lite btn-inline-mapel btn-table-compact table-action-icon-btn table-action-delete" onclick="hapusGuru('${d.kode_guru}')" title="Hapus" aria-label="Hapus"></button>
         </div>
       </td>
     </tr>
@@ -879,9 +1048,9 @@ function renderGuruRow(d) {
       <td>${Number(d.jp || 0)}</td>
       <td>
         <div class="table-actions guru-row-actions">
-          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-edit" onclick="startEditGuru('${d.kode_guru}')" title="Edit" aria-label="Edit">Edit</button>
-          <button class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-history" onclick="showGuruJPRiwayat('${d.kode_guru}')" title="Riwayat JP" aria-label="Riwayat JP">Riwayat JP</button>
-          <button class="btn-danger-lite btn-inline-mapel btn-table-compact table-action-icon-btn table-action-delete" onclick="hapusGuru('${d.kode_guru}')" title="Hapus" aria-label="Hapus">Hapus</button>
+<button type="button" class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-edit" onclick="startEditGuru('${d.kode_guru}')" title="Edit" aria-label="Edit"></button>
+<button type="button" class="btn-secondary btn-inline-mapel btn-table-compact table-action-icon-btn table-action-history" onclick="showGuruJPRiwayat('${d.kode_guru}')" title="Riwayat JP" aria-label="Riwayat JP"></button>
+<button type="button" class="btn-danger-lite btn-inline-mapel btn-table-compact table-action-icon-btn table-action-delete" onclick="hapusGuru('${d.kode_guru}')" title="Hapus" aria-label="Hapus"></button>
         </div>
       </td>
     </tr>

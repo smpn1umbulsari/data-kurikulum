@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1120" viewBox="0 0 1440 1120">
+  <defs>
+    <style>
+      .bg{fill:#f6f8fb}.panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.4}.strong{fill:#fff;stroke:#94a3b8;stroke-width:1.5}.muted{fill:#f1f5f9}.text{fill:#0f172a;font-family:Inter,Segoe UI,Arial,sans-serif}.sec{fill:#334155;font-family:Inter,Segoe UI,Arial,sans-serif}.hint{fill:#64748b;font-family:Inter,Segoe UI,Arial,sans-serif}.accent{fill:#b45309}.soft{fill:#fef3c7}.primary{fill:#1d4ed8}.title{font-size:30px;font-weight:850}.label{font-size:13px;font-weight:850;letter-spacing:.08em}.body{font-size:16px;font-weight:750}.small{font-size:13px;font-weight:700}.shadow{filter:url(#s)}
+    </style>
+    <filter id="s" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity=".07"/></filter>
+  </defs>
+  <rect class="bg" width="1440" height="1120"/>
+  <text x="72" y="64" class="text title">Layout 3: Tabs Below - Workflow Split</text>
+  <text x="72" y="94" class="hint body">Tab di bawah header, lalu action bar, kemudian control kiri dan workspace kanan.</text>
+
+  <g transform="translate(72 130)">
+    <rect width="1296" height="104" rx="8" class="panel shadow"/><rect width="5" height="104" rx="3" fill="#b45309"/>
+    <text x="30" y="38" class="accent label">WORKFLOW</text><text x="30" y="76" class="text title">Judul Modul</text><text x="1010" y="60" class="hint small">Header identitas</text>
+  </g>
+
+  <g transform="translate(72 252)">
+    <rect width="1296" height="58" rx="8" fill="#fff" stroke="#cbd5e1"/>
+    <rect x="24" y="12" width="142" height="34" rx="7" class="soft" stroke="#b45309"/><text x="62" y="34" class="accent small">Mode 1</text>
+    <rect x="178" y="12" width="142" height="34" rx="7" fill="#fff" stroke="#cbd5e1"/><text x="218" y="34" class="sec small">Mode 2</text>
+    <rect x="332" y="12" width="142" height="34" rx="7" fill="#fff" stroke="#cbd5e1"/><text x="372" y="34" class="sec small">Mode 3</text>
+  </g>
+
+  <g transform="translate(72 328)">
+    <rect width="1296" height="70" rx="8" class="panel"/>
+    <text x="24" y="43" class="sec small">Action Bar</text>
+    <g transform="translate(1030 18)"><rect width="110" height="34" rx="7" fill="#fff" stroke="#94a3b8"/><text x="34" y="23" class="sec small">Export</text><rect x="122" width="120" height="34" rx="7" class="primary"/><text x="157" y="23" fill="#fff" font-family="Inter,Segoe UI,Arial" font-size="13" font-weight="800">Simpan</text></g>
+  </g>
+
+  <g transform="translate(72 422)">
+    <rect width="360" height="602" rx="8" class="panel shadow"/>
+    <text x="24" y="34" class="sec body">Control Panel</text><text x="24" y="62" class="hint small">Kontrol selalu terlihat.</text>
+    <g transform="translate(24 94)"><rect y="12" width="312" height="44" rx="7" fill="#fff" stroke="#94a3b8"/><text x="16" y="40" class="sec small">Pilih konteks 1</text></g>
+    <g transform="translate(24 170)"><rect y="12" width="312" height="44" rx="7" fill="#fff" stroke="#94a3b8"/><text x="16" y="40" class="sec small">Pilih konteks 2</text></g>
+    <g transform="translate(24 246)"><rect y="12" width="312" height="44" rx="7" fill="#fff" stroke="#94a3b8"/><text x="16" y="40" class="hint small">Cari data...</text></g>
+    <rect x="24" y="350" width="312" height="100" rx="8" fill="#fffbeb" stroke="#fcd34d"/><text x="44" y="386" fill="#b45309" font-family="Inter,Segoe UI,Arial" font-size="14" font-weight="850">Status Aktif</text><text x="44" y="414" class="hint small">24 data siap diproses.</text>
+  </g>
+
+  <g transform="translate(456 422)">
+    <rect width="912" height="602" rx="8" class="strong shadow"/>
+    <rect x="24" y="24" width="864" height="60" rx="8" fill="#f8fafc" stroke="#cbd5e1"/><text x="48" y="60" class="text body">Workspace Utama</text><text x="740" y="60" class="hint small">24 data</text>
+    <rect x="24" y="108" width="864" height="410" rx="8" fill="#fff" stroke="#cbd5e1"/><rect x="24" y="108" width="864" height="48" rx="8" class="muted"/>
+    <text x="48" y="138" class="sec small">Nama</text><text x="360" y="138" class="sec small">Input</text><text x="600" y="138" class="sec small">Status</text><text x="760" y="138" class="sec small">Aksi</text>
+    <g transform="translate(24 156)"><rect width="864" height="58" fill="#fff"/><text x="24" y="36" class="text small">Contoh item</text><rect x="324" y="14" width="110" height="32" rx="6" fill="#fff" stroke="#94a3b8"/><rect x="566" y="16" width="86" height="26" rx="13" fill="#dcfce7" stroke="#86efac"/><text x="590" y="34" fill="#15803d" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">OK</text></g>
+    <g transform="translate(24 214)"><rect width="864" height="58" fill="#f8fafc"/><text x="24" y="36" class="text small">Contoh item kedua</text><rect x="324" y="14" width="110" height="32" rx="6" fill="#fff" stroke="#94a3b8"/><rect x="566" y="16" width="86" height="26" rx="13" fill="#fef3c7" stroke="#fcd34d"/><text x="582" y="34" fill="#b45309" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">Belum</text></g>
+  </g>
+</svg>

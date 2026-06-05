@@ -105,89 +105,99 @@
     const activeTab =
       context.activeTab === "tambah-manual" ? "tambah-manual" : "daftar-user";
     return `
-      <div class="card">
-        <div class="kelas-bayangan-head">
-          <div>
+      <section class="app-page app-page--module admin-user-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header admin-user-header">
+          <div class="app-page-title">
             <span class="dashboard-eyebrow">Admin</span>
             <h2>Daftar User</h2>
             <p>Username dibuat otomatis dari NIP guru atau nama guru tanpa gelar, lalu dihapus spasinya.</p>
           </div>
-          <div class="kelas-bayangan-actions">
+        </header>
+
+        <!-- UI-8: Panel 3 - Toolbar -->
+        <section class="app-panel app-panel--toolbar admin-user-toolbar">
+          <div class="toolbar-row toolbar-row--actions">
             <button class="btn-secondary" onclick="syncGuruUsers()">Tambah dari Data Guru</button>
             <button class="btn-secondary" onclick="relinkManualUsersToGuru()">Sambungkan User Manual</button>
             <button class="btn-primary" onclick="resetAllUserPasswords()">Reset Password</button>
           </div>
-        </div>
-
-        <div class="matrix-toolbar-note">Password default pengguna baru: <strong>${context.defaultPassword}</strong></div>
-        ${context.presenceSummaryHtml || ""}
-
-        <div class="admin-user-tabbar" role="tablist" aria-label="Menu pengguna">
-          <button class="admin-user-tab ${activeTab === "daftar-user" ? "active" : ""}" type="button" data-admin-user-tab="daftar-user" aria-selected="${activeTab === "daftar-user" ? "true" : "false"}" onclick="setAdminUsersTab('daftar-user')">Daftar User</button>
-          <button class="admin-user-tab ${activeTab === "tambah-manual" ? "active" : ""}" type="button" data-admin-user-tab="tambah-manual" aria-selected="${activeTab === "tambah-manual" ? "true" : "false"}" onclick="setAdminUsersTab('tambah-manual')">Tambah Manual</button>
-        </div>
-
-        <section class="admin-user-tab-panel ${activeTab === "daftar-user" ? "is-active" : ""}" data-admin-user-tab-panel="daftar-user" ${activeTab === "daftar-user" ? "" : "hidden"}>
-          <div class="table-container mapel-table-container admin-user-table-wrap">
-            <table class="mapel-table admin-user-table">
-              <thead>
-                <tr>
-                  <th>Nama</th>
-                  <th>Username</th>
-                  <th>Password</th>
-                  <th>Role</th>
-                  <th>Online</th>
-                  ${context.canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
-                  <th>Aksi</th>
-                </tr>
-              </thead>
-              <tbody id="adminUserBody"></tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="admin-user-tab-panel ${activeTab === "tambah-manual" ? "is-active" : ""}" data-admin-user-tab-panel="tambah-manual" ${activeTab === "tambah-manual" ? "" : "hidden"}>
-          <div class="kelas-bayangan-head admin-user-create-head">
-            <div>
-              <span class="dashboard-eyebrow">Tambah User</span>
-              <h2>Tambah Manual</h2>
-              <p>Pilih sumber data atau isi manual. Jika username berisi NIP guru atau nama cocok, akun akan otomatis disambungkan ke data guru.</p>
+          <div class="toolbar-row toolbar-row--filters">
+            <div class="toolbar-row--info-inline">
+              <span class="matrix-toolbar-note">Password default pengguna baru: <strong>${context.defaultPassword}</strong></span>
+              ${context.presenceSummaryHtml ? `<span style="margin-left:12px;">${context.presenceSummaryHtml}</span>` : ""}
             </div>
           </div>
-
-          <div class="admin-user-create-grid">
-            <label class="form-group">
-              <span>Role</span>
-              <select id="newUserRole" onchange="handleAdminRoleSourceChange(); fillAdminUserFromSource()">
-                ${context.roles.map((role) => `<option value="${role}">${role}</option>`).join("")}
-              </select>
-            </label>
-            <label class="form-group">
-              <span>Sumber data</span>
-              <select id="newUserSource" onchange="fillAdminUserFromSource()">
-                <option value="">Manual</option>
-              </select>
-            </label>
-            <label class="form-group">
-              <span>Nama</span>
-              <input id="newUserName" oninput="document.getElementById('newUserSource').value=''; document.getElementById('newUserUsername').value = makeUsernameFromName(this.value)">
-            </label>
-            <label class="form-group">
-              <span>Username</span>
-              <input id="newUserUsername">
-            </label>
-            <label class="form-group">
-              <span>Password</span>
-              <input id="newUserPassword" value="${context.defaultPassword}">
-            </label>
-          </div>
-
-          <div class="kelas-bayangan-actions admin-user-create-actions">
-            <button class="btn-primary" onclick="createUser()">Tambah User</button>
-          </div>
         </section>
 
-      </div>
+        <!-- UI-8: Panel 2 - Tab -->
+        <nav class="app-panel app-panel--tabs module-tabs admin-user-tabs" role="tablist" aria-label="Menu pengguna">
+          <button class="module-tab ${activeTab === "daftar-user" ? "active" : ""}" type="button" data-admin-user-tab="daftar-user" aria-selected="${activeTab === "daftar-user" ? "true" : "false"}" onclick="setAdminUsersTab('daftar-user')">Daftar User</button>
+          <button class="module-tab ${activeTab === "tambah-manual" ? "active" : ""}" type="button" data-admin-user-tab="tambah-manual" aria-selected="${activeTab === "tambah-manual" ? "true" : "false"}" onclick="setAdminUsersTab('tambah-manual')">Tambah Manual</button>
+        </nav>
+
+        <!-- UI-8: Panel 4 - Content -->
+        <section class="app-panel app-panel--content admin-user-content">
+          <div style="padding: var(--gs-space-4);">
+            <div class="admin-user-tab-panel ${activeTab === "daftar-user" ? "is-active" : ""}" data-admin-user-tab-panel="daftar-user" ${activeTab === "daftar-user" ? "" : "hidden"}>
+              <div class="table-container mapel-table-container admin-user-table-wrap">
+                <table class="mapel-table admin-user-table">
+                  <thead>
+                    <tr>
+                      <th>Nama</th>
+                      <th>Username</th>
+                      <th>Password</th>
+                      <th>Role</th>
+                      <th>Online</th>
+                      ${context.canManageAiPrompt ? "<th>Generate Prompt AI</th>" : ""}
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adminUserBody"></tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="admin-user-tab-panel ${activeTab === "tambah-manual" ? "is-active" : ""}" data-admin-user-tab-panel="tambah-manual" ${activeTab === "tambah-manual" ? "" : "hidden"}>
+              <div style="margin-bottom: var(--gs-space-4);">
+                <h3>Tambah Manual</h3>
+                <p style="color: var(--gs-text-muted); font-size: var(--gs-font-size-sm);">Pilih sumber data atau isi manual. Jika username berisi NIP guru atau nama cocok, akun akan otomatis disambungkan ke data guru.</p>
+              </div>
+
+              <div class="admin-user-create-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--gs-space-4); margin-bottom: var(--gs-space-4);">
+                <div class="form-group">
+                  <label for="newUserRole">Role</label>
+                  <select id="newUserRole" onchange="handleAdminRoleSourceChange(); fillAdminUserFromSource()">
+                    ${context.roles.map((role) => `<option value="${role}">${role}</option>`).join("")}
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="newUserSource">Sumber data</label>
+                  <select id="newUserSource" onchange="fillAdminUserFromSource()">
+                    <option value="">Manual</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label for="newUserName">Nama</label>
+                  <input id="newUserName" oninput="document.getElementById('newUserSource').value=''; document.getElementById('newUserUsername').value = makeUsernameFromName(this.value)">
+                </div>
+                <div class="form-group">
+                  <label for="newUserUsername">Username</label>
+                  <input id="newUserUsername">
+                </div>
+                <div class="form-group">
+                  <label for="newUserPassword">Password</label>
+                  <input id="newUserPassword" value="${context.defaultPassword}">
+                </div>
+              </div>
+
+              <div class="kelas-bayangan-actions admin-user-create-actions">
+                <button class="btn-primary" onclick="createUser()">Tambah User</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
     `;
   }
 

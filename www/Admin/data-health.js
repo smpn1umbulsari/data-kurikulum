@@ -407,30 +407,41 @@
   function renderDataHealthPage() {
     setTimeout(() => refreshDataHealthAudit(), 0);
     return `
-      <section class="backup-page data-health-page">
-        <div class="nilai-page-head">
-          <div>
+      <section class="app-page app-page--module data-health-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header data-health-header">
+          <div class="app-page-title">
             <span class="dashboard-eyebrow">Audit Data</span>
             <h2>Validasi Data</h2>
             <p>Mendeteksi data bermasalah sebelum input nilai, rekap, export rapor, backup, atau restore.</p>
           </div>
-          <button class="btn-primary" onclick="refreshDataHealthAudit()">Jalankan Validasi</button>
-        </div>
-        <div id="dataHealthSummary" class="backup-grid"></div>
-        <article class="backup-panel backup-wide data-health-fix-panel">
-          <h3>Panel Perbaikan Otomatis</h3>
-          <p>Gunakan aksi aman berikut setelah membaca hasil validasi. Aksi migrasi selalu menyalin data lama tanpa menghapus sumbernya.</p>
-          <div class="backup-actions">
-            <button class="btn-secondary" onclick="DataHealth.fixGuruCodes()">Isi Kode Guru dari Username</button>
-            <button class="btn-secondary" onclick="DataHealth.removeDuplicateAssignments()">Hapus Assignment Ganda</button>
-            <button class="btn-secondary" onclick="DataHealth.syncKelasBayangan()">Sinkronkan Kelas Bayangan</button>
-            <button class="btn-primary" onclick="DataHealth.previewMigrateLegacyNilai()">Preview Migrasi Nilai Lama</button>
+        </header>
+
+        <!-- UI-8: Panel 3 - Toolbar -->
+        <section class="app-panel app-panel--toolbar data-health-toolbar">
+          <div class="toolbar-row toolbar-row--actions">
+            <button class="btn-primary" onclick="refreshDataHealthAudit()">Jalankan Validasi</button>
           </div>
-        </article>
-        <article class="backup-panel backup-wide">
-          <div id="dataHealthStatus" class="backup-status">Menunggu validasi...</div>
-          <div id="dataHealthTable" class="table-container mapel-table-container"></div>
-        </article>
+        </section>
+
+        <!-- UI-8: Panel 4 - Content -->
+        <section class="app-panel app-panel--content data-health-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+          <div id="dataHealthSummary" class="backup-grid"></div>
+          <article class="backup-panel backup-wide data-health-fix-panel">
+            <h3>Panel Perbaikan Otomatis</h3>
+            <p>Gunakan aksi aman berikut setelah membaca hasil validasi. Aksi migrasi selalu menyalin data lama tanpa menghapus sumbernya.</p>
+            <div class="backup-actions">
+              <button class="btn-secondary" onclick="DataHealth.fixGuruCodes()">Isi Kode Guru dari Username</button>
+              <button class="btn-secondary" onclick="DataHealth.removeDuplicateAssignments()">Hapus Assignment Ganda</button>
+              <button class="btn-secondary" onclick="DataHealth.syncKelasBayangan()">Sinkronkan Kelas Bayangan</button>
+              <button class="btn-primary" onclick="DataHealth.previewMigrateLegacyNilai()">Preview Migrasi Nilai Lama</button>
+            </div>
+          </article>
+          <article class="backup-panel backup-wide">
+            <div id="dataHealthStatus" class="backup-status">Menunggu validasi...</div>
+            <div id="dataHealthTable" class="table-container mapel-table-container"></div>
+          </article>
+        </section>
       </section>
     `;
   }

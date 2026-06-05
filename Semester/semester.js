@@ -257,8 +257,9 @@ function renderAdminSemesterPage() {
   });
 
   return `
-    <section class="app-page app-page--data semester-page">
-      <header class="app-page-header kelas-bayangan-head nilai-page-head">
+    <section class="app-page app-page--module semester-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header semester-header">
         <div class="app-page-title">
           <span class="dashboard-eyebrow">Admin</span>
           <h2>Semester dan Tahun Pelajaran</h2>
@@ -266,7 +267,8 @@ function renderAdminSemesterPage() {
         </div>
       </header>
 
-      <nav class="module-tabs" role="tablist" aria-label="Mode semester">
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs semester-tabs" role="tablist" aria-label="Mode semester">
         <button type="button" class="module-tab ${isKelolaMode ? "active" : ""}"
                 role="tab" aria-selected="${isKelolaMode}"
                 onclick="setSemesterTab('kelola')">
@@ -279,111 +281,116 @@ function renderAdminSemesterPage() {
         </button>
       </nav>
 
-      ${
-        isPengaturanMode
-          ? `
-      <div class="semester-admin-grid">
-        <section class="semester-admin-panel">
-          <span class="dashboard-eyebrow">Semester Aktif</span>
-          <h3>${escapeSemesterHtml(active.label || makeSemesterLabel(active.semester, active.tahun))}</h3>
-          <p>Data nilai dan kehadiran akan mengikuti semester aktif yang dipilih saat login.</p>
-          <label class="form-group">
-            <span>Pilih semester aktif</span>
-            <select id="adminSemesterActiveSelect">
-              ${getSemesterSettingsList()
-                .map(
-                  (item) =>
-                    `<option value="${escapeSemesterHtml(item.id)}" ${item.id === active.id ? "selected" : ""}>${escapeSemesterHtml(item.label || makeSemesterLabel(item.semester, item.tahun))}</option>`,
-                )
-                .join("")}
-            </select>
-          </label>
-          <button class="btn-secondary" onclick="setAdminActiveSemester()">Set Aktif</button>
-        </section>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content semester-content">
+        <div style="padding: var(--gs-space-5);">
+          ${
+            isPengaturanMode
+              ? `
+          <div class="semester-admin-grid">
+            <section class="semester-admin-panel">
+              <span class="dashboard-eyebrow">Semester Aktif</span>
+              <h3>${escapeSemesterHtml(active.label || makeSemesterLabel(active.semester, active.tahun))}</h3>
+              <p>Data nilai dan kehadiran akan mengikuti semester aktif yang dipilih saat login.</p>
+              <label class="form-group">
+                <span>Pilih semester aktif</span>
+                <select id="adminSemesterActiveSelect">
+                  ${getSemesterSettingsList()
+                    .map(
+                      (item) =>
+                        `<option value="${escapeSemesterHtml(item.id)}" ${item.id === active.id ? "selected" : ""}>${escapeSemesterHtml(item.label || makeSemesterLabel(item.semester, item.tahun))}</option>`,
+                    )
+                    .join("")}
+                </select>
+              </label>
+              <button class="btn-secondary" onclick="setAdminActiveSemester()">Set Aktif</button>
+            </section>
 
-        <section class="semester-admin-panel">
-          <span class="dashboard-eyebrow">Semester Berikutnya</span>
-          <h3>${escapeSemesterHtml(next.label)}</h3>
-          <p>${
-            normalizeSemesterText(active.semester) === "GENAP"
-              ? "Transisi Genap ke Ganjil akan menaikkan kelas siswa dan mengosongkan wali kelas."
-              : "Transisi Ganjil ke Genap mempertahankan siswa dan wali kelas."
-          }</p>
-          <button class="btn-primary" onclick="createNextSemester()">Tambah Semester Berikutnya</button>
-        </section>
+            <section class="semester-admin-panel">
+              <span class="dashboard-eyebrow">Semester Berikutnya</span>
+              <h3>${escapeSemesterHtml(next.label)}</h3>
+              <p>${
+                normalizeSemesterText(active.semester) === "GENAP"
+                  ? "Transisi Genap ke Ganjil akan menaikkan kelas siswa dan mengosongkan wali kelas."
+                  : "Transisi Ganjil ke Genap mempertahankan siswa dan wali kelas."
+              }</p>
+              <button class="btn-primary" onclick="createNextSemester()">Tambah Semester Berikutnya</button>
+            </section>
 
-        <section class="semester-admin-panel">
-          <span class="dashboard-eyebrow">Perbaikan Data</span>
-          <h3>Turunkan Kelas</h3>
-          <p>Gunakan jika kenaikan kelas perlu dibatalkan: 8 ke 7, 9 ke 8, dan siswa lulus dikembalikan ke kelas 9.</p>
-          <button class="btn-danger" onclick="rollbackStudentPromotion()">Turunkan Kelas Sekarang</button>
-        </section>
+            <section class="semester-admin-panel">
+              <span class="dashboard-eyebrow">Perbaikan Data</span>
+              <h3>Turunkan Kelas</h3>
+              <p>Gunakan jika kenaikan kelas perlu dibatalkan: 8 ke 7, 9 ke 8, dan siswa lulus dikembalikan ke kelas 9.</p>
+              <button class="btn-danger" onclick="rollbackStudentPromotion()">Turunkan Kelas Sekarang</button>
+            </section>
 
-        <section class="semester-admin-panel">
-          <span class="dashboard-eyebrow">Jalur Database</span>
-          <h3>Data Per Semester</h3>
-          <p>Siswa dan kelas disimpan di jalur semester masing-masing. Semester lama tidak ikut berubah saat semester baru dibuat.</p>
-        </section>
+            <section class="semester-admin-panel">
+              <span class="dashboard-eyebrow">Jalur Database</span>
+              <h3>Data Per Semester</h3>
+              <p>Siswa dan kelas disimpan di jalur semester masing-masing. Semester lama tidak ikut berubah saat semester baru dibuat.</p>
+            </section>
 
-        <section class="semester-admin-panel">
-          <span class="dashboard-eyebrow">Akses Guru</span>
-          <h3>Input Nilai PTS</h3>
-          <p>Toggle ini khusus untuk role guru. Saat aktif, menu guru hanya menampilkan Input Nilai PTS. Saat nonaktif, menu guru hanya menampilkan Input Nilai Semester.</p>
-          <label class="kepangawasan-toggle" style="margin-top:8px;">
-            <input
-              type="checkbox"
-              id="guruPtsInputToggle"
-              ${isGuruPtsInputActive() ? "checked" : ""}
-              onchange="setGuruPtsInputActive(this.checked)"
-            >
-            <span class="kepangawasan-toggle-track"></span>
-            <span class="kepangawasan-toggle-label">Input Nilai PTS ${isGuruPtsInputActive() ? "Aktif" : "Nonaktif"}</span>
-          </label>
-          <small class="field-help-text">${isGuruPtsInputActive() ? "Guru membuka panel input PTS." : "Guru membuka panel input semester."}</small>
-        </section>
-      </div>
-      `
-          : ""
-      }
+            <section class="semester-admin-panel">
+              <span class="dashboard-eyebrow">Akses Guru</span>
+              <h3>Input Nilai PTS</h3>
+              <p>Toggle ini khusus untuk role guru. Saat aktif, menu guru hanya menampilkan Input Nilai PTS. Saat nonaktif, menu guru hanya menampilkan Input Nilai Semester.</p>
+              <label class="kepangawasan-toggle" style="margin-top:8px;">
+                <input
+                  type="checkbox"
+                  id="guruPtsInputToggle"
+                  ${isGuruPtsInputActive() ? "checked" : ""}
+                  onchange="setGuruPtsInputActive(this.checked)"
+                >
+                <span class="kepangawasan-toggle-track"></span>
+                <span class="kepangawasan-toggle-label">Input Nilai PTS ${isGuruPtsInputActive() ? "Aktif" : "Nonaktif"}</span>
+              </label>
+              <small class="field-help-text">${isGuruPtsInputActive() ? "Guru membuka panel input PTS." : "Guru membuka panel input semester."}</small>
+            </section>
+          </div>
+          `
+              : ""
+          }
 
-      ${
-        isKelolaMode
-          ? `
-      <div class="table-container mapel-table-container">
-        <table class="mapel-table semester-admin-table">
-          <thead>
-            <tr>
-              <th>Semester</th>
-              <th>Tahun Pelajaran</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${getSemesterSettingsList()
-              .map(
-                (item) => `
-              <tr>
-                <td>${escapeSemesterHtml(item.semester || "-")}</td>
-                <td>${escapeSemesterHtml(item.tahun || "-")}</td>
-                <td>${item.id === active.id ? '<span class="status-pill status-active">Aktif</span>' : "-"}</td>
-                <td>
-                  ${
-                    item.id === active.id
-                      ? `<span class="status-pill status-active">Aktif</span>`
-                      : `<button class="btn-danger btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="deleteSemester('${escapeSemesterJs(item.id)}')" title="Hapus" aria-label="Hapus"></button>`
-                  }
-                </td>
-              </tr>
-            `,
-              )
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-      `
-          : ""
-      }
+          ${
+            isKelolaMode
+              ? `
+          <div class="table-container mapel-table-container">
+            <table class="mapel-table semester-admin-table">
+              <thead>
+                <tr>
+                  <th>Semester</th>
+                  <th>Tahun Pelajaran</th>
+                  <th>Status</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${getSemesterSettingsList()
+                  .map(
+                    (item) => `
+                  <tr>
+                    <td>${escapeSemesterHtml(item.semester || "-")}</td>
+                    <td>${escapeSemesterHtml(item.tahun || "-")}</td>
+                    <td>${item.id === active.id ? '<span class="status-pill status-active">Aktif</span>' : "-"}</td>
+                    <td>
+                      ${
+                        item.id === active.id
+                          ? `<span class="status-pill status-active">Aktif</span>`
+                          : `<button class="btn-danger btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="deleteSemester('${escapeSemesterJs(item.id)}')" title="Hapus" aria-label="Hapus"></button>`
+                      }
+                    </td>
+                  </tr>
+                `,
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+          `
+              : ""
+          }
+        </div>
+      </section>
     </section>
   `;
 }

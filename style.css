@@ -9653,18 +9653,36 @@ body.dark .sidebar-maintenance-link {
 }
 
 .kepangawasan-tabbar {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: flex-start;
+  width: auto;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 4px;
+  overflow-x: auto;
+  border: 1px solid #d7deea;
+  border-radius: 8px;
+  background: #f8fafc;
 }
 
 .kepangawasan-tab {
-  border: 1px solid #d7deea;
-  background: #fff;
-  color: #1f2937;
-  border-radius: 999px;
-  padding: 10px 16px;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 132px;
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
   transition: 0.2s ease;
 }
@@ -9672,13 +9690,43 @@ body.dark .sidebar-maintenance-link {
 .kepangawasan-tab:hover {
   border-color: #93c5fd;
   color: #1d4ed8;
+  background: #e0f2fe;
 }
 
-.kepangawasan-tab.active {
-  background: linear-gradient(135deg, #1d4ed8, #0f766e);
-  border-color: transparent;
+.kepangawasan-tab.active,
+.kepangawasan-tab.is-active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
   color: #fff;
-  box-shadow: 0 14px 28px rgba(29, 78, 216, 0.18);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12);
+}
+
+.kepangawasan-module-header {
+  margin-bottom: 0;
+  padding-bottom: 20px;
+}
+
+.kepangawasan-toolbar-filters {
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.kepangawasan-toolbar-info {
+  font-size: 0.875rem;
+  color: #64748b;
+}
+
+.kepangawasan-toolbar-info strong {
+  color: #0f172a;
+}
+
+.kepangawasan-content {
+  padding: 0;
+  overflow: visible;
+}
+
+.kepangawasan-content > .kepangawasan-grid {
+  margin: 0;
 }
 
 .kepangawasan-grid {
@@ -10306,18 +10354,39 @@ body.dark .sidebar-maintenance-link {
 }
 
 body.dark .kepangawasan-tab {
+  background: transparent;
+  border-color: transparent;
+  color: #e5eefb;
+}
+
+body.dark .kepangawasan-tabbar {
   background: #111827;
   border-color: #334155;
-  color: #e5eefb;
 }
 
 body.dark .kepangawasan-tab:hover {
   border-color: #60a5fa;
   color: #93c5fd;
+  background: rgba(96, 165, 250, 0.12);
 }
 
-body.dark .kepangawasan-tab.active {
+body.dark .kepangawasan-tab.active,
+body.dark .kepangawasan-tab.is-active {
+  background: #2563eb;
+  border-color: #60a5fa;
   color: #fff;
+}
+
+@media (max-width: 720px) {
+  .kepangawasan-tabbar {
+    display: flex;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+
+  .kepangawasan-tab {
+    min-width: 128px;
+  }
 }
 
 body.dark .kepangawasan-field span,
@@ -10488,6 +10557,18 @@ body.dark
 body.dark .kepangawasan-matrix-code,
 body.dark .kepangawasan-matrix-name,
 body.dark .kepangawasan-empty-cell {
+  color: #e2e8f0;
+}
+
+body.dark .kepangawasan-toolbar-filters {
+  border-top-color: rgba(148, 163, 184, 0.28);
+}
+
+body.dark .kepangawasan-toolbar-info {
+  color: #94a3b8;
+}
+
+body.dark .kepangawasan-toolbar-info strong {
   color: #e2e8f0;
 }
 
@@ -10925,4 +11006,115 @@ body.dark .admin-user-feature-toggle-track::after,
 body.dark .kalender-toggle-btn::after {
   background: #f8fafc !important;
   border: 0 !important;
+}
+
+/* ==========================================================================
+   SIDEBAR CUSTOM HOVER & ALIGN LEFT OVERRIDES (Glassmorphic Floating Pill)
+   ========================================================================== */
+.menu {
+  width: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important; /* Rata kiri penuh */
+  gap: 12px !important;
+  text-align: left !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  font-weight: 600 !important;
+  min-height: 46px !important;
+  box-shadow: none !important;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.menu span:first-child {
+  flex: 1 !important;
+  min-width: 0 !important;
+  text-align: left !important;
+}
+
+.menu .menu-caret {
+  margin-left: auto !important; /* Dorong caret ke paling kanan */
+}
+
+.menu:hover {
+  background: rgba(15, 23, 42, 0.045) !important;
+  border-color: rgba(15, 23, 42, 0.03) !important;
+  color: #0f172a !important;
+  transform: translateX(3px) !important; /* Efek geser melayang */
+}
+
+.menu.active {
+  background: rgba(14, 116, 144, 0.08) !important;
+  color: #0f766e !important;
+  border-color: rgba(14, 116, 144, 0.15) !important;
+  font-weight: 700 !important;
+}
+
+.menu.active span {
+  font-weight: 700 !important;
+}
+
+.menu-caret {
+  flex: 0 0 auto !important;
+  color: #64748b !important;
+  font-weight: 700 !important;
+}
+
+.submenu {
+  margin-left: 0 !important;
+  padding: 2px 8px 8px !important;
+  display: none;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+.submenu button {
+  width: 100% !important;
+  justify-content: flex-start !important; /* Rata kiri untuk item sub-menu */
+  text-align: left !important;
+  display: flex !important;
+  align-items: center !important;
+  min-height: 40px !important;
+  padding: 8px 14px !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: #64748b !important;
+  font-weight: 600 !important;
+  box-shadow: none !important;
+  transition: all 0.2s ease !important;
+}
+
+.submenu button:hover {
+  background: rgba(15, 23, 42, 0.035) !important;
+  border-color: transparent !important;
+  color: #0f172a !important;
+  transform: translateX(3px) !important; /* Efek geser sub-menu */
+}
+
+/* Dark Mode Overrides */
+body.dark .menu:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.02) !important;
+  color: #f8fafc !important;
+  transform: translateX(3px) !important;
+}
+
+body.dark .menu.active {
+  background: rgba(45, 212, 191, 0.1) !important;
+  color: #2dd4bf !important;
+  border-color: rgba(45, 212, 191, 0.15) !important;
+}
+
+body.dark .submenu button {
+  color: #94a3b8 !important;
+}
+
+body.dark .submenu button:hover {
+  background: rgba(255, 255, 255, 0.045) !important;
+  border-color: transparent !important;
+  color: #f8fafc !important;
+  transform: translateX(3px) !important;
 }

@@ -5,7 +5,7 @@ let jumlahRuangUjian = 1;
 const asesmenLevelSettings = {
   7: { mode: "setengah", order: "az", roomText: "", manualCounts: [] },
   8: { mode: "setengah", order: "az", roomText: "", manualCounts: [] },
-  9: { mode: "setengah", order: "az", roomText: "", manualCounts: [] }
+  9: { mode: "setengah", order: "az", roomText: "", manualCounts: [] },
 };
 
 function setAsesmenHtmlIfChanged(element, html) {
@@ -22,37 +22,50 @@ function escapeAsesmenHtml(value) {
 }
 
 function asesmenCompare(left, right, direction = "asc") {
-  const result = String(left ?? "").trim().localeCompare(String(right ?? "").trim(), undefined, {
-    numeric: true,
-    sensitivity: "base"
-  });
+  const result = String(left ?? "")
+    .trim()
+    .localeCompare(String(right ?? "").trim(), undefined, {
+      numeric: true,
+      sensitivity: "base",
+    });
   return direction === "asc" ? result : -result;
 }
 
 function getAsesmenKelasParts(kelasValue = "") {
-  const normalized = String(kelasValue || "").trim().toUpperCase().replace(/\s+/g, "");
+  const normalized = String(kelasValue || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const match = normalized.match(/^([7-9])([A-Z]+)$/);
   return {
     tingkat: match ? match[1] : "",
     rombel: match ? match[2] : "",
-    kelas: match ? `${match[1]} ${match[2]}` : String(kelasValue || "").trim().toUpperCase()
+    kelas: match
+      ? `${match[1]} ${match[2]}`
+      : String(kelasValue || "")
+          .trim()
+          .toUpperCase(),
   };
 }
 
 function getAsesmenStudentsByLevel(level) {
   return semuaDataAsesmenSiswa
-    .map(siswa => ({
+    .map((siswa) => ({
       ...siswa,
-      kelasParts: getAsesmenKelasParts(siswa.kelas)
+      kelasParts: getAsesmenKelasParts(siswa.kelas),
     }))
-    .filter(siswa => siswa.kelasParts.tingkat === String(level));
+    .filter((siswa) => siswa.kelasParts.tingkat === String(level));
 }
 
 function getOrderedAsesmenStudents(level) {
   const settings = asesmenLevelSettings[level];
   const classDirection = settings.order === "za" ? "desc" : "asc";
   return getAsesmenStudentsByLevel(level).sort((a, b) => {
-    const kelasResult = asesmenCompare(a.kelasParts.rombel, b.kelasParts.rombel, classDirection);
+    const kelasResult = asesmenCompare(
+      a.kelasParts.rombel,
+      b.kelasParts.rombel,
+      classDirection,
+    );
     if (kelasResult !== 0) return kelasResult;
     return asesmenCompare(a.nama, b.nama, "asc");
   });
@@ -72,9 +85,9 @@ function parseAsesmenRoomText(roomText = "") {
   const seen = new Set();
   String(roomText || "")
     .split(",")
-    .map(part => part.trim())
+    .map((part) => part.trim())
     .filter(Boolean)
-    .forEach(part => {
+    .forEach((part) => {
       const rangeMatch = part.match(/^(\d+)\s*-\s*(\d+)$/);
       const singleMatch = part.match(/^\d+$/);
 
@@ -82,7 +95,11 @@ function parseAsesmenRoomText(roomText = "") {
         const start = Number(rangeMatch[1]);
         const end = Number(rangeMatch[2]);
         const step = start <= end ? 1 : -1;
-        for (let room = start; step > 0 ? room <= end : room >= end; room += step) {
+        for (
+          let room = start;
+          step > 0 ? room <= end : room >= end;
+          room += step
+        ) {
           if (!seen.has(room)) {
             seen.add(room);
             result.push(room);
@@ -109,8 +126,8 @@ function getAsesmenLevelRooms(level) {
 
 function getAsesmenRoomUsage() {
   const usage = new Map();
-  [7, 8, 9].forEach(level => {
-    getAsesmenLevelRooms(level).forEach(roomNumber => {
+  [7, 8, 9].forEach((level) => {
+    getAsesmenLevelRooms(level).forEach((roomNumber) => {
       if (!usage.has(roomNumber)) usage.set(roomNumber, []);
       usage.get(roomNumber).push(String(level));
     });
@@ -121,8 +138,11 @@ function getAsesmenRoomUsage() {
 function getAsesmenRoomConflictMessages(level) {
   const usage = getAsesmenRoomUsage();
   return getAsesmenLevelRooms(level)
-    .filter(roomNumber => (usage.get(roomNumber) || []).length > 2)
-    .map(roomNumber => `Ruang ${roomNumber} dipakai oleh kelas ${usage.get(roomNumber).join(", ")}`);
+    .filter((roomNumber) => (usage.get(roomNumber) || []).length > 2)
+    .map(
+      (roomNumber) =>
+        `Ruang ${roomNumber} dipakai oleh kelas ${usage.get(roomNumber).join(", ")}`,
+    );
 }
 
 function decorateAsesmenRooms(level, rooms) {
@@ -130,7 +150,7 @@ function decorateAsesmenRooms(level, rooms) {
   return rooms.map((students, index) => ({
     students,
     roomNumber: physicalRooms[index] || index + 1,
-    missingPhysicalRoom: physicalRooms.length > 0 && !physicalRooms[index]
+    missingPhysicalRoom: physicalRooms.length > 0 && !physicalRooms[index],
   }));
 }
 
@@ -138,7 +158,7 @@ function buildSetengahAsesmenRooms(level) {
   const settings = asesmenLevelSettings[level];
   const classDirection = settings.order === "za" ? "desc" : "asc";
   const grouped = new Map();
-  getAsesmenStudentsByLevel(level).forEach(siswa => {
+  getAsesmenStudentsByLevel(level).forEach((siswa) => {
     const kelas = siswa.kelasParts.kelas;
     if (!grouped.has(kelas)) grouped.set(kelas, []);
     grouped.get(kelas).push(siswa);
@@ -150,8 +170,10 @@ function buildSetengahAsesmenRooms(level) {
     return asesmenCompare(rombelA, rombelB, classDirection);
   });
 
-  return kelasList.flatMap(kelas => {
-    const siswaKelas = grouped.get(kelas).sort((a, b) => asesmenCompare(a.nama, b.nama, "asc"));
+  return kelasList.flatMap((kelas) => {
+    const siswaKelas = grouped
+      .get(kelas)
+      .sort((a, b) => asesmenCompare(a.nama, b.nama, "asc"));
     const halfSize = Math.max(1, Math.ceil(siswaKelas.length / 2));
     return chunkAsesmenStudents(siswaKelas, Math.min(halfSize, 20));
   });
@@ -164,9 +186,9 @@ function buildManualAsesmenRooms(level) {
 
   return settings.manualCounts
     .slice(0, jumlahRuangUjian)
-    .map(count => Math.min(Math.max(Number(count) || 0, 0), 20))
-    .filter(count => count > 0)
-    .map(count => {
+    .map((count) => Math.min(Math.max(Number(count) || 0, 0), 20))
+    .filter((count) => count > 0)
+    .map((count) => {
       const roomStudents = students.slice(cursor, cursor + count);
       cursor += count;
       return roomStudents;
@@ -182,7 +204,7 @@ function getAsesmenRooms(level) {
 
 function setJumlahRuangUjian(value) {
   jumlahRuangUjian = Math.min(Math.max(Number(value) || 1, 1), 99);
-  [7, 8, 9].forEach(level => {
+  [7, 8, 9].forEach((level) => {
     const counts = asesmenLevelSettings[level].manualCounts;
     while (counts.length < jumlahRuangUjian) counts.push("");
     if (counts.length > jumlahRuangUjian) counts.length = jumlahRuangUjian;
@@ -212,7 +234,7 @@ function setAsesmenManualCount(level, roomIndex, value) {
 
 function loadRealtimePembagianRuang() {
   if (unsubscribeAsesmenSiswa) unsubscribeAsesmenSiswa();
-  unsubscribeAsesmenSiswa = listenSiswa(data => {
+  unsubscribeAsesmenSiswa = listenSiswa((data) => {
     semuaDataAsesmenSiswa = data;
     renderPembagianRuangState();
   });
@@ -222,7 +244,7 @@ function renderPembagianRuangState() {
   const content = document.getElementById("content");
   if (!content) return;
   setAsesmenHtmlIfChanged(content, renderPembagianRuangPage());
-  [7, 8, 9].forEach(level => renderAsesmenPreview(level));
+  [7, 8, 9].forEach((level) => renderAsesmenPreview(level));
 }
 
 function renderAsesmenManualInputs(level) {
@@ -305,7 +327,7 @@ function renderAsesmenLevelPanel(level) {
 function renderPembagianRuangPage() {
   return `
     <div class="card">
-      <div class="asesmen-page-head">
+      <div class="asesmen-module-header">
         <div>
           <span class="dashboard-eyebrow">Asesmen</span>
           <h2>Pembagian Ruang</h2>
@@ -338,52 +360,82 @@ function renderAsesmenPreview(level) {
   const assigned = rooms.reduce((sum, room) => sum + room.length, 0);
   const overRoomCount = Math.max(0, rooms.length - jumlahRuangUjian);
   const physicalRooms = getAsesmenLevelRooms(level);
-  const missingPhysicalCount = decoratedRooms.filter(room => room.missingPhysicalRoom).length;
+  const missingPhysicalCount = decoratedRooms.filter(
+    (room) => room.missingPhysicalRoom,
+  ).length;
   const conflictMessages = getAsesmenRoomConflictMessages(level);
 
   if (totalSiswa === 0) {
-    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">Belum ada siswa kelas ${level}.</div>`);
+    setAsesmenHtmlIfChanged(
+      container,
+      `<div class="empty-panel">Belum ada siswa kelas ${level}.</div>`,
+    );
     return;
   }
 
   if (rooms.length === 0) {
-    setAsesmenHtmlIfChanged(container, `<div class="empty-panel">Isi jumlah siswa per ruang untuk melihat preview.</div>`);
+    setAsesmenHtmlIfChanged(
+      container,
+      `<div class="empty-panel">Isi jumlah siswa per ruang untuk melihat preview.</div>`,
+    );
     return;
   }
 
   const warnings = [];
   if (overRoomCount > 0) {
-    warnings.push(`Kebutuhan ${rooms.length} ruang. Tambahkan ${overRoomCount} ruang ujian agar semua bagian memiliki ruang sendiri.`);
+    warnings.push(
+      `Kebutuhan ${rooms.length} ruang. Tambahkan ${overRoomCount} ruang ujian agar semua bagian memiliki ruang sendiri.`,
+    );
   }
   if (assigned < totalSiswa) {
-    warnings.push(`${totalSiswa - assigned} siswa belum masuk ruang pada pengaturan manual.`);
+    warnings.push(
+      `${totalSiswa - assigned} siswa belum masuk ruang pada pengaturan manual.`,
+    );
   }
   if (physicalRooms.length === 0) {
     warnings.push("Ruang fisik belum diisi untuk jenjang ini.");
   }
   if (missingPhysicalCount > 0) {
-    warnings.push(`${missingPhysicalCount} bagian belum mendapat nomor ruang fisik.`);
+    warnings.push(
+      `${missingPhysicalCount} bagian belum mendapat nomor ruang fisik.`,
+    );
   }
-  conflictMessages.forEach(message => warnings.push(message));
+  conflictMessages.forEach((message) => warnings.push(message));
 
-  const warning = warnings.map(message => `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`).join("");
+  const warning = warnings
+    .map(
+      (message) =>
+        `<div class="asesmen-warning">${escapeAsesmenHtml(message)}</div>`,
+    )
+    .join("");
 
-  setAsesmenHtmlIfChanged(container, `
+  setAsesmenHtmlIfChanged(
+    container,
+    `
     ${warning}
     <div class="asesmen-room-list">
-      ${decoratedRooms.map((room, index) => `
+      ${decoratedRooms
+        .map(
+          (room, index) => `
         <div class="asesmen-room-card">
           <div class="asesmen-room-card-head">
             <strong>Ruang ${escapeAsesmenHtml(room.roomNumber)}</strong>
             <span>${room.students.length} siswa</span>
           </div>
           <div class="asesmen-student-list">
-            ${room.students.map(siswa => `
+            ${room.students
+              .map(
+                (siswa) => `
               <span>${escapeAsesmenHtml(siswa.kelasParts.kelas)} - ${escapeAsesmenHtml(siswa.nama || "-")}</span>
-            `).join("")}
+            `,
+              )
+              .join("")}
           </div>
         </div>
-      `).join("")}
+      `,
+        )
+        .join("")}
     </div>
-  `);
+  `,
+  );
 }

@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1120" viewBox="0 0 1440 1120">
+  <defs>
+    <style>
+      .bg{fill:#f6f8fb}
+      .panel{fill:#fff;stroke:#cbd5e1;stroke-width:1.4}
+      .panel2{fill:#f8fafc;stroke:#dbe4ee;stroke-width:1.2}
+      .line{stroke:#e2e8f0;stroke-width:1.4}
+      .strong{fill:#fff;stroke:#94a3b8;stroke-width:1.5}
+      .muted{fill:#f1f5f9}
+      .text{fill:#0f172a;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .sec{fill:#334155;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .hint{fill:#64748b;font-family:Inter,Segoe UI,Arial,sans-serif}
+      .accent{fill:#0369a1}
+      .soft{fill:#e0f2fe}
+      .primary{fill:#1d4ed8}
+      .danger{fill:#fff1f2;stroke:#fda4af}
+      .title{font-size:30px;font-weight:850}
+      .label{font-size:13px;font-weight:850;letter-spacing:.08em}
+      .body{font-size:16px;font-weight:750}
+      .small{font-size:13px;font-weight:700}
+      .mini{font-size:12px;font-weight:800}
+      .shadow{filter:url(#s)}
+    </style>
+    <filter id="s" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#0f172a" flood-opacity=".07"/>
+    </filter>
+  </defs>
+  <rect class="bg" width="1440" height="1120"/>
+  <text x="72" y="64" class="text title">Layout 2 Revised: Compact Combined Panel</text>
+  <text x="72" y="94" class="hint body">Tab tetap di bawah header. Toolbar, filter bar, dan info data digabung dalam satu panel kontrol.</text>
+
+  <g transform="translate(72 130)">
+    <rect width="1296" height="104" rx="8" class="panel shadow"/>
+    <rect width="5" height="104" rx="3" fill="#0369a1"/>
+    <text x="30" y="38" class="accent label">AKADEMIK</text>
+    <text x="30" y="76" class="text title">Judul Modul</text>
+    <text x="1036" y="60" class="hint small">Header fokus identitas</text>
+  </g>
+
+  <g transform="translate(72 252)">
+    <rect width="1296" height="58" rx="8" fill="#fff" stroke="#cbd5e1"/>
+    <rect x="24" y="12" width="142" height="34" rx="7" class="soft" stroke="#0369a1"/>
+    <text x="58" y="34" class="accent small">Tab Aktif</text>
+    <rect x="178" y="12" width="142" height="34" rx="7" fill="#fff" stroke="#cbd5e1"/>
+    <text x="214" y="34" class="sec small">Tab Kedua</text>
+    <rect x="332" y="12" width="142" height="34" rx="7" fill="#fff" stroke="#cbd5e1"/>
+    <text x="368" y="34" class="sec small">Tab Ketiga</text>
+  </g>
+
+  <g transform="translate(72 332)">
+    <rect width="1296" height="224" rx="8" class="panel shadow"/>
+    <g transform="translate(24 24)">
+      <rect width="1248" height="44" rx="7" class="panel2"/>
+      <text x="16" y="28" class="sec small">Toolbar</text>
+      <rect x="104" y="6" width="132" height="32" rx="7" class="primary"/>
+      <text x="133" y="27" fill="#fff" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="850">Tambah</text>
+      <rect x="248" y="6" width="96" height="32" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="273" y="27" class="sec mini">Template</text>
+      <rect x="356" y="6" width="86" height="32" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="384" y="27" class="sec mini">Import</text>
+      <rect x="454" y="6" width="82" height="32" rx="7" class="danger"/>
+      <text x="480" y="27" fill="#be123c" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="850">Reset</text>
+      <rect x="548" y="6" width="92" height="32" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="572" y="27" class="sec mini">Refresh</text>
+      <text x="1064" y="28" class="hint mini">Aksi halaman</text>
+    </g>
+
+    <line x1="24" y1="84" x2="1272" y2="84" class="line"/>
+
+    <g transform="translate(24 100)">
+      <text x="0" y="26" class="sec small">Filter Bar</text>
+      <rect x="104" width="430" height="40" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="120" y="26" class="hint small">Cari data...</text>
+      <rect x="548" width="198" height="40" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="564" y="26" class="sec small">Filter 1</text>
+      <rect x="758" width="198" height="40" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="774" y="26" class="sec small">Filter 2</text>
+      <rect x="968" width="256" height="40" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="984" y="26" class="sec small">Filter 3</text>
+    </g>
+
+    <g transform="translate(24 160)">
+      <rect width="1248" height="1" fill="#e2e8f0"/>
+      <text x="0" y="25" class="text small">128 data ditemukan</text>
+      <text x="190" y="25" class="hint small">Filter aktif: Siswa aktif, Kelas VII</text>
+      <rect x="1046" y="5" width="178" height="32" rx="7" fill="#fff" stroke="#94a3b8"/>
+      <text x="1062" y="26" class="sec mini">10 baris / halaman</text>
+    </g>
+  </g>
+
+  <g transform="translate(72 580)">
+    <rect width="1296" height="462" rx="8" class="strong shadow"/>
+    <rect width="1296" height="52" rx="8" class="muted"/>
+    <line x1="0" y1="52" x2="1296" y2="52" stroke="#94a3b8" stroke-width="1.5"/>
+    <text x="28" y="33" class="sec small">Kode</text>
+    <text x="170" y="33" class="sec small">Nama</text>
+    <text x="430" y="33" class="sec small">Keterangan</text>
+    <text x="930" y="33" class="sec small">Status</text>
+    <text x="1160" y="33" class="sec small">Aksi</text>
+
+    <g transform="translate(0 52)">
+      <rect width="1296" height="60" fill="#fff"/>
+      <text x="28" y="37" class="text small">001</text>
+      <text x="170" y="37" class="text small">Data utama</text>
+      <text x="430" y="37" class="text small">Panel kontrol lebih rapi karena semua kontrol ada dalam satu blok.</text>
+      <rect x="920" y="17" width="90" height="26" rx="13" fill="#e0f2fe" stroke="#7dd3fc"/>
+      <text x="943" y="35" fill="#0369a1" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">Aktif</text>
+      <circle cx="1168" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1212" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1256" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+    </g>
+
+    <g transform="translate(0 112)">
+      <rect width="1296" height="60" fill="#f8fafc"/>
+      <text x="28" y="37" class="text small">002</text>
+      <text x="170" y="37" class="text small">Data kedua</text>
+      <text x="430" y="37" class="text small">Info data tetap dekat dengan filter, sehingga konteks mudah dibaca.</text>
+      <rect x="920" y="17" width="90" height="26" rx="13" fill="#dcfce7" stroke="#86efac"/>
+      <text x="947" y="35" fill="#15803d" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">OK</text>
+      <circle cx="1168" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1212" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1256" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+    </g>
+
+    <g transform="translate(0 172)">
+      <rect width="1296" height="60" fill="#fff"/>
+      <text x="28" y="37" class="text small">003</text>
+      <text x="170" y="37" class="text small">Data ketiga</text>
+      <text x="430" y="37" class="text small">Tabel tetap punya ruang visual besar karena panel kontrol dibuat padat.</text>
+      <rect x="920" y="17" width="90" height="26" rx="13" fill="#fef3c7" stroke="#fcd34d"/>
+      <text x="943" y="35" fill="#b45309" font-family="Inter,Segoe UI,Arial" font-size="12" font-weight="800">Draft</text>
+      <circle cx="1168" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1212" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+      <circle cx="1256" cy="30" r="16" fill="#fff" stroke="#94a3b8"/>
+    </g>
+  </g>
+</svg>

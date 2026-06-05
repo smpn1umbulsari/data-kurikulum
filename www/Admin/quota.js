@@ -151,96 +151,105 @@ function renderAdminQuotaPage() {
   const documentsTable = String(config.documentsTable || "app_documents").trim();
 
   return `
-    <section class="quota-page">
-      <div class="nilai-page-head">
-        <div>
+    <section class="app-page app-page--module quota-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header quota-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Admin</span>
           <h2>Quota Supabase</h2>
           <p>Halaman ini menampilkan diagnostik pemakaian data yang aman dibaca dari aplikasi saat ini, sambil menyiapkan jalur untuk integrasi quota resmi Supabase.</p>
         </div>
-        <div class="quota-actions">
+      </header>
+
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar quota-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" type="button" onclick="refreshAdminQuotaDashboard()">Refresh</button>
         </div>
-      </div>
-
-      <section class="backup-panel backup-wide quota-status-panel">
-        <div class="quota-status-head">
-          <div>
-            <span class="dashboard-eyebrow">Status Integrasi</span>
-            <h3 id="adminQuotaOfficialStatus">Memeriksa koneksi quota resmi...</h3>
-          </div>
-          <span class="admin-koordinator-badge" id="adminQuotaRefreshBadge">Menunggu refresh</span>
-        </div>
-        <p id="adminQuotaOfficialCopy" class="quota-muted">
-          Frontend ini memakai <code>anonKey</code>, jadi angka quota resmi billing dan usage Supabase tidak aman jika dipanggil langsung dari browser.
-        </p>
       </section>
 
-      <div class="backup-grid quota-grid">
-        <article class="backup-panel quota-metric-card">
-          <span class="dashboard-eyebrow">Project</span>
-          <strong class="quota-metric-value" id="adminQuotaProjectRef">${escapeAdminQuotaHtml(projectRef || "-")}</strong>
-          <p class="quota-metric-label">Project ref Supabase</p>
-        </article>
-        <article class="backup-panel quota-metric-card">
-          <span class="dashboard-eyebrow">Dokumen</span>
-          <strong class="quota-metric-value" id="adminQuotaTotalDocuments">-</strong>
-          <p class="quota-metric-label">Total baris di tabel <code>${escapeAdminQuotaHtml(documentsTable)}</code></p>
-        </article>
-        <article class="backup-panel quota-metric-card">
-          <span class="dashboard-eyebrow">Semester</span>
-          <strong class="quota-metric-value" id="adminQuotaSemesterDocuments">-</strong>
-          <p class="quota-metric-label">Dokumen cabang <code>semester_data/*</code></p>
-        </article>
-        <article class="backup-panel quota-metric-card">
-          <span class="dashboard-eyebrow">Presence</span>
-          <strong class="quota-metric-value" id="adminQuotaOnlineUsers">-</strong>
-          <p class="quota-metric-label">Pengguna aktif saat ini</p>
-        </article>
-        <article class="backup-panel quota-metric-card">
-          <span class="dashboard-eyebrow">Disk</span>
-          <strong class="quota-metric-value" id="adminQuotaDiskUsed">-</strong>
-          <p class="quota-metric-label">Pemakaian disk resmi dari Management API</p>
-        </article>
-        <article class="backup-panel quota-metric-card">
-          <span class="dashboard-eyebrow">API</span>
-          <strong class="quota-metric-value" id="adminQuotaApiRequests">-</strong>
-          <p class="quota-metric-label">Request API resmi dari Management API</p>
-        </article>
-      </div>
-
-      <div class="backup-grid quota-grid">
-        <section class="backup-panel backup-wide">
-          <span class="dashboard-eyebrow">Detail Project</span>
-          <div class="dashboard-mini-list quota-detail-list">
-            <span><strong>Project URL</strong><b id="adminQuotaProjectUrl">${escapeAdminQuotaHtml(projectUrl || "-")}</b></span>
-            <span><strong>Tabel dokumen</strong><b id="adminQuotaDocumentsTable">${escapeAdminQuotaHtml(documentsTable)}</b></span>
-            <span><strong>Dokumen presence</strong><b id="adminQuotaPresenceDocuments">-</b></span>
-            <span><strong>Presence terakhir</strong><b id="adminQuotaLastPresence">-</b></span>
-            <span><strong>Nama project resmi</strong><b id="adminQuotaProjectName">-</b></span>
-            <span><strong>Status project</strong><b id="adminQuotaProjectStatus">-</b></span>
-            <span><strong>Region</strong><b id="adminQuotaProjectRegion">-</b></span>
-            <span><strong>Add-on aktif</strong><b id="adminQuotaActiveAddon">-</b></span>
-            <span><strong>Disk allocated</strong><b id="adminQuotaDiskSize">-</b></span>
-            <span><strong>Disk usage</strong><b id="adminQuotaDiskPercent">-</b></span>
-            <span><strong>REST requests</strong><b id="adminQuotaRestRequests">-</b></span>
-            <span><strong>Storage requests</strong><b id="adminQuotaStorageRequests">-</b></span>
-            <span><strong>Auth requests</strong><b id="adminQuotaAuthRequests">-</b></span>
-            <span><strong>Realtime requests</strong><b id="adminQuotaRealtimeRequests">-</b></span>
-            <span><strong>Analytics timestamp</strong><b id="adminQuotaAnalyticsTime">-</b></span>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content quota-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+        <section class="backup-panel backup-wide quota-status-panel">
+          <div class="quota-status-head">
+            <div>
+              <span class="dashboard-eyebrow">Status Integrasi</span>
+              <h3 id="adminQuotaOfficialStatus">Memeriksa koneksi quota resmi...</h3>
+            </div>
+            <span class="admin-koordinator-badge" id="adminQuotaRefreshBadge">Menunggu refresh</span>
           </div>
+          <p id="adminQuotaOfficialCopy" class="quota-muted">
+            Frontend ini memakai <code>anonKey</code>, jadi angka quota resmi billing dan usage Supabase tidak aman jika dipanggil langsung dari browser.
+          </p>
         </section>
-        <section class="backup-panel backup-wide">
-          <span class="dashboard-eyebrow">Catatan Penting</span>
-          <ul class="quota-note-list">
-            <li>Angka di halaman ini adalah indikator pemakaian data aplikasi, bukan laporan billing resmi Supabase.</li>
-            <li>Quota resmi Supabase dibaca lewat Edge Function supabase-quota, jadi PAT management tetap berada di server-side Supabase.</li>
-            <li>Karena aplikasi ini belum memakai Supabase Auth admin, endpoint quota ini masih sebaiknya dianggap data internal dan dilindungi lebih lanjut saat auth sudah dimigrasikan.</li>
-          </ul>
-        </section>
-      </div>
+
+        <div class="backup-grid quota-grid" style="margin-top: 0;">
+          <article class="backup-panel quota-metric-card">
+            <span class="dashboard-eyebrow">Project</span>
+            <strong class="quota-metric-value" id="adminQuotaProjectRef">${escapeAdminQuotaHtml(projectRef || "-")}</strong>
+            <p class="quota-metric-label">Project ref Supabase</p>
+          </article>
+          <article class="backup-panel quota-metric-card">
+            <span class="dashboard-eyebrow">Dokumen</span>
+            <strong class="quota-metric-value" id="adminQuotaTotalDocuments">-</strong>
+            <p class="quota-metric-label">Total baris di tabel <code>${escapeAdminQuotaHtml(documentsTable)}</code></p>
+          </article>
+          <article class="backup-panel quota-metric-card">
+            <span class="dashboard-eyebrow">Semester</span>
+            <strong class="quota-metric-value" id="adminQuotaSemesterDocuments">-</strong>
+            <p class="quota-metric-label">Dokumen cabang <code>semester_data/*</code></p>
+          </article>
+          <article class="backup-panel quota-metric-card">
+            <span class="dashboard-eyebrow">Presence</span>
+            <strong class="quota-metric-value" id="adminQuotaOnlineUsers">-</strong>
+            <p class="quota-metric-label">Pengguna aktif saat ini</p>
+          </article>
+          <article class="backup-panel quota-metric-card">
+            <span class="dashboard-eyebrow">Disk</span>
+            <strong class="quota-metric-value" id="adminQuotaDiskUsed">-</strong>
+            <p class="quota-metric-label">Pemakaian disk resmi dari Management API</p>
+          </article>
+          <article class="backup-panel quota-metric-card">
+            <span class="dashboard-eyebrow">API</span>
+            <strong class="quota-metric-value" id="adminQuotaApiRequests">-</strong>
+            <p class="quota-metric-label">Request API resmi dari Management API</p>
+          </article>
+        </div>
+
+        <div class="backup-grid quota-grid" style="margin-top: 0;">
+          <section class="backup-panel backup-wide">
+            <span class="dashboard-eyebrow">Detail Project</span>
+            <div class="dashboard-mini-list quota-detail-list">
+              <span><strong>Project URL</strong><b id="adminQuotaProjectUrl">${escapeAdminQuotaHtml(projectUrl || "-")}</b></span>
+              <span><strong>Tabel dokumen</strong><b id="adminQuotaDocumentsTable">${escapeAdminQuotaHtml(documentsTable)}</b></span>
+              <span><strong>Dokumen presence</strong><b id="adminQuotaPresenceDocuments">-</b></span>
+              <span><strong>Presence terakhir</strong><b id="adminQuotaLastPresence">-</b></span>
+              <span><strong>Nama project resmi</strong><b id="adminQuotaProjectName">-</b></span>
+              <span><strong>Status project</strong><b id="adminQuotaProjectStatus">-</b></span>
+              <span><strong>Region</strong><b id="adminQuotaProjectRegion">-</b></span>
+              <span><strong>Add-on aktif</strong><b id="adminQuotaActiveAddon">-</b></span>
+              <span><strong>Disk allocated</strong><b id="adminQuotaDiskSize">-</b></span>
+              <span><strong>Disk usage</strong><b id="adminQuotaDiskPercent">-</b></span>
+              <span><strong>REST requests</strong><b id="adminQuotaRestRequests">-</b></span>
+              <span><strong>Storage requests</strong><b id="adminQuotaStorageRequests">-</b></span>
+              <span><strong>Auth requests</strong><b id="adminQuotaAuthRequests">-</b></span>
+              <span><strong>Realtime requests</strong><b id="adminQuotaRealtimeRequests">-</b></span>
+              <span><strong>Analytics timestamp</strong><b id="adminQuotaAnalyticsTime">-</b></span>
+            </div>
+          </section>
+          <section class="backup-panel backup-wide">
+            <span class="dashboard-eyebrow">Catatan Penting</span>
+            <ul class="quota-note-list">
+              <li>Angka di halaman ini adalah indikator pemakaian data aplikasi, bukan laporan billing resmi Supabase.</li>
+              <li>Quota resmi Supabase dibaca lewat Edge Function supabase-quota, jadi PAT management tetap berada di server-side Supabase.</li>
+              <li>Karena aplikasi ini belum memakai Supabase Auth admin, endpoint quota ini masih sebaiknya dianggap data internal dan dilindungi lebih lanjut saat auth sudah dimigrasikan.</li>
+            </ul>
+          </section>
+        </div>
+      </section>
     </section>
   `;
+}
 }
 
 async function refreshAdminQuotaDashboard() {

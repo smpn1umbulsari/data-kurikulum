@@ -413,13 +413,16 @@
     const allowedTabs = getAiSoalAllowedTabs(pageKey);
     if (allowedTabs.length <= 1) return "";
     return `
-      <div class="ai-soal-tabbar">
-        ${AI_PROMPT_TABS.filter(item => allowedTabs.includes(item.value)).map(item => `
-          <button type="button" class="ai-soal-tab ${item.value === activeTab ? "active" : ""}" onclick="setAiSoalActiveTab('${escapeAiSoalHtml(item.value)}')">
-            ${escapeAiSoalHtml(item.label)}
-          </button>
-        `).join("")}
-      </div>
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs ai-soal-tabs" role="tablist" aria-label="Navigasi menu AI">
+        <div class="ai-soal-tabbar">
+          ${AI_PROMPT_TABS.filter(item => allowedTabs.includes(item.value)).map(item => `
+            <button type="button" class="ai-soal-tab ${item.value === activeTab ? "active" : ""}" onclick="setAiSoalActiveTab('${escapeAiSoalHtml(item.value)}')">
+              ${escapeAiSoalHtml(item.label)}
+            </button>
+          `).join("")}
+        </div>
+      </nav>
     `;
   }
 
@@ -658,84 +661,90 @@
     const tabCopy = getAiSoalTabCopy(activeTab, aiSoalCurrentPageKey);
     const pageCopy = getAiSoalPageCopy(aiSoalCurrentPageKey);
     return `
-      <section class="ai-soal-page">
-        <div class="ai-soal-hero">
-          <div>
-            <span class="dashboard-eyebrow">${escapeAiSoalHtml(pageCopy.eyebrow)}</span>
-            <h2>${escapeAiSoalHtml(pageCopy.title)}</h2>
-            <p>${escapeAiSoalHtml(pageCopy.description)}</p>
+      <section class="app-page app-page--module ai-soal-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header ai-soal-header">
+          <div class="app-page-title" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%;">
+            <div>
+              <span class="dashboard-eyebrow">${escapeAiSoalHtml(pageCopy.eyebrow)}</span>
+              <h2>${escapeAiSoalHtml(pageCopy.title)}</h2>
+              <p>${escapeAiSoalHtml(pageCopy.description)}</p>
+            </div>
+            <div class="ai-soal-hero-badge" style="margin-left: auto;">
+              <strong>${escapeAiSoalHtml(pageCopy.badgeTitle)}</strong>
+              <span>${escapeAiSoalHtml(pageCopy.badgeDescription)}</span>
+            </div>
           </div>
-          <div class="ai-soal-hero-badge">
-            <strong>${escapeAiSoalHtml(pageCopy.badgeTitle)}</strong>
-            <span>${escapeAiSoalHtml(pageCopy.badgeDescription)}</span>
-          </div>
-        </div>
+        </header>
 
         ${renderAiPromptTabs(activeTab, aiSoalCurrentPageKey)}
 
-        <div class="ai-soal-grid">
-          <article class="card ai-soal-form-card">
-            <div class="ai-soal-card-head">
-              <div>
-                <h3>${escapeAiSoalHtml(tabCopy.title)}</h3>
-                <p>${escapeAiSoalHtml(tabCopy.description)}</p>
-              </div>
-            </div>
-
-            <form id="aiSoalForm" class="ai-soal-form" onsubmit="event.preventDefault(); generateAiSoal();">
-              <input type="hidden" name="tab" value="${escapeAiSoalHtml(activeTab)}">
-              <div class="ai-soal-form-grid">
-                ${renderAiSoalStaticField("Nama Guru", staticContext.guru, "guru")}
-                ${renderAiSoalStaticField("Nama Sekolah", staticContext.sekolah, "sekolah")}
-                ${renderAiSoalStaticField("Jenjang", staticContext.jenjang, "jenjang")}
-                ${renderAiSoalStaticField("Fase", staticContext.fase, "fase")}
-                ${renderAiSoalStaticField("Semester", `${staticContext.semesterLabel} / ${staticContext.semester}`, "semester")}
-                ${renderAiSoalStaticField("Tahun Pelajaran", staticContext.tahunAjaran, "tahunAjaran")}
-
-                <label class="form-group">
-                  <span>Kelas</span>
-                  <select name="kelas">${renderAiSoalOptions(AI_SOAL_KELAS_OPTIONS.map(item => ({ value: item, label: item })), form.kelas)}</select>
-                </label>
-                <label class="form-group">
-                  <span>Mata Pelajaran</span>
-                  <select name="mapel" id="aiSoalMapelSelect" onchange="handleAiSoalFormStructureChange()">${buildAiSoalMapelOptions(form.mapel)}</select>
-                </label>
-                ${aiSoalCurrentPageKey === AI_PERANGKAT_PAGE_KEY
-                  ? (activeTab === "ai-langsung" ? renderPerangkatDirectFields(form) : renderPerangkatPromptFields(form))
-                  : renderSoalFields(form)}
+        <!-- UI-8: Panel 4 - Content -->
+        <section class="app-panel app-panel--content ai-soal-content" style="padding: var(--gs-space-5); overflow-y: auto;">
+          <div class="ai-soal-grid">
+            <article class="card ai-soal-form-card">
+              <div class="ai-soal-card-head">
+                <div>
+                  <h3>${escapeAiSoalHtml(tabCopy.title)}</h3>
+                  <p>${escapeAiSoalHtml(tabCopy.description)}</p>
+                </div>
               </div>
 
-              <div class="ai-soal-actions">
-                <button type="submit" class="btn-primary" id="aiSoalSubmitBtn">${escapeAiSoalHtml(tabCopy.submitLabel)}</button>
-                <button type="button" class="btn-secondary" onclick="resetAiSoalForm()">Reset</button>
-              </div>
-            </form>
-          </article>
+              <form id="aiSoalForm" class="ai-soal-form" onsubmit="event.preventDefault(); generateAiSoal();">
+                <input type="hidden" name="tab" value="${escapeAiSoalHtml(activeTab)}">
+                <div class="ai-soal-form-grid">
+                  ${renderAiSoalStaticField("Nama Guru", staticContext.guru, "guru")}
+                  ${renderAiSoalStaticField("Nama Sekolah", staticContext.sekolah, "sekolah")}
+                  ${renderAiSoalStaticField("Jenjang", staticContext.jenjang, "jenjang")}
+                  ${renderAiSoalStaticField("Fase", staticContext.fase, "fase")}
+                  ${renderAiSoalStaticField("Semester", `${staticContext.semesterLabel} / ${staticContext.semester}`, "semester")}
+                  ${renderAiSoalStaticField("Tahun Pelajaran", staticContext.tahunAjaran, "tahunAjaran")}
 
-          <article class="card ai-soal-output-card">
-            <div class="ai-soal-card-head">
-              <div>
-                <h3>${escapeAiSoalHtml(tabCopy.resultTitle)}</h3>
-                <p>${escapeAiSoalHtml(tabCopy.resultDescription)}</p>
-              </div>
-              <div class="ai-soal-output-actions">
-                <button type="button" class="btn-secondary" onclick="copyAiSoalResult()">Salin</button>
-                <button type="button" class="btn-secondary" onclick="exportAiSoalToWord()">Export Word</button>
-              </div>
-            </div>
+                  <label class="form-group">
+                    <span>Kelas</span>
+                    <select name="kelas">${renderAiSoalOptions(AI_SOAL_KELAS_OPTIONS.map(item => ({ value: item, label: item })), form.kelas)}</select>
+                  </label>
+                  <label class="form-group">
+                    <span>Mata Pelajaran</span>
+                    <select name="mapel" id="aiSoalMapelSelect" onchange="handleAiSoalFormStructureChange()">${buildAiSoalMapelOptions(form.mapel)}</select>
+                  </label>
+                  ${aiSoalCurrentPageKey === AI_PERANGKAT_PAGE_KEY
+                    ? (activeTab === "ai-langsung" ? renderPerangkatDirectFields(form) : renderPerangkatPromptFields(form))
+                    : renderSoalFields(form)}
+                </div>
 
-            <div id="aiSoalStatus" class="ai-soal-status">Siap membuat prompt. Pilih tab yang dibutuhkan lalu isi formnya.</div>
-            <pre id="aiSoalResult" class="ai-soal-result">Belum ada hasil.</pre>
-          </article>
-        </div>
+                <div class="ai-soal-actions">
+                  <button type="submit" class="btn-primary" id="aiSoalSubmitBtn">${escapeAiSoalHtml(tabCopy.submitLabel)}</button>
+                  <button type="button" class="btn-secondary" onclick="resetAiSoalForm()">Reset</button>
+                </div>
+              </form>
+            </article>
 
-        <div id="aiSoalSavingOverlay" class="nilai-saving-overlay" style="display:none;" aria-hidden="true">
-          <div class="nilai-saving-card">
-            <div class="nilai-saving-spinner" aria-hidden="true"></div>
-            <strong>Menyusun prompt...</strong>
-            <span>Mohon tunggu sebentar, prompt sedang dirapikan.</span>
+            <article class="card ai-soal-output-card">
+              <div class="ai-soal-card-head">
+                <div>
+                  <h3>${escapeAiSoalHtml(tabCopy.resultTitle)}</h3>
+                  <p>${escapeAiSoalHtml(tabCopy.resultDescription)}</p>
+                </div>
+                <div class="ai-soal-output-actions">
+                  <button type="button" class="btn-secondary" onclick="copyAiSoalResult()">Salin</button>
+                  <button type="button" class="btn-secondary" onclick="exportAiSoalToWord()">Export Word</button>
+                </div>
+              </div>
+
+              <div id="aiSoalStatus" class="ai-soal-status">Siap membuat prompt. Pilih tab yang dibutuhkan lalu isi formnya.</div>
+              <pre id="aiSoalResult" class="ai-soal-result">Belum ada hasil.</pre>
+            </article>
           </div>
-        </div>
+
+          <div id="aiSoalSavingOverlay" class="nilai-saving-overlay" style="display:none;" aria-hidden="true">
+            <div class="nilai-saving-card">
+              <div class="nilai-saving-spinner" aria-hidden="true"></div>
+              <strong>Menyusun prompt...</strong>
+              <span>Mohon tunggu sebentar, prompt sedang dirapikan.</span>
+            </div>
+          </div>
+        </section>
       </section>
     `;
   }

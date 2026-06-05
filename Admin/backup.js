@@ -53,87 +53,91 @@ function renderAdminBackupPage() {
   }, 0);
 
   return `
-    <section class="backup-page">
-      <div class="nilai-page-head">
-        <div>
+    <section class="app-page app-page--module backup-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header backup-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Migrasi Data</span>
           <h2>Backup dan Restore</h2>
           <p>Unduh cadangan data sebelum memindahkan aplikasi atau memperbaiki data semester.</p>
         </div>
-      </div>
+      </header>
 
-      <div class="backup-grid">
-        <article class="backup-panel">
-          <h3>Backup</h3>
-          <p>File backup berisi data utama, user, nilai, rekap kehadiran, asesmen, kepangawasan, pengaturan, dan data per semester.</p>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content backup-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+        <div class="backup-grid">
+          <article class="backup-panel">
+            <h3>Backup</h3>
+            <p>File backup berisi data utama, user, nilai, rekap kehadiran, asesmen, kepangawasan, pengaturan, dan data per semester.</p>
+            <div class="backup-actions">
+              <button class="btn-primary" onclick="downloadFullBackup()">Download Backup JSON</button>
+            </div>
+            <div id="backupExportStatus" class="backup-status">Siap membuat backup.</div>
+          </article>
+
+          <article class="backup-panel backup-panel-danger">
+            <h3>Restore</h3>
+            <p>Restore akan menulis ulang dokumen yang ada di file backup. Gunakan hanya untuk migrasi atau pemulihan.</p>
+            <label class="backup-file-picker">
+              <span>Pilih file backup JSON</span>
+              <input type="file" accept="application/json,.json" onchange="handleBackupRestoreFile(event)">
+            </label>
+            <div id="backupRestoreFileName" class="backup-status">Belum ada file dipilih.</div>
+            <div class="backup-actions">
+              <button class="btn-danger" onclick="restoreFullBackup()">Restore Backup</button>
+            </div>
+            <div id="backupRestoreStatus" class="backup-status">Restore membutuhkan password admin.</div>
+          </article>
+        </div>
+
+        <section class="backup-panel backup-wide backup-maintenance-panel sidebar-maintenance-panel" id="backupMaintenancePanel" hidden>
+          <div class="sidebar-maintenance-head">
+            <div>
+              <span class="sidebar-maintenance-label">Maintenance</span>
+              <strong id="maintenanceStatusText">Memuat status...</strong>
+            </div>
+            <label class="maintenance-switch" aria-label="Toggle maintenance mode">
+              <input type="checkbox" id="maintenanceModeToggle" onchange="handleMaintenanceToggleChange(this)">
+              <span class="maintenance-switch-track">
+                <span class="maintenance-switch-thumb"></span>
+              </span>
+            </label>
+          </div>
+          <p class="sidebar-maintenance-copy">Saat aktif, halaman login tetap bisa dibuka. Admin dan superadmin tetap bisa masuk untuk mematikan mode ini, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah login.</p>
+          <a class="sidebar-maintenance-link" href="maintenance.html" target="_blank" rel="noopener">Lihat halaman maintenance</a>
+        </section>
+
+        <section class="backup-panel backup-wide">
+          <h3>Isi Backup</h3>
+          <div class="backup-chip-list">
+            ${BACKUP_COLLECTIONS.map(name => `<span>${escapeBackupHtml(name)}</span>`).join("")}
+            <span>data semester/{semester}/siswa</span>
+            <span>data semester/{semester}/kelas</span>
+            <span>local storage penting</span>
+          </div>
+        </section>
+
+        <section class="backup-panel backup-panel-danger backup-wide">
+          <h3>Reset Semua Data</h3>
+          <p>
+            Menghapus semua data yang dikenal aplikasi, termasuk data semester, nilai, siswa, guru, kelas, mapel,
+            pembagian mengajar, user, asesmen, kepangawasan, rekap kehadiran, dan pengaturan. Jalankan backup dulu sebelum memakai tombol ini.
+          </p>
+          <div class="backup-chip-list">
+            <span>Dihapus: semua collection aplikasi</span>
+            <span>Dihapus: mengajar</span>
+            <span>Dihapus: mengajar_bayangan</span>
+            <span>Dihapus: kepangawasan_kartu_guru</span>
+            <span>Dihapus: kehadiran_siswa legacy</span>
+            <span>Dihapus: data semester/*/siswa</span>
+            <span>Dihapus: data semester/*/kelas</span>
+            <span>Dibersihkan: cache login lokal</span>
+          </div>
           <div class="backup-actions">
-            <button class="btn-primary" onclick="downloadFullBackup()">Download Backup JSON</button>
+            <button class="btn-danger" onclick="resetAllApplicationData()">Reset Semua Data</button>
           </div>
-          <div id="backupExportStatus" class="backup-status">Siap membuat backup.</div>
-        </article>
-
-        <article class="backup-panel backup-panel-danger">
-          <h3>Restore</h3>
-          <p>Restore akan menulis ulang dokumen yang ada di file backup. Gunakan hanya untuk migrasi atau pemulihan.</p>
-          <label class="backup-file-picker">
-            <span>Pilih file backup JSON</span>
-            <input type="file" accept="application/json,.json" onchange="handleBackupRestoreFile(event)">
-          </label>
-          <div id="backupRestoreFileName" class="backup-status">Belum ada file dipilih.</div>
-          <div class="backup-actions">
-            <button class="btn-danger" onclick="restoreFullBackup()">Restore Backup</button>
-          </div>
-          <div id="backupRestoreStatus" class="backup-status">Restore membutuhkan password admin.</div>
-        </article>
-      </div>
-
-      <section class="backup-panel backup-wide backup-maintenance-panel sidebar-maintenance-panel" id="backupMaintenancePanel" hidden>
-        <div class="sidebar-maintenance-head">
-          <div>
-            <span class="sidebar-maintenance-label">Maintenance</span>
-            <strong id="maintenanceStatusText">Memuat status...</strong>
-          </div>
-          <label class="maintenance-switch" aria-label="Toggle maintenance mode">
-            <input type="checkbox" id="maintenanceModeToggle" onchange="handleMaintenanceToggleChange(this)">
-            <span class="maintenance-switch-track">
-              <span class="maintenance-switch-thumb"></span>
-            </span>
-          </label>
-        </div>
-        <p class="sidebar-maintenance-copy">Saat aktif, halaman login tetap bisa dibuka. Admin dan superadmin tetap bisa masuk untuk mematikan mode ini, sedangkan pengguna lain akan diarahkan ke halaman maintenance setelah login.</p>
-        <a class="sidebar-maintenance-link" href="maintenance.html" target="_blank" rel="noopener">Lihat halaman maintenance</a>
-      </section>
-
-      <section class="backup-panel backup-wide">
-        <h3>Isi Backup</h3>
-        <div class="backup-chip-list">
-          ${BACKUP_COLLECTIONS.map(name => `<span>${escapeBackupHtml(name)}</span>`).join("")}
-          <span>data semester/{semester}/siswa</span>
-          <span>data semester/{semester}/kelas</span>
-          <span>local storage penting</span>
-        </div>
-      </section>
-
-      <section class="backup-panel backup-panel-danger backup-wide">
-        <h3>Reset Semua Data</h3>
-        <p>
-          Menghapus semua data yang dikenal aplikasi, termasuk data semester, nilai, siswa, guru, kelas, mapel,
-          pembagian mengajar, user, asesmen, kepangawasan, rekap kehadiran, dan pengaturan. Jalankan backup dulu sebelum memakai tombol ini.
-        </p>
-        <div class="backup-chip-list">
-          <span>Dihapus: semua collection aplikasi</span>
-          <span>Dihapus: mengajar</span>
-          <span>Dihapus: mengajar_bayangan</span>
-          <span>Dihapus: kepangawasan_kartu_guru</span>
-          <span>Dihapus: kehadiran_siswa legacy</span>
-          <span>Dihapus: data semester/*/siswa</span>
-          <span>Dihapus: data semester/*/kelas</span>
-          <span>Dibersihkan: cache login lokal</span>
-        </div>
-        <div class="backup-actions">
-          <button class="btn-danger" onclick="resetAllApplicationData()">Reset Semua Data</button>
-        </div>
-        <div id="backupCleanStatus" class="backup-status">Menunggu aksi admin.</div>
+          <div id="backupCleanStatus" class="backup-status">Menunggu aksi admin.</div>
+        </section>
       </section>
     </section>
   `;

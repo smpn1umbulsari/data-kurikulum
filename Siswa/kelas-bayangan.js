@@ -30,7 +30,13 @@ let kelasBayanganActiveTab = "siswa"; // "datakelas" | "siswa" | "mengajar"
 
 function setKelasBayanganTab(tabId) {
   kelasBayanganActiveTab = tabId;
-  renderKelasBayanganPage();
+  if (tabId === "datakelas") {
+    loadPage("kelas-bayangan-kelas");
+  } else if (tabId === "siswa") {
+    loadPage("kelas-bayangan-siswa");
+  } else if (tabId === "mengajar") {
+    loadPage("kelas-bayangan-mengajar");
+  }
 }
 
 function isKelasBayanganDataKelasMode() {
@@ -315,8 +321,9 @@ function sortKelasBayanganItems(data) {
 
 function renderKelasBayanganDataKelasPage() {
   return `
-    <section class="app-page app-page--data kelas-bayangan-module-panel">
-      <header class="app-page-header kelas-bayangan-head">
+    <section class="app-page app-page--module kelas-bayangan-module-panel">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header kelas-bayangan-header">
         <div class="app-page-title">
           <span class="dashboard-eyebrow">Kelas Real</span>
           <h2>Data Kelas Real</h2>
@@ -324,138 +331,176 @@ function renderKelasBayanganDataKelasPage() {
         </div>
       </header>
 
-      <div class="status-strip toolbar-info">
-        <span id="jumlahDataKelasBayangan">0 kelas</span>
-        <span id="kelasBayanganSourceInfo" class="kelas-bayangan-active-info">Belum ada kelas sumber aktif</span>
-        <button class="btn-secondary" onclick="refreshKelasBayangan()">Refresh</button>
-      </div>
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-siswa')">Siswa</button>
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>
+      </nav>
 
-      <div class="table-container">
-        <table class="data-table kelas-data-table">
-          <thead>
-            <tr>
-              <th>Tingkat</th>
-              <th>Kelas</th>
-              <th>Anggota Real</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="kelasBayanganKelasBody"></tbody>
-        </table>
-        <div id="kelasBayanganKelasEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data kelas.</div>
-      </div>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kelas-bayangan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <button class="btn-secondary" onclick="refreshKelasBayangan()">Refresh</button>
+        </div>
+        <div class="toolbar-row toolbar-row--filters">
+          <div class="toolbar-row--info-inline">
+            <span id="jumlahDataKelasBayangan" class="matrix-toolbar-note">0 kelas</span>
+            <span id="kelasBayanganSourceInfo" class="kelas-bayangan-active-info" style="margin-left: 12px;">Belum ada kelas sumber aktif</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kelas-bayangan-content">
+        <div class="table-container">
+          <table class="data-table kelas-data-table">
+            <thead>
+              <tr>
+                <th>Tingkat</th>
+                <th>Kelas</th>
+                <th>Anggota Real</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="kelasBayanganKelasBody"></tbody>
+          </table>
+          <div id="kelasBayanganKelasEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data kelas.</div>
+        </div>
+      </section>
     </section>
   `;
 }
 
 function renderKelasBayanganSiswaPage() {
   return `
-    <section class="app-page app-page--data kelas-bayangan-module-panel">
-      <header class="app-page-header kelas-bayangan-head">
+    <section class="app-page app-page--module kelas-bayangan-module-panel">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header kelas-bayangan-header">
         <div class="app-page-title">
           <span class="dashboard-eyebrow">Kelas Real</span>
           <h2>Data Siswa Kelas Real</h2>
           <p>Kelas asli A-H menjadi acuan otomatis. Siswa dari kelas I dibagi manual ke kelas real A-H.</p>
         </div>
-        <div class="app-page-actions">
-          <button class="btn-icon-only btn-primary" onclick="syncKelasBayanganUtama()" title="Sinkronkan A-H" aria-label="Sinkronkan A-H"></button>
-        </div>
       </header>
 
-      <div class="matrix-toolbar-note">
-        Gunakan menu ini sebagai acuan Pembagian Ruang. Siswa kelas I yang belum dipilih belum ikut masuk susunan ruang ujian.
-      </div>
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-siswa')">Siswa</button>
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>
+      </nav>
 
-      <section class="control-panel toolbar">
-        <div class="toolbar-left">
-          <input id="kelasBayanganSearch" placeholder="Cari nama atau NIPD..." oninput="setKelasBayanganSearch(this.value)">
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kelas-bayangan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <button class="btn-primary" onclick="syncKelasBayanganUtama()">Sinkronkan A-H</button>
         </div>
-        <div class="toolbar-right">
-          <select id="kelasBayanganTingkat" onchange="setKelasBayanganTingkat(this.value)">
-            <option value="">Semua Tingkat</option>
-            <option value="7">Tingkat 7</option>
-            <option value="8">Tingkat 8</option>
-            <option value="9">Tingkat 9</option>
-          </select>
-          <select id="kelasBayanganRombel" onchange="setKelasBayanganRombel(this.value)">
-            <option value="">Semua Rombel Asli</option>
-            ${"ABCDEFGHI"
-              .split("")
-              .map(
-                (rombel) =>
-                  `<option value="${rombel}">Kelas ${rombel}</option>`,
-              )
-              .join("")}
-          </select>
+        <div class="toolbar-row toolbar-row--filters">
+          <div class="toolbar-filter-group">
+            <input id="kelasBayanganSearch" placeholder="Cari nama atau NIPD..." oninput="setKelasBayanganSearch(this.value)">
+            <select id="kelasBayanganTingkat" onchange="setKelasBayanganTingkat(this.value)">
+              <option value="">Semua Tingkat</option>
+              <option value="7">Tingkat 7</option>
+              <option value="8">Tingkat 8</option>
+              <option value="9">Tingkat 9</option>
+            </select>
+            <select id="kelasBayanganRombel" onchange="setKelasBayanganRombel(this.value)">
+              <option value="">Semua Rombel Asli</option>
+              ${"ABCDEFGHI"
+                .split("")
+                .map(
+                  (rombel) =>
+                    `<option value="${rombel}">Kelas ${rombel}</option>`,
+                )
+                .join("")}
+            </select>
+          </div>
+          <div class="toolbar-row--info-inline">
+            <span id="kelasBayanganSummary" class="matrix-toolbar-note"></span>
+          </div>
         </div>
       </section>
 
-      <div class="status-strip kelas-bayangan-summary" id="kelasBayanganSummary"></div>
-
-      <div class="table-container">
-        <table class="data-table siswa-compact-table">
-          <thead>
-            <tr>
-              <th>NIPD</th>
-              <th>Nama</th>
-              <th>Kelas Asli</th>
-              <th>Kelas Real</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="kelasBayanganBody"></tbody>
-        </table>
-        <div id="kelasBayanganEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data siswa.</div>
-      </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kelas-bayangan-content">
+        <div class="matrix-toolbar-note" style="border: none; margin: var(--gs-space-2) var(--gs-space-4);">
+          Gunakan menu ini sebagai acuan Pembagian Ruang. Siswa kelas I yang belum dipilih belum ikut masuk susunan ruang ujian.
+        </div>
+        <div class="table-container">
+          <table class="data-table siswa-compact-table">
+            <thead>
+              <tr>
+                <th>NIPD</th>
+                <th>Nama</th>
+                <th>Kelas Asli</th>
+                <th>Kelas Real</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="kelasBayanganBody"></tbody>
+          </table>
+          <div id="kelasBayanganEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data siswa.</div>
+        </div>
+      </section>
     </section>
   `;
 }
 
 function renderKelasBayanganMengajarPage() {
   return `
-    <div class="card">
-      <h2>Pembagian Mengajar Kelas Real</h2>
-
-      <div class="toolbar">
-        <div class="toolbar-left">
-          <div class="page-size-control">
-            <label for="tingkatMengajarBayangan">Tingkat</label>
-            <select id="tingkatMengajarBayangan" onchange="setMengajarBayanganTingkat(this.value)">
-              <option value="7" ${kelasBayanganMengajarTingkat === "7" ? "selected" : ""}>7</option>
-              <option value="8" ${kelasBayanganMengajarTingkat === "8" ? "selected" : ""}>8</option>
-              <option value="9" ${kelasBayanganMengajarTingkat === "9" ? "selected" : ""}>9</option>
-            </select>
-          </div>
+    <section class="app-page app-page--module kelas-bayangan-module-panel">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header kelas-bayangan-header">
+        <div class="app-page-title">
+          <span class="dashboard-eyebrow">Kelas Real</span>
+          <h2>Pembagian Mengajar Kelas Real</h2>
+          <p>Distribusi pembagian mengajar guru berdasarkan kelas real.</p>
         </div>
-        <div class="toolbar-right">
-          <button class="btn-icon-only btn-primary" onclick="saveAllMengajarBayangan()" title="Simpan Semua" aria-label="Simpan Semua"></button>
-        </div>
-      </div>
+      </header>
 
-      <div class="toolbar-info">
-        <span id="jumlahMengajarBayanganInfo">0 mapel x 0 kelas</span>
-        <div class="page-size-control">
-          <span id="pendingMengajarBayanganInfo">0 perubahan belum disimpan</span>
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-siswa')">Siswa</button>
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>
+      </nav>
+
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kelas-bayangan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <button class="btn-primary" onclick="saveAllMengajarBayangan()">Simpan Semua</button>
           <button class="btn-secondary" onclick="refreshMengajarBayanganPage()">Refresh</button>
         </div>
-      </div>
+        <div class="toolbar-row toolbar-row--filters">
+          <div class="toolbar-filter-group">
+            <select id="tingkatMengajarBayangan" onchange="setMengajarBayanganTingkat(this.value)">
+              <option value="7" ${kelasBayanganMengajarTingkat === "7" ? "selected" : ""}>Tingkat 7</option>
+              <option value="8" ${kelasBayanganMengajarTingkat === "8" ? "selected" : ""}>Tingkat 8</option>
+              <option value="9" ${kelasBayanganMengajarTingkat === "9" ? "selected" : ""}>Tingkat 9</option>
+            </select>
+            <select id="mengajarBayanganSearchInput" class="matrix-search-input" onchange="handleMengajarBayanganSearchInput(this.value)" onkeydown="handleMengajarBayanganSearchKeydown(event)">
+              ${typeof getMengajarSearchGuruOptions === "function" ? getMengajarSearchGuruOptions(true, mengajarBayanganSearchDraft) : '<option value="">Pilih guru untuk dicari</option>'}
+            </select>
+            <button class="btn-secondary" onclick="submitMengajarBayanganSearch()">Cari</button>
+            <button class="btn-secondary" onclick="clearMengajarBayanganSearch()">Reset</button>
+          </div>
+          <div class="toolbar-row--info-inline">
+            <span id="jumlahMengajarBayanganInfo" class="matrix-toolbar-note">0 mapel x 0 kelas</span>
+            <span id="pendingMengajarBayanganInfo" class="matrix-toolbar-note" style="margin-left: 12px;">0 perubahan belum disimpan</span>
+          </div>
+        </div>
+      </section>
 
-      <div class="matrix-search-bar">
-        <select id="mengajarBayanganSearchInput" class="matrix-search-input" onchange="handleMengajarBayanganSearchInput(this.value)" onkeydown="handleMengajarBayanganSearchKeydown(event)">
-          ${typeof getMengajarSearchGuruOptions === "function" ? getMengajarSearchGuruOptions(true, mengajarBayanganSearchDraft) : '<option value="">Pilih guru untuk dicari</option>'}
-        </select>
-        <button class="btn-secondary" onclick="submitMengajarBayanganSearch()">Cari</button>
-        <button class="btn-secondary" onclick="clearMengajarBayanganSearch()">Reset</button>
-        <small id="mengajarBayanganSearchInfo" class="matrix-search-info">Pilih nama guru untuk menyorot posisinya di matriks.</small>
-      </div>
-
-      <div class="matrix-toolbar-note">
-        Nilai awal mengikuti Pembagian Mengajar kelas asli. PABP yang tidak sesuai agama siswa di kelas real akan disamarkan.
-      </div>
-
-      <div id="mengajarBayanganMatrixContainer"></div>
-    </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kelas-bayangan-content">
+        <div class="matrix-toolbar-note" style="border: none; margin: var(--gs-space-2) var(--gs-space-4);">
+          Nilai awal mengikuti Pembagian Mengajar kelas asli. PABP yang tidak sesuai agama siswa di kelas real akan disamarkan.
+        </div>
+        <div id="mengajarBayanganMatrixContainer"></div>
+      </section>
+    </section>
   `;
 }
 
@@ -792,10 +837,10 @@ function renderKelasBayanganRow(siswa) {
       : `<span class="muted-text">Kelas asli belum valid</span>`;
 
   const actionCell = isOtomatis
-    ? `<button class="btn-secondary" disabled title="Otomatis" aria-label="Otomatis"></button>`
+    ? `<span class="muted-text">-</span>`
     : canAssign
-      ? `<button class="btn-icon-only btn-primary" onclick="saveKelasBayanganManual('${safeNipdJs}', '${escapeKelasBayanganJs(selectId)}')" title="Simpan" aria-label="Simpan"></button>`
-      : `<button class="btn-secondary" disabled title="Simpan" aria-label="Simpan"></button>`;
+      ? `<button class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveKelasBayanganManual('${safeNipdJs}', '${escapeKelasBayanganJs(selectId)}')" title="Simpan" aria-label="Simpan"></button>`
+      : `<button class="btn-secondary btn-table-compact btn-action-save table-action-icon-btn table-action-save" disabled title="Simpan (Pilih Kelas Terlebih Dahulu)" aria-label="Simpan"></button>`;
 
   return `
     <tr>

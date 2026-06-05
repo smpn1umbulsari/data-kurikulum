@@ -1,4 +1,4 @@
-﻿(function initKepangawasan(global) {
+(function initKepangawasan(global) {
   if (global.renderKepangawasanPage) return;
 
   const STORAGE_KEY = "kepangawasanAsesmenState";
@@ -180,6 +180,7 @@
         pembagianAssignments: normalizePembagianAssignments(
           parsed?.pembagianAssignments,
         ),
+        teacherCodes: parsed?.teacherCodes || {},
       };
     } catch (error) {
       console.error("Gagal memuat state kepangawasan", error);
@@ -197,6 +198,7 @@
         pembagianPengawasCount: 1,
         pembagianUrutan: "urut",
         pembagianAssignments: {},
+        teacherCodes: {},
       };
     }
   }
@@ -237,6 +239,7 @@
       pembagian: normalizePembagianAssignments(
         kepangawasanState.pembagianAssignments,
       ),
+      teacher_codes: kepangawasanState.teacherCodes || {},
       updated_at: new Date().toISOString(),
       updated_by_username: String(sender?.username || sender?.id || "").trim(),
       updated_by_name: String(sender?.nama || sender?.username || "").trim(),
@@ -303,6 +306,7 @@
       kepangawasanState.pembagianAssignments = normalizePembagianAssignments(
         data?.pembagian || {},
       );
+      kepangawasanState.teacherCodes = data?.teacher_codes || {};
       saveKepangawasanState();
       return true;
     } catch (error) {
@@ -340,6 +344,7 @@
         pembagianAssignments: normalizePembagianAssignments(
           kepangawasanState.pembagianAssignments,
         ),
+        teacherCodes: kepangawasanState.teacherCodes || {},
       }),
     );
   }
@@ -1452,70 +1457,53 @@
     const dateOptions = getKepangawasanDateOptions();
     const docSettings = getKepangawasanDocumentSettings();
     return `
-      <div class="kepangawasan-grid kepangawasan-grid-single">
-        <section class="card kepangawasan-panel">
-          <div class="asesmen-module-header kepangawasan-page-head">
-            <div>
-              <span class="dashboard-eyebrow">Asesmen</span>
-              <h2>Jadwal Ujian</h2>
-              <p>Admin menentukan rentang tanggal ujian lalu mengisi 12 baris jadwal ujian dengan hari, tanggal, jam, dan mapel.</p>
-            </div>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kepangawasan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <div class="toolbar-left">
+            <label class="kepangawasan-toggle">
+              <input type="checkbox" ${kepangawasanState.useKepalaTtd ? "checked" : ""} onchange="setKepangawasanUseKepalaTtd(this.checked)">
+              <span class="kepangawasan-toggle-track"></span>
+              <span class="kepangawasan-toggle-label">Scan TTD KS ${kepangawasanState.useKepalaTtd ? "Aktif" : "Nonaktif"}</span>
+            </label>
+            <button type="button" class="btn-primary" onclick="exportKepangawasanJadwalPdf()">Cetak PDF</button>
+            <button type="button" class="btn-secondary" onclick="resetKepangawasanRows()">Reset Tabel</button>
+            <button type="button" class="btn-secondary" onclick="loadRealtimeKepangawasan()">Refresh</button>
           </div>
+        </div>
 
-          <div class="kepangawasan-range-grid">
-            <label class="kepangawasan-field">
-              <span>Jenis ujian</span>
-              <select onchange="setKepangawasanExamType(this.value)">
-                ${JENIS_UJIAN_OPTIONS.map((option) => `<option value="${escapeHtml(option)}" ${option === String(kepangawasanState.examType || "").trim() ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-              </select>
-            </label>
-            <label class="kepangawasan-field">
-              <span>Tanggal mulai ujian</span>
-              <input type="date" value="${escapeHtml(kepangawasanState.startDate)}" onchange="setKepangawasanDateRange('startDate', this.value)">
-            </label>
-            <label class="kepangawasan-field">
-              <span>Tanggal akhir ujian</span>
-              <input type="date" value="${escapeHtml(kepangawasanState.endDate)}" onchange="setKepangawasanDateRange('endDate', this.value)">
-            </label>
-            <label class="kepangawasan-field">
-              <span>Tanggal cetak</span>
-              <input type="date" value="${escapeHtml(kepangawasanState.printDate)}" onchange="setKepangawasanPrintDate(this.value)">
-            </label>
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="kepangawasan-field">
+            <span>Jenis ujian</span>
+            <select onchange="setKepangawasanExamType(this.value)">
+              ${JENIS_UJIAN_OPTIONS.map((option) => `<option value="${escapeHtml(option)}" ${option === String(kepangawasanState.examType || "").trim() ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="kepangawasan-field">
+            <span>Mulai</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.startDate)}" onchange="setKepangawasanDateRange('startDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Akhir</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.endDate)}" onchange="setKepangawasanDateRange('endDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Cetak</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.printDate)}" onchange="setKepangawasanPrintDate(this.value)">
+          </label>
+
+          <div class="toolbar-row--info-inline" aria-label="Info data kepengawasan">
+            <strong>${escapeHtml(getKepangawasanActiveTabLabel())}</strong>
+            <span>${dateOptions.length ? `${dateOptions.length} tanggal` : "Tanggal belum dipilih"}</span>
+            <span>${getKepangawasanFilledRows().length || 0} jadwal terisi</span>
           </div>
+        </div>
+      </section>
 
-          <div class="kepangawasan-summary">
-            <span>${dateOptions.length ? `${dateOptions.length} tanggal ujian tersedia` : "Rentang tanggal ujian belum dipilih"}</span>
-            <div class="kepangawasan-actions">
-              <label class="kepangawasan-toggle">
-                <input type="checkbox" ${kepangawasanState.useKepalaTtd ? "checked" : ""} onchange="setKepangawasanUseKepalaTtd(this.checked)">
-                <span class="kepangawasan-toggle-track"></span>
-                <span class="kepangawasan-toggle-label">Scan TTD KS ${kepangawasanState.useKepalaTtd ? "Aktif" : "Nonaktif"}</span>
-              </label>
-              <button type="button" class="btn-primary" onclick="exportKepangawasanJadwalPdf()">Cetak PDF</button>
-              <button type="button" class="btn-secondary" onclick="resetKepangawasanRows()">Reset Tabel</button>
-            </div>
-          </div>
-
-          <section class="card kepangawasan-side-panel">
-            <h3>Catatan Input</h3>
-            <ul class="kepangawasan-notes">
-              <li>Pilih rentang tanggal ujian terlebih dahulu agar dropdown tanggal aktif.</li>
-              <li>Kolom Hari tetap bisa disesuaikan manual, tetapi akan otomatis terisi saat tanggal dipilih.</li>
-              <li>Dropdown Mapel mengambil data dari daftar mapel yang sudah ada di sistem.</li>
-              <li>Data tersimpan otomatis di browser perangkat ini.</li>
-              <li>PDF memakai desain resmi seperti contoh, tanpa stempel. Scan TTD KS hanya tampil jika toggle diaktifkan.</li>
-            </ul>
-
-            <div class="kepangawasan-side-summary">
-              <strong>Ringkasan rentang</strong>
-              <span>${kepangawasanState.startDate ? formatTanggalLabel(kepangawasanState.startDate) : "-"}</span>
-              <span>${kepangawasanState.endDate ? formatTanggalLabel(kepangawasanState.endDate) : "-"}</span>
-              <span>Tanggal cetak: ${docSettings.tanggalTtd ? formatTanggalLabel(docSettings.tanggalTtd) : "-"}</span>
-              <span>TTD KS: ${kepangawasanState.useKepalaTtd && docSettings.kepalaTtd ? "Aktif" : "Nonaktif"}</span>
-            </div>
-          </section>
-
-          <div class="table-container kepangawasan-table-wrap">
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kepangawasan-content" style="padding: var(--gs-space-5);">
+        <div class="kepangawasan-layout-split" style="display: grid; grid-template-columns: 1fr 300px; gap: var(--gs-space-4); align-items: start;">
+          <div class="table-container kepangawasan-table-wrap" style="margin: 0;">
             <table class="kepangawasan-table">
               <thead>
                 <tr>
@@ -1532,8 +1520,25 @@
               </tbody>
             </table>
           </div>
-        </section>
-      </div>
+
+          <aside class="card kepangawasan-side-panel" style="margin: 0; padding: var(--gs-space-4);">
+            <h3 style="margin-top: 0; margin-bottom: var(--gs-space-2); font-size: var(--gs-font-size-md);">Catatan Input</h3>
+            <ul class="kepangawasan-notes" style="padding-left: var(--gs-space-4); margin-bottom: var(--gs-space-4); font-size: var(--gs-font-size-sm); color: var(--gs-text-muted);">
+              <li>Pilih rentang tanggal ujian terlebih dahulu agar dropdown tanggal aktif.</li>
+              <li>Kolom Hari tetap bisa disesuaikan manual, tetapi akan otomatis terisi saat tanggal dipilih.</li>
+              <li>Dropdown Mapel mengambil data dari daftar mapel yang sudah ada di sistem.</li>
+              <li>Data tersimpan otomatis di browser perangkat ini.</li>
+            </ul>
+
+            <div class="kepangawasan-side-summary" style="font-size: var(--gs-font-size-sm); display: flex; flex-direction: column; gap: var(--gs-space-1); border-top: 1px dashed var(--gs-border); padding-top: var(--gs-space-3);">
+              <strong>Ringkasan rentang</strong>
+              <span>${kepangawasanState.startDate ? formatTanggalLabel(kepangawasanState.startDate) : "-"} s/d ${kepangawasanState.endDate ? formatTanggalLabel(kepangawasanState.endDate) : "-"}</span>
+              <span>Tanggal cetak: ${docSettings.tanggalTtd ? formatTanggalLabel(docSettings.tanggalTtd) : "-"}</span>
+              <span>TTD KS: ${kepangawasanState.useKepalaTtd && docSettings.kepalaTtd ? "Aktif" : "Nonaktif"}</span>
+            </div>
+          </aside>
+        </div>
+      </section>
     `;
   }
 
@@ -1597,113 +1602,135 @@
     const guruRows = kepangawasanGuruOptions;
     const slotGroups = getKepangawasanMengawasiSlots();
     const flatSlots = slotGroups.flatMap((group) => group.items);
+    const dateCount = getKepangawasanDateOptions().length;
+    const scheduleCount = getKepangawasanFilledRows().length;
+
     return `
-      <div class="kepangawasan-grid kepangawasan-grid-single">
-        <section class="card kepangawasan-panel">
-          <div class="asesmen-module-header kepangawasan-page-head">
-            <div>
-              <span class="dashboard-eyebrow">Asesmen</span>
-              <h2>Jadwal Mengawasi</h2>
-              <p>Tabel matriks ini menentukan guru bisa atau tidak dijadwalkan mengawasi pada hari dan jam tertentu.</p>
-            </div>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kepangawasan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <div class="toolbar-left">
+            <button type="button" class="btn-secondary" onclick="resetKepangawasanMengawasiMatrix()">Reset Matriks</button>
+            <button type="button" class="btn-primary" onclick="generateKepangawasanTeacherCodes()">Generate Kode Guru</button>
+            <button type="button" class="btn-secondary" onclick="loadRealtimeKepangawasan()">Refresh</button>
           </div>
+        </div>
 
-          <div class="kepangawasan-summary">
-            <span>${guruRows.length ? `${guruRows.length} guru tersedia untuk diatur` : "Data guru belum tersedia"}</span>
-            <div class="kepangawasan-actions">
-              <button type="button" class="btn-secondary" onclick="resetKepangawasanMengawasiMatrix()">Reset Matriks</button>
-            </div>
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="kepangawasan-field">
+            <span>Jenis ujian</span>
+            <select onchange="setKepangawasanExamType(this.value)">
+              ${JENIS_UJIAN_OPTIONS.map((option) => `<option value="${escapeHtml(option)}" ${option === String(kepangawasanState.examType || "").trim() ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="kepangawasan-field">
+            <span>Mulai</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.startDate)}" onchange="setKepangawasanDateRange('startDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Akhir</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.endDate)}" onchange="setKepangawasanDateRange('endDate', this.value)">
+          </label>
+
+          <div class="toolbar-row--info-inline" aria-label="Info data kepengawasan">
+            <strong>${escapeHtml(getKepangawasanActiveTabLabel())}</strong>
+            <span>${guruRows.length} guru</span>
+            <span>${dateCount || 0} tanggal</span>
+            <span>${scheduleCount || 0} jadwal</span>
           </div>
+        </div>
+      </section>
 
-          <div class="kepangawasan-inline-notes">
-            <strong>Petunjuk Matriks</strong>
-            <span>Header tanggal diambil dari Jadwal Ujian, dari tanggal paling awal sampai paling akhir.</span>
-            <span>Setiap tanggal memiliki subkolom Jam ke 1 dan Jam ke 2.</span>
-            <span>Toggle On berarti guru bisa mengawasi pada slot itu, Off berarti tidak dijadwalkan mengawasi.</span>
-          </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kepangawasan-content" style="padding: var(--gs-space-5);">
+        <div class="kepangawasan-inline-notes" style="margin-bottom: var(--gs-space-4);">
+          <strong>Petunjuk Matriks</strong>
+          <span>Header tanggal diambil dari Jadwal Ujian, dari tanggal paling awal sampai paling akhir.</span>
+          <span>Setiap tanggal memiliki subkolom Jam ke 1 dan Jam ke 2.</span>
+          <span>Toggle On berarti guru bisa mengawasi pada slot itu, Off berarti tidak dijadwalkan mengawasi.</span>
+        </div>
 
-          <div class="table-container matrix-table-wrap kepangawasan-matrix-wrap">
-            <table class="matrix-table kepangawasan-matrix-table">
-              <thead>
+        <div class="table-container matrix-table-wrap kepangawasan-matrix-wrap" style="margin: 0;">
+          <table class="matrix-table kepangawasan-matrix-table">
+            <thead>
+              <tr>
+                <th rowspan="2">No</th>
+                <th rowspan="2">Nama Guru</th>
+                <th rowspan="2">
+                  <div class="kepangawasan-matrix-header-toggle">
+                    <span>Semua</span>
+                    <label class="kepangawasan-toggle kepangawasan-toggle-inline kepangawasan-toggle-mini">
+                      <input
+                        type="checkbox"
+                        ${isMengawasiAllMatrixActive(flatSlots, guruRows) ? "checked" : ""}
+                        onchange="setKepangawasanMengawasiAll(this.checked)"
+                      >
+                      <span class="kepangawasan-toggle-track"></span>
+                    </label>
+                  </div>
+                </th>
+                ${slotGroups.map((group) => `<th colspan="${group.items.length}">${escapeHtml(group.dateLabel)}</th>`).join("")}
+              </tr>
+              <tr>
+                ${flatSlots.map((slot) => `<th>${escapeHtml(slot.jamLabel.replace("Jam ke - ", "Jam ke ").replace("Jam ke-", "Jam ke "))}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                guruRows.length
+                  ? guruRows
+                      .map(
+                        (guru, index) => `
                 <tr>
-                  <th rowspan="2">No</th>
-                  <th rowspan="2">Nama Guru</th>
-                  <th rowspan="2">
-                    <div class="kepangawasan-matrix-header-toggle">
-                      <span>Semua</span>
-                      <label class="kepangawasan-toggle kepangawasan-toggle-inline kepangawasan-toggle-mini">
-                        <input
-                          type="checkbox"
-                          ${isMengawasiAllMatrixActive(flatSlots, guruRows) ? "checked" : ""}
-                          onchange="setKepangawasanMengawasiAll(this.checked)"
-                        >
-                        <span class="kepangawasan-toggle-track"></span>
-                      </label>
-                    </div>
-                  </th>
-                  ${slotGroups.map((group) => `<th colspan="${group.items.length}">${escapeHtml(group.dateLabel)}</th>`).join("")}
+                  <td class="kepangawasan-matrix-code">${index + 1}</td>
+                  <td class="kepangawasan-matrix-name">
+                    <strong>${escapeHtml(guru.nama || "-")}</strong>
+                    <small>${escapeHtml(guru.kode_guru || "-")}${kepangawasanState.teacherCodes?.[guru.kode_guru] ? ` (Kode: ${escapeHtml(kepangawasanState.teacherCodes[guru.kode_guru])})` : ""}</small>
+                  </td>
+                  <td class="kepangawasan-matrix-cell kepangawasan-matrix-master">
+                    <label class="kepangawasan-toggle kepangawasan-toggle-inline kepangawasan-toggle-mini">
+                      <input
+                        type="checkbox"
+                        ${isMengawasiRowAllActive(guru.kode_guru, flatSlots) ? "checked" : ""}
+                        onchange="setKepangawasanMengawasiRow('${escapeJs(guru.kode_guru)}', this.checked)"
+                      >
+                      <span class="kepangawasan-toggle-track"></span>
+                    </label>
+                  </td>
+                  ${flatSlots
+                    .map((slot) => {
+                      const isActive = getMengawasiSlotValue(
+                        guru.kode_guru,
+                        slot.key,
+                      );
+                      return `
+                      <td class="kepangawasan-matrix-cell">
+                        <label class="kepangawasan-toggle kepangawasan-toggle-inline kepangawasan-toggle-mini">
+                          <input
+                            type="checkbox"
+                            ${isActive ? "checked" : ""}
+                            onchange="setKepangawasanMengawasiCell('${escapeJs(guru.kode_guru)}', '${escapeJs(slot.key)}', this.checked)"
+                          >
+                          <span class="kepangawasan-toggle-track"></span>
+                        </label>
+                      </td>
+                    `;
+                    })
+                    .join("")}
                 </tr>
+              `,
+                      )
+                      .join("")
+                  : `
                 <tr>
-                  ${flatSlots.map((slot) => `<th>${escapeHtml(slot.jamLabel.replace("Jam ke - ", "Jam ke ").replace("Jam ke-", "Jam ke "))}</th>`).join("")}
+                  <td colspan="${3 + flatSlots.length}" class="kepangawasan-empty-cell">Data guru belum tersedia.</td>
                 </tr>
-              </thead>
-              <tbody>
-                ${
-                  guruRows.length
-                    ? guruRows
-                        .map(
-                          (guru, index) => `
-                  <tr>
-                    <td class="kepangawasan-matrix-code">${index + 1}</td>
-                    <td class="kepangawasan-matrix-name">
-                      <strong>${escapeHtml(guru.nama || "-")}</strong>
-                      <small>${escapeHtml(guru.kode_guru || "-")}</small>
-                    </td>
-                    <td class="kepangawasan-matrix-cell kepangawasan-matrix-master">
-                      <label class="kepangawasan-toggle kepangawasan-toggle-inline kepangawasan-toggle-mini">
-                        <input
-                          type="checkbox"
-                          ${isMengawasiRowAllActive(guru.kode_guru, flatSlots) ? "checked" : ""}
-                          onchange="setKepangawasanMengawasiRow('${escapeJs(guru.kode_guru)}', this.checked)"
-                        >
-                        <span class="kepangawasan-toggle-track"></span>
-                      </label>
-                    </td>
-                    ${flatSlots
-                      .map((slot) => {
-                        const isActive = getMengawasiSlotValue(
-                          guru.kode_guru,
-                          slot.key,
-                        );
-                        return `
-                        <td class="kepangawasan-matrix-cell">
-                          <label class="kepangawasan-toggle kepangawasan-toggle-inline kepangawasan-toggle-mini">
-                            <input
-                              type="checkbox"
-                              ${isActive ? "checked" : ""}
-                              onchange="setKepangawasanMengawasiCell('${escapeJs(guru.kode_guru)}', '${escapeJs(slot.key)}', this.checked)"
-                            >
-                            <span class="kepangawasan-toggle-track"></span>
-                          </label>
-                        </td>
-                      `;
-                      })
-                      .join("")}
-                  </tr>
-                `,
-                        )
-                        .join("")
-                    : `
-                  <tr>
-                    <td colspan="${3 + flatSlots.length}" class="kepangawasan-empty-cell">Data guru belum tersedia.</td>
-                  </tr>
-                `
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+              `
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
     `;
   }
 
@@ -1719,7 +1746,13 @@
 
   function getPembagianRoomCellValue(slotKey, roomKey) {
     const values = kepangawasanState.pembagianAssignments?.[slotKey]?.[roomKey];
-    return Array.isArray(values) && values.length ? values.join(" / ") : "-";
+    if (!Array.isArray(values) || !values.length) return "-";
+    return values
+      .map((kode) => {
+        const cleanCode = String(kode || "").trim();
+        return kepangawasanState.teacherCodes?.[cleanCode] || cleanCode;
+      })
+      .join(" / ");
   }
 
   function getGuruNameByCode(kodeGuru = "") {
@@ -1741,16 +1774,17 @@
     const scheduleRows = getPembagianRuangScheduleRows();
     const roomKeys = getPembagianRoomKeys();
     const involvedGuruCodes = new Set();
-    Object.values(kepangawasanState.pembagianAssignments || {}).forEach(
-      (roomMap) => {
-        Object.values(roomMap || {}).forEach((values) => {
-          (Array.isArray(values) ? values : []).forEach((kode) => {
-            if (String(kode || "").trim())
-              involvedGuruCodes.add(String(kode || "").trim());
-          });
+    
+    scheduleRows.forEach((row) => {
+      const roomMap = kepangawasanState.pembagianAssignments?.[row.slotKey];
+      if (!roomMap || typeof roomMap !== "object") return;
+      Object.values(roomMap).forEach((values) => {
+        (Array.isArray(values) ? values : []).forEach((kode) => {
+          const clean = String(kode || "").trim();
+          if (clean) involvedGuruCodes.add(clean);
         });
-      },
-    );
+      });
+    });
 
     const sortedCodes = Array.from(involvedGuruCodes).sort((left, right) =>
       left.localeCompare(right, undefined, {
@@ -1794,7 +1828,7 @@
             ${index === 0 ? `<td rowspan="${rowspan}" class="kepangawasan-print-day-compact"><strong>${escapeHtml(String(group.hari || "-").toUpperCase())}</strong><span>${escapeHtml(formatKepangawasanShortDate(group.tanggal))}</span></td>` : ""}
             <td class="kepangawasan-print-center">${escapeHtml(row.timeLabel || getKepangawasanRowTimeLabel(row))}</td>
             <td class="kepangawasan-print-mapel">${escapeHtml(row.mapelShort || getKepangawasanMapelShortLabel(row.mapel))}</td>
-            ${roomKeys.map((roomKey) => `<td class="kepangawasan-print-center">${escapeHtml(getPembagianRoomCellValue(row.slotKey, roomKey))}</td>`).join("")}
+            ${roomKeys.map((roomKey) => `<td class="kepangawasan-print-center kepangawasan-print-room-code">${escapeHtml(getPembagianRoomCellValue(row.slotKey, roomKey))}</td>`).join("")}
           </tr>
         `;
           })
@@ -1815,6 +1849,74 @@
           settings.tanggalTtd || "-",
         )
       : formatTanggalLabel(settings.tanggalTtd);
+
+    const hasGeneratedCodes = kepangawasanState.teacherCodes && Object.keys(kepangawasanState.teacherCodes).length > 0;
+    const activeTeachers = (kepangawasanGuruOptions || [])
+      .map((t) => {
+        const originalCode = String(t.kode_guru || "").trim();
+        const mappedCode = hasGeneratedCodes
+          ? (kepangawasanState.teacherCodes?.[originalCode] || "")
+          : originalCode;
+        return {
+          originalCode,
+          mappedCode,
+          nama: t.nama,
+        };
+      })
+      .filter((t) => t.mappedCode && isGuruAssignedToAnyRoom(t.originalCode))
+      .sort((a, b) =>
+        a.mappedCode.localeCompare(b.mappedCode, undefined, {
+          sensitivity: "base",
+          numeric: true,
+        }),
+      );
+
+    let legendHtml = "";
+    if (activeTeachers.length) {
+      const numCols = 3;
+      const rowsPerCol = Math.ceil(activeTeachers.length / numCols);
+      let tbodyRows = "";
+      for (let r = 0; r < rowsPerCol; r++) {
+        let rowContent = "";
+        for (let c = 0; c < numCols; c++) {
+          const index = r + c * rowsPerCol;
+          if (index < activeTeachers.length) {
+            const t = activeTeachers[index];
+            rowContent += `
+              <td class="legend-no">${index + 1}</td>
+              <td class="legend-code">${escapeHtml(t.mappedCode)}</td>
+              <td class="legend-name">${escapeHtml(t.nama)}</td>
+            `;
+          } else {
+            rowContent += `
+              <td class="legend-no">-</td>
+              <td class="legend-code">-</td>
+              <td class="legend-name">-</td>
+            `;
+          }
+        }
+        tbodyRows += `<tr>${rowContent}</tr>`;
+      }
+      legendHtml = `
+        <table class="kepangawasan-legend-table">
+          <thead>
+            <tr>
+              ${Array(numCols)
+                .fill(`
+                  <th class="legend-th-no">NO</th>
+                  <th class="legend-th-code">KODE</th>
+                  <th class="legend-th-name">NAMA GURU</th>
+                `)
+                .join("")}
+            </tr>
+          </thead>
+          <tbody>
+            ${tbodyRows}
+          </tbody>
+        </table>
+      `;
+    }
+
     return `<!doctype html>
       <html lang="id">
         <head>
@@ -1825,7 +1927,7 @@
             body { margin: 0; font-family: "Times New Roman", Georgia, serif; color: #111827; background: #f3f4f6; }
             .kepangawasan-print-toolbar { position: sticky; top: 0; z-index: 10; display: flex; gap: 10px; justify-content: center; padding: 12px; background: rgba(255,255,255,0.96); border-bottom: 1px solid #d1d5db; }
             .kepangawasan-print-toolbar button { border: 0; border-radius: 999px; padding: 10px 18px; font: inherit; font-weight: 700; cursor: pointer; color: #fff; background: #0f766e; }
-            .kepangawasan-print-sheet { width: 297mm; height: 210mm; margin: 0 auto; padding: 8mm 9mm 10mm; background: #fff; box-shadow: 0 12px 36px rgba(15,23,42,0.12); overflow: hidden; }
+            .kepangawasan-print-sheet { width: 297mm; height: 210mm; margin: 20px auto; padding: 8mm 9mm 10mm; background: #fff; box-shadow: 0 12px 36px rgba(15,23,42,0.12); overflow: hidden; }
             .kepangawasan-print-header { display: grid; grid-template-columns: 64px 1fr 64px; gap: 10px; align-items: center; padding-bottom: 7px; border-bottom: 2px solid #111827; }
             .kepangawasan-print-logo { width: 54px; height: 54px; object-fit: contain; justify-self: center; }
             .kepangawasan-print-head-text { text-align: center; line-height: 1.25; }
@@ -1837,16 +1939,16 @@
             .kepangawasan-print-title h3, .kepangawasan-print-title p { margin: 0; }
             .kepangawasan-print-title h3 { font-size: 16px; font-weight: 800; }
             .kepangawasan-print-title p { font-size: 12px; font-weight: 700; }
-            .kepangawasan-print-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 10px; table-layout: fixed; }
-            .kepangawasan-print-table th, .kepangawasan-print-table td { border: 1px solid #6b7280; padding: 4px 3px; vertical-align: middle; line-height: 1.15; }
-            .kepangawasan-print-table th { text-align: center; font-weight: 800; background: #f3f4f6; height: 28px; }
-            .kepangawasan-print-table tbody td { height: 24px; }
+            .kepangawasan-print-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 12px; table-layout: fixed; }
+            .kepangawasan-print-table th, .kepangawasan-print-table td { border: 1px solid #6b7280; padding: 5px 4px; vertical-align: middle; line-height: 1.15; }
+            .kepangawasan-print-table th { text-align: center; font-weight: 800; background: #f3f4f6; height: 32px; }
+            .kepangawasan-print-table tbody td { height: 28px; }
             .kepangawasan-print-no { width: 24px; text-align: center; font-weight: 700; }
             .kepangawasan-print-center { text-align: center; }
             .kepangawasan-print-day-compact { width: 58px; text-align: center; line-height: 1.15; }
             .kepangawasan-print-day-compact strong, .kepangawasan-print-day-compact span { display: block; }
-            .kepangawasan-print-day-compact strong { font-size: 10px; }
-            .kepangawasan-print-day-compact span { margin-top: 3px; font-size: 10px; font-weight: 700; }
+            .kepangawasan-print-day-compact strong { font-size: 11px; }
+            .kepangawasan-print-day-compact span { margin-top: 3px; font-size: 11px; font-weight: 700; }
             .kepangawasan-print-mapel { width: 50px; text-align: center; font-weight: 700; }
             .kepangawasan-print-empty { padding: 18px; border: 1px dashed #9ca3af; text-align: center; font-size: 14px; color: #4b5563; }
             .kepangawasan-print-signature { width: 220px; margin-left: auto; margin-top: 8px; text-align: left; line-height: 1.2; }
@@ -1855,9 +1957,27 @@
             .kepangawasan-print-signature-space img { max-width: 125px; max-height: 48px; object-fit: contain; }
             .kepangawasan-print-signature-placeholder { height: 48px; }
             .kepangawasan-print-signature strong { margin-top: 3px; font-size: 12px; text-decoration: underline; }
-            .kepangawasan-print-signature small, .kepangawasan-print-signature span { font-size: 10px; }
+            .kepangawasan-print-signature small, .kepangawasan-print-signature span { font-size: 11px; }
+            .kepangawasan-print-room-code { font-size: 14px; font-weight: bold; }
+
+            .kepangawasan-legend-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; table-layout: fixed; }
+            .kepangawasan-legend-table th, .kepangawasan-legend-table td { border: 1px solid #6b7280; padding: 4px 5px; vertical-align: middle; line-height: 1.1; }
+            .kepangawasan-legend-table th { text-align: center; font-weight: 800; background: #f3f4f6; height: 26px; }
+            .kepangawasan-legend-table tbody td { height: 22px; }
+            .legend-th-no { width: 4%; }
+            .legend-th-code { width: 8%; }
+            .legend-th-name { width: 21.3%; }
+            .legend-no { text-align: center; font-weight: 700; }
+            .legend-code { text-align: center; font-weight: bold; background: #f9fafb; font-size: 13px; }
+            .legend-name { text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
             @page { size: A4 landscape; margin: 0; }
-            @media print { body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; } .kepangawasan-print-toolbar { display: none; } .kepangawasan-print-sheet { margin: 0; box-shadow: none; } }
+            @media print {
+              body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+              .kepangawasan-print-toolbar { display: none; }
+              .kepangawasan-print-sheet { margin: 0; box-shadow: none; page-break-after: always; height: 210mm; }
+              .kepangawasan-print-sheet:last-child { page-break-after: avoid; }
+            }
           </style>
         </head>
         <body>
@@ -1906,8 +2026,36 @@
               <small>NIP. ${escapeHtml(settings.kepalaNip)}</small>
             </div>
           </section>
+
+          <section class="kepangawasan-print-sheet">
+            <header class="kepangawasan-print-header">
+              <img class="kepangawasan-print-logo" src="${escapeHtml(getPrintableAssetUrl("img/logo_pemda.png"))}" alt="Logo Pemda">
+              <div class="kepangawasan-print-head-text">
+                <h1>PEMERINTAH KABUPATEN JEMBER</h1>
+                <h2>SMP NEGERI 1 UMBULSARI</h2>
+                <p>Jl. PB. Sudirman 12, Gumuksari - Umbulsari - Jember, Telp. (0336) 321441</p>
+                <p>Email: smpn1umbulsari@yahoo.com</p>
+              </div>
+              <img class="kepangawasan-print-logo" src="${escapeHtml(getPrintableAssetUrl("img/logo_sekolah.png"))}" alt="Logo Sekolah">
+            </header>
+            <div class="kepangawasan-print-title">
+              <h3>DAFTAR KODE GURU PENGAWAS</h3>
+              <p>${escapeHtml(String(settings.examType || "").toUpperCase())}</p>
+              <p>TAHUN PELAJARAN ${escapeHtml(settings.tahun)}</p>
+            </div>
+            ${legendHtml || '<div class="kepangawasan-print-empty">Daftar kode guru belum tersedia.</div>'}
+            <div class="kepangawasan-print-signature">
+              <span>Umbulsari, ${escapeHtml(printDate)}</span>
+              <span>Kepala SMPN 1 Umbulsari</span>
+              <div class="kepangawasan-print-signature-space">
+                ${settings.useKepalaTtd && settings.kepalaTtd ? `<img src="${escapeHtml(settings.kepalaTtd)}" alt="TTD Kepala Sekolah">` : `<div class="kepangawasan-print-signature-placeholder"></div>`}
+              </div>
+              <strong>${escapeHtml(settings.kepalaNama)}</strong>
+              <small>NIP. ${escapeHtml(settings.kepalaNip)}</small>
+            </div>
+          </section>
         </body>
-      </html>`;
+      </html>`;;
   }
 
   function renderPembagianRuangTab() {
@@ -1916,99 +2064,125 @@
       kepangawasanState.pembagianRuangCount,
     );
     const roomKeys = getPembagianRoomKeys();
+    const scheduleCount = getKepangawasanFilledRows().length;
+
     return `
-      <div class="kepangawasan-grid kepangawasan-grid-single">
-        <section class="card kepangawasan-panel">
-          <div class="asesmen-module-header kepangawasan-page-head">
-            <div>
-              <span class="dashboard-eyebrow">Asesmen</span>
-              <h2>Pembagian Ruang</h2>
-              <p>Atur jumlah ruang, jumlah pengawas, dan urutan penempatan, lalu generate sebaran pengawas per jadwal ujian.</p>
-            </div>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kepangawasan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <div class="toolbar-left">
+            <button type="button" class="btn-secondary" onclick="applyKepangawasanPembagianSettings()">Set</button>
+            <button type="button" class="btn-primary" onclick="generateKepangawasanPembagianRuang()">Generate</button>
+            <button type="button" class="btn-secondary" onclick="exportKepangawasanPembagianRuangPdf()">Cetak PDF</button>
+            <button type="button" class="btn-secondary" onclick="loadRealtimeKepangawasan()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="kepangawasan-field">
+            <span>Jenis ujian</span>
+            <select onchange="setKepangawasanExamType(this.value)">
+              ${JENIS_UJIAN_OPTIONS.map((option) => `<option value="${escapeHtml(option)}" ${option === String(kepangawasanState.examType || "").trim() ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="kepangawasan-field">
+            <span>Mulai</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.startDate)}" onchange="setKepangawasanDateRange('startDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Akhir</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.endDate)}" onchange="setKepangawasanDateRange('endDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Cetak</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.printDate)}" onchange="setKepangawasanPrintDate(this.value)">
+          </label>
+
+          <label class="kepangawasan-field">
+            <span>Jumlah ruang</span>
+            <input type="number" min="1" max="30" value="${escapeHtml(roomCount)}" onchange="setKepangawasanPembagianField('pembagianRuangCount', this.value)" style="width: 100px;">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Jumlah pengawas</span>
+            <select onchange="setKepangawasanPembagianField('pembagianPengawasCount', this.value)">
+              ${PENGAWAS_COUNT_OPTIONS.map((value) => `<option value="${value}" ${value === normalizePembagianPengawasCount(kepangawasanState.pembagianPengawasCount) ? "selected" : ""}>${value}</option>`).join("")}
+            </select>
+          </label>
+          <label class="kepangawasan-field">
+            <span>Urutan</span>
+            <select onchange="setKepangawasanPembagianField('pembagianUrutan', this.value)">
+              ${PEMBAGIAN_URUTAN_OPTIONS.map((item) => `<option value="${escapeHtml(item.value)}" ${item.value === normalizePembagianUrutan(kepangawasanState.pembagianUrutan) ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+            </select>
+          </label>
+          <div class="kepangawasan-field kepangawasan-field-toggle">
+            <span>TTD kepala sekolah</span>
+            <label class="kepangawasan-toggle">
+              <input type="checkbox" ${kepangawasanState.useKepalaTtd ? "checked" : ""} onchange="setKepangawasanUseKepalaTtd(this.checked)">
+              <span class="kepangawasan-toggle-track"></span>
+              <span class="kepangawasan-toggle-label">${kepangawasanState.useKepalaTtd ? "Aktif" : "Nonaktif"}</span>
+            </label>
           </div>
 
-          <div class="kepangawasan-settings-panel">
-            <label class="kepangawasan-field">
-              <span>Jumlah ruang</span>
-              <input type="number" min="1" max="30" value="${escapeHtml(roomCount)}" onchange="setKepangawasanPembagianField('pembagianRuangCount', this.value)">
-            </label>
-            <label class="kepangawasan-field">
-              <span>Jumlah pengawas</span>
-              <select onchange="setKepangawasanPembagianField('pembagianPengawasCount', this.value)">
-                ${PENGAWAS_COUNT_OPTIONS.map((value) => `<option value="${value}" ${value === normalizePembagianPengawasCount(kepangawasanState.pembagianPengawasCount) ? "selected" : ""}>${value}</option>`).join("")}
-              </select>
-            </label>
-            <label class="kepangawasan-field">
-              <span>Urutan</span>
-              <select onchange="setKepangawasanPembagianField('pembagianUrutan', this.value)">
-                ${PEMBAGIAN_URUTAN_OPTIONS.map((item) => `<option value="${escapeHtml(item.value)}" ${item.value === normalizePembagianUrutan(kepangawasanState.pembagianUrutan) ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-              </select>
-            </label>
-            <div class="kepangawasan-field kepangawasan-field-toggle">
-              <span>TTD kepala sekolah</span>
-              <label class="kepangawasan-toggle">
-                <input type="checkbox" ${kepangawasanState.useKepalaTtd ? "checked" : ""} onchange="setKepangawasanUseKepalaTtd(this.checked)">
-                <span class="kepangawasan-toggle-track"></span>
-                <span class="kepangawasan-toggle-label">${kepangawasanState.useKepalaTtd ? "Aktif" : "Nonaktif"}</span>
-              </label>
-            </div>
-            <div class="kepangawasan-actions kepangawasan-settings-actions">
-              <button type="button" class="btn-secondary" onclick="applyKepangawasanPembagianSettings()">Set</button>
-              <button type="button" class="btn-primary" onclick="generateKepangawasanPembagianRuang()">Generate</button>
-              <button type="button" class="btn-secondary" onclick="exportKepangawasanPembagianRuangPdf()">Cetak PDF</button>
-            </div>
+          <div class="toolbar-row--info-inline" aria-label="Info data kepengawasan">
+            <strong>${escapeHtml(getKepangawasanActiveTabLabel())}</strong>
+            <span>${normalizePembagianRuangCount(kepangawasanState.pembagianRuangCount)} ruang</span>
+            <span>${normalizePembagianPengawasCount(kepangawasanState.pembagianPengawasCount)} pengawas</span>
+            <span>${scheduleCount || 0} jadwal</span>
           </div>
+        </div>
+      </section>
 
-          <div class="kepangawasan-inline-notes">
-            <strong>Sebaran Jadwal</strong>
-            <span>Kolom Jadwal Ujian diambil dari tab Jadwal Ujian.</span>
-            <span>Kolom ruang mengikuti jumlah ruang pada pengaturan di atas.</span>
-            <span>Generate hanya menempatkan guru yang tersedia pada matriks Jadwal Mengawasi.</span>
-          </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kepangawasan-content" style="padding: var(--gs-space-5);">
+        <div class="kepangawasan-inline-notes" style="margin-bottom: var(--gs-space-4);">
+          <strong>Sebaran Jadwal</strong>
+          <span>Kolom Jadwal Ujian diambil dari tab Jadwal Ujian.</span>
+          <span>Kolom ruang mengikuti jumlah ruang pada pengaturan di atas.</span>
+          <span>Generate hanya menempatkan guru yang tersedia pada matriks Jadwal Mengawasi.</span>
+        </div>
 
-          <div class="table-container kepangawasan-distribution-wrap">
-            <table class="mapel-table kepangawasan-distribution-table">
-              <thead>
-                <tr>
-                  <th rowspan="2" class="kepangawasan-distribution-main-head">Jadwal Ujian</th>
-                  <th colspan="${roomKeys.length}" class="kepangawasan-distribution-main-head">Ruang</th>
-                </tr>
-                <tr>
-                  ${roomKeys.map((roomKey, index) => `<th class="kepangawasan-distribution-room-head">${escapeHtml(String(index + 1))}</th>`).join("")}
-                </tr>
-              </thead>
-              <tbody>
-                ${
-                  groupedRows.length
-                    ? groupedRows
-                        .map((group) => {
-                          const rowspan = group.rows.length * 2;
-                          return group.rows
-                            .map(
-                              (row, index) => `
-                    <tr>
-                      ${index === 0 ? `<td rowspan="${rowspan}" class="kepangawasan-distribution-schedule"><strong>${escapeHtml(String(group.hari || "-").trim())}</strong><small>${escapeHtml(formatKepangawasanShortDate(group.tanggal))}</small></td>` : ""}
-                      ${roomKeys.map((roomKey) => `<td><span class="kepangawasan-distribution-cell-main">${escapeHtml(getPembagianRoomCellValue(row.slotKey, roomKey))}</span>${index === 0 ? "" : ""}</td>`).join("")}
-                    </tr>
-                    <tr class="kepangawasan-distribution-meta-row">
-                      <td colspan="${roomKeys.length}" class="kepangawasan-distribution-meta">${escapeHtml(`${row.timeLabel || getKepangawasanRowTimeLabel(row)} | ${row.mapelShort || getKepangawasanMapelShortLabel(row.mapel)}`)}</td>
-                    </tr>
-                  `,
-                            )
-                            .join("");
-                        })
-                        .join("")
-                    : `
+        <div class="table-container kepangawasan-distribution-wrap" style="margin: 0;">
+          <table class="mapel-table kepangawasan-distribution-table">
+            <thead>
+              <tr>
+                <th rowspan="2" class="kepangawasan-distribution-main-head">Jadwal Ujian</th>
+                <th colspan="${roomKeys.length}" class="kepangawasan-distribution-main-head">Ruang</th>
+              </tr>
+              <tr>
+                ${roomKeys.map((roomKey, index) => `<th class="kepangawasan-distribution-room-head">${escapeHtml(String(index + 1))}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${
+                groupedRows.length
+                  ? groupedRows
+                      .map((group) => {
+                        const rowspan = group.rows.length * 2;
+                        return group.rows
+                          .map(
+                            (row, index) => `
                   <tr>
-                    <td colspan="${1 + roomKeys.length}" class="kepangawasan-empty-cell">Jadwal ujian belum tersedia. Isi tab Jadwal Ujian terlebih dahulu.</td>
+                    ${index === 0 ? `<td rowspan="${rowspan}" class="kepangawasan-distribution-schedule"><strong>${escapeHtml(String(group.hari || "-").trim())}</strong><small>${escapeHtml(formatKepangawasanShortDate(group.tanggal))}</small></td>` : ""}
+                    ${roomKeys.map((roomKey) => `<td><span class="kepangawasan-distribution-cell-main">${escapeHtml(getPembagianRoomCellValue(row.slotKey, roomKey))}</span>${index === 0 ? "" : ""}</td>`).join("")}
                   </tr>
-                `
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
+                  <tr class="kepangawasan-distribution-meta-row">
+                    <td colspan="${roomKeys.length}" class="kepangawasan-distribution-meta">${escapeHtml(`${row.timeLabel || getKepangawasanRowTimeLabel(row)} | ${row.mapelShort || getKepangawasanMapelShortLabel(row.mapel)}`)}</td>
+                  </tr>
+                `,
+                          )
+                          .join("");
+                      })
+                      .join("")
+                  : `
+                <tr>
+                  <td colspan="${1 + roomKeys.length}" class="kepangawasan-empty-cell">Jadwal ujian belum tersedia. Isi tab Jadwal Ujian terlebih dahulu.</td>
+                </tr>
+              `
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
     `;
   }
 
@@ -2104,58 +2278,84 @@
     const records = getKartuPengawasRecords();
     const filteredRecords = getFilteredKartuPengawasRecords();
     const canPublish = canPublishKartuPengawasToGuru();
+    const scheduleCount = getKepangawasanFilledRows().length;
+
     return `
-      <div class="kepangawasan-grid kepangawasan-grid-single">
-        <section class="card kepangawasan-panel">
-          <div class="asesmen-module-header kepangawasan-page-head">
-            <div>
-              <span class="dashboard-eyebrow">Asesmen</span>
-              <h2>Kartu Pengawas</h2>
-              <p>Kartu pengawas menampilkan sebaran ruang pengawasan per guru berdasarkan jadwal ujian dan hasil pembagian ruang.</p>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar kepangawasan-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <div class="toolbar-left">
+            <button type="button" class="btn-secondary" onclick="printKartuPengawasSelected()">Cetak Guru</button>
+            <button type="button" class="btn-primary" onclick="printKartuPengawasAll()">Cetak Semua</button>
+            <button type="button" class="btn-secondary" onclick="loadRealtimeKepangawasan()">Refresh</button>
+          </div>
+        </div>
+
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="kepangawasan-field">
+            <span>Jenis ujian</span>
+            <select onchange="setKepangawasanExamType(this.value)">
+              ${JENIS_UJIAN_OPTIONS.map((option) => `<option value="${escapeHtml(option)}" ${option === String(kepangawasanState.examType || "").trim() ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+            </select>
+          </label>
+          <label class="kepangawasan-field">
+            <span>Mulai</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.startDate)}" onchange="setKepangawasanDateRange('startDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Akhir</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.endDate)}" onchange="setKepangawasanDateRange('endDate', this.value)">
+          </label>
+          <label class="kepangawasan-field">
+            <span>Cetak</span>
+            <input type="date" value="${escapeHtml(kepangawasanState.printDate)}" onchange="setKepangawasanPrintDate(this.value)">
+          </label>
+
+          <label class="kepangawasan-field">
+            <span>Pilih guru</span>
+            <select id="kepangawasanCardGuruSelect" onchange="renderKepangawasanState()">
+              <option value="">Semua guru</option>
+              ${records.map((record) => `<option value="${escapeHtml(record.kode_guru)}" ${record.kode_guru === getSelectedKartuPengawasCode() ? "selected" : ""}>${escapeHtml(`${record.nama} (${record.kode_guru})`)}</option>`).join("")}
+            </select>
+          </label>
+          ${
+            canPublish
+              ? `
+            <div class="kepangawasan-field kepangawasan-field-toggle">
+              <span>Tampil di dashboard guru</span>
+              <label class="kepangawasan-toggle">
+                <input type="checkbox" ${kepangawasanState.publishKartuDashboard ? "checked" : ""} onchange="setKartuPengawasDashboardVisibility(this.checked)">
+                <span class="kepangawasan-toggle-track"></span>
+                <span class="kepangawasan-toggle-label">${kepangawasanState.publishKartuDashboard ? "Aktif" : "Nonaktif"}</span>
+              </label>
             </div>
-          </div>
+          `
+              : ""
+          }
 
-          <div class="kepangawasan-settings-panel kepangawasan-card-toolbar">
-            <label class="kepangawasan-field">
-              <span>Pilih guru</span>
-              <select id="kepangawasanCardGuruSelect" onchange="renderKepangawasanState()">
-                <option value="">Semua guru</option>
-                ${records.map((record) => `<option value="${escapeHtml(record.kode_guru)}" ${record.kode_guru === getSelectedKartuPengawasCode() ? "selected" : ""}>${escapeHtml(`${record.nama} (${record.kode_guru})`)}</option>`).join("")}
-              </select>
-            </label>
-            ${
-              canPublish
-                ? `
-              <div class="kepangawasan-field kepangawasan-field-toggle">
-                <span>Tampil di dashboard guru</span>
-                <label class="kepangawasan-toggle">
-                  <input type="checkbox" ${kepangawasanState.publishKartuDashboard ? "checked" : ""} onchange="setKartuPengawasDashboardVisibility(this.checked)">
-                  <span class="kepangawasan-toggle-track"></span>
-                  <span class="kepangawasan-toggle-label">${kepangawasanState.publishKartuDashboard ? "Aktif" : "Nonaktif"}</span>
-                </label>
-              </div>
-            `
-                : ""
-            }
-            <div class="kepangawasan-actions kepangawasan-settings-actions">
-              <button type="button" class="btn-secondary" onclick="printKartuPengawasSelected()">Cetak Guru</button>
-              <button type="button" class="btn-primary" onclick="printKartuPengawasAll()">Cetak Semua</button>
-            </div>
+          <div class="toolbar-row--info-inline" aria-label="Info data kepengawasan">
+            <strong>${escapeHtml(getKepangawasanActiveTabLabel())}</strong>
+            <span>${getKartuPengawasRecords().length} kartu</span>
+            <span>${kepangawasanState.publishKartuDashboard ? "Dashboard aktif" : "Dashboard nonaktif"}</span>
+            <span>${scheduleCount || 0} jadwal</span>
           </div>
+        </div>
+      </section>
 
-          <div class="kepangawasan-inline-notes">
-            <strong>Catatan Kartu</strong>
-            <span>Jadwal ujian diambil dari tab Jadwal Ujian.</span>
-            <span>Ruang pengawasan diambil dari tab Pembagian Ruang.</span>
-            <span>Hasil cetak kartu dibuat ringkas tanpa kop dan tanpa TTD kepala sekolah.</span>
-            ${canPublish ? `<span>Jika toggle aktif, kartu pengawas akan tampil di dashboard guru sesuai kode guru masing-masing. Jika nonaktif, kartu akan disembunyikan.</span>` : ""}
-          </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content kepangawasan-content" style="padding: var(--gs-space-5);">
+        <div class="kepangawasan-inline-notes" style="margin-bottom: var(--gs-space-4);">
+          <strong>Catatan Kartu</strong>
+          <span>Jadwal ujian diambil dari tab Jadwal Ujian.</span>
+          <span>Ruang pengawasan diambil dari tab Pembagian Ruang.</span>
+          <span>Hasil cetak kartu dibuat ringkas tanpa kop dan tanpa TTD kepala sekolah.</span>
+          ${canPublish ? `<span>Jika toggle aktif, kartu pengawas akan tampil di dashboard guru sesuai kode guru masing-masing. Jika nonaktif, kartu akan disembunyikan.</span>` : ""}
+        </div>
 
-          <div class="kepangawasan-card-grid">
-            ${renderKartuPengawasCards(filteredRecords)}
-          </div>
-        </section>
-      </div>
+        <div class="kepangawasan-card-grid">
+          ${renderKartuPengawasCards(filteredRecords)}
+        </div>
+      </section>
     `;
   }
 
@@ -2250,15 +2450,33 @@
     return renderJadwalUjianTab();
   }
 
+  function getKepangawasanActiveTabLabel() {
+    return (
+      TAB_OPTIONS.find((item) => item.key === kepangawasanState.activeTab)
+        ?.label || "Jadwal Ujian"
+    );
+  }
+
   function renderKepangawasanPage() {
     return `
-      <div class="kepangawasan-page">
-        <div class="kepangawasan-tabbar" role="tablist" aria-label="Menu Kepangawasan">
+      <div class="app-page app-page--module kepangawasan-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header kepangawasan-module-header">
+          <div class="app-page-title">
+            <span class="dashboard-eyebrow">Asesmen</span>
+            <h2>Kepengawasan</h2>
+            <p>Kelola jadwal ujian, ketersediaan pengawas, pembagian ruang, dan kartu pengawas.</p>
+          </div>
+        </header>
+
+        <!-- UI-8: Panel 2 - Tabs -->
+        <nav class="app-panel app-panel--tabs module-tabs kepangawasan-tabbar" role="tablist" aria-label="Menu Kepengawasan">
           ${TAB_OPTIONS.map(
             (item) => `
             <button
               type="button"
-              class="kepangawasan-tab ${item.key === kepangawasanState.activeTab ? "active" : ""}"
+              class="module-tab kepangawasan-tab ${item.key === kepangawasanState.activeTab ? "active is-active" : ""}"
+              role="tab"
               aria-selected="${item.key === kepangawasanState.activeTab ? "true" : "false"}"
               onclick="setKepangawasanTab('${escapeHtml(item.key)}')"
             >
@@ -2266,7 +2484,9 @@
             </button>
           `,
           ).join("")}
-        </div>
+        </nav>
+
+        <!-- Tab contents will supply Panel 3 (Toolbar) and Panel 4 (Content) -->
         ${renderKepangawasanTabContent()}
       </div>
     `;
@@ -2427,6 +2647,61 @@
     renderKepangawasanState();
   }
 
+  function isGuruAssignedToAnyRoom(originalCode) {
+    const scheduleRows = getPembagianRuangScheduleRows();
+    const assignments = kepangawasanState.pembagianAssignments;
+    if (!assignments) return false;
+    return scheduleRows.some((row) => {
+      const roomMap = assignments[row.slotKey];
+      if (!roomMap || typeof roomMap !== "object") return false;
+      return Object.values(roomMap).some((assignedCodes) => {
+        return Array.isArray(assignedCodes) && assignedCodes.includes(originalCode);
+      });
+    });
+  }
+
+  function regenerateTeacherCodesFromAssignments() {
+    const activeTeacherCodes = [];
+    kepangawasanGuruOptions.forEach((guru) => {
+      const originalCode = String(guru.kode_guru || "").trim();
+      if (!originalCode) return;
+      if (isGuruAssignedToAnyRoom(originalCode)) {
+        activeTeacherCodes.push(originalCode);
+      }
+    });
+
+    const newMapping = {};
+    activeTeacherCodes.forEach((originalCode, idx) => {
+      newMapping[originalCode] = String(idx + 1);
+    });
+
+    kepangawasanState.teacherCodes = newMapping;
+  }
+
+  async function generateKepangawasanTeacherCodes() {
+    const hasAssignments = kepangawasanState.pembagianAssignments && 
+      Object.keys(kepangawasanState.pembagianAssignments).length > 0;
+      
+    if (!hasAssignments) {
+      showKepangawasanToast("Sebaran pembagian ruang belum di-generate. Silakan lakukan 'Generate' pada tab Pembagian Ruang terlebih dahulu.", "warning");
+      return;
+    }
+
+    regenerateTeacherCodesFromAssignments();
+    
+    saveKepangawasanState();
+    const saved = await saveKepangawasanToDatabase();
+    renderKepangawasanState();
+    
+    const count = Object.keys(kepangawasanState.teacherCodes).length;
+    showKepangawasanToast(
+      saved
+        ? `Berhasil generate ${count} kode guru.`
+        : `Berhasil generate ${count} kode guru (offline).`,
+      "success"
+    );
+  }
+
   function setKepangawasanPembagianField(field, value) {
     if (field === "pembagianRuangCount") {
       kepangawasanState.pembagianRuangCount =
@@ -2454,6 +2729,7 @@
       kepangawasanState.pembagianUrutan,
     );
     kepangawasanState.pembagianAssignments = {};
+    kepangawasanState.teacherCodes = {};
     saveKepangawasanState();
     const saved = await saveKepangawasanToDatabase();
     renderKepangawasanState();
@@ -2472,6 +2748,7 @@
     }
     kepangawasanState.pembagianAssignments =
       generatePembagianRuangAssignments();
+    regenerateTeacherCodesFromAssignments();
     saveKepangawasanState();
     const saved = await saveKepangawasanToDatabase();
     renderKepangawasanState();
@@ -2684,6 +2961,7 @@
   global.setKepangawasanMengawasiRow = setKepangawasanMengawasiRow;
   global.setKepangawasanMengawasiAll = setKepangawasanMengawasiAll;
   global.resetKepangawasanMengawasiMatrix = resetKepangawasanMengawasiMatrix;
+  global.generateKepangawasanTeacherCodes = generateKepangawasanTeacherCodes;
   global.setKepangawasanPembagianField = setKepangawasanPembagianField;
   global.applyKepangawasanPembagianSettings =
     applyKepangawasanPembagianSettings;

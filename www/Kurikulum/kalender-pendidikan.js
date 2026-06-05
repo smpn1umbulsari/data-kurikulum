@@ -8,7 +8,7 @@
     sekolah: "SMP NEGERI 1 UMBULSARI",
     alamat: "Jl. PB. Sudirman 13, Umbulsari, Jember",
     kontak: "Telp. (0336) 231441",
-    email: "smpn1umbulsari@yahoo.com"
+    email: "smpn1umbulsari@yahoo.com",
   };
   const WEEKDAY_LABELS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
   const MONTH_SEQUENCE = [
@@ -23,41 +23,311 @@
     { month: 3, label: "Maret" },
     { month: 4, label: "April" },
     { month: 5, label: "Mei" },
-    { month: 6, label: "Juni" }
+    { month: 6, label: "Juni" },
   ];
   const FIXED_EVENTS = [
-    { id: "new-year", name: "Tahun Baru Masehi", month: 1, day: 1, category: "Libur Nasional Tetap", holiday: true, active: true, note: "Tanggal tetap setiap tahun." },
-    { id: "labour-day", name: "Hari Buruh Internasional", month: 5, day: 1, category: "Libur Nasional Tetap", holiday: true, active: true, note: "Tanggal tetap setiap tahun." },
-    { id: "hardiknas", name: "Hari Pendidikan Nasional", month: 5, day: 2, category: "Hari Penting Pendidikan", holiday: false, active: true, note: "Peringatan pendidikan nasional, bukan hari libur." },
-    { id: "national-awakening", name: "Hari Kebangkitan Nasional", month: 5, day: 20, category: "Hari Penting Pendidikan", holiday: false, active: false, note: "Sering dipakai untuk kegiatan sekolah atau upacara." },
-    { id: "pancasila", name: "Hari Lahir Pancasila", month: 6, day: 1, category: "Libur Nasional Tetap", holiday: true, active: true, note: "Tanggal tetap setiap tahun." },
-    { id: "child-day", name: "Hari Anak Nasional", month: 7, day: 23, category: "Hari Penting Pendidikan", holiday: false, active: false, note: "Cocok untuk agenda sekolah/OSIS." },
-    { id: "scout-day", name: "Hari Pramuka", month: 8, day: 14, category: "Hari Penting Pendidikan", holiday: false, active: false, note: "Cocok untuk agenda kepramukaan." },
-    { id: "independence-day", name: "Hari Kemerdekaan Republik Indonesia", month: 8, day: 17, category: "Libur Nasional Tetap", holiday: true, active: true, note: "Tanggal tetap setiap tahun." },
-    { id: "literacy-day", name: "Hari Aksara Internasional", month: 9, day: 8, category: "Hari Penting Pendidikan", holiday: false, active: false, note: "Relevan untuk literasi dan perpustakaan." },
-    { id: "youth-pledge", name: "Hari Sumpah Pemuda", month: 10, day: 28, category: "Hari Penting Pendidikan", holiday: false, active: false, note: "Sering dipakai untuk kegiatan sekolah." },
-    { id: "teacher-day", name: "Hari Guru Nasional", month: 11, day: 25, category: "Hari Penting Pendidikan", holiday: false, active: true, note: "Peringatan guru nasional, bukan hari libur." },
-    { id: "christmas", name: "Hari Raya Natal", month: 12, day: 25, category: "Libur Nasional Tetap", holiday: true, active: true, note: "Tanggal tetap setiap tahun." }
+    {
+      id: "new-year",
+      name: "Tahun Baru Masehi",
+      month: 1,
+      day: 1,
+      category: "Libur Nasional Tetap",
+      holiday: true,
+      active: true,
+      note: "Tanggal tetap setiap tahun.",
+    },
+    {
+      id: "labour-day",
+      name: "Hari Buruh Internasional",
+      month: 5,
+      day: 1,
+      category: "Libur Nasional Tetap",
+      holiday: true,
+      active: true,
+      note: "Tanggal tetap setiap tahun.",
+    },
+    {
+      id: "hardiknas",
+      name: "Hari Pendidikan Nasional",
+      month: 5,
+      day: 2,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: true,
+      note: "Peringatan pendidikan nasional, bukan hari libur.",
+    },
+    {
+      id: "national-awakening",
+      name: "Hari Kebangkitan Nasional",
+      month: 5,
+      day: 20,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: false,
+      note: "Sering dipakai untuk kegiatan sekolah atau upacara.",
+    },
+    {
+      id: "pancasila",
+      name: "Hari Lahir Pancasila",
+      month: 6,
+      day: 1,
+      category: "Libur Nasional Tetap",
+      holiday: true,
+      active: true,
+      note: "Tanggal tetap setiap tahun.",
+    },
+    {
+      id: "child-day",
+      name: "Hari Anak Nasional",
+      month: 7,
+      day: 23,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: false,
+      note: "Cocok untuk agenda sekolah/OSIS.",
+    },
+    {
+      id: "scout-day",
+      name: "Hari Pramuka",
+      month: 8,
+      day: 14,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: false,
+      note: "Cocok untuk agenda kepramukaan.",
+    },
+    {
+      id: "independence-day",
+      name: "Hari Kemerdekaan Republik Indonesia",
+      month: 8,
+      day: 17,
+      category: "Libur Nasional Tetap",
+      holiday: true,
+      active: true,
+      note: "Tanggal tetap setiap tahun.",
+    },
+    {
+      id: "literacy-day",
+      name: "Hari Aksara Internasional",
+      month: 9,
+      day: 8,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: false,
+      note: "Relevan untuk literasi dan perpustakaan.",
+    },
+    {
+      id: "youth-pledge",
+      name: "Hari Sumpah Pemuda",
+      month: 10,
+      day: 28,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: false,
+      note: "Sering dipakai untuk kegiatan sekolah.",
+    },
+    {
+      id: "teacher-day",
+      name: "Hari Guru Nasional",
+      month: 11,
+      day: 25,
+      category: "Hari Penting Pendidikan",
+      holiday: false,
+      active: true,
+      note: "Peringatan guru nasional, bukan hari libur.",
+    },
+    {
+      id: "christmas",
+      name: "Hari Raya Natal",
+      month: 12,
+      day: 25,
+      category: "Libur Nasional Tetap",
+      holiday: true,
+      active: true,
+      note: "Tanggal tetap setiap tahun.",
+    },
   ];
   const DEFAULT_SCHOOL_EVENTS = [
-    { id: "mpls", name: "MPLS / Masa Pengenalan Lingkungan Sekolah", panel: "kegiatan-sekolah", category: "Kegiatan Sekolah", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal sesuai jadwal sekolah." },
-    { id: "libur-jeda-ganjil", name: "Libur Jeda Tengah Semester Ganjil", panel: "libur-sekolah", category: "Libur Sekolah", startDate: "", endDate: "", active: false, note: "Isi jika sekolah menetapkan libur jeda." },
-    { id: "pts-ganjil", name: "Penilaian Tengah Semester Ganjil", panel: "kegiatan-sekolah", category: "Ujian", startDate: "", endDate: "", active: false, note: "Pilih tanggal awal dan akhir pelaksanaan." },
-    { id: "pas-ganjil", name: "Penilaian Akhir Semester Ganjil", panel: "kegiatan-sekolah", category: "Ujian", startDate: "", endDate: "", active: false, note: "Pilih tanggal awal dan akhir pelaksanaan." },
-    { id: "rapor-ganjil", name: "Pembagian Rapor Semester Ganjil", panel: "kegiatan-sekolah", category: "Kegiatan Sekolah", startDate: "", endDate: "", active: false, note: "Gunakan rentang jika ada beberapa hari layanan." },
-    { id: "libur-semester-ganjil", name: "Libur Semester Ganjil", panel: "libur-sekolah", category: "Libur Sekolah", startDate: "", endDate: "", active: false, note: "Pilih awal dan akhir libur semester." },
-    { id: "pts-genap", name: "Penilaian Tengah Semester Genap", panel: "kegiatan-sekolah", category: "Ujian", startDate: "", endDate: "", active: false, note: "Pilih tanggal awal dan akhir pelaksanaan." },
-    { id: "pat", name: "Penilaian Akhir Tahun / Sumatif Akhir", panel: "kegiatan-sekolah", category: "Ujian", startDate: "", endDate: "", active: false, note: "Pilih tanggal awal dan akhir pelaksanaan." },
-    { id: "asesmen-sekolah", name: "Asesmen Sekolah / Ujian Akhir", panel: "kegiatan-sekolah", category: "Ujian", startDate: "", endDate: "", active: false, note: "Pilih tanggal awal dan akhir pelaksanaan." },
-    { id: "class-meeting", name: "Class Meeting", panel: "kegiatan-sekolah", category: "Kegiatan Sekolah", startDate: "", endDate: "", active: false, note: "Pilih rentang tanggal kegiatan." },
-    { id: "rapor-genap", name: "Pembagian Rapor Semester Genap", panel: "kegiatan-sekolah", category: "Kegiatan Sekolah", startDate: "", endDate: "", active: false, note: "Gunakan rentang jika ada beberapa hari layanan." },
-    { id: "libur-semester-genap", name: "Libur Semester Genap", panel: "libur-sekolah", category: "Libur Sekolah", startDate: "", endDate: "", active: false, note: "Pilih awal dan akhir libur semester." },
-    { id: "fakultatif-kolaborasi", name: "Pekan Efektif Fakultatif", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal khusus untuk pekan efektif fakultatif." },
-    { id: "fakultatif-ujian", name: "Ujian", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal pelaksanaan ujian." },
-    { id: "fakultatif-class-meeting", name: "Class Meeting", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal kegiatan class meeting." },
-    { id: "fakultatif-pondok-romadhon", name: "Pondok Romadhon", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal kegiatan pondok romadhon." },
-    { id: "fakultatif-p5", name: "P5", panel: "minggu-efektif-fakultatif", category: "Minggu Efektif Fakultatif", startDate: "", endDate: "", active: false, note: "Isi rentang tanggal kegiatan P5." },
-    { id: "hari-bumi", name: "Hari Bumi", panel: "hari-penting", category: "Hari Penting Nasional", startDate: "", endDate: "", active: false, note: "Gunakan jika sekolah mengadakan kegiatan tematik lingkungan." }
+    {
+      id: "mpls",
+      name: "MPLS / Masa Pengenalan Lingkungan Sekolah",
+      panel: "kegiatan-sekolah",
+      category: "Kegiatan Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi rentang tanggal sesuai jadwal sekolah.",
+    },
+    {
+      id: "libur-jeda-ganjil",
+      name: "Libur Jeda Tengah Semester Ganjil",
+      panel: "libur-sekolah",
+      category: "Libur Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi jika sekolah menetapkan libur jeda.",
+    },
+    {
+      id: "pts-ganjil",
+      name: "Penilaian Tengah Semester Ganjil",
+      panel: "kegiatan-sekolah",
+      category: "Ujian",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih tanggal awal dan akhir pelaksanaan.",
+    },
+    {
+      id: "pas-ganjil",
+      name: "Penilaian Akhir Semester Ganjil",
+      panel: "kegiatan-sekolah",
+      category: "Ujian",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih tanggal awal dan akhir pelaksanaan.",
+    },
+    {
+      id: "rapor-ganjil",
+      name: "Pembagian Rapor Semester Ganjil",
+      panel: "kegiatan-sekolah",
+      category: "Kegiatan Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Gunakan rentang jika ada beberapa hari layanan.",
+    },
+    {
+      id: "libur-semester-ganjil",
+      name: "Libur Semester Ganjil",
+      panel: "libur-sekolah",
+      category: "Libur Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih awal dan akhir libur semester.",
+    },
+    {
+      id: "pts-genap",
+      name: "Penilaian Tengah Semester Genap",
+      panel: "kegiatan-sekolah",
+      category: "Ujian",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih tanggal awal dan akhir pelaksanaan.",
+    },
+    {
+      id: "pat",
+      name: "Penilaian Akhir Tahun / Sumatif Akhir",
+      panel: "kegiatan-sekolah",
+      category: "Ujian",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih tanggal awal dan akhir pelaksanaan.",
+    },
+    {
+      id: "asesmen-sekolah",
+      name: "Asesmen Sekolah / Ujian Akhir",
+      panel: "kegiatan-sekolah",
+      category: "Ujian",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih tanggal awal dan akhir pelaksanaan.",
+    },
+    {
+      id: "class-meeting",
+      name: "Class Meeting",
+      panel: "kegiatan-sekolah",
+      category: "Kegiatan Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih rentang tanggal kegiatan.",
+    },
+    {
+      id: "rapor-genap",
+      name: "Pembagian Rapor Semester Genap",
+      panel: "kegiatan-sekolah",
+      category: "Kegiatan Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Gunakan rentang jika ada beberapa hari layanan.",
+    },
+    {
+      id: "libur-semester-genap",
+      name: "Libur Semester Genap",
+      panel: "libur-sekolah",
+      category: "Libur Sekolah",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Pilih awal dan akhir libur semester.",
+    },
+    {
+      id: "fakultatif-kolaborasi",
+      name: "Pekan Efektif Fakultatif",
+      panel: "minggu-efektif-fakultatif",
+      category: "Minggu Efektif Fakultatif",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi rentang tanggal khusus untuk pekan efektif fakultatif.",
+    },
+    {
+      id: "fakultatif-ujian",
+      name: "Ujian",
+      panel: "minggu-efektif-fakultatif",
+      category: "Minggu Efektif Fakultatif",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi rentang tanggal pelaksanaan ujian.",
+    },
+    {
+      id: "fakultatif-class-meeting",
+      name: "Class Meeting",
+      panel: "minggu-efektif-fakultatif",
+      category: "Minggu Efektif Fakultatif",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi rentang tanggal kegiatan class meeting.",
+    },
+    {
+      id: "fakultatif-pondok-romadhon",
+      name: "Pondok Romadhon",
+      panel: "minggu-efektif-fakultatif",
+      category: "Minggu Efektif Fakultatif",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi rentang tanggal kegiatan pondok romadhon.",
+    },
+    {
+      id: "fakultatif-p5",
+      name: "P5",
+      panel: "minggu-efektif-fakultatif",
+      category: "Minggu Efektif Fakultatif",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Isi rentang tanggal kegiatan P5.",
+    },
+    {
+      id: "hari-bumi",
+      name: "Hari Bumi",
+      panel: "hari-penting",
+      category: "Hari Penting Nasional",
+      startDate: "",
+      endDate: "",
+      active: false,
+      note: "Gunakan jika sekolah mengadakan kegiatan tematik lingkungan.",
+    },
   ];
 
   let kalenderState = createDefaultState();
@@ -66,20 +336,22 @@
   let kalenderPageTab = "input";
 
   function createDefaultState() {
-    const { startYear, endYear } = parseAcademicYears(getKalenderAcademicYear());
+    const { startYear, endYear } = parseAcademicYears(
+      getKalenderAcademicYear(),
+    );
     return {
       tahunPelajaran: getKalenderAcademicYear(),
       semesterStarts: {
         ganjil: `${startYear}-07-14`,
-        genap: `${endYear}-01-05`
+        genap: `${endYear}-01-05`,
       },
       workDays: "5",
       signatureModes: {
         kaldik: true,
-        rpe: true
+        rpe: true,
       },
-      fixedEvents: FIXED_EVENTS.map(item => ({ ...item })),
-      schoolEvents: DEFAULT_SCHOOL_EVENTS.map(item => ({ ...item }))
+      fixedEvents: FIXED_EVENTS.map((item) => ({ ...item })),
+      schoolEvents: DEFAULT_SCHOOL_EVENTS.map((item) => ({ ...item })),
     };
   }
 
@@ -89,7 +361,9 @@
 
   function getKalenderAcademicYear() {
     try {
-      const semester = JSON.parse(global.localStorage.getItem("appSemester") || "{}");
+      const semester = JSON.parse(
+        global.localStorage.getItem("appSemester") || "{}",
+      );
       return String(semester?.tahun || "").trim() || "2025/2026";
     } catch {
       return "2025/2026";
@@ -101,7 +375,7 @@
     if (!match) return { startYear: 2025, endYear: 2026 };
     return {
       startYear: Number(match[1]),
-      endYear: Number(match[2])
+      endYear: Number(match[2]),
     };
   }
 
@@ -127,47 +401,70 @@
   }
 
   function cloneState(state = {}) {
-    const academicYear = String(state.tahunPelajaran || getKalenderAcademicYear()).trim() || getKalenderAcademicYear();
+    const academicYear =
+      String(state.tahunPelajaran || getKalenderAcademicYear()).trim() ||
+      getKalenderAcademicYear();
     const { startYear, endYear } = parseAcademicYears(academicYear);
     return {
       tahunPelajaran: academicYear,
       semesterStarts: {
-        ganjil: String(state?.semesterStarts?.ganjil || `${startYear}-07-14`).trim(),
-        genap: String(state?.semesterStarts?.genap || `${endYear}-01-05`).trim()
+        ganjil: String(
+          state?.semesterStarts?.ganjil || `${startYear}-07-14`,
+        ).trim(),
+        genap: String(
+          state?.semesterStarts?.genap || `${endYear}-01-05`,
+        ).trim(),
       },
       workDays: String(state?.workDays || "5").trim() === "6" ? "6" : "5",
       signatureModes: {
         kaldik: state?.signatureModes?.kaldik !== false,
-        rpe: state?.signatureModes?.rpe !== false
+        rpe: state?.signatureModes?.rpe !== false,
       },
-      fixedEvents: Array.isArray(state.fixedEvents) ? state.fixedEvents.map(item => ({ ...item })) : [],
-      schoolEvents: Array.isArray(state.schoolEvents) ? state.schoolEvents.map(item => ({ ...item })) : []
+      fixedEvents: Array.isArray(state.fixedEvents)
+        ? state.fixedEvents.map((item) => ({ ...item }))
+        : [],
+      schoolEvents: Array.isArray(state.schoolEvents)
+        ? state.schoolEvents.map((item) => ({ ...item }))
+        : [],
     };
   }
 
   function mergeFixedEvents(savedEvents = []) {
-    const savedMap = new Map((Array.isArray(savedEvents) ? savedEvents : []).map(item => [String(item.id || "").trim(), item]));
-    return FIXED_EVENTS.map(item => {
+    const savedMap = new Map(
+      (Array.isArray(savedEvents) ? savedEvents : []).map((item) => [
+        String(item.id || "").trim(),
+        item,
+      ]),
+    );
+    return FIXED_EVENTS.map((item) => {
       const saved = savedMap.get(item.id) || {};
       return {
         ...item,
-        active: saved.active === undefined ? item.active : saved.active === true,
-        note: String(saved.note || item.note || "").trim() || item.note || ""
+        active:
+          saved.active === undefined ? item.active : saved.active === true,
+        note: String(saved.note || item.note || "").trim() || item.note || "",
       };
     });
   }
 
   function mergeSchoolEvents(savedEvents = []) {
-    const incoming = Array.isArray(savedEvents) && savedEvents.length ? savedEvents : DEFAULT_SCHOOL_EVENTS;
-    return incoming.map(item => ({
+    const incoming =
+      Array.isArray(savedEvents) && savedEvents.length
+        ? savedEvents
+        : DEFAULT_SCHOOL_EVENTS;
+    return incoming.map((item) => ({
       id: String(item.id || makeSchoolEventId()).trim(),
       name: String(item.name || "").trim(),
-      panel: String(item.panel || inferSchoolEventPanel(item.category)).trim() || "kegiatan-sekolah",
-      category: String(item.category || "Kegiatan Sekolah").trim() || "Kegiatan Sekolah",
+      panel:
+        String(item.panel || inferSchoolEventPanel(item.category)).trim() ||
+        "kegiatan-sekolah",
+      category:
+        String(item.category || "Kegiatan Sekolah").trim() ||
+        "Kegiatan Sekolah",
       startDate: String(item.startDate || item.date || "").trim(),
       endDate: String(item.endDate || item.date || item.startDate || "").trim(),
       active: item.active === true,
-      note: String(item.note || "").trim()
+      note: String(item.note || "").trim(),
     }));
   }
 
@@ -177,21 +474,23 @@
       tahunPelajaran: base.tahunPelajaran,
       semesterStarts: {
         ganjil: String(base?.semesterStarts?.ganjil || "").trim(),
-        genap: String(base?.semesterStarts?.genap || "").trim()
+        genap: String(base?.semesterStarts?.genap || "").trim(),
       },
       workDays: base.workDays === "6" ? "6" : "5",
       signatureModes: {
         kaldik: base?.signatureModes?.kaldik !== false,
-        rpe: base?.signatureModes?.rpe !== false
+        rpe: base?.signatureModes?.rpe !== false,
       },
       fixedEvents: mergeFixedEvents(base.fixedEvents),
-      schoolEvents: mergeSchoolEvents(base.schoolEvents)
+      schoolEvents: mergeSchoolEvents(base.schoolEvents),
     };
   }
 
   function readLocalState() {
     try {
-      return normalizeState(JSON.parse(global.localStorage.getItem(STORAGE_KEY) || "{}"));
+      return normalizeState(
+        JSON.parse(global.localStorage.getItem(STORAGE_KEY) || "{}"),
+      );
     } catch {
       return createDefaultState();
     }
@@ -218,8 +517,13 @@
       return kalenderState;
     }
     try {
-      const snapshot = await documentsApi.collection(DOC_PATH.collection).doc(DOC_PATH.doc).get();
-      kalenderState = normalizeState(snapshot?.exists ? snapshot.data() : readLocalState());
+      const snapshot = await documentsApi
+        .collection(DOC_PATH.collection)
+        .doc(DOC_PATH.doc)
+        .get();
+      kalenderState = normalizeState(
+        snapshot?.exists ? snapshot.data() : readLocalState(),
+      );
       writeLocalState(kalenderState);
     } catch (error) {
       console.error("Gagal memuat kalender pendidikan:", error);
@@ -233,10 +537,16 @@
     kalenderState = writeLocalState(kalenderState);
     const documentsApi = getKalenderDocumentsApi();
     if (!documentsApi?.collection) return kalenderState;
-    await documentsApi.collection(DOC_PATH.collection).doc(DOC_PATH.doc).set({
-      ...kalenderState,
-      updated_at: new Date().toISOString()
-    }, { merge: true });
+    await documentsApi
+      .collection(DOC_PATH.collection)
+      .doc(DOC_PATH.doc)
+      .set(
+        {
+          ...kalenderState,
+          updated_at: new Date().toISOString(),
+        },
+        { merge: true },
+      );
     return kalenderState;
   }
 
@@ -257,12 +567,16 @@
 
   function formatDateLabel(dateText = "") {
     if (global.AppUtils?.formatDateId) {
-      return global.AppUtils.formatDateId(dateText, {
-        weekday: "short",
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }, dateText || "-");
+      return global.AppUtils.formatDateId(
+        dateText,
+        {
+          weekday: "short",
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        },
+        dateText || "-",
+      );
     }
     if (!dateText) return "-";
     const date = new Date(`${dateText}T00:00:00`);
@@ -271,7 +585,7 @@
       weekday: "short",
       day: "2-digit",
       month: "long",
-      year: "numeric"
+      year: "numeric",
     });
   }
 
@@ -285,11 +599,15 @@
 
   function formatShortDateLabel(dateText = "") {
     if (global.AppUtils?.formatDateId) {
-      return global.AppUtils.formatDateId(dateText, {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-      }, dateText || "-");
+      return global.AppUtils.formatDateId(
+        dateText,
+        {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        },
+        dateText || "-",
+      );
     }
     if (!dateText) return "-";
     const date = new Date(`${dateText}T00:00:00`);
@@ -297,17 +615,21 @@
     return date.toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "short",
-      year: "numeric"
+      year: "numeric",
     });
   }
 
   function formatDateNoWeekdayLabel(dateText = "") {
     if (global.AppUtils?.formatDateId) {
-      return global.AppUtils.formatDateId(dateText, {
-        day: "2-digit",
-        month: "long",
-        year: "numeric"
-      }, dateText || "-");
+      return global.AppUtils.formatDateId(
+        dateText,
+        {
+          day: "2-digit",
+          month: "long",
+          year: "numeric",
+        },
+        dateText || "-",
+      );
     }
     if (!dateText) return "-";
     const date = new Date(`${dateText}T00:00:00`);
@@ -315,7 +637,7 @@
     return date.toLocaleDateString("id-ID", {
       day: "2-digit",
       month: "long",
-      year: "numeric"
+      year: "numeric",
     });
   }
 
@@ -328,7 +650,11 @@
     const from = start <= end ? start : end;
     const to = start <= end ? end : start;
     const dates = [];
-    for (let current = new Date(from); current <= to; current.setDate(current.getDate() + 1)) {
+    for (
+      let current = new Date(from);
+      current <= to;
+      current.setDate(current.getDate() + 1)
+    ) {
       dates.push(toLocalIsoDate(current));
     }
     return dates;
@@ -336,7 +662,8 @@
 
   function formatDateRangeLabel(startDate = "", endDate = "") {
     if (!startDate && !endDate) return "-";
-    if (!startDate || startDate === endDate || !endDate) return formatDateNoWeekdayLabel(startDate || endDate);
+    if (!startDate || startDate === endDate || !endDate)
+      return formatDateNoWeekdayLabel(startDate || endDate);
     const start = new Date(`${startDate}T00:00:00`);
     const end = new Date(`${endDate}T00:00:00`);
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
@@ -346,7 +673,11 @@
     const sameMonth = sameYear && start.getMonth() === end.getMonth();
     if (sameMonth) {
       const monthYear = global.AppUtils?.formatDateId
-        ? global.AppUtils.formatDateId(end, { month: "long", year: "numeric" }, formatDateNoWeekdayLabel(endDate))
+        ? global.AppUtils.formatDateId(
+            end,
+            { month: "long", year: "numeric" },
+            formatDateNoWeekdayLabel(endDate),
+          )
         : end.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
       return `${String(start.getDate()).padStart(2, "0")} - ${String(end.getDate()).padStart(2, "0")} ${monthYear}`;
     }
@@ -355,7 +686,9 @@
 
   function getKaldikRaporSettings() {
     try {
-      return JSON.parse(global.localStorage.getItem("raporAdminSettings") || "{}");
+      return JSON.parse(
+        global.localStorage.getItem("raporAdminSettings") || "{}",
+      );
     } catch {
       return {};
     }
@@ -372,10 +705,12 @@
     const raporSettings = getKaldikRaporSettings();
     const today = toLocalIsoDate(new Date());
     return {
-      nama: String(raporSettings.kepala_nama || "Dra. MAMIK SASMIATI, M.Pd").trim(),
+      nama: String(
+        raporSettings.kepala_nama || "Dra. MAMIK SASMIATI, M.Pd",
+      ).trim(),
       nip: String(raporSettings.kepala_nip || "19660601 199003 2 010").trim(),
       tanggal: String(raporSettings.tanggal || today).trim(),
-      ttd: getKaldikPrincipalSignature()
+      ttd: getKaldikPrincipalSignature(),
     };
   }
 
@@ -386,45 +721,53 @@
 
   function buildActiveCalendarEntries() {
     const fixed = kalenderState.fixedEvents
-      .filter(item => item.active)
-      .map(item => ({
+      .filter((item) => item.active)
+      .map((item) => ({
         id: item.id,
         name: item.name,
         category: item.category,
         kind: item.holiday ? "Libur" : "Peringatan",
         date: resolveFixedEventDate(item, kalenderState.tahunPelajaran),
-        note: item.note || ""
+        note: item.note || "",
       }));
 
     const school = kalenderState.schoolEvents
-      .filter(item => item.active && (item.startDate || item.endDate))
-      .flatMap(item => eachDateBetween(item.startDate, item.endDate).map(date => ({
-        id: `${item.id}-${date}`,
-        sourceId: item.id,
-        name: item.name,
-        panel: item.panel || "kegiatan-sekolah",
-        category: item.category || "Kegiatan Sekolah",
-        kind: item.category || "Kegiatan Sekolah",
-        date,
-        note: item.note || "",
-        rangeStart: item.startDate || date,
-        rangeEnd: item.endDate || item.startDate || date
-      })));
+      .filter((item) => item.active && (item.startDate || item.endDate))
+      .flatMap((item) =>
+        eachDateBetween(item.startDate, item.endDate).map((date) => ({
+          id: `${item.id}-${date}`,
+          sourceId: item.id,
+          name: item.name,
+          panel: item.panel || "kegiatan-sekolah",
+          category: item.category || "Kegiatan Sekolah",
+          kind: item.category || "Kegiatan Sekolah",
+          date,
+          note: item.note || "",
+          rangeStart: item.startDate || date,
+          rangeEnd: item.endDate || item.startDate || date,
+        })),
+      );
 
-    return fixed.concat(school).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
+    return fixed
+      .concat(school)
+      .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")));
   }
 
   function getMonthMetaSequence() {
-    const { startYear, endYear } = parseAcademicYears(kalenderState.tahunPelajaran);
-    return MONTH_SEQUENCE.map(item => ({
+    const { startYear, endYear } = parseAcademicYears(
+      kalenderState.tahunPelajaran,
+    );
+    return MONTH_SEQUENCE.map((item) => ({
       ...item,
-      year: item.month >= 7 ? startYear : endYear
+      year: item.month >= 7 ? startYear : endYear,
     }));
   }
 
   function getSemesterMonthSequence(semesterKey = "ganjil") {
     const monthSequence = getMonthMetaSequence();
-    return semesterKey === "genap" ? monthSequence.slice(6) : monthSequence.slice(0, 6);
+    return semesterKey === "genap"
+      ? monthSequence.slice(6)
+      : monthSequence.slice(0, 6);
   }
 
   function getEntriesByDateMap() {
@@ -440,7 +783,11 @@
   function getKalenderSchoolEventById(id = "") {
     const targetId = String(id || "").trim();
     if (!targetId) return null;
-    return kalenderState.schoolEvents.find(item => String(item.id || "").trim() === targetId) || null;
+    return (
+      kalenderState.schoolEvents.find(
+        (item) => String(item.id || "").trim() === targetId,
+      ) || null
+    );
   }
 
   function shiftDateLabel(dateText = "", offsetDays = 0) {
@@ -459,24 +806,28 @@
       .sort((left, right) => {
         const leftStart = String(left.rangeStart || left.date || "");
         const rightStart = String(right.rangeStart || right.date || "");
-        if (leftStart !== rightStart) return leftStart.localeCompare(rightStart);
+        if (leftStart !== rightStart)
+          return leftStart.localeCompare(rightStart);
         const leftEnd = String(left.rangeEnd || left.date || leftStart);
         const rightEnd = String(right.rangeEnd || right.date || rightStart);
         if (leftEnd !== rightEnd) return leftEnd.localeCompare(rightEnd);
         return String(left.name || "").localeCompare(String(right.name || ""));
       })
-      .forEach(item => {
+      .forEach((item) => {
         const rangeStart = String(item.rangeStart || item.date || "").trim();
-        const rangeEnd = String(item.rangeEnd || item.date || rangeStart).trim();
+        const rangeEnd = String(
+          item.rangeEnd || item.date || rangeStart,
+        ).trim();
         const name = String(item.name || "").trim();
         const category = String(item.category || "").trim();
         const kind = String(item.kind || "").trim();
-        const existing = grouped.find(entry =>
-          entry.name === name &&
-          entry.rangeStart === rangeStart &&
-          entry.rangeEnd === rangeEnd &&
-          entry.category === category &&
-          entry.kind === kind
+        const existing = grouped.find(
+          (entry) =>
+            entry.name === name &&
+            entry.rangeStart === rangeStart &&
+            entry.rangeEnd === rangeEnd &&
+            entry.category === category &&
+            entry.kind === kind,
         );
         if (existing) return;
         grouped.push({
@@ -485,26 +836,36 @@
           rangeEnd,
           category,
           kind,
-          note: String(item.note || "").trim()
+          note: String(item.note || "").trim(),
         });
       });
 
     return grouped.reduce((merged, item) => {
       const previous = merged[merged.length - 1];
       const nextDayAfterPrevious = shiftDateLabel(previous?.rangeEnd, 1);
-      const gapDates = previous && item
-        ? eachDateBetween(nextDayAfterPrevious, shiftDateLabel(item.rangeStart, -1))
-        : [];
-      const gapCoveredByHolidayOnly = gapDates.length > 0 && gapDates.every(date => {
-        const entries = baseEntriesByDate.get(date) || [];
-        return entries.length > 0 && entries.every(entry => getEntryKindClass(entry) === "holiday");
-      });
-      const canMergeWithPrevious = previous
-        && previous.name === item.name
-        && previous.category === item.category
-        && previous.kind === item.kind
-        && previous.note === item.note
-        && (nextDayAfterPrevious === item.rangeStart || gapCoveredByHolidayOnly);
+      const gapDates =
+        previous && item
+          ? eachDateBetween(
+              nextDayAfterPrevious,
+              shiftDateLabel(item.rangeStart, -1),
+            )
+          : [];
+      const gapCoveredByHolidayOnly =
+        gapDates.length > 0 &&
+        gapDates.every((date) => {
+          const entries = baseEntriesByDate.get(date) || [];
+          return (
+            entries.length > 0 &&
+            entries.every((entry) => getEntryKindClass(entry) === "holiday")
+          );
+        });
+      const canMergeWithPrevious =
+        previous &&
+        previous.name === item.name &&
+        previous.category === item.category &&
+        previous.kind === item.kind &&
+        previous.note === item.note &&
+        (nextDayAfterPrevious === item.rangeStart || gapCoveredByHolidayOnly);
 
       if (canMergeWithPrevious) {
         previous.rangeEnd = item.rangeEnd;
@@ -517,32 +878,48 @@
   }
 
   function getSemesterPreviewRanges() {
-    const { startYear, endYear } = parseAcademicYears(kalenderState.tahunPelajaran);
-    const ganjilStart = String(kalenderState?.semesterStarts?.ganjil || `${startYear}-07-14`).trim();
-    const genapStart = String(kalenderState?.semesterStarts?.genap || `${endYear}-01-05`).trim();
+    const { startYear, endYear } = parseAcademicYears(
+      kalenderState.tahunPelajaran,
+    );
+    const ganjilStart = String(
+      kalenderState?.semesterStarts?.ganjil || `${startYear}-07-14`,
+    ).trim();
+    const genapStart = String(
+      kalenderState?.semesterStarts?.genap || `${endYear}-01-05`,
+    ).trim();
     const raporGanjil = getKalenderSchoolEventById("rapor-ganjil");
     const raporGenap = getKalenderSchoolEventById("rapor-genap");
-    const liburSemesterGanjil = getKalenderSchoolEventById("libur-semester-ganjil");
-    const liburSemesterGenap = getKalenderSchoolEventById("libur-semester-genap");
-    const ganjilEnd = String(
-      liburSemesterGanjil?.active && liburSemesterGanjil?.startDate
-        ? shiftDateLabel(liburSemesterGanjil.startDate, -1)
-        : (raporGanjil?.active ? (raporGanjil.endDate || raporGanjil.startDate || "") : "")
-    ).trim() || `${startYear}-12-31`;
-    const genapEnd = String(
-      liburSemesterGenap?.active && liburSemesterGenap?.startDate
-        ? shiftDateLabel(liburSemesterGenap.startDate, -1)
-        : (raporGenap?.active ? (raporGenap.endDate || raporGenap.startDate || "") : "")
-    ).trim() || `${endYear}-06-30`;
+    const liburSemesterGanjil = getKalenderSchoolEventById(
+      "libur-semester-ganjil",
+    );
+    const liburSemesterGenap = getKalenderSchoolEventById(
+      "libur-semester-genap",
+    );
+    const ganjilEnd =
+      String(
+        liburSemesterGanjil?.active && liburSemesterGanjil?.startDate
+          ? shiftDateLabel(liburSemesterGanjil.startDate, -1)
+          : raporGanjil?.active
+            ? raporGanjil.endDate || raporGanjil.startDate || ""
+            : "",
+      ).trim() || `${startYear}-12-31`;
+    const genapEnd =
+      String(
+        liburSemesterGenap?.active && liburSemesterGenap?.startDate
+          ? shiftDateLabel(liburSemesterGenap.startDate, -1)
+          : raporGenap?.active
+            ? raporGenap.endDate || raporGenap.startDate || ""
+            : "",
+      ).trim() || `${endYear}-06-30`;
     return {
       ganjil: {
         start: ganjilStart,
-        end: ganjilEnd
+        end: ganjilEnd,
       },
       genap: {
         start: genapStart,
-        end: genapEnd
-      }
+        end: genapEnd,
+      },
     };
   }
 
@@ -558,10 +935,18 @@
       return semesterKey;
     };
 
-    const buildSegmentEntries = (semesterKey, rangeStart, rangeEnd, segmentType = "after-end") => {
+    const buildSegmentEntries = (
+      semesterKey,
+      rangeStart,
+      rangeEnd,
+      segmentType = "after-end",
+    ) => {
       if (!rangeStart || !rangeEnd || rangeStart > rangeEnd) return;
-      const labelSemesterKey = getBreakLabelSemesterKey(semesterKey, segmentType);
-      eachDateBetween(rangeStart, rangeEnd).forEach(date => {
+      const labelSemesterKey = getBreakLabelSemesterKey(
+        semesterKey,
+        segmentType,
+      );
+      eachDateBetween(rangeStart, rangeEnd).forEach((date) => {
         if (baseEntriesByDate.has(date)) return;
         virtualEntries.push({
           id: `virtual-libur-semester-${labelSemesterKey}-${date}`,
@@ -574,12 +959,12 @@
           note: "Dibentuk otomatis dari batas awal dan akhir semester.",
           rangeStart,
           rangeEnd,
-          isVirtualSemesterBreak: true
+          isVirtualSemesterBreak: true,
         });
       });
     };
 
-    monthSequence.forEach(meta => {
+    monthSequence.forEach((meta) => {
       const semesterKey = meta.month >= 7 ? "ganjil" : "genap";
       const semesterRange = semesterRanges[semesterKey];
       const startDate = String(semesterRange?.start || "").trim();
@@ -589,11 +974,21 @@
       const monthEnd = `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(new Date(meta.year, meta.month, 0).getDate()).padStart(2, "0")}`;
 
       if (monthStart < startDate) {
-        buildSegmentEntries(semesterKey, monthStart, shiftDateLabel(startDate, -1), "before-start");
+        buildSegmentEntries(
+          semesterKey,
+          monthStart,
+          shiftDateLabel(startDate, -1),
+          "before-start",
+        );
       }
 
       if (monthEnd > endDate) {
-        buildSegmentEntries(semesterKey, shiftDateLabel(endDate, 1), monthEnd, "after-end");
+        buildSegmentEntries(
+          semesterKey,
+          shiftDateLabel(endDate, 1),
+          monthEnd,
+          "after-end",
+        );
       }
     });
 
@@ -632,8 +1027,10 @@
       const kind = String(item.kind || "").toLowerCase();
       if (kind === "libur") return "holiday";
       if (name.includes("mpls")) return "mpls";
-      if (category.includes("ujian") || /pts|pas|pat|asesmen|ujian/.test(name)) return "exam";
-      if (name.includes("hari") || category.includes("penting")) return "national-day";
+      if (category.includes("ujian") || /pts|pas|pat|asesmen|ujian/.test(name))
+        return "exam";
+      if (name.includes("hari") || category.includes("penting"))
+        return "national-day";
       if (category.includes("sekolah")) return "school-event";
       return "important";
     }
@@ -648,14 +1045,18 @@
       { label: "Libur", className: "holiday" },
       { label: "Ujian", className: "exam" },
       { label: "Agenda Sekolah", className: "school" },
-      { label: "Peringatan Pendidikan", className: "important" }
+      { label: "Peringatan Pendidikan", className: "important" },
     ];
-    return items.map(item => `
+    return items
+      .map(
+        (item) => `
       <span class="kalender-legend-item">
         <i class="${escapeKalenderHtml(item.className)}"></i>
         ${escapeKalenderHtml(item.label)}
       </span>
-    `).join("");
+    `,
+      )
+      .join("");
   }
 
   function buildEventCode(item = {}) {
@@ -673,7 +1074,7 @@
     const acronym = name
       .split(/[\s/()-]+/)
       .filter(Boolean)
-      .map(word => word.charAt(0).toUpperCase())
+      .map((word) => word.charAt(0).toUpperCase())
       .join("")
       .slice(0, 4);
     return acronym || "AKT";
@@ -689,39 +1090,46 @@
         key: "ganjil",
         months: monthSequence.slice(0, 6),
         startDate: String(previewRanges?.ganjil?.start || "").trim(),
-        endDate: String(previewRanges?.ganjil?.end || "").trim()
+        endDate: String(previewRanges?.ganjil?.end || "").trim(),
       },
       {
         key: "genap",
         months: monthSequence.slice(6),
         startDate: String(previewRanges?.genap?.start || "").trim(),
-        endDate: String(previewRanges?.genap?.end || "").trim()
-      }
+        endDate: String(previewRanges?.genap?.end || "").trim(),
+      },
     ];
 
-    return semesterRanges.reduce((maps, semester) => {
-      const dayMap = new Map();
-      let counter = 0;
-      semester.months.forEach(meta => {
-        const maxDay = new Date(meta.year, meta.month, 0).getDate();
-        for (let day = 1; day <= maxDay; day += 1) {
-          const date = `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          if (semester.startDate && date < semester.startDate) continue;
-          if (semester.endDate && date > semester.endDate) continue;
-          const weekday = new Date(`${date}T00:00:00`).getDay();
-          if (weekday === 0 || (weekday === 6 && allowedWeekendDay !== 6)) continue;
-          const entries = entriesByDate.get(date) || [];
-          if (entries.some(item => {
-            const kind = getEntryKindClass(item);
-            return kind === "holiday" || kind === "exam";
-          })) continue;
-          counter += 1;
-          dayMap.set(date, counter);
-        }
-      });
-      maps[semester.key] = dayMap;
-      return maps;
-    }, { ganjil: new Map(), genap: new Map() });
+    return semesterRanges.reduce(
+      (maps, semester) => {
+        const dayMap = new Map();
+        let counter = 0;
+        semester.months.forEach((meta) => {
+          const maxDay = new Date(meta.year, meta.month, 0).getDate();
+          for (let day = 1; day <= maxDay; day += 1) {
+            const date = `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            if (semester.startDate && date < semester.startDate) continue;
+            if (semester.endDate && date > semester.endDate) continue;
+            const weekday = new Date(`${date}T00:00:00`).getDay();
+            if (weekday === 0 || (weekday === 6 && allowedWeekendDay !== 6))
+              continue;
+            const entries = entriesByDate.get(date) || [];
+            if (
+              entries.some((item) => {
+                const kind = getEntryKindClass(item);
+                return kind === "holiday" || kind === "exam";
+              })
+            )
+              continue;
+            counter += 1;
+            dayMap.set(date, counter);
+          }
+        });
+        maps[semester.key] = dayMap;
+        return maps;
+      },
+      { ganjil: new Map(), genap: new Map() },
+    );
   }
 
   function buildMonthMatrixCell(meta, day, entriesByDate, effectiveDayMaps) {
@@ -736,7 +1144,11 @@
     const weekday = WEEKDAY_LABELS[dateObject.getDay()] || "";
     const semesterKey = meta.month >= 7 ? "ganjil" : "genap";
     const effectiveDayNumber = effectiveDayMaps?.[semesterKey]?.get(date) || "";
-    const className = getMatrixVisualClass(primary, dateObject, effectiveDayNumber);
+    const className = getMatrixVisualClass(
+      primary,
+      dateObject,
+      effectiveDayNumber,
+    );
     return {
       empty: false,
       day,
@@ -745,7 +1157,7 @@
       entries,
       code: primary ? buildEventCode(primary) : "",
       effectiveDayNumber,
-      className
+      className,
     };
   }
 
@@ -775,32 +1187,52 @@
           </tr>
         </thead>
         <tbody>
-          ${Array.from(yearGroups.entries()).map(([year, metas]) => metas.map((meta, rowIndex) => {
-            const entriesByDate = getPreviewEntriesByDateMap();
-            const cells = Array.from({ length: 31 }, (_, index) => buildMonthMatrixCell(meta, index + 1, entriesByDate, effectiveDayMaps));
-            return `
+          ${Array.from(yearGroups.entries())
+            .map(([year, metas]) =>
+              metas
+                .map((meta, rowIndex) => {
+                  const entriesByDate = getPreviewEntriesByDateMap();
+                  const cells = Array.from({ length: 31 }, (_, index) =>
+                    buildMonthMatrixCell(
+                      meta,
+                      index + 1,
+                      entriesByDate,
+                      effectiveDayMaps,
+                    ),
+                  );
+                  return `
               <tr>
                 ${rowIndex === 0 ? `<td class="kalender-matrix-year-cell" rowspan="${metas.length}"><span>${escapeKalenderHtml(year)}</span></td>` : ""}
                 <td class="kalender-matrix-bulan-cell">
                   <strong>${escapeKalenderHtml(meta.label)}</strong>
                 </td>
-                ${cells.map(cell => {
-                  if (cell.empty) {
-                    return `<td class="kalender-matrix-cell empty"></td>`;
-                  }
-                  const title = cell.entries.length
-                    ? cell.entries.map(item => `${formatShortDateLabel(item.date)} - ${item.name}`).join(" | ")
-                    : `${cell.weekday}, ${cell.day} ${meta.label} ${meta.year}`;
-                  return `
+                ${cells
+                  .map((cell) => {
+                    if (cell.empty) {
+                      return `<td class="kalender-matrix-cell empty"></td>`;
+                    }
+                    const title = cell.entries.length
+                      ? cell.entries
+                          .map(
+                            (item) =>
+                              `${formatShortDateLabel(item.date)} - ${item.name}`,
+                          )
+                          .join(" | ")
+                      : `${cell.weekday}, ${cell.day} ${meta.label} ${meta.year}`;
+                    return `
                     <td class="kalender-matrix-cell ${escapeKalenderHtml(cell.className)}" title="${escapeKalenderHtml(title)}">
                       <small>${escapeKalenderHtml(cell.weekday)}</small>
                       <strong>${escapeKalenderHtml(cell.code || String(cell.effectiveDayNumber || ""))}</strong>
                     </td>
                   `;
-                }).join("")}
+                  })
+                  .join("")}
               </tr>
             `;
-          }).join("")).join("")}
+                })
+                .join(""),
+            )
+            .join("")}
         </tbody>
       </table>
     `;
@@ -827,7 +1259,7 @@
       buckets.push({
         index: buckets.length + 1,
         startDate: `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(startDay).padStart(2, "0")}`,
-        endDate: `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`
+        endDate: `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(endDay).padStart(2, "0")}`,
       });
       startDay += 7;
     }
@@ -852,7 +1284,8 @@
     const durationDays = getRpeEventDurationDays(item);
 
     if (panel === "libur-sekolah") return "non-effective";
-    if (panel === "kegiatan-sekolah" && durationDays >= 7) return "non-effective";
+    if (panel === "kegiatan-sekolah" && durationDays >= 7)
+      return "non-effective";
     if (panel === "minggu-efektif-fakultatif") return "facultative";
     if (kind === "libur") return "ignore";
     return "ignore";
@@ -866,14 +1299,17 @@
     const semesterMonths = getSemesterMonthSequence(semesterKey);
     const previewRanges = getSemesterPreviewRanges();
     const semesterRange = previewRanges[semesterKey] || {};
-    const previewEntries = buildPreviewCalendarEntries()
-      .filter(item => {
-        const date = String(item.date || "");
-        if (!date) return false;
-        if (semesterRange.start && date < semesterRange.start) return false;
-        if (semesterRange.end && date > semesterRange.end) return false;
-        return semesterMonths.some(meta => meta.year === Number(date.slice(0, 4)) && meta.month === Number(date.slice(5, 7)));
-      });
+    const previewEntries = buildPreviewCalendarEntries().filter((item) => {
+      const date = String(item.date || "");
+      if (!date) return false;
+      if (semesterRange.start && date < semesterRange.start) return false;
+      if (semesterRange.end && date > semesterRange.end) return false;
+      return semesterMonths.some(
+        (meta) =>
+          meta.year === Number(date.slice(0, 4)) &&
+          meta.month === Number(date.slice(5, 7)),
+      );
+    });
 
     const nonEffectiveMap = new Map();
     const facultativeMap = new Map();
@@ -882,24 +1318,39 @@
       const nonEffectiveWeeks = new Set();
       const facultativeWeeks = new Set();
 
-      previewEntries.forEach(item => {
+      previewEntries.forEach((item) => {
         const itemDate = String(item.date || "");
-        if (Number(itemDate.slice(0, 4)) !== meta.year || Number(itemDate.slice(5, 7)) !== meta.month) return;
-        const weekBucket = weekBuckets.find(bucket => itemDate >= bucket.startDate && itemDate <= bucket.endDate);
+        if (
+          Number(itemDate.slice(0, 4)) !== meta.year ||
+          Number(itemDate.slice(5, 7)) !== meta.month
+        )
+          return;
+        const weekBucket = weekBuckets.find(
+          (bucket) =>
+            itemDate >= bucket.startDate && itemDate <= bucket.endDate,
+        );
         if (!weekBucket) return;
         const label = getWeekLabel(meta, weekBucket.index);
         const eventType = getRpeEventType(item);
         if (eventType === "non-effective") {
           nonEffectiveWeeks.add(weekBucket.index);
           const key = `${item.name}|${semesterKey}`;
-          const current = nonEffectiveMap.get(key) || { name: item.name, weeks: new Set(), labels: [] };
+          const current = nonEffectiveMap.get(key) || {
+            name: item.name,
+            weeks: new Set(),
+            labels: [],
+          };
           current.weeks.add(`${meta.month}-${weekBucket.index}`);
           if (!current.labels.includes(label)) current.labels.push(label);
           nonEffectiveMap.set(key, current);
         } else if (eventType === "facultative") {
           facultativeWeeks.add(weekBucket.index);
           const key = `${item.name}|${semesterKey}`;
-          const current = facultativeMap.get(key) || { name: item.name, weeks: new Set(), labels: [] };
+          const current = facultativeMap.get(key) || {
+            name: item.name,
+            weeks: new Set(),
+            labels: [],
+          };
           current.weeks.add(`${meta.month}-${weekBucket.index}`);
           if (!current.labels.includes(label)) current.labels.push(label);
           facultativeMap.set(key, current);
@@ -908,8 +1359,13 @@
 
       const totalWeeks = weekBuckets.length;
       const nonEffectiveCount = nonEffectiveWeeks.size;
-      const facultativeCount = [...facultativeWeeks].filter(week => !nonEffectiveWeeks.has(week)).length;
-      const effectiveCount = Math.max(0, totalWeeks - nonEffectiveCount - facultativeCount);
+      const facultativeCount = [...facultativeWeeks].filter(
+        (week) => !nonEffectiveWeeks.has(week),
+      ).length;
+      const effectiveCount = Math.max(
+        0,
+        totalWeeks - nonEffectiveCount - facultativeCount,
+      );
 
       return {
         no: index + 1,
@@ -917,31 +1373,43 @@
         totalWeeks,
         nonEffectiveCount,
         facultativeCount,
-        effectiveCount
+        effectiveCount,
       };
     });
 
-    const nonEffectiveItems = Array.from(nonEffectiveMap.values()).map(item => ({
-      name: item.name,
-      count: item.weeks.size,
-      labels: item.labels.join(", ")
-    }));
-    const facultativeItems = Array.from(facultativeMap.values()).map(item => ({
-      name: item.name,
-      count: item.weeks.size,
-      labels: item.labels.join(", ")
-    }));
+    const nonEffectiveItems = Array.from(nonEffectiveMap.values()).map(
+      (item) => ({
+        name: item.name,
+        count: item.weeks.size,
+        labels: item.labels.join(", "),
+      }),
+    );
+    const facultativeItems = Array.from(facultativeMap.values()).map(
+      (item) => ({
+        name: item.name,
+        count: item.weeks.size,
+        labels: item.labels.join(", "),
+      }),
+    );
 
     return {
       rows,
-      totals: rows.reduce((acc, row) => ({
-        totalWeeks: acc.totalWeeks + row.totalWeeks,
-        nonEffectiveCount: acc.nonEffectiveCount + row.nonEffectiveCount,
-        facultativeCount: acc.facultativeCount + row.facultativeCount,
-        effectiveCount: acc.effectiveCount + row.effectiveCount
-      }), { totalWeeks: 0, nonEffectiveCount: 0, facultativeCount: 0, effectiveCount: 0 }),
+      totals: rows.reduce(
+        (acc, row) => ({
+          totalWeeks: acc.totalWeeks + row.totalWeeks,
+          nonEffectiveCount: acc.nonEffectiveCount + row.nonEffectiveCount,
+          facultativeCount: acc.facultativeCount + row.facultativeCount,
+          effectiveCount: acc.effectiveCount + row.effectiveCount,
+        }),
+        {
+          totalWeeks: 0,
+          nonEffectiveCount: 0,
+          facultativeCount: 0,
+          effectiveCount: 0,
+        },
+      ),
       nonEffectiveItems,
-      facultativeItems
+      facultativeItems,
     };
   }
 
@@ -949,17 +1417,24 @@
     if (!items.length) {
       return `<tr><td colspan="4" class="empty-cell">${emptyLabel}</td></tr>`;
     }
-    return items.map((item, index) => `
+    return items
+      .map(
+        (item, index) => `
       <tr>
         <td>${index + 1}</td>
         <td>${escapeKalenderHtml(item.name || "-")}</td>
         <td>${escapeKalenderHtml(item.count || 0)}</td>
         <td>${escapeKalenderHtml(item.labels || "-")}</td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   }
 
-  function renderRpeSemesterTable(semesterKey = "ganjil", title = "Semester Ganjil") {
+  function renderRpeSemesterTable(
+    semesterKey = "ganjil",
+    title = "Semester Ganjil",
+  ) {
     const summary = getRpeSemesterSummary(semesterKey);
     const principal = getKaldikPrincipalInfo();
     const printDate = formatDateNoWeekdayLabel(principal.tanggal);
@@ -1002,7 +1477,9 @@
               </tr>
             </thead>
             <tbody>
-              ${summary.rows.map(row => `
+              ${summary.rows
+                .map(
+                  (row) => `
                 <tr>
                   <td class="kalender-rpe-cell-center">${row.no}</td>
                   <td>${escapeKalenderHtml(row.bulan)}</td>
@@ -1011,7 +1488,9 @@
                   <td class="kalender-rpe-cell-center">${row.facultativeCount}</td>
                   <td class="kalender-rpe-cell-center">${row.effectiveCount}</td>
                 </tr>
-              `).join("")}
+              `,
+                )
+                .join("")}
               <tr class="kalender-rpe-total-row">
                 <td colspan="2" class="kalender-rpe-total-label"><strong>Jumlah</strong></td>
                 <td class="kalender-rpe-cell-center"><strong>${summary.totals.totalWeeks}</strong></td>
@@ -1091,10 +1570,14 @@
   }
 
   function getKalenderPrintStyles(mode = "kaldik", paper = "a4") {
-    const normalizedPaper = String(paper || "a4").toLowerCase() === "f4" ? "f4" : "a4";
-    const pageSize = normalizedPaper === "f4"
-      ? "13in 8.5in landscape"
-      : (mode === "rpe" ? "A4 portrait" : "A4 landscape");
+    const normalizedPaper =
+      String(paper || "a4").toLowerCase() === "f4" ? "f4" : "a4";
+    const pageSize =
+      normalizedPaper === "f4"
+        ? "13in 8.5in landscape"
+        : mode === "rpe"
+          ? "A4 portrait"
+          : "A4 landscape";
     return `
       * { box-sizing: border-box; }
       body { margin: 0; font-family: Arial, Calibri, sans-serif; color: #0f172a; background: #fff; }
@@ -1176,7 +1659,12 @@
     `;
   }
 
-  function openKalenderPrintWindow(title, bodyHtml, mode = "kaldik", paper = "a4") {
+  function openKalenderPrintWindow(
+    title,
+    bodyHtml,
+    mode = "kaldik",
+    paper = "a4",
+  ) {
     const iframe = global.document.createElement("iframe");
     iframe.style.position = "fixed";
     iframe.style.right = "0";
@@ -1191,7 +1679,10 @@
     const frameDocument = frameWindow?.document;
     if (!frameWindow || !frameDocument) {
       iframe.remove();
-      showKalenderToast("Export PDF belum bisa dijalankan di browser ini.", "error");
+      showKalenderToast(
+        "Export PDF belum bisa dijalankan di browser ini.",
+        "error",
+      );
       return;
     }
 
@@ -1203,18 +1694,23 @@
     const waitForAssets = () => {
       const images = Array.from(frameDocument.images || []);
       if (!images.length) return Promise.resolve();
-      return Promise.all(images.map(img => new Promise(resolve => {
-        if (img.complete) {
-          resolve();
-          return;
-        }
-        img.addEventListener("load", resolve, { once: true });
-        img.addEventListener("error", resolve, { once: true });
-      })));
+      return Promise.all(
+        images.map(
+          (img) =>
+            new Promise((resolve) => {
+              if (img.complete) {
+                resolve();
+                return;
+              }
+              img.addEventListener("load", resolve, { once: true });
+              img.addEventListener("error", resolve, { once: true });
+            }),
+        ),
+      );
     };
 
     waitForAssets()
-      .then(() => new Promise(resolve => global.setTimeout(resolve, 150)))
+      .then(() => new Promise((resolve) => global.setTimeout(resolve, 150)))
       .then(() => {
         frameWindow.focus();
         frameWindow.print();
@@ -1226,47 +1722,76 @@
 
   function buildPrintableKalenderHtml() {
     return renderKalenderOfficialSheet()
-      .replaceAll('src="img/logo_pemda.png"', `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_pemda.png"))}"`)
-      .replaceAll('src="img/logo_sekolah.png"', `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_sekolah.png"))}"`);
+      .replaceAll(
+        'src="img/logo_pemda.png"',
+        `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_pemda.png"))}"`,
+      )
+      .replaceAll(
+        'src="img/logo_sekolah.png"',
+        `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_sekolah.png"))}"`,
+      );
   }
 
   function buildPrintableRpeHtml() {
     return renderKalenderRpeView()
-      .replaceAll('src="img/logo_pemda.png"', `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_pemda.png"))}"`)
-      .replaceAll('src="img/logo_sekolah.png"', `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_sekolah.png"))}"`);
+      .replaceAll(
+        'src="img/logo_pemda.png"',
+        `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_pemda.png"))}"`,
+      )
+      .replaceAll(
+        'src="img/logo_sekolah.png"',
+        `src="${escapeKalenderHtml(getPrintableLogoUrl("img/logo_sekolah.png"))}"`,
+      );
   }
 
   function exportKalenderKaldikPdf(paper = "a4") {
     const paperLabel = String(paper || "a4").toUpperCase();
-    openKalenderPrintWindow(`KALDIK ${kalenderState.tahunPelajaran} ${paperLabel}`, `<div class="print-page">${buildPrintableKalenderHtml()}</div>`, "kaldik", paper);
+    openKalenderPrintWindow(
+      `KALDIK ${kalenderState.tahunPelajaran} ${paperLabel}`,
+      `<div class="print-page">${buildPrintableKalenderHtml()}</div>`,
+      "kaldik",
+      paper,
+    );
   }
 
   function exportKalenderRpePdf(paper = "a4") {
     const paperLabel = String(paper || "a4").toUpperCase();
-    openKalenderPrintWindow(`RPE ${kalenderState.tahunPelajaran} ${paperLabel}`, buildPrintableRpeHtml(), "rpe", paper);
+    openKalenderPrintWindow(
+      `RPE ${kalenderState.tahunPelajaran} ${paperLabel}`,
+      buildPrintableRpeHtml(),
+      "rpe",
+      paper,
+    );
   }
 
   function getEntriesByLegendType() {
-    return buildPreviewCalendarEntries().reduce((groups, item) => {
-      const key = getEntryKindClass(item);
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
-      return groups;
-    }, {
-      holiday: [],
-      exam: [],
-      important: [],
-      school: []
-    });
+    return buildPreviewCalendarEntries().reduce(
+      (groups, item) => {
+        const key = getEntryKindClass(item);
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(item);
+        return groups;
+      },
+      {
+        holiday: [],
+        exam: [],
+        important: [],
+        school: [],
+      },
+    );
   }
 
   function renderLegendEntryList(items = []) {
     if (!items.length) {
       return `<li>Belum ada item aktif.</li>`;
     }
-    return groupCalendarEntries(items).map(item => `
+    return groupCalendarEntries(items)
+      .map(
+        (item) => `
       <li>${escapeKalenderHtml(formatDateRangeLabel(item.rangeStart, item.rangeEnd))} - ${escapeKalenderHtml(item.name)}</li>
-    `).join("");
+    `,
+      )
+      .join("");
   }
 
   function countEffectiveStudyDaysBySemester() {
@@ -1279,37 +1804,44 @@
         key: "ganjil",
         months: monthSequence.slice(0, 6),
         startDate: String(previewRanges?.ganjil?.start || "").trim(),
-        endDate: String(previewRanges?.ganjil?.end || "").trim()
+        endDate: String(previewRanges?.ganjil?.end || "").trim(),
       },
       {
         key: "genap",
         months: monthSequence.slice(6),
         startDate: String(previewRanges?.genap?.start || "").trim(),
-        endDate: String(previewRanges?.genap?.end || "").trim()
-      }
+        endDate: String(previewRanges?.genap?.end || "").trim(),
+      },
     ];
 
-    return semesterRanges.reduce((result, semester) => {
-      let count = 0;
-      semester.months.forEach(meta => {
-        const maxDay = new Date(meta.year, meta.month, 0).getDate();
-        for (let day = 1; day <= maxDay; day += 1) {
-          const date = `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-          if (semester.startDate && date < semester.startDate) continue;
-          if (semester.endDate && date > semester.endDate) continue;
-          const weekday = new Date(`${date}T00:00:00`).getDay();
-          if (weekday === 0 || (weekday === 6 && allowedWeekendDay !== 6)) continue;
-          const entries = entriesByDate.get(date) || [];
-          if (entries.some(item => {
-            const kind = getEntryKindClass(item);
-            return kind === "holiday" || kind === "exam";
-          })) continue;
-          count += 1;
-        }
-      });
-      result[semester.key] = count;
-      return result;
-    }, { ganjil: 0, genap: 0 });
+    return semesterRanges.reduce(
+      (result, semester) => {
+        let count = 0;
+        semester.months.forEach((meta) => {
+          const maxDay = new Date(meta.year, meta.month, 0).getDate();
+          for (let day = 1; day <= maxDay; day += 1) {
+            const date = `${meta.year}-${String(meta.month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+            if (semester.startDate && date < semester.startDate) continue;
+            if (semester.endDate && date > semester.endDate) continue;
+            const weekday = new Date(`${date}T00:00:00`).getDay();
+            if (weekday === 0 || (weekday === 6 && allowedWeekendDay !== 6))
+              continue;
+            const entries = entriesByDate.get(date) || [];
+            if (
+              entries.some((item) => {
+                const kind = getEntryKindClass(item);
+                return kind === "holiday" || kind === "exam";
+              })
+            )
+              continue;
+            count += 1;
+          }
+        });
+        result[semester.key] = count;
+        return result;
+      },
+      { ganjil: 0, genap: 0 },
+    );
   }
 
   function formatEffectiveWeekValue(days = 0) {
@@ -1317,7 +1849,9 @@
     const rawWeeks = Number(days || 0) / workDayCount;
     if (!Number.isFinite(rawWeeks) || rawWeeks <= 0) return "0";
     const roundedWeeks = Math.round(rawWeeks * 10) / 10;
-    return Number.isInteger(roundedWeeks) ? String(roundedWeeks) : String(roundedWeeks).replace(".", ",");
+    return Number.isInteger(roundedWeeks)
+      ? String(roundedWeeks)
+      : String(roundedWeeks).replace(".", ",");
   }
 
   function renderKalenderOfficialSheet() {
@@ -1326,7 +1860,8 @@
     const printDate = formatDateNoWeekdayLabel(principal.tanggal);
     const effectiveDays = countEffectiveStudyDaysBySemester();
     const holidayDays = groups.holiday.length;
-    const importantDays = groups.exam.length + groups.school.length + groups.important.length;
+    const importantDays =
+      groups.exam.length + groups.school.length + groups.important.length;
     return `
       <section class="kalender-official-sheet">
         <div class="kalender-official-head">
@@ -1391,9 +1926,11 @@
   }
 
   function renderFixedEventRows() {
-    return kalenderState.fixedEvents.filter(item => item.holiday).map(item => {
-      const date = resolveFixedEventDate(item, kalenderState.tahunPelajaran);
-      return `
+    return kalenderState.fixedEvents
+      .filter((item) => item.holiday)
+      .map((item) => {
+        const date = resolveFixedEventDate(item, kalenderState.tahunPelajaran);
+        return `
         <tr>
           <td class="kalender-toggle-cell">
             <button class="kalender-toggle-btn ${item.active ? "is-active" : ""}" onclick="toggleKalenderFixedEvent('${escapeKalenderHtml(item.id)}')" aria-label="${item.active ? "Nonaktifkan" : "Aktifkan"}">
@@ -1409,13 +1946,16 @@
           <td>${escapeKalenderHtml(item.holiday ? "Libur" : "Peringatan")}</td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   function renderImportantFixedEventRows() {
-    return kalenderState.fixedEvents.filter(item => !item.holiday).map(item => {
-      const date = resolveFixedEventDate(item, kalenderState.tahunPelajaran);
-      return `
+    return kalenderState.fixedEvents
+      .filter((item) => !item.holiday)
+      .map((item) => {
+        const date = resolveFixedEventDate(item, kalenderState.tahunPelajaran);
+        return `
         <tr>
           <td class="kalender-toggle-cell">
             <button class="kalender-toggle-btn ${item.active ? "is-active" : ""}" onclick="toggleKalenderFixedEvent('${escapeKalenderHtml(item.id)}')" aria-label="${item.active ? "Nonaktifkan" : "Aktifkan"}">
@@ -1430,11 +1970,15 @@
           <td>${escapeKalenderHtml(item.category)}</td>
         </tr>
       `;
-    }).join("");
+      })
+      .join("");
   }
 
   function renderImportantSchoolEventRows() {
-    return kalenderState.schoolEvents.filter(item => item.panel === "hari-penting").map(item => `
+    return kalenderState.schoolEvents
+      .filter((item) => item.panel === "hari-penting")
+      .map(
+        (item) => `
       <tr>
         <td class="kalender-toggle-cell">
           <button class="kalender-toggle-btn ${item.active ? "is-active" : ""}" onclick="toggleKalenderSchoolEvent('${escapeKalenderHtml(item.id)}')" aria-label="${item.active ? "Nonaktifkan" : "Aktifkan"}">
@@ -1443,17 +1987,22 @@
         </td>
         <td>
           <button class="btn-secondary btn-table-compact kalender-range-trigger" onclick="openKalenderRangePicker('${escapeKalenderHtml(item.id)}')">
-            ${escapeKalenderHtml((item.startDate || item.endDate) ? formatDateRangeLabel(item.startDate, item.endDate) : "Pilih Rentang")}
+            ${escapeKalenderHtml(item.startDate || item.endDate ? formatDateRangeLabel(item.startDate, item.endDate) : "Pilih Rentang")}
           </button>
         </td>
         <td><input type="text" value="${escapeKalenderHtml(item.name || "")}" placeholder="Nama hari penting" onchange="updateKalenderSchoolEvent('${escapeKalenderHtml(item.id)}', 'name', this.value)"></td>
         <td><input type="text" value="${escapeKalenderHtml(item.category || "Hari Penting Nasional")}" placeholder="Kategori" onchange="updateKalenderSchoolEvent('${escapeKalenderHtml(item.id)}', 'category', this.value)"></td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   }
 
   function renderSchoolEventRows(panelKey) {
-    return kalenderState.schoolEvents.filter(item => item.panel === panelKey).map(item => `
+    return kalenderState.schoolEvents
+      .filter((item) => item.panel === panelKey)
+      .map(
+        (item) => `
       <tr>
         <td class="kalender-toggle-cell">
           <button class="kalender-toggle-btn ${item.active ? "is-active" : ""}" onclick="toggleKalenderSchoolEvent('${escapeKalenderHtml(item.id)}')" aria-label="${item.active ? "Nonaktifkan" : "Aktifkan"}">
@@ -1462,18 +2011,20 @@
         </td>
         <td>
           <button class="btn-secondary btn-table-compact kalender-range-trigger" onclick="openKalenderRangePicker('${escapeKalenderHtml(item.id)}')">
-            ${escapeKalenderHtml((item.startDate || item.endDate) ? formatDateRangeLabel(item.startDate, item.endDate) : "Pilih Rentang")}
+            ${escapeKalenderHtml(item.startDate || item.endDate ? formatDateRangeLabel(item.startDate, item.endDate) : "Pilih Rentang")}
           </button>
         </td>
         <td><input type="text" value="${escapeKalenderHtml(item.name || "")}" placeholder="Nama kegiatan sekolah" onchange="updateKalenderSchoolEvent('${escapeKalenderHtml(item.id)}', 'name', this.value)"></td>
         <td><input type="text" value="${escapeKalenderHtml(item.category || "Sekolah")}" placeholder="Kategori" onchange="updateKalenderSchoolEvent('${escapeKalenderHtml(item.id)}', 'category', this.value)"></td>
         <td>
           <div class="table-actions">
-            <button class="btn-secondary btn-table-compact" onclick="removeKalenderSchoolEvent('${escapeKalenderHtml(item.id)}')">Hapus</button>
+            <button type="button" class="btn-danger-lite btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="removeKalenderSchoolEvent('${escapeKalenderHtml(item.id)}')" title="Hapus Item" aria-label="Hapus Item Kalender Pendidikan"></button>
           </div>
         </td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   }
 
   function renderSchoolEventPanel(config) {
@@ -1552,7 +2103,9 @@
     if (!entries.length) {
       return `<tr><td colspan="4" class="empty-cell">Belum ada item aktif di kalender pendidikan.</td></tr>`;
     }
-    return entries.map(item => `
+    return entries
+      .map(
+        (item) => `
       <tr>
         <td>${escapeKalenderHtml(formatDateRangeLabel(item.rangeStart, item.rangeEnd))}</td>
         <td>
@@ -1562,7 +2115,9 @@
         <td>${escapeKalenderHtml(item.category)}</td>
         <td>${escapeKalenderHtml(item.kind)}</td>
       </tr>
-    `).join("");
+    `,
+      )
+      .join("");
   }
 
   function renderKalenderPendidikanPage() {
@@ -1571,178 +2126,198 @@
     const isKaldikTab = kalenderPageTab === "kaldik";
     const isRpeTab = kalenderPageTab === "rpe";
     return `
-      <div class="card kalender-pendidikan-page">
-        <div class="asesmen-page-head kalender-pendidikan-head">
-          <div>
-            <span class="dashboard-eyebrow">Kurikulum</span>
-            <h2>Kalender Pendidikan</h2>
-            <p>Kelola tanggal tetap, hari penting pendidikan, dan agenda sekolah. Hanya item yang aktif yang akan masuk ke kalender pendidikan.</p>
-          </div>
-          <div class="kalender-pendidikan-summary">
-            <span>Tahun Pelajaran Aktif</span>
-            <strong>${escapeKalenderHtml(kalenderState.tahunPelajaran)}</strong>
-            <small>${activeCount} item aktif</small>
-          </div>
-        </div>
-
-        <div class="matrix-toolbar-note kalender-pendidikan-note">
-          Daftar bawaan di bawah memuat tanggal yang tidak berubah setiap tahun, seperti 1 Januari, 1 Mei, 1 Juni, 17 Agustus, 25 Desember, serta hari penting pendidikan seperti 2 Mei dan 25 November. Agenda sekolah tetap bisa Anda atur sendiri.
-        </div>
-
-        <div class="ai-soal-tabbar kalender-preview-tabbar">
-          <button type="button" class="ai-soal-tab ${isInputTab ? "active" : ""}" onclick="setKalenderPageTab('input')">Input Tanggal</button>
-          <button type="button" class="ai-soal-tab ${isKaldikTab ? "active" : ""}" onclick="setKalenderPageTab('kaldik')">KALDIK</button>
-          <button type="button" class="ai-soal-tab ${isRpeTab ? "active" : ""}" onclick="setKalenderPageTab('rpe')">RPE</button>
-        </div>
-
-        ${isInputTab ? `
-        <section class="kalender-pendidikan-section">
-          <div class="kalender-pendidikan-section-head">
+      <section class="app-page app-page--module kalender-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header kalender-header">
+          <div class="app-page-title" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%;">
             <div>
-              <span class="dashboard-card-label">Panel 1</span>
-              <h3>Pengaturan Awal</h3>
-              <p class="kalender-panel-copy">Atur awal semester dan pola hari kerja sekolah sebelum mengisi detail kalender.</p>
+              <span class="dashboard-eyebrow">Kurikulum</span>
+              <h2>Kalender Pendidikan</h2>
+              <p class="kalender-module-description" style="margin: 0;">Kelola tanggal tetap, hari penting pendidikan, dan agenda sekolah. Hanya item yang aktif yang akan masuk ke kalender pendidikan.</p>
+            </div>
+            <div class="kalender-toolbar-actions" style="margin-left: auto;">
+              <div class="kalender-summary-box">
+                <span>Tahun Pelajaran Aktif</span>
+                <strong>${escapeKalenderHtml(kalenderState.tahunPelajaran)}</strong>
+                <small>${activeCount} item aktif</small>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <!-- UI-8: Panel 2 - Tab -->
+        <nav class="app-panel app-panel--tabs module-tabs kalender-tabs" role="tablist" aria-label="Navigasi Kalender">
+          <button type="button" class="kalender-tab ${isInputTab ? "active" : ""}" onclick="setKalenderPageTab('input')">Input Tanggal</button>
+          <button type="button" class="kalender-tab ${isKaldikTab ? "active" : ""}" onclick="setKalenderPageTab('kaldik')">KALDIK</button>
+          <button type="button" class="kalender-tab ${isRpeTab ? "active" : ""}" onclick="setKalenderPageTab('rpe')">RPE</button>
+        </nav>
+
+        <!-- UI-8: Panel 3 - Toolbar -->
+        <section class="app-panel app-panel--toolbar kalender-toolbar">
+          <div class="matrix-toolbar-note kalender-pendidikan-note" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none;">
+            Daftar bawaan di bawah memuat tanggal yang tidak berubah setiap tahun, seperti 1 Januari, 1 Mei, 1 Juni, 17 Agustus, 25 Desember, serta hari penting pendidikan seperti 2 Mei dan 25 November. Agenda sekolah tetap bisa Anda atur sendiri.
+          </div>
+        </section>
+
+        <!-- UI-8: Panel 4 - Content -->
+        <section class="app-panel app-panel--content kalender-content" style="padding: var(--gs-space-5); overflow-y: auto; display: flex; flex-direction: column; gap: var(--gs-space-5);">
+          ${
+            isInputTab
+              ? `
+          <section class="kalender-pendidikan-section">
+            <div class="kalender-pendidikan-section-head">
+              <div>
+                <span class="dashboard-card-label">Pengaturan Semester</span>
+                <h3>Pengaturan Awal</h3>
+                <p class="kalender-panel-copy">Atur awal semester dan pola hari kerja sekolah sebelum mengisi detail kalender.</p>
+              </div>
+              <div class="kalender-pendidikan-actions">
+                <button class="btn-primary" onclick="saveKalenderPendidikan()">Simpan Kalender</button>
+              </div>
+            </div>
+            <div class="kalender-settings-grid">
+              <label class="form-group">
+                <span>Tahun Pelajaran</span>
+                <input type="text" value="${escapeKalenderHtml(kalenderState.tahunPelajaran)}" placeholder="2025/2026" onchange="setKalenderPendidikanYear(this.value)">
+              </label>
+              <label class="form-group">
+                <span>Awal Semester Ganjil</span>
+                <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.ganjil || "")}" onchange="setKalenderSemesterStart('ganjil', this.value)">
+              </label>
+              <label class="form-group">
+                <span>Awal Semester Genap</span>
+                <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.genap || "")}" onchange="setKalenderSemesterStart('genap', this.value)">
+              </label>
+              <label class="form-group">
+                <span>Jumlah Hari Kerja</span>
+                <select onchange="setKalenderWorkDays(this.value)">
+                  <option value="5" ${kalenderState.workDays === "5" ? "selected" : ""}>5 Hari</option>
+                  <option value="6" ${kalenderState.workDays === "6" ? "selected" : ""}>6 Hari</option>
+                </select>
+              </label>
+            </div>
+          </section>
+
+          <section class="kalender-pendidikan-section">
+            <div class="kalender-pendidikan-section-head">
+              <div>
+                <span class="dashboard-card-label">Libur Nasional</span>
+                <h3>Libur Nasional</h3>
+              </div>
+            </div>
+            <div class="table-container mapel-table-container">
+              <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
+                <thead>
+                  <tr>
+                    <th>Aktif</th>
+                    <th>Tanggal</th>
+                    <th>Nama</th>
+                    <th>Kategori</th>
+                    <th>Jenis</th>
+                  </tr>
+                </thead>
+                <tbody>${renderFixedEventRows()}</tbody>
+              </table>
+            </div>
+          </section>
+
+          ${renderSchoolEventPanel({
+            panel: "libur-sekolah",
+            label: "Libur Sekolah",
+            title: "Libur Sekolah",
+          })}
+
+          ${renderSchoolEventPanel({
+            panel: "kegiatan-sekolah",
+            label: "Kegiatan Sekolah",
+            title: "Kegiatan Sekolah",
+          })}
+
+          ${renderSchoolEventPanel({
+            panel: "minggu-efektif-fakultatif",
+            label: "Minggu Efektif",
+            title: "Minggu Efektif Fakultatif",
+          })}
+
+          <section class="kalender-pendidikan-section">
+            <div class="kalender-pendidikan-section-head">
+              <div>
+                <span class="dashboard-card-label">Hari Penting</span>
+                <h3>Hari-Hari Penting Nasional</h3>
+                <p class="kalender-panel-copy">Khusus peringatan yang berhubungan dengan pendidikan, karakter, dan lingkungan.</p>
+              </div>
+            </div>
+            <div class="table-container mapel-table-container">
+              <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
+                <thead>
+                  <tr>
+                    <th>Aktif</th>
+                    <th>Tanggal</th>
+                    <th>Nama</th>
+                    <th>Kategori</th>
+                  </tr>
+                </thead>
+                <tbody>${renderImportantFixedEventRows()}${renderImportantSchoolEventRows()}</tbody>
+              </table>
             </div>
             <div class="kalender-pendidikan-actions">
-              <button class="btn-primary" onclick="saveKalenderPendidikan()">Simpan Kalender</button>
+              <button class="btn-secondary" onclick="addKalenderSchoolEvent('hari-penting')">Tambah Hari Penting</button>
             </div>
-          </div>
-          <div class="kalender-settings-grid">
-            <label class="form-group">
-              <span>Tahun Pelajaran</span>
-              <input type="text" value="${escapeKalenderHtml(kalenderState.tahunPelajaran)}" placeholder="2025/2026" onchange="setKalenderPendidikanYear(this.value)">
-            </label>
-            <label class="form-group">
-              <span>Awal Semester Ganjil</span>
-              <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.ganjil || "")}" onchange="setKalenderSemesterStart('ganjil', this.value)">
-            </label>
-            <label class="form-group">
-              <span>Awal Semester Genap</span>
-              <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.genap || "")}" onchange="setKalenderSemesterStart('genap', this.value)">
-            </label>
-            <label class="form-group">
-              <span>Jumlah Hari Kerja</span>
-              <select onchange="setKalenderWorkDays(this.value)">
-                <option value="5" ${kalenderState.workDays === "5" ? "selected" : ""}>5 Hari</option>
-                <option value="6" ${kalenderState.workDays === "6" ? "selected" : ""}>6 Hari</option>
-              </select>
-            </label>
-          </div>
+          </section>
+          <section class="kalender-pendidikan-section">
+            <div class="kalender-pendidikan-section-head">
+              <div>
+                <span class="dashboard-card-label">Ringkasan</span>
+                <h3>Daftar Agenda Aktif</h3>
+              </div>
+            </div>
+            <div class="table-container mapel-table-container">
+              <table class="mapel-table kalender-pendidikan-table">
+                <thead>
+                  <tr>
+                    <th>Tanggal</th>
+                    <th>Nama</th>
+                    <th>Kategori</th>
+                    <th>Jenis</th>
+                  </tr>
+                </thead>
+                <tbody>${renderActiveEntries()}</tbody>
+              </table>
+            </div>
+          </section>
+          `
+              : ""
+          }
+
+          ${
+            !isInputTab
+              ? `
+          <section id="kalenderPreviewSection" class="kalender-pendidikan-section">
+            <div class="kalender-pendidikan-section-head">
+              <div>
+                <span class="dashboard-card-label">${isKaldikTab ? "Lembar Resmi" : "Rekap Pekan Efektif"}</span>
+                <h3>${isKaldikTab ? "Preview KALDIK Sekolah" : "Preview RPE per Semester"}</h3>
+              </div>
+              <div class="kalender-pendidikan-actions">
+                <button
+                  class="kalender-toggle-btn ${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "is-active" : ""}"
+                  onclick="toggleKalenderSignatureMode('${isKaldikTab ? "kaldik" : "rpe"}')"
+                  aria-label="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "Nonaktifkan TTD" : "Aktifkan TTD"}"
+                  title="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "TTD aktif" : "TTD nonaktif"}"
+                >
+                  <span aria-hidden="true">${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "●" : "○"}</span>
+                </button>
+                <button class="btn-secondary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('a4')" : "exportKalenderRpePdf('a4')"}">PDF A4</button>
+                <button class="btn-primary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('f4')" : "exportKalenderRpePdf('f4')"}">PDF F4</button>
+              </div>
+            </div>
+            ${isKaldikTab ? renderKalenderOfficialSheet() : renderKalenderRpeView()}
+          </section>
+          `
+              : ""
+          }
         </section>
-
-        <section class="kalender-pendidikan-section">
-          <div class="kalender-pendidikan-section-head">
-            <div>
-              <span class="dashboard-card-label">Panel 2</span>
-              <h3>Libur Nasional</h3>
-            </div>
-          </div>
-          <div class="table-container mapel-table-container">
-            <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
-              <thead>
-                <tr>
-                  <th>Aktif</th>
-                  <th>Tanggal</th>
-                  <th>Nama</th>
-                  <th>Kategori</th>
-                  <th>Jenis</th>
-                </tr>
-              </thead>
-              <tbody>${renderFixedEventRows()}</tbody>
-            </table>
-          </div>
-        </section>
-
-        ${renderSchoolEventPanel({
-          panel: "libur-sekolah",
-          label: "Panel 3",
-          title: "Libur Sekolah"
-        })}
-
-        ${renderSchoolEventPanel({
-          panel: "kegiatan-sekolah",
-          label: "Panel 4",
-          title: "Kegiatan Sekolah"
-        })}
-
-        ${renderSchoolEventPanel({
-          panel: "minggu-efektif-fakultatif",
-          label: "Panel 5",
-          title: "Minggu Efektif Fakultatif"
-        })}
-
-        <section class="kalender-pendidikan-section">
-          <div class="kalender-pendidikan-section-head">
-            <div>
-              <span class="dashboard-card-label">Panel 6</span>
-              <h3>Hari-Hari Penting Nasional</h3>
-              <p class="kalender-panel-copy">Khusus peringatan yang berhubungan dengan pendidikan, karakter, dan lingkungan.</p>
-            </div>
-          </div>
-          <div class="table-container mapel-table-container">
-            <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
-              <thead>
-                <tr>
-                  <th>Aktif</th>
-                  <th>Tanggal</th>
-                  <th>Nama</th>
-                  <th>Kategori</th>
-                </tr>
-              </thead>
-              <tbody>${renderImportantFixedEventRows()}${renderImportantSchoolEventRows()}</tbody>
-            </table>
-          </div>
-          <div class="kalender-pendidikan-actions">
-            <button class="btn-secondary" onclick="addKalenderSchoolEvent('hari-penting')">Tambah Hari Penting</button>
-          </div>
-        </section>
-        <section class="kalender-pendidikan-section">
-          <div class="kalender-pendidikan-section-head">
-            <div>
-              <span class="dashboard-card-label">Ringkasan</span>
-              <h3>Daftar Agenda Aktif</h3>
-            </div>
-          </div>
-          <div class="table-container mapel-table-container">
-            <table class="mapel-table kalender-pendidikan-table">
-              <thead>
-                <tr>
-                  <th>Tanggal</th>
-                  <th>Nama</th>
-                  <th>Kategori</th>
-                  <th>Jenis</th>
-                </tr>
-              </thead>
-              <tbody>${renderActiveEntries()}</tbody>
-            </table>
-          </div>
-        </section>
-        ` : ""}
-
-        ${!isInputTab ? `
-        <section id="kalenderPreviewSection" class="kalender-pendidikan-section">
-          <div class="kalender-pendidikan-section-head">
-            <div>
-              <span class="dashboard-card-label">${isKaldikTab ? "Lembar Resmi" : "Rekap Pekan Efektif"}</span>
-              <h3>${isKaldikTab ? "Preview KALDIK Sekolah" : "Preview RPE per Semester"}</h3>
-            </div>
-            <div class="kalender-pendidikan-actions">
-              <button
-                class="kalender-toggle-btn ${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "is-active" : ""}"
-                onclick="toggleKalenderSignatureMode('${isKaldikTab ? "kaldik" : "rpe"}')"
-                aria-label="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "Nonaktifkan TTD" : "Aktifkan TTD"}"
-                title="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "TTD aktif" : "TTD nonaktif"}"
-              >
-                <span aria-hidden="true">${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "●" : "○"}</span>
-              </button>
-              <button class="btn-secondary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('a4')" : "exportKalenderRpePdf('a4')"}">PDF A4</button>
-              <button class="btn-primary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('f4')" : "exportKalenderRpePdf('f4')"}">PDF F4</button>
-            </div>
-          </div>
-          ${isKaldikTab ? renderKalenderOfficialSheet() : renderKalenderRpeView()}
-        </section>
-        ` : ""}
-      </div>
+      </section>
       ${renderKalenderRangeModal()}
       ${renderKalenderSavingOverlay()}
     `;
@@ -1764,13 +2339,22 @@
   }
 
   function setKalenderPendidikanYear(value) {
-    kalenderState.tahunPelajaran = String(value || "").trim() || getKalenderAcademicYear();
-    const { startYear, endYear } = parseAcademicYears(kalenderState.tahunPelajaran);
+    kalenderState.tahunPelajaran =
+      String(value || "").trim() || getKalenderAcademicYear();
+    const { startYear, endYear } = parseAcademicYears(
+      kalenderState.tahunPelajaran,
+    );
     if (!kalenderState?.semesterStarts?.ganjil) {
-      kalenderState.semesterStarts = { ...(kalenderState.semesterStarts || {}), ganjil: `${startYear}-07-14` };
+      kalenderState.semesterStarts = {
+        ...(kalenderState.semesterStarts || {}),
+        ganjil: `${startYear}-07-14`,
+      };
     }
     if (!kalenderState?.semesterStarts?.genap) {
-      kalenderState.semesterStarts = { ...(kalenderState.semesterStarts || {}), genap: `${endYear}-01-05` };
+      kalenderState.semesterStarts = {
+        ...(kalenderState.semesterStarts || {}),
+        genap: `${endYear}-01-05`,
+      };
     }
     renderKalenderPendidikanState();
   }
@@ -1778,7 +2362,7 @@
   function setKalenderSemesterStart(semesterKey, value) {
     kalenderState.semesterStarts = {
       ...(kalenderState.semesterStarts || {}),
-      [semesterKey]: String(value || "").trim()
+      [semesterKey]: String(value || "").trim(),
     };
     renderKalenderPendidikanState();
   }
@@ -1793,8 +2377,13 @@
     renderKalenderPendidikanState();
     if (kalenderPageTab !== "input") {
       global.requestAnimationFrame?.(() => {
-        const previewSection = global.document.getElementById("kalenderPreviewSection");
-        previewSection?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+        const previewSection = global.document.getElementById(
+          "kalenderPreviewSection",
+        );
+        previewSection?.scrollIntoView?.({
+          behavior: "smooth",
+          block: "start",
+        });
       });
     }
   }
@@ -1804,27 +2393,27 @@
     kalenderState.signatureModes = {
       kaldik: kalenderState?.signatureModes?.kaldik !== false,
       rpe: kalenderState?.signatureModes?.rpe !== false,
-      [normalizedMode]: !isKalenderSignatureEnabled(normalizedMode)
+      [normalizedMode]: !isKalenderSignatureEnabled(normalizedMode),
     };
     renderKalenderPendidikanState();
   }
 
   function toggleKalenderFixedEvent(id) {
-    kalenderState.fixedEvents = kalenderState.fixedEvents.map(item =>
-      item.id === id ? { ...item, active: !item.active } : item
+    kalenderState.fixedEvents = kalenderState.fixedEvents.map((item) =>
+      item.id === id ? { ...item, active: !item.active } : item,
     );
     renderKalenderPendidikanState();
   }
 
   function toggleKalenderSchoolEvent(id) {
-    kalenderState.schoolEvents = kalenderState.schoolEvents.map(item =>
-      item.id === id ? { ...item, active: !item.active } : item
+    kalenderState.schoolEvents = kalenderState.schoolEvents.map((item) =>
+      item.id === id ? { ...item, active: !item.active } : item,
     );
     renderKalenderPendidikanState();
   }
 
   function updateKalenderSchoolEvent(id, field, value) {
-    kalenderState.schoolEvents = kalenderState.schoolEvents.map(item => {
+    kalenderState.schoolEvents = kalenderState.schoolEvents.map((item) => {
       if (item.id !== id) return item;
       if (field === "active") return { ...item, active: value === true };
       return { ...item, [field]: String(value || "").trim() };
@@ -1837,7 +2426,7 @@
       "libur-sekolah": "Libur Sekolah",
       "kegiatan-sekolah": "Kegiatan Sekolah",
       "minggu-efektif-fakultatif": "Minggu Efektif Fakultatif",
-      "hari-penting": "Hari Penting Nasional"
+      "hari-penting": "Hari Penting Nasional",
     };
     kalenderState.schoolEvents = kalenderState.schoolEvents.concat({
       id: makeSchoolEventId(),
@@ -1847,19 +2436,19 @@
       startDate: "",
       endDate: "",
       active: false,
-      note: ""
+      note: "",
     });
     renderKalenderPendidikanState();
   }
 
   function openKalenderRangePicker(id) {
-    const item = kalenderState.schoolEvents.find(entry => entry.id === id);
+    const item = kalenderState.schoolEvents.find((entry) => entry.id === id);
     if (!item) return;
     kalenderRangeDraft = {
       id,
       title: item.name || "Rentang Tanggal",
       startDate: item.startDate || "",
-      endDate: item.endDate || item.startDate || ""
+      endDate: item.endDate || item.startDate || "",
     };
     renderKalenderPendidikanState();
   }
@@ -1883,17 +2472,19 @@
     const endInput = global.document.getElementById("kalenderRangeEnd");
     const startDate = String(startInput?.value || "").trim();
     const endDate = String(endInput?.value || startDate || "").trim();
-    kalenderState.schoolEvents = kalenderState.schoolEvents.map(item =>
+    kalenderState.schoolEvents = kalenderState.schoolEvents.map((item) =>
       item.id === kalenderRangeDraft.id
         ? { ...item, startDate, endDate }
-        : item
+        : item,
     );
     kalenderRangeDraft = null;
     renderKalenderPendidikanState();
   }
 
   function removeKalenderSchoolEvent(id) {
-    kalenderState.schoolEvents = kalenderState.schoolEvents.filter(item => item.id !== id);
+    kalenderState.schoolEvents = kalenderState.schoolEvents.filter(
+      (item) => item.id !== id,
+    );
     renderKalenderPendidikanState();
   }
 

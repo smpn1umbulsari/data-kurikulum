@@ -76,6 +76,7 @@
         <nav class="sidebar-flat-nav" aria-label="Navigasi utama">
           <div
             class="menu-group role-menu role-admin role-superadmin role-koordinator role-guru role-urusan role-siswa"
+            id="menuBerandaSidebar"
           >
             <button
               class="menu active"
@@ -86,209 +87,286 @@
             </button>
           </div>
 
-          <div class="sidebar-section-label">Akademik</div>
+          <div class="sidebar-section-label">Administrasi</div>
+
           <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator role-urusan"
-          >
-            <button
-              class="menu"
-              data-menu-icon="students"
-              onclick="loadPage('lihat')"
-            >
-              <span>Data Siswa</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-guru role-urusan"
-          >
-            <button
-              class="menu"
-              data-menu-icon="calendar"
-              onclick="loadPage('mengajar')"
-            >
-              <span>Jadwal Mengajar</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator role-guru role-urusan"
-          >
-            <button
-              class="menu"
-              data-ai-prompt-menu="true"
-              data-menu-icon="book"
-              onclick="loadPage('generate-perangkat-pembelajaran')"
-              hidden
-            >
-              <span>RPP & Materi</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator role-urusan"
-          >
-            <button
-              class="menu"
-              data-menu-icon="file"
-              onclick="loadPage('nilai-input')"
-            >
-              <span>Penilaian</span>
-            </button>
-          </div>
-          <div class="menu-group role-menu role-guru">
-            <button
-              class="menu"
-              data-menu-icon="file"
-              onclick="loadPage('nilai-input-guru')"
-            >
-              <span>Penilaian</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator"
-          >
-            <button
-              class="menu"
-              data-menu-icon="clock"
-              onclick="loadPage('wali-kehadiran')"
-            >
-              <span>Absensi Siswa</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-urusan"
+            class="menu-group role-menu role-admin role-superadmin"
+            id="menuAdmin"
           >
             <button
               class="menu menu-parent"
-              data-menu-icon="file"
-              onclick="toggleMenu('submenuAsesmen', this)"
+              data-menu-icon="users"
+              onclick="toggleMenu('submenuAdmin', this)"
             >
-              <span>Asesmen</span>
+              <span>Admin</span>
               <span class="menu-caret">+</span>
             </button>
-            <div class="submenu" id="submenuAsesmen">
-              <button onclick="loadPage('pembagian-ruang')">Kepesertaan</button>
-              <button onclick="loadPage('kepangawasan')">Kepengawasan</button>
+            <div class="submenu" id="submenuAdmin">
+              <button onclick="loadPage('admin-user')">User</button>
+              <button onclick="loadPage('admin-hierarki')">
+                Pengguna Hierarki
+              </button>
+              <button onclick="loadPage('admin-semester')">
+                Semester dan Tahun Pelajaran
+              </button>
+              <button onclick="loadPage('admin-quota')">Quota</button>
             </div>
           </div>
 
-          <div class="sidebar-section-label">Administrasi</div>
+          <div class="sidebar-section-label">Akademik</div>
+
           <div
-            class="menu-group role-menu role-admin role-superadmin role-guru role-urusan"
+            class="menu-group role-menu role-admin role-superadmin"
+            id="menuDataSekolah"
           >
             <button
-              class="menu"
-              data-menu-icon="users"
-              onclick="loadPage('guru-lihat')"
+              class="menu menu-parent"
+              data-menu-icon="school"
+              onclick="toggleMenu('submenuDataSekolah', this)"
             >
-              <span>Guru & Staf</span>
+              <span>Data Sekolah</span>
+              <span class="menu-caret">+</span>
             </button>
+            <div class="submenu submenu-sectioned" id="submenuDataSekolah">
+              <div class="submenu-section-label">Kepala Sekolah</div>
+              <button onclick="loadPage('admin-rapor')">Data KS</button>
+
+              <div class="submenu-section-divider"></div>
+              <div class="submenu-section-label">Data Utama</div>
+              <button onclick="loadPage('guru-lihat')">Data Guru</button>
+              <button onclick="loadPage('lihat')">Data Siswa</button>
+
+              <div class="submenu-section-divider"></div>
+              <div class="submenu-section-label">Kelulusan</div>
+              <button onclick="loadPage('siswa-lulus')">Siswa Lulus</button>
+            </div>
           </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator role-urusan"
-          >
-            <button
-              class="menu"
-              data-menu-icon="class"
-              onclick="loadPage('kelas')"
-            >
-              <span>Kelas</span>
-            </button>
-          </div>
+
           <div
             class="menu-group role-menu role-admin role-superadmin role-urusan"
+            id="menuKurikulum"
           >
             <button
-              class="menu"
+              class="menu menu-parent"
+              data-menu-icon="calendar"
+              onclick="toggleMenu('submenuKurikulum', this)"
+            >
+              <span>Kurikulum</span>
+              <span class="menu-caret">+</span>
+            </button>
+            <div class="submenu submenu-sectioned" id="submenuKurikulum">
+              <div class="submenu-section-label">Administrasi Awal</div>
+              <button onclick="loadPage('kelas')">Data Kelas</button>
+              <button onclick="loadPage('mapel')">Data Mapel</button>
+              <button onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+
+              <div class="submenu-section-divider"></div>
+              <div class="submenu-section-label">Pembagian Mengajar</div>
+              <button onclick="loadPage('mengajar')">Pembagian Mengajar</button>
+              <button onclick="loadPage('rekap-tugas-mengajar')">
+                Rekap Administrasi
+              </button>
+
+              <div class="submenu-section-divider"></div>
+              <div class="submenu-section-label">Kalender</div>
+              <button onclick="loadPage('kalender-pendidikan')">
+                Kalender Pendidikan
+              </button>
+              <button
+                data-ai-prompt-menu="true"
+                onclick="loadPage('generate-perangkat-pembelajaran')"
+                hidden
+              >
+                Generate Perangkat Pembelajaran
+              </button>
+
+              <div class="submenu-section-divider"></div>
+              <div class="submenu-section-label">Asesmen</div>
+              <button onclick="loadPage('kepangawasan')">Kepengawasan</button>
+              <button onclick="loadPage('pembagian-ruang')">Kepesertaan</button>
+              <button onclick="loadPage('asesmen-administrasi')">
+                Administrasi Berkas
+              </button>
+              <button
+                data-ai-prompt-menu="true"
+                onclick="loadPage('ai-soal')"
+                hidden
+              >
+                Generate Prompt AI
+              </button>
+              <button onclick="loadPage('nilai-input')">Input Nilai</button>
+              <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
+            </div>
+          </div>
+
+          <div class="menu-group role-menu role-guru" id="menuNilaiGuru">
+            <button
+              class="menu menu-parent"
+              data-menu-icon="file"
+              onclick="toggleMenu('submenuNilaiGuru', this)"
+            >
+              <span>Nilai</span>
+              <span class="menu-caret">+</span>
+            </button>
+            <div class="submenu" id="submenuNilaiGuru">
+              <button
+                id="menuNilaiGuruInputBtn"
+                onclick="loadPage('nilai-input-guru')"
+              >
+                Input Nilai
+              </button>
+              <button onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+              <button data-native-only hidden onclick="prepareGuruOfflineData()">
+                Siapkan Data Offline
+              </button>
+              <button
+                data-ai-prompt-menu="true"
+                onclick="loadPage('generate-perangkat-pembelajaran')"
+                hidden
+              >
+                Generate Perangkat Pembelajaran
+              </button>
+              <button
+                data-ai-prompt-menu="true"
+                onclick="loadPage('ai-soal')"
+                hidden
+              >
+                Generate Prompt AI
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="menu-group role-menu role-koordinator"
+            id="menuSiswaKoordinator"
+          >
+            <button
+              class="menu menu-parent"
+              data-menu-icon="students"
+              onclick="toggleMenu('submenuSiswaKoordinator', this)"
+            >
+              <span>Data Siswa</span>
+              <span class="menu-caret">+</span>
+            </button>
+            <div class="submenu" id="submenuSiswaKoordinator">
+              <button onclick="loadPage('lihat')">Data Siswa</button>
+              <button onclick="loadPage('kelas')">Data Kelas</button>
+              <button onclick="loadPage('kelas-bayangan-siswa')">
+                Lihat Data Kelas Real
+              </button>
+            </div>
+          </div>
+
+          <div
+            class="menu-group role-menu role-koordinator"
+            id="menuKurikulumKoordinator"
+          >
+            <button
+              class="menu menu-parent"
               data-menu-icon="book"
-              onclick="loadPage('mapel')"
+              onclick="toggleMenu('submenuKurikulumKoordinator', this)"
             >
-              <span>Mata Pelajaran</span>
+              <span>Kurikulum</span>
+              <span class="menu-caret">+</span>
             </button>
-          </div>
-          <div class="menu-group role-menu role-admin role-superadmin">
-            <button
-              class="menu"
-              data-menu-icon="calendar"
-              onclick="loadPage('admin-semester')"
+            <div
+              class="submenu submenu-sectioned"
+              id="submenuKurikulumKoordinator"
             >
-              <span>Tahun Ajaran</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-urusan"
-          >
-            <button
-              class="menu"
-              data-menu-icon="calendar"
-              onclick="loadPage('kalender-pendidikan')"
-            >
-              <span>Kalender Pendidikan</span>
-            </button>
+              <div class="submenu-section-label">Nilai</div>
+              <button
+                data-ai-prompt-menu="true"
+                onclick="loadPage('generate-perangkat-pembelajaran')"
+                hidden
+              >
+                Generate Perangkat Pembelajaran
+              </button>
+              <button
+                data-ai-prompt-menu="true"
+                onclick="loadPage('ai-soal')"
+                hidden
+              >
+                Generate Prompt AI
+              </button>
+              <button onclick="loadPage('nilai-input')">Input Nilai</button>
+              <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
+            </div>
           </div>
 
           <div class="sidebar-section-label">Laporan</div>
+
           <div
             class="menu-group role-menu role-admin role-superadmin role-koordinator"
+            id="menuWaliKelas"
           >
             <button
-              class="menu"
+              class="menu menu-parent"
               data-menu-icon="report"
-              onclick="loadPage('nilai-rapor')"
+              onclick="toggleMenu('submenuWaliKelas', this)"
             >
-              <span>Raport</span>
+              <span>Wali Kelas</span>
+              <span class="menu-caret">+</span>
             </button>
+            <div class="submenu" id="submenuWaliKelas">
+              <button onclick="loadPage('wali-kehadiran')">
+                Kehadiran Siswa
+              </button>
+              <button onclick="loadPage('wali-kelengkapan')">
+                Cek Kelengkapan Nilai Siswa
+              </button>
+              <button onclick="loadPage('wali-rekap-nilai')">Rekap Nilai</button>
+              <button onclick="loadPage('nilai-rapor')">Cetak Rapor</button>
+            </div>
           </div>
+
           <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator role-urusan"
+            class="menu-group role-menu role-admin role-superadmin"
+            id="menuKelasBayangan"
           >
             <button
-              class="menu"
-              data-menu-icon="file"
-              onclick="loadPage('rekap-nilai')"
+              class="menu menu-parent"
+              data-menu-icon="class"
+              onclick="toggleMenu('submenuKelasBayangan', this)"
             >
-              <span>Laporan Nilai</span>
+              <span>Kelas Real</span>
+              <span class="menu-caret">+</span>
             </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-koordinator"
-          >
-            <button
-              class="menu"
-              data-menu-icon="clock"
-              onclick="loadPage('wali-kehadiran')"
-            >
-              <span>Rekap Absensi</span>
-            </button>
-          </div>
-          <div
-            class="menu-group role-menu role-admin role-superadmin role-urusan"
-          >
-            <button
-              class="menu"
-              data-menu-icon="report"
-              onclick="loadPage('rekap-tugas-mengajar')"
-            >
-              <span>Laporan Mengajar</span>
-            </button>
+            <div class="submenu" id="submenuKelasBayangan">
+              <button onclick="loadPage('kelas-bayangan-siswa')">
+                Kelola Kelas Real
+              </button>
+              <button onclick="loadPage('kelas-bayangan-mapel')">
+                Data Mapel
+              </button>
+              <button onclick="loadPage('kelas-bayangan-rekap-mengajar')">
+                Rekap Tugas Mengajar
+              </button>
+            </div>
           </div>
 
           <div class="sidebar-section-label">Pengaturan</div>
-          <div class="menu-group role-menu role-admin role-superadmin">
+
+          <div
+            class="menu-group role-menu role-admin role-superadmin"
+            id="menuBackupAdmin"
+          >
             <button
-              class="menu"
+              class="menu menu-parent"
               data-menu-icon="settings"
-              onclick="loadPage('admin-backup')"
+              onclick="toggleMenu('submenuBackupAdmin', this)"
             >
-              <span>Pengaturan Sekolah</span>
+              <span>Sistem</span>
+              <span class="menu-caret">+</span>
             </button>
-          </div>
-          <div class="menu-group role-menu role-admin role-superadmin">
-            <button
-              class="menu"
-              data-menu-icon="users"
-              onclick="loadPage('admin-user')"
-            >
-              <span>Akun Saya</span>
-            </button>
+            <div class="submenu" id="submenuBackupAdmin">
+              <button onclick="loadPage('admin-backup')">Backup & Restore</button>
+              <button onclick="loadPage('admin-data-health')">
+                Validasi Data
+              </button>
+              <button onclick="loadPage('admin-audit-log')">
+                Riwayat Perubahan
+              </button>
+            </div>
           </div>
         </nav>
 
@@ -426,6 +504,8 @@
     <script src="Admin/users.js?v=20260414c"></script>
     <script src="Admin/backup.js?v=20260421a"></script>
     <script src="Admin/quota.js?v=20260415a"></script>
+    <script src="Admin/data-health.js?v=20260422b"></script>
+    <script src="Admin/audit-log.js?v=20260422b"></script>
     <script src="Mapel/crud.js?v=20260407c"></script>
     <script src="Mapel/mapel.js?v=20260408h"></script>
     <script src="Mapel/ui.js?v=20260408e"></script>

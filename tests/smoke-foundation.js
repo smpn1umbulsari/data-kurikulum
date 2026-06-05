@@ -325,9 +325,9 @@ async function main() {
   assert(bootstrapRendered === 1, "DashboardShell.bootstrap failed");
 
   assert(typeof window.DashboardHome?.renderMainHome === "function", "DashboardHome.renderMainHome missing");
-  assert(/home-summary-panel|Rangkuman Input/.test(window.DashboardHome.renderMainHome()), "DashboardHome.renderMainHome failed");
-  assert(/home-summary-panel|Guru/.test(window.DashboardHome.renderGuruHome()), "DashboardHome.renderGuruHome failed");
-  assert(/home-summary-panel|Guru \+ Koordinator|Koordinator/.test(window.DashboardHome.renderKoordinatorHome(["7", "8"])), "DashboardHome.renderKoordinatorHome failed");
+  assert(/stat-card|dashboard-home/.test(window.DashboardHome.renderMainHome()), "DashboardHome.renderMainHome failed");
+  assert(/stat-card|dashboard-home|Guru/.test(window.DashboardHome.renderGuruHome()), "DashboardHome.renderGuruHome failed");
+  assert(/stat-card|dashboard-home|Koordinator/.test(window.DashboardHome.renderKoordinatorHome(["7", "8"])), "DashboardHome.renderKoordinatorHome failed");
   assert(/Rekap Nilai/.test(window.DashboardHome.renderRekapNilaiPlaceholder(["7"])), "DashboardHome.renderRekapNilaiPlaceholder failed");
   assert(typeof window.DashboardHome.renderHomePage === "function", "DashboardHome.renderHomePage missing");
   const homeContent = { innerHTML: "" };
@@ -342,7 +342,7 @@ async function main() {
       homeStatsLoaded += 1;
     }
   });
-  assert(/home-summary-panel|Rangkuman Input/.test(homeContent.innerHTML), "DashboardHome.renderHomePage failed");
+  assert(/stat-card|dashboard-home/.test(homeContent.innerHTML), "DashboardHome.renderHomePage failed");
   assert(homeStatsLoaded === 1, "DashboardHome.renderHomePage did not load stats");
 
   assert(typeof window.AsesmenRuangStore?.save === "function", "AsesmenRuangStore.save missing");
@@ -401,7 +401,7 @@ async function main() {
     escape: window.AppUtils.escapeHtml,
     getStudentCount: level => Number(level) * 10
   });
-  assert(/Pembagian Ruang/.test(html), "AsesmenRuangView missing page title");
+  assert(/Preview Ruang Ujian|asesmen-toolbar/.test(html), "AsesmenRuangView missing page content");
   assert(/Set Kelas 7/.test(html), "AsesmenRuangView missing level panel");
   const tempelRowsHtml = vm.runInContext(`
     (function() {
@@ -628,8 +628,6 @@ async function main() {
     "shared/app-router.js",
     "shared/dashboard-shell.js",
     "shared/dashboard-data.js",
-    "shared/dashboard-module-loader.js",
-    "shared/dashboard-home-data.js",
     "shared/dashboard-home.js",
     "shared/dashboard-routes.js",
     "inline-notification.js",

@@ -135,8 +135,9 @@ function renderTugasTambahanModuleTabs() {
 
 function renderTugasTambahanPage() {
   return `
-    <section class="app-page app-page--data guru-module-panel tugas-tambahan-module-panel">
-      <header class="app-page-header kelas-bayangan-head">
+    <section class="app-page app-page--module guru-module-panel tugas-tambahan-module-panel">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header tugas-tambahan-header">
         <div class="app-page-title">
           <span class="dashboard-eyebrow">Pembagian Tugas dan Mengajar</span>
           <h2>Tugas Tambahan</h2>
@@ -144,16 +145,13 @@ function renderTugasTambahanPage() {
         </div>
       </header>
 
-      <nav class="module-tabs" role="tablist" aria-label="Navigasi tugas tambahan">
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Navigasi tugas tambahan">
         <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('guru-lihat')">Data Guru</button>
         <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
       </nav>
 
-      <div class="status-strip toolbar-info">
-        <span id="jumlahDataTugasTambahan">0 tugas tambahan</span>
-      </div>
-
-      <div class="tugas-tabbar">
+      <div class="tugas-tabbar" style="margin: var(--gs-space-3) var(--gs-space-4) 0 var(--gs-space-4);">
         <button class="${tugasTambahanActiveTab === "guru" ? "active" : ""}" onclick="setTugasTambahanTab('guru')">Guru</button>
         <button class="${tugasTambahanActiveTab === "tugas" ? "active" : ""}" onclick="setTugasTambahanTab('tugas')">Tugas Tambahan</button>
       </div>
@@ -167,11 +165,22 @@ function renderTugasTambahanPage() {
 
 function renderTugasTambahanGuruTab() {
   return `
-    <div class="toolbar-info">
-      <span id="jumlahGuruTugasTambahanInfo">0 guru x 0 slot</span>
-      <button class="btn-primary" onclick="saveAllGuruTugasTambahan()">Simpan Semua</button>
-    </div>
-    <div id="guruTugasTambahanMatrixContainer"></div>
+    <!-- UI-8: Panel 3 - Toolbar -->
+    <section class="app-panel app-panel--toolbar tugas-tambahan-toolbar">
+      <div class="toolbar-row toolbar-row--actions">
+        <button class="btn-primary" onclick="saveAllGuruTugasTambahan()">Simpan Semua</button>
+      </div>
+      <div class="toolbar-row toolbar-row--filters">
+        <div class="toolbar-row--info-inline">
+          <span id="jumlahGuruTugasTambahanInfo" class="matrix-toolbar-note">0 guru x 0 slot</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content tugas-tambahan-content">
+      <div id="guruTugasTambahanMatrixContainer"></div>
+    </section>
   `;
 }
 
@@ -540,6 +549,17 @@ function renderGuruTugasTambahanMatrix() {
 
 function renderTugasTambahanDaftarTab() {
   return `
+    <!-- UI-8: Panel 3 - Toolbar -->
+    <section class="app-panel app-panel--toolbar tugas-tambahan-toolbar">
+      <div class="toolbar-row toolbar-row--filters">
+        <div class="toolbar-row--info-inline">
+          <span id="jumlahDataTugasTambahan" class="matrix-toolbar-note">0 tugas tambahan</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content tugas-tambahan-content">
       <div class="table-container">
         <table>
           <thead>
@@ -555,6 +575,7 @@ function renderTugasTambahanDaftarTab() {
         </table>
         <div id="emptyStateTugasTambahan" class="empty-panel" style="display:none;">Belum ada data tugas tambahan.</div>
       </div>
+    </section>
   `;
 }
 

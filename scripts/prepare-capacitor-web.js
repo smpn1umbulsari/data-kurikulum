@@ -7,6 +7,7 @@ const output = path.join(root, "www");
 const appDirectories = [
   "Admin",
   "Asesmen",
+  "css",
   "Guru",
   "img",
   "Kelas",

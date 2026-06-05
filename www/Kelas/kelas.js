@@ -18,9 +18,13 @@ let draftKelasTingkat = "7";
 let draftWaliKelasTarget = "";
 let draftKelasWali = "";
 let anggotaKelasDraft = null;
-let acakWaliKelasState = JSON.parse(localStorage.getItem("acakWaliKelasState") || "{\"excluded\":{}}");
+let acakWaliKelasState = JSON.parse(
+  localStorage.getItem("acakWaliKelasState") || '{"excluded":{}}',
+);
 let acakWaliKelasDraft = null;
-let acakWaliKelasUndo = JSON.parse(localStorage.getItem("acakWaliKelasUndo") || "null");
+let acakWaliKelasUndo = JSON.parse(
+  localStorage.getItem("acakWaliKelasUndo") || "null",
+);
 let lastKelasTableRenderKey = "";
 let lastKelasCreateFormRenderKey = "";
 const kelasByNameCache = new Map();
@@ -28,9 +32,12 @@ const guruKelasByKodeCache = new Map();
 const siswaCountByKelasCache = new Map();
 const mengajarGuruCodesByKelasCache = new Map();
 const usedWaliCodesCache = new Map();
+let kelasActiveTab = "data"; // "data" | "statistik"
 
 function isKelasCoordinatorViewOnly() {
-  return typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess();
+  return (
+    typeof canUseCoordinatorAccess === "function" && canUseCoordinatorAccess()
+  );
 }
 
 function normalizeKelasCacheKey(value = "") {
@@ -40,7 +47,7 @@ function normalizeKelasCacheKey(value = "") {
 function rebuildKelasDataCaches() {
   kelasByNameCache.clear();
   usedWaliCodesCache.clear();
-  semuaDataKelas.forEach(item => {
+  semuaDataKelas.forEach((item) => {
     const key = getStoredKelasParts(item).kelas.toUpperCase();
     if (key) kelasByNameCache.set(key, item);
   });
@@ -48,7 +55,7 @@ function rebuildKelasDataCaches() {
 
 function rebuildKelasGuruCaches() {
   guruKelasByKodeCache.clear();
-  daftarGuruKelas.forEach(guru => {
+  daftarGuruKelas.forEach((guru) => {
     const kode = String(guru?.kode_guru || "").trim();
     if (kode) guruKelasByKodeCache.set(kode, guru);
   });
@@ -56,24 +63,28 @@ function rebuildKelasGuruCaches() {
 
 function rebuildKelasSiswaCaches() {
   siswaCountByKelasCache.clear();
-  daftarSiswaKelas.forEach(siswa => {
+  daftarSiswaKelas.forEach((siswa) => {
     const kelas = getSiswaKelasValue(siswa);
     if (!kelas) return;
-    siswaCountByKelasCache.set(kelas, (siswaCountByKelasCache.get(kelas) || 0) + 1);
+    siswaCountByKelasCache.set(
+      kelas,
+      (siswaCountByKelasCache.get(kelas) || 0) + 1,
+    );
   });
 }
 
 function rebuildKelasMengajarCaches() {
   mengajarGuruCodesByKelasCache.clear();
-  daftarMengajarKelas.forEach(item => {
+  daftarMengajarKelas.forEach((item) => {
     const kelas = getStoredKelasParts({
       kelas: item.kelas || buildKelasName(item.tingkat, item.rombel),
       tingkat: item.tingkat,
-      rombel: item.rombel
+      rombel: item.rombel,
     }).kelas.toUpperCase();
     const kode = String(item.guru_kode || "").trim();
     if (!kelas || !kode) return;
-    if (!mengajarGuruCodesByKelasCache.has(kelas)) mengajarGuruCodesByKelasCache.set(kelas, new Set());
+    if (!mengajarGuruCodesByKelasCache.has(kelas))
+      mengajarGuruCodesByKelasCache.set(kelas, new Set());
     mengajarGuruCodesByKelasCache.get(kelas).add(kode);
   });
 }
@@ -81,19 +92,25 @@ function rebuildKelasMengajarCaches() {
 function getKelasAccessibleLevels() {
   if (!isKelasCoordinatorViewOnly()) return [];
   if (typeof getCurrentCoordinatorLevelsSync !== "function") return [];
-  return getCurrentCoordinatorLevelsSync().map(item => String(item || "").trim()).filter(Boolean);
+  return getCurrentCoordinatorLevelsSync()
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
 }
 
 function getVisibleKelasData(rows = semuaDataKelas) {
   if (!isKelasCoordinatorViewOnly()) return rows;
   const levels = getKelasAccessibleLevels();
-  return rows.filter(item => levels.includes(getStoredKelasParts(item).tingkat));
+  return rows.filter((item) =>
+    levels.includes(getStoredKelasParts(item).tingkat),
+  );
 }
 
 function getVisibleKelasAnggota(rows = daftarSiswaKelas) {
   if (!isKelasCoordinatorViewOnly()) return rows;
   const levels = getKelasAccessibleLevels();
-  return rows.filter(item => levels.includes(getStoredKelasParts({ kelas: item.kelas }).tingkat));
+  return rows.filter((item) =>
+    levels.includes(getStoredKelasParts({ kelas: item.kelas }).tingkat),
+  );
 }
 
 function escapeKelasHtml(value) {
@@ -113,11 +130,9 @@ function escapeKelasJs(value) {
 
 async function downloadKelasTemplate() {
   await ensureSpreadsheetLibraries();
-  const worksheet = XLSX.utils.aoa_to_sheet([[
-    "KELAS",
-    "KODE_GURU",
-    "WALI_KELAS"
-  ]]);
+  const worksheet = XLSX.utils.aoa_to_sheet([
+    ["KELAS", "KODE_GURU", "WALI_KELAS"],
+  ]);
   const workbook = XLSX.utils.book_new();
 
   XLSX.utils.book_append_sheet(workbook, worksheet, "Template");
@@ -133,7 +148,10 @@ function normalizeKelasHeader(text) {
 
 function getKelasCellValue(row, aliases) {
   const normalizedRow = Object.fromEntries(
-    Object.entries(row).map(([key, value]) => [normalizeKelasHeader(key), value])
+    Object.entries(row).map(([key, value]) => [
+      normalizeKelasHeader(key),
+      value,
+    ]),
   );
 
   for (const alias of aliases) {
@@ -148,7 +166,9 @@ function getKelasCellValue(row, aliases) {
 
 function findGuruForKelasImport(kodeGuru, waliKelasText) {
   const kode = String(kodeGuru || "").trim();
-  const waliText = String(waliKelasText || "").trim().toLowerCase();
+  const waliText = String(waliKelasText || "")
+    .trim()
+    .toLowerCase();
 
   if (kode) {
     const guruByCode = getGuruKelasByKode(kode);
@@ -156,14 +176,20 @@ function findGuruForKelasImport(kodeGuru, waliKelasText) {
   }
 
   if (waliText) {
-    return daftarGuruKelas.find(item => formatNamaGuru(item).trim().toLowerCase() === waliText) || null;
+    return (
+      daftarGuruKelas.find(
+        (item) => formatNamaGuru(item).trim().toLowerCase() === waliText,
+      ) || null
+    );
   }
 
   return null;
 }
 
 function parseKelasParts(kelasValue = "") {
-  const raw = String(kelasValue || "").trim().toUpperCase();
+  const raw = String(kelasValue || "")
+    .trim()
+    .toUpperCase();
   const normalized = raw.replace(/\s+/g, "");
   const match = normalized.match(/^([7-9])([A-Z]+)$/);
 
@@ -171,20 +197,22 @@ function parseKelasParts(kelasValue = "") {
     return {
       tingkat: match[1],
       rombel: match[2],
-      kelas: `${match[1]} ${match[2]}`
+      kelas: `${match[1]} ${match[2]}`,
     };
   }
 
   return {
     tingkat: "",
     rombel: "",
-    kelas: raw
+    kelas: raw,
   };
 }
 
 function buildKelasName(tingkat, rombel) {
   const level = String(tingkat || "").trim();
-  const group = String(rombel || "").trim().toUpperCase();
+  const group = String(rombel || "")
+    .trim()
+    .toUpperCase();
   return level && group ? `${level} ${group}` : "";
 }
 
@@ -193,7 +221,7 @@ function getStoredKelasParts(item) {
     return {
       tingkat: String(item.tingkat).trim(),
       rombel: String(item.rombel).trim().toUpperCase(),
-      kelas: buildKelasName(item.tingkat, item.rombel)
+      kelas: buildKelasName(item.tingkat, item.rombel),
     };
   }
 
@@ -202,16 +230,24 @@ function getStoredKelasParts(item) {
 
 function getNextRombelForTingkat(tingkat, excludeKelas = "") {
   const level = String(tingkat || "").trim();
-  const exclude = String(excludeKelas || "").trim().toUpperCase().replace(/\s+/g, "");
+  const exclude = String(excludeKelas || "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "");
   const letters = semuaDataKelas
-    .map(item => getStoredKelasParts(item))
-    .filter(parts => parts.tingkat === level && `${parts.tingkat}${parts.rombel}` !== exclude && parts.rombel)
-    .map(parts => parts.rombel);
+    .map((item) => getStoredKelasParts(item))
+    .filter(
+      (parts) =>
+        parts.tingkat === level &&
+        `${parts.tingkat}${parts.rombel}` !== exclude &&
+        parts.rombel,
+    )
+    .map((parts) => parts.rombel);
 
   if (letters.length === 0) return "A";
 
   let maxCode = "A".charCodeAt(0) - 1;
-  letters.forEach(letter => {
+  letters.forEach((letter) => {
     const code = String(letter).charCodeAt(0);
     if (code > maxCode) maxCode = code;
   });
@@ -244,20 +280,28 @@ function formatWaliKelasLabel(kodeGuru) {
 }
 
 function getUsedWaliKelasCodes(excludeKelas = "") {
-  const excludeValue = String(excludeKelas || "").trim().toUpperCase();
-  if (usedWaliCodesCache.has(excludeValue)) return new Set(usedWaliCodesCache.get(excludeValue));
+  const excludeValue = String(excludeKelas || "")
+    .trim()
+    .toUpperCase();
+  if (usedWaliCodesCache.has(excludeValue))
+    return new Set(usedWaliCodesCache.get(excludeValue));
   const result = new Set(
     semuaDataKelas
-      .filter(item => getStoredKelasParts(item).kelas.toUpperCase() !== excludeValue)
-      .map(item => String(item.kode_guru || "").trim())
-      .filter(Boolean)
+      .filter(
+        (item) =>
+          getStoredKelasParts(item).kelas.toUpperCase() !== excludeValue,
+      )
+      .map((item) => String(item.kode_guru || "").trim())
+      .filter(Boolean),
   );
   usedWaliCodesCache.set(excludeValue, result);
   return new Set(result);
 }
 
 function getMengajarGuruCodesForKelas(namaKelas = "") {
-  const targetKelas = getStoredKelasParts({ kelas: namaKelas }).kelas.toUpperCase();
+  const targetKelas = getStoredKelasParts({
+    kelas: namaKelas,
+  }).kelas.toUpperCase();
   if (!targetKelas) return new Set();
   return new Set(mengajarGuruCodesByKelasCache.get(targetKelas) || []);
 }
@@ -271,10 +315,17 @@ function guruMengajarDiKelas(kodeGuru = "", namaKelas = "") {
 function getEligibleWaliGuruKelas(selectedValue = "", selectedKelas = "") {
   const usedCodes = getUsedWaliKelasCodes(selectedKelas);
   const mengajarCodes = getMengajarGuruCodesForKelas(selectedKelas);
-  return daftarGuruKelas.filter(guru => {
+  return daftarGuruKelas.filter((guru) => {
     const value = guru.kode_guru || "";
     if (!value) return false;
-    if (typeof isGuruStatusGB === "function" ? isGuruStatusGB(guru) : String(guru.status || "").trim().toUpperCase() === "GB") return false;
+    if (
+      typeof isGuruStatusGB === "function"
+        ? isGuruStatusGB(guru)
+        : String(guru.status || "")
+            .trim()
+            .toUpperCase() === "GB"
+    )
+      return false;
     if (!mengajarCodes.has(value)) return false;
     if (usedCodes.has(value) && value !== selectedValue) return false;
     return true;
@@ -284,12 +335,12 @@ function getEligibleWaliGuruKelas(selectedValue = "", selectedKelas = "") {
 function getGuruOptionsKelas(selectedValue = "", selectedKelas = "") {
   const options = [
     `<option value="">${selectedKelas ? "Pilih wali kelas" : "Pilih kelas terlebih dahulu"}</option>`,
-    ...getEligibleWaliGuruKelas(selectedValue, selectedKelas).map(guru => {
+    ...getEligibleWaliGuruKelas(selectedValue, selectedKelas).map((guru) => {
       const value = guru.kode_guru || "";
       const selected = value === selectedValue ? "selected" : "";
       const label = formatNamaGuru(guru) || value;
       return `<option value="${value}" ${selected}>${label}</option>`;
-    })
+    }),
   ];
 
   return options.filter(Boolean).join("");
@@ -301,17 +352,24 @@ function getGuruKelasByKode(kodeGuru = "") {
 
 function getKelasWaliByLevel(level) {
   return sortKelasData(semuaDataKelas)
-    .map(item => ({ item, parts: getStoredKelasParts(item) }))
-    .filter(({ parts }) => parts.tingkat === String(level || "") && parts.rombel);
+    .map((item) => ({ item, parts: getStoredKelasParts(item) }))
+    .filter(
+      ({ parts }) => parts.tingkat === String(level || "") && parts.rombel,
+    );
 }
 
 function hasAcakWaliUndo() {
-  return Array.isArray(acakWaliKelasUndo?.items) && acakWaliKelasUndo.items.length > 0;
+  return (
+    Array.isArray(acakWaliKelasUndo?.items) &&
+    acakWaliKelasUndo.items.length > 0
+  );
 }
 
 function validateKelasValues(tingkat, rombel, excludeKelas = "") {
   const kelasValue = buildKelasName(tingkat, rombel);
-  const excludeValue = String(excludeKelas || "").trim().toUpperCase();
+  const excludeValue = String(excludeKelas || "")
+    .trim()
+    .toUpperCase();
 
   if (!tingkat) {
     return "Tingkat wajib dipilih";
@@ -321,7 +379,7 @@ function validateKelasValues(tingkat, rombel, excludeKelas = "") {
     return "Kelas otomatis belum tersedia";
   }
 
-  const duplicate = semuaDataKelas.some(item => {
+  const duplicate = semuaDataKelas.some((item) => {
     const existingKelas = getStoredKelasParts(item).kelas.toUpperCase();
     return existingKelas === kelasValue && existingKelas !== excludeValue;
   });
@@ -335,7 +393,9 @@ function validateKelasValues(tingkat, rombel, excludeKelas = "") {
 
 function validateWaliKelasValues(namaKelas, kodeGuru) {
   const waliValue = String(kodeGuru || "").trim();
-  const kelasValue = String(namaKelas || "").trim().toUpperCase();
+  const kelasValue = String(namaKelas || "")
+    .trim()
+    .toUpperCase();
 
   if (!kelasValue) {
     return "Kelas wajib dipilih";
@@ -351,7 +411,14 @@ function validateWaliKelasValues(namaKelas, kodeGuru) {
   }
 
   const selectedGuru = getGuruKelasByKode(waliValue);
-  if (!selectedGuru || (typeof isGuruStatusGB === "function" ? isGuruStatusGB(selectedGuru) : String(selectedGuru.status || "").trim().toUpperCase() === "GB")) {
+  if (
+    !selectedGuru ||
+    (typeof isGuruStatusGB === "function"
+      ? isGuruStatusGB(selectedGuru)
+      : String(selectedGuru.status || "")
+          .trim()
+          .toUpperCase() === "GB")
+  ) {
     return "Wali kelas tidak boleh guru berstatus GB";
   }
 
@@ -359,9 +426,12 @@ function validateWaliKelasValues(namaKelas, kodeGuru) {
     return "Wali kelas harus guru yang mengajar di kelas tersebut";
   }
 
-  const duplicateWali = semuaDataKelas.some(item => {
+  const duplicateWali = semuaDataKelas.some((item) => {
     const existingKelas = getStoredKelasParts(item).kelas.toUpperCase();
-    return String(item.kode_guru || "").trim() === waliValue && existingKelas !== kelasValue;
+    return (
+      String(item.kode_guru || "").trim() === waliValue &&
+      existingKelas !== kelasValue
+    );
   });
 
   if (duplicateWali) {
@@ -381,8 +451,18 @@ function sortKelasData(data) {
   return [...data].sort((a, b) => {
     const leftParts = getStoredKelasParts(a);
     const rightParts = getStoredKelasParts(b);
-    const left = kelasSortField === "tingkat" ? leftParts.tingkat : kelasSortField === "rombel" ? leftParts.rombel : a[kelasSortField];
-    const right = kelasSortField === "tingkat" ? rightParts.tingkat : kelasSortField === "rombel" ? rightParts.rombel : b[kelasSortField];
+    const left =
+      kelasSortField === "tingkat"
+        ? leftParts.tingkat
+        : kelasSortField === "rombel"
+          ? leftParts.rombel
+          : a[kelasSortField];
+    const right =
+      kelasSortField === "tingkat"
+        ? rightParts.tingkat
+        : kelasSortField === "rombel"
+          ? rightParts.rombel
+          : b[kelasSortField];
     return compareValues(left, right, kelasSortDirection);
   });
 }
@@ -426,11 +506,16 @@ function renderKelasTableState() {
 }
 
 function getKelasRowsPerPageValue() {
-  return rowsPerPageKelas === "all" ? Number.MAX_SAFE_INTEGER : Number(rowsPerPageKelas);
+  return rowsPerPageKelas === "all"
+    ? Number.MAX_SAFE_INTEGER
+    : Number(rowsPerPageKelas);
 }
 
 function setKelasPage(page) {
-  const totalPages = Math.max(1, Math.ceil(getVisibleKelasData().length / getKelasRowsPerPageValue()));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(getVisibleKelasData().length / getKelasRowsPerPageValue()),
+  );
   currentPageKelas = Math.min(Math.max(1, page), totalPages);
   renderKelasFiltered();
 }
@@ -467,18 +552,26 @@ async function loadRealtimeKelas() {
   const loadToken = ++kelasSupportLoadToken;
 
   try {
-    const kelasQuery = typeof getSemesterCollectionQuery === "function"
-      ? getSemesterCollectionQuery("kelas", "kelas")
-      : getKelasPageDocumentsApi().collection("kelas").orderBy("kelas");
-    const siswaQuery = typeof getSemesterCollectionQuery === "function"
-      ? getSemesterCollectionQuery("siswa", "nama")
-      : getKelasPageDocumentsApi().collection("siswa").orderBy("nama");
+    const kelasQuery =
+      typeof getSemesterCollectionQuery === "function"
+        ? getSemesterCollectionQuery("kelas", "kelas")
+        : getKelasPageDocumentsApi().collection("kelas").orderBy("kelas");
+    const siswaQuery =
+      typeof getSemesterCollectionQuery === "function"
+        ? getSemesterCollectionQuery("siswa", "nama")
+        : getKelasPageDocumentsApi().collection("siswa").orderBy("nama");
     const [kelasSnapshot, siswaSnapshot] = await Promise.all([
       kelasQuery.get(),
-      siswaQuery.get()
+      siswaQuery.get(),
     ]);
-    semuaDataKelas = kelasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    daftarSiswaKelas = siswaSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    semuaDataKelas = kelasSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    daftarSiswaKelas = siswaSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     rebuildKelasDataCaches();
     rebuildKelasSiswaCaches();
     renderKelasFiltered();
@@ -495,11 +588,17 @@ async function loadKelasSupportData(loadToken = kelasSupportLoadToken) {
   try {
     const [guruSnapshot, mengajarSnapshot] = await Promise.all([
       getKelasPageDocumentsApi().collection("guru").orderBy("kode_guru").get(),
-      getKelasPageDocumentsApi().collection("mengajar").get()
+      getKelasPageDocumentsApi().collection("mengajar").get(),
     ]);
     if (loadToken !== kelasSupportLoadToken) return;
-    daftarGuruKelas = guruSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    daftarMengajarKelas = mengajarSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    daftarGuruKelas = guruSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    daftarMengajarKelas = mengajarSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     rebuildKelasGuruCaches();
     rebuildKelasMengajarCaches();
     renderKelasFiltered();
@@ -512,7 +611,9 @@ function upsertLocalKelasCache(item) {
   const parts = getStoredKelasParts(item);
   const key = parts.kelas || item.kelas;
   if (!key) return;
-  const index = semuaDataKelas.findIndex(entry => getStoredKelasParts(entry).kelas === key || entry.kelas === key);
+  const index = semuaDataKelas.findIndex(
+    (entry) => getStoredKelasParts(entry).kelas === key || entry.kelas === key,
+  );
   if (index >= 0) {
     semuaDataKelas[index] = { ...semuaDataKelas[index], ...item };
   } else {
@@ -522,14 +623,19 @@ function upsertLocalKelasCache(item) {
 }
 
 function removeLocalKelasCache(namaKelas) {
-  const key = getStoredKelasParts({ kelas: namaKelas }).kelas || String(namaKelas || "");
-  semuaDataKelas = semuaDataKelas.filter(item => getStoredKelasParts(item).kelas !== key && item.kelas !== key);
+  const key =
+    getStoredKelasParts({ kelas: namaKelas }).kelas || String(namaKelas || "");
+  semuaDataKelas = semuaDataKelas.filter(
+    (item) => getStoredKelasParts(item).kelas !== key && item.kelas !== key,
+  );
   rebuildKelasDataCaches();
 }
 
 function updateLocalSiswaKelasCache(nipd, payload) {
   const key = String(nipd || "").trim();
-  const index = daftarSiswaKelas.findIndex(item => String(item.nipd || "").trim() === key);
+  const index = daftarSiswaKelas.findIndex(
+    (item) => String(item.nipd || "").trim() === key,
+  );
   if (index >= 0) {
     daftarSiswaKelas[index] = { ...daftarSiswaKelas[index], ...payload };
     rebuildKelasSiswaCaches();
@@ -542,11 +648,17 @@ function renderKelasFiltered() {
   const createForm = document.getElementById("kelasCreateForm");
   const sortedData = sortKelasData(getVisibleKelasData());
   const effectiveRowsPerPage = getKelasRowsPerPageValue();
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / effectiveRowsPerPage));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(sortedData.length / effectiveRowsPerPage),
+  );
 
   if (createForm && !isKelasCoordinatorViewOnly()) {
     const createFormHtml = renderKelasCreateForm();
-    if (createFormHtml !== lastKelasCreateFormRenderKey || !createForm.innerHTML) {
+    if (
+      createFormHtml !== lastKelasCreateFormRenderKey ||
+      !createForm.innerHTML
+    ) {
       createForm.innerHTML = createFormHtml;
       lastKelasCreateFormRenderKey = createFormHtml;
     }
@@ -559,33 +671,50 @@ function renderKelasFiltered() {
   }
 
   const startIndex = (currentPageKelas - 1) * effectiveRowsPerPage;
-  const pagedData = sortedData.slice(startIndex, startIndex + effectiveRowsPerPage);
-  const tableHtml = pagedData.map((item, index) => renderKelasRow(item, startIndex + index + 1)).join("");
+  const pagedData = sortedData.slice(
+    startIndex,
+    startIndex + effectiveRowsPerPage,
+  );
+  const tableHtml = pagedData
+    .map((item, index) => renderKelasRow(item, startIndex + index + 1))
+    .join("");
   const renderKey = JSON.stringify({
     currentPageKelas,
     effectiveRowsPerPage,
     currentEditKelas: currentEditKelas || "",
-    rows: pagedData.map(item => [
-      getStoredKelasParts(item).kelas,
-      item.kelas,
-      item.kode_guru,
-      item.wali_kelas,
-      item.updated_at || item.created_at || ""
-    ].map(value => String(value ?? "")).join("|")),
+    rows: pagedData.map((item) =>
+      [
+        getStoredKelasParts(item).kelas,
+        item.kelas,
+        item.kode_guru,
+        item.wali_kelas,
+        item.updated_at || item.created_at || "",
+      ]
+        .map((value) => String(value ?? ""))
+        .join("|"),
+    ),
     total: sortedData.length,
-    guruSignature: daftarGuruKelas.map(item => [
-      item.kode_guru,
-      item.nama,
-      item.nama_lengkap,
-      item.updated_at || item.created_at || ""
-    ].map(value => String(value ?? "")).join("|")),
-    siswaSignature: daftarSiswaKelas.map(item => [
-      item.nipd,
-      item.nama,
-      item.kelas,
-      item.kelas_bayangan,
-      item.updated_at || item.created_at || ""
-    ].map(value => String(value ?? "")).join("|"))
+    guruSignature: daftarGuruKelas.map((item) =>
+      [
+        item.kode_guru,
+        item.nama,
+        item.nama_lengkap,
+        item.updated_at || item.created_at || "",
+      ]
+        .map((value) => String(value ?? ""))
+        .join("|"),
+    ),
+    siswaSignature: daftarSiswaKelas.map((item) =>
+      [
+        item.nipd,
+        item.nama,
+        item.kelas,
+        item.kelas_bayangan,
+        item.updated_at || item.created_at || "",
+      ]
+        .map((value) => String(value ?? ""))
+        .join("|"),
+    ),
   });
   if (renderKey !== lastKelasTableRenderKey || !tbody.children.length) {
     tbody.innerHTML = tableHtml;
@@ -602,7 +731,12 @@ function renderKelasFiltered() {
     if (info.innerText !== nextInfo) info.innerText = nextInfo;
   }
 
-  renderPagination("tablePaginationKelas", currentPageKelas, totalPages, "setKelasPage");
+  renderPagination(
+    "tablePaginationKelas",
+    currentPageKelas,
+    totalPages,
+    "setKelasPage",
+  );
 }
 
 function renderKelasCreateForm() {
@@ -640,21 +774,27 @@ function renderKelasCreateForm() {
 
 function getKelasOptionsForWali(selectedValue = "") {
   const options = ['<option value="">Pilih kelas</option>'];
-  sortKelasData(semuaDataKelas).forEach(item => {
+  sortKelasData(semuaDataKelas).forEach((item) => {
     const parts = getStoredKelasParts(item);
     if (!parts.kelas) return;
     const selected = parts.kelas === selectedValue ? "selected" : "";
-    options.push(`<option value="${parts.kelas}" ${selected}>${parts.kelas}</option>`);
+    options.push(
+      `<option value="${parts.kelas}" ${selected}>${parts.kelas}</option>`,
+    );
   });
   return options.join("");
 }
 
 function renderWaliKelasForm() {
-  const selectedKelas = kelasByNameCache.get(normalizeKelasCacheKey(draftWaliKelasTarget));
+  const selectedKelas = kelasByNameCache.get(
+    normalizeKelasCacheKey(draftWaliKelasTarget),
+  );
   const selectedGuru = selectedKelas?.kode_guru || draftKelasWali;
   const guruReady = daftarGuruKelas.length > 0;
   const kelasReady = semuaDataKelas.length > 0;
-  const eligibleGuruCount = draftWaliKelasTarget ? getEligibleWaliGuruKelas(selectedGuru, draftWaliKelasTarget).length : 0;
+  const eligibleGuruCount = draftWaliKelasTarget
+    ? getEligibleWaliGuruKelas(selectedGuru, draftWaliKelasTarget).length
+    : 0;
   const canChooseWali = guruReady && kelasReady && eligibleGuruCount > 0;
   const helperText = !kelasReady
     ? "Tambahkan kelas terlebih dahulu"
@@ -700,7 +840,9 @@ function renderInlineWaliKelasSelect(item) {
   const selectedGuru = String(item.kode_guru || "").trim();
   const eligibleGuru = getEligibleWaliGuruKelas(selectedGuru, kelasValue);
   const currentGuru = selectedGuru ? getGuruKelasByKode(selectedGuru) : null;
-  const hasSelectedInOptions = eligibleGuru.some(guru => String(guru.kode_guru || "").trim() === selectedGuru);
+  const hasSelectedInOptions = eligibleGuru.some(
+    (guru) => String(guru.kode_guru || "").trim() === selectedGuru,
+  );
   const canChooseWali = eligibleGuru.length > 0;
   const selectId = `waliKelasInline-${kelasValue.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
   const helperText = !kelasValue
@@ -710,19 +852,21 @@ function renderInlineWaliKelasSelect(item) {
       : currentGuru && !canChooseWali
         ? "Tidak ada calon lain"
         : !canChooseWali
-        ? "Belum ada calon wali"
-        : "";
+          ? "Belum ada calon wali"
+          : "";
 
   const options = [
     `<option value="">${canChooseWali ? "Pilih wali kelas" : helperText}</option>`,
-    ...eligibleGuru.map(guru => {
+    ...eligibleGuru.map((guru) => {
       const value = String(guru.kode_guru || "").trim();
       return `<option value="${escapeKelasHtml(value)}" ${value === selectedGuru ? "selected" : ""}>${escapeKelasHtml(formatNamaGuru(guru) || value)}</option>`;
-    })
+    }),
   ];
 
   if (currentGuru && !hasSelectedInOptions) {
-    options.push(`<option value="${escapeKelasHtml(selectedGuru)}" selected>${escapeKelasHtml(formatNamaGuru(currentGuru) || selectedGuru)}</option>`);
+    options.push(
+      `<option value="${escapeKelasHtml(selectedGuru)}" selected>${escapeKelasHtml(formatNamaGuru(currentGuru) || selectedGuru)}</option>`,
+    );
   }
 
   return `
@@ -738,7 +882,9 @@ function renderInlineWaliKelasSelect(item) {
 function renderWaliKelasDisplay(item) {
   const kodeGuru = String(item.kode_guru || "").trim();
   const guru = kodeGuru ? getGuruKelasByKode(kodeGuru) : null;
-  const nama = guru ? formatNamaGuru(guru) : String(item.wali_kelas || "").trim();
+  const nama = guru
+    ? formatNamaGuru(guru)
+    : String(item.wali_kelas || "").trim();
   return nama
     ? `<strong>${escapeKelasHtml(nama)}</strong>`
     : `<span class="muted-text">Belum ada wali kelas</span>`;
@@ -752,7 +898,8 @@ function renderKelasRow(item, nomor) {
 
   if (!isReadOnly && currentEditKelas === item.kelas) {
     const currentTingkat = parts.tingkat || "7";
-    const currentRombel = parts.rombel || getNextRombelForTingkat(currentTingkat, item.kelas);
+    const currentRombel =
+      parts.rombel || getNextRombelForTingkat(currentTingkat, item.kelas);
     return `
       <tr class="table-edit-row mapel-edit-row kelas-edit-row" data-kelas-id="${escapeKelasHtml(item.kelas || parts.kelas)}">
         <td>
@@ -771,8 +918,8 @@ function renderKelasRow(item, nomor) {
         <td>${jumlahAnggota} siswa</td>
         <td>
           <div class="table-action-stack kelas-row-actions">
-            <button class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveEditKelas('${kelasJs}')" title="Simpan" aria-label="Simpan">Simpan</button>
-            <button class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onclick="cancelEditKelas()" title="Batal" aria-label="Batal">Batal</button>
+            <button type="button" class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveEditKelas('${kelasJs}')" title="Simpan" aria-label="Simpan"></button>
+<button type="button" class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onclick="cancelEditKelas()" title="Batal" aria-label="Batal"></button>
           </div>
         </td>
       </tr>
@@ -787,11 +934,15 @@ function renderKelasRow(item, nomor) {
       <td>${jumlahAnggota} siswa</td>
       <td>
         <div class="table-action-stack kelas-row-actions">
-          <button class="btn-secondary btn-table-compact btn-action-members table-action-icon-btn table-action-members" onclick="showAnggotaKelas('${kelasJs}')" title="Anggota" aria-label="Anggota">Anggota</button>
-          ${isReadOnly ? "" : `
-            <button class="btn-secondary btn-table-compact btn-action-edit table-action-icon-btn table-action-edit" onclick="editKelas('${kelasJs}')" title="Edit" aria-label="Edit">Edit</button>
-            <button class="btn-secondary btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="hapusKelas('${kelasJs}')" title="Hapus" aria-label="Hapus">Hapus</button>
-          `}
+<button type="button" class="btn-secondary btn-table-compact btn-action-members table-action-icon-btn table-action-members" onclick="showAnggotaKelas('${kelasJs}')" title="Anggota" aria-label="Anggota"></button>
+          ${
+            isReadOnly
+              ? ""
+              : `
+            <button type="button" class="btn-secondary btn-table-compact btn-action-edit table-action-icon-btn table-action-edit" onclick="editKelas('${kelasJs}')" title="Edit" aria-label="Edit"></button>
+            <button type="button" class="btn-secondary btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onclick="hapusKelas('${kelasJs}')" title="Hapus" aria-label="Hapus"></button>
+          `
+          }
         </div>
       </td>
     </tr>
@@ -801,7 +952,11 @@ function renderKelasRow(item, nomor) {
 async function importKelasExcel(event) {
   if (isKelasCoordinatorViewOnly()) {
     if (event?.target) event.target.value = "";
-    Swal.fire("Akses dibatasi", "Koordinator hanya dapat melihat data kelas.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator hanya dapat melihat data kelas.",
+      "info",
+    );
     return;
   }
   const file = event.target.files[0];
@@ -810,42 +965,66 @@ async function importKelasExcel(event) {
 
   if (daftarGuruKelas.length === 0) {
     event.target.value = "";
-    Swal.fire("Import kelas belum bisa dilakukan", "Data guru belum tersedia untuk memilih wali kelas.", "warning");
+    Swal.fire(
+      "Import kelas belum bisa dilakukan",
+      "Data guru belum tersedia untuk memilih wali kelas.",
+      "warning",
+    );
     return;
   }
 
   const reader = new FileReader();
 
-  reader.onload = async evt => {
+  reader.onload = async (evt) => {
     try {
       const data = new Uint8Array(evt.target.result);
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const json = XLSX.utils.sheet_to_json(sheet);
 
-      const parsed = json.map(row => {
-        const kelas = String(getKelasCellValue(row, ["KELAS", "NAMA_KELAS", "NAMA KELAS"])).trim().toUpperCase();
-        const kodeGuru = String(getKelasCellValue(row, ["KODE_GURU", "KODE GURU"])).trim();
-        const waliKelasText = String(getKelasCellValue(row, ["WALI_KELAS", "WALI KELAS", "WALIKELAS"])).trim();
-        const guru = findGuruForKelasImport(kodeGuru, waliKelasText);
+      const parsed = json
+        .map((row) => {
+          const kelas = String(
+            getKelasCellValue(row, ["KELAS", "NAMA_KELAS", "NAMA KELAS"]),
+          )
+            .trim()
+            .toUpperCase();
+          const kodeGuru = String(
+            getKelasCellValue(row, ["KODE_GURU", "KODE GURU"]),
+          ).trim();
+          const waliKelasText = String(
+            getKelasCellValue(row, ["WALI_KELAS", "WALI KELAS", "WALIKELAS"]),
+          ).trim();
+          const guru = findGuruForKelasImport(kodeGuru, waliKelasText);
 
-        return {
-          ...parseKelasParts(kelas),
-          kelas,
-          kode_guru: guru?.kode_guru || "",
-          wali_kelas: guru ? formatNamaGuru(guru) : waliKelasText
-        };
-      }).filter(item => item.kelas || item.kode_guru || item.wali_kelas);
+          return {
+            ...parseKelasParts(kelas),
+            kelas,
+            kode_guru: guru?.kode_guru || "",
+            wali_kelas: guru ? formatNamaGuru(guru) : waliKelasText,
+          };
+        })
+        .filter((item) => item.kelas || item.kode_guru || item.wali_kelas);
 
-      const validRows = parsed.filter(item => {
-        const existing = kelasByNameCache.get(normalizeKelasCacheKey(item.kelas));
-        return !validateKelasValues(item.tingkat, item.rombel, existing?.kelas || "");
+      const validRows = parsed.filter((item) => {
+        const existing = kelasByNameCache.get(
+          normalizeKelasCacheKey(item.kelas),
+        );
+        return !validateKelasValues(
+          item.tingkat,
+          item.rombel,
+          existing?.kelas || "",
+        );
       });
       const invalidRows = parsed.length - validRows.length;
 
       if (validRows.length === 0) {
         event.target.value = "";
-        Swal.fire("Import kelas gagal", "Tidak ada data valid yang bisa diimport.", "error");
+        Swal.fire(
+          "Import kelas gagal",
+          "Tidak ada data valid yang bisa diimport.",
+          "error",
+        );
         return;
       }
 
@@ -855,7 +1034,7 @@ async function importKelasExcel(event) {
         icon: "question",
         showCancelButton: true,
         confirmButtonText: "Import",
-        cancelButtonText: "Batal"
+        cancelButtonText: "Batal",
       });
 
       if (!confirm.isConfirmed) {
@@ -865,7 +1044,7 @@ async function importKelasExcel(event) {
 
       Swal.fire({
         title: "Mengimport kelas...",
-        didOpen: () => Swal.showLoading()
+        didOpen: () => Swal.showLoading(),
       });
 
       let berhasil = 0;
@@ -873,14 +1052,19 @@ async function importKelasExcel(event) {
 
       for (const item of validRows) {
         try {
-          const existing = kelasByNameCache.get(normalizeKelasCacheKey(item.kelas));
-          const kelasRef = typeof getSemesterDocRef === "function"
-            ? getSemesterDocRef("kelas", item.kelas)
-            : getKelasPageDocumentsApi().collection("kelas").doc(item.kelas);
+          const existing = kelasByNameCache.get(
+            normalizeKelasCacheKey(item.kelas),
+          );
+          const kelasRef =
+            typeof getSemesterDocRef === "function"
+              ? getSemesterDocRef("kelas", item.kelas)
+              : getKelasPageDocumentsApi().collection("kelas").doc(item.kelas);
           await kelasRef.set({
             ...item,
-            created_at: existing ? existing.created_at || new Date() : new Date(),
-            updated_at: new Date()
+            created_at: existing
+              ? existing.created_at || new Date()
+              : new Date(),
+            updated_at: new Date(),
           });
           berhasil++;
         } catch (error) {
@@ -901,7 +1085,7 @@ async function importKelasExcel(event) {
         title: "Import kelas selesai",
         html: `Berhasil: ${berhasil}<br>Gagal: ${gagal}<br>Tidak valid: ${invalidRows}`,
         icon: "success",
-        confirmButtonText: "OK"
+        confirmButtonText: "OK",
       });
     } catch (error) {
       console.error(error);
@@ -916,7 +1100,11 @@ async function importKelasExcel(event) {
 
 async function simpanKelasData() {
   if (isKelasCoordinatorViewOnly()) {
-    Swal.fire("Akses dibatasi", "Koordinator tidak dapat menambah kelas.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator tidak dapat menambah kelas.",
+      "info",
+    );
     return;
   }
   if (isSubmittingKelas) return;
@@ -948,7 +1136,7 @@ async function simpanKelasData() {
       kode_guru: "",
       wali_kelas: "",
       created_at: new Date(),
-      updated_at: new Date()
+      updated_at: new Date(),
     };
 
     await saveKelas(payload);
@@ -973,7 +1161,9 @@ async function simpanKelasData() {
 
 function handleWaliKelasTargetChange(namaKelas) {
   draftWaliKelasTarget = namaKelas || "";
-  const selectedKelas = kelasByNameCache.get(normalizeKelasCacheKey(draftWaliKelasTarget));
+  const selectedKelas = kelasByNameCache.get(
+    normalizeKelasCacheKey(draftWaliKelasTarget),
+  );
   draftKelasWali = selectedKelas?.kode_guru || "";
   renderKelasFiltered();
 }
@@ -988,18 +1178,24 @@ async function startPilihWaliKelas(namaKelas) {
     return;
   }
   if (eligible.length === 0) {
-    Swal.fire("Belum ada calon wali", "Calon wali kelas harus guru non-GB dan mengajar di kelas tersebut.", "warning");
+    Swal.fire(
+      "Belum ada calon wali",
+      "Calon wali kelas harus guru non-GB dan mengajar di kelas tersebut.",
+      "warning",
+    );
     return;
   }
   const result = await Swal.fire({
     title: `Pilih Wali Kelas ${kelasValue}`,
     input: "select",
-    inputOptions: Object.fromEntries(eligible.map(guru => [guru.kode_guru, formatNamaGuru(guru)])),
+    inputOptions: Object.fromEntries(
+      eligible.map((guru) => [guru.kode_guru, formatNamaGuru(guru)]),
+    ),
     inputValue: selectedGuru,
     showCancelButton: true,
     confirmButtonText: "Simpan",
     cancelButtonText: "Batal",
-    inputValidator: value => !value ? "Pilih wali kelas" : undefined
+    inputValidator: (value) => (!value ? "Pilih wali kelas" : undefined),
   });
   if (!result.isConfirmed) return;
   await simpanWaliKelasData(kelasValue, result.value);
@@ -1008,7 +1204,11 @@ async function startPilihWaliKelas(namaKelas) {
 async function handleInlineWaliKelasChange(namaKelas, selectEl) {
   if (isKelasCoordinatorViewOnly()) {
     if (selectEl) selectEl.value = selectEl.dataset?.previousValue || "";
-    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengubah wali kelas dari menu ini.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator tidak dapat mengubah wali kelas dari menu ini.",
+      "info",
+    );
     return;
   }
   const previousValue = selectEl?.dataset?.previousValue || "";
@@ -1055,19 +1255,28 @@ function getAnggotaKelasDraftLists() {
     return { unassigned: [], members: [] };
   }
 
-  const targetKelas = parseKelasParts(anggotaKelasDraft.kelas || "").kelas.toUpperCase();
+  const targetKelas = parseKelasParts(
+    anggotaKelasDraft.kelas || "",
+  ).kelas.toUpperCase();
   const memberSet = anggotaKelasDraft.memberNipds;
-  const sortedSiswa = [...daftarSiswaKelas].sort((a, b) => compareValues(a.nama, b.nama, "asc"));
+  const sortedSiswa = [...daftarSiswaKelas].sort((a, b) =>
+    compareValues(a.nama, b.nama, "asc"),
+  );
 
   return {
-    unassigned: sortedSiswa.filter(siswa => {
+    unassigned: sortedSiswa.filter((siswa) => {
       const nipd = String(siswa.nipd || "").trim();
       return nipd && !memberSet.has(nipd) && !String(siswa.kelas || "").trim();
     }),
-    members: sortedSiswa.filter(siswa => {
-      const nipd = String(siswa.nipd || "").trim();
-      return nipd && (memberSet.has(nipd) || getSiswaKelasValue(siswa) === targetKelas);
-    }).filter(siswa => memberSet.has(String(siswa.nipd || "").trim()))
+    members: sortedSiswa
+      .filter((siswa) => {
+        const nipd = String(siswa.nipd || "").trim();
+        return (
+          nipd &&
+          (memberSet.has(nipd) || getSiswaKelasValue(siswa) === targetKelas)
+        );
+      })
+      .filter((siswa) => memberSet.has(String(siswa.nipd || "").trim())),
   };
 }
 
@@ -1077,11 +1286,12 @@ function renderAnggotaKelasList(items, emptyText, actionLabel, actionName) {
     return `<div class="empty-panel">${escapeKelasHtml(emptyText)}</div>`;
   }
 
-  return items.map(siswa => {
-    const nipd = String(siswa.nipd || "").trim();
-    const nama = String(siswa.nama || "-").trim();
+  return items
+    .map((siswa) => {
+      const nipd = String(siswa.nipd || "").trim();
+      const nama = String(siswa.nama || "-").trim();
 
-    return `
+      return `
       <div class="anggota-option anggota-option-row" data-nipd="${escapeKelasHtml(nipd)}">
         <span>
           <strong>${escapeKelasHtml(nama)}</strong>
@@ -1090,11 +1300,14 @@ function renderAnggotaKelasList(items, emptyText, actionLabel, actionName) {
         ${isReadOnly ? "" : `<button type="button" class="btn-secondary" onclick="${actionName}('${escapeKelasJs(nipd)}')">${escapeKelasHtml(actionLabel)}</button>`}
       </div>
     `;
-  }).join("");
+    })
+    .join("");
 }
 
 function renderAnggotaKelasOptions(namaKelas) {
-  const targetKelas = String(namaKelas || "").trim().toUpperCase();
+  const targetKelas = String(namaKelas || "")
+    .trim()
+    .toUpperCase();
   const lists = getAnggotaKelasDraftLists();
   const memberCount = lists.members.length;
   const unassignedCount = lists.unassigned.length;
@@ -1154,10 +1367,12 @@ async function showAnggotaKelas(namaKelas) {
     kelas: kelasValue,
     memberNipds: new Set(
       daftarSiswaKelas
-        .filter(siswa => getSiswaKelasValue(siswa) === kelasValue.toUpperCase())
-        .map(siswa => String(siswa.nipd || "").trim())
-        .filter(Boolean)
-    )
+        .filter(
+          (siswa) => getSiswaKelasValue(siswa) === kelasValue.toUpperCase(),
+        )
+        .map((siswa) => String(siswa.nipd || "").trim())
+        .filter(Boolean),
+    ),
   };
 
   const result = await Swal.fire({
@@ -1165,9 +1380,11 @@ async function showAnggotaKelas(namaKelas) {
     width: 920,
     html: `
       <div class="anggota-modal-note">
-        ${isReadOnly
-          ? `Daftar anggota kelas ${escapeKelasHtml(kelasValue)} ditampilkan dalam mode baca saja.`
-          : `Pindahkan siswa dari panel kiri ke panel kanan untuk memasukkannya ke ${escapeKelasHtml(kelasValue)}.`}
+        ${
+          isReadOnly
+            ? `Daftar anggota kelas ${escapeKelasHtml(kelasValue)} ditampilkan dalam mode baca saja.`
+            : `Pindahkan siswa dari panel kiri ke panel kanan untuk memasukkannya ke ${escapeKelasHtml(kelasValue)}.`
+        }
       </div>
       <div id="anggotaKelasModalBody">
         ${renderAnggotaKelasOptions(kelasValue)}
@@ -1177,7 +1394,7 @@ async function showAnggotaKelas(namaKelas) {
     showConfirmButton: !isReadOnly,
     confirmButtonText: "Simpan Anggota",
     cancelButtonText: "Batal",
-    preConfirm: () => Array.from(anggotaKelasDraft?.memberNipds || [])
+    preConfirm: () => Array.from(anggotaKelasDraft?.memberNipds || []),
   });
 
   const selectedNipds = result.value || [];
@@ -1190,23 +1407,33 @@ async function showAnggotaKelas(namaKelas) {
 
 async function simpanAnggotaKelas(namaKelas, selectedNipds) {
   if (isKelasCoordinatorViewOnly()) {
-    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengubah anggota kelas dari menu ini.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator tidak dapat mengubah anggota kelas dari menu ini.",
+      "info",
+    );
     return;
   }
   const targetKelas = parseKelasParts(namaKelas || "").kelas;
-  const selectedSet = new Set(selectedNipds.map(value => String(value || "").trim()).filter(Boolean));
-  const currentMembers = daftarSiswaKelas.filter(siswa => getSiswaKelasValue(siswa) === targetKelas.toUpperCase());
-  const selectedStudents = daftarSiswaKelas.filter(siswa => selectedSet.has(String(siswa.nipd || "").trim()));
+  const selectedSet = new Set(
+    selectedNipds.map((value) => String(value || "").trim()).filter(Boolean),
+  );
+  const currentMembers = daftarSiswaKelas.filter(
+    (siswa) => getSiswaKelasValue(siswa) === targetKelas.toUpperCase(),
+  );
+  const selectedStudents = daftarSiswaKelas.filter((siswa) =>
+    selectedSet.has(String(siswa.nipd || "").trim()),
+  );
   const changes = new Map();
 
-  currentMembers.forEach(siswa => {
+  currentMembers.forEach((siswa) => {
     const nipd = String(siswa.nipd || "").trim();
     if (nipd && !selectedSet.has(nipd)) {
       changes.set(nipd, { ...siswa, kelas: "" });
     }
   });
 
-  selectedStudents.forEach(siswa => {
+  selectedStudents.forEach((siswa) => {
     const nipd = String(siswa.nipd || "").trim();
     if (nipd && getSiswaKelasValue(siswa) !== targetKelas.toUpperCase()) {
       changes.set(nipd, { ...siswa, kelas: targetKelas });
@@ -1219,7 +1446,10 @@ async function simpanAnggotaKelas(namaKelas, selectedNipds) {
   }
 
   try {
-    Swal.fire({ title: "Menyimpan anggota...", didOpen: () => Swal.showLoading() });
+    Swal.fire({
+      title: "Menyimpan anggota...",
+      didOpen: () => Swal.showLoading(),
+    });
 
     const documentsApi = getKelasPageDocumentsApi();
     const batch = documentsApi.batch();
@@ -1230,14 +1460,16 @@ async function simpanAnggotaKelas(namaKelas, selectedNipds) {
           : documentsApi.collection("siswa").doc(nipd),
         {
           ...payload,
-          updated_at: new Date()
+          updated_at: new Date(),
         },
-        { merge: true }
+        { merge: true },
       );
     });
 
     await batch.commit();
-    changes.forEach((payload, nipd) => updateLocalSiswaKelasCache(nipd, payload));
+    changes.forEach((payload, nipd) =>
+      updateLocalSiswaKelasCache(nipd, payload),
+    );
     renderKelasFiltered();
     Swal.fire("Berhasil", `${selectedSet.size} anggota tersimpan`, "success");
   } catch (error) {
@@ -1254,23 +1486,37 @@ function handleWaliKelasKey(event) {
 }
 
 async function getAcakWaliMengajarBayangan() {
-  const snapshot = await getKelasPageDocumentsApi().collection("mengajar_bayangan").get();
-  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+  const snapshot = await getKelasPageDocumentsApi()
+    .collection("mengajar_bayangan")
+    .get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
 function buildAcakWaliCandidates(mengajarRows) {
   const byLevel = { 7: new Map(), 8: new Map(), 9: new Map() };
   const levelsByGuru = new Map();
 
-  mengajarRows.forEach(item => {
+  mengajarRows.forEach((item) => {
     const level = String(item.tingkat || "").trim();
     const kodeGuru = String(item.guru_kode || "").trim();
     if (!["7", "8", "9"].includes(level) || !kodeGuru) return;
     const guru = getGuruKelasByKode(kodeGuru);
-    if (!guru || (typeof isGuruStatusGB === "function" ? isGuruStatusGB(guru) : String(guru.status || "").trim().toUpperCase() === "GB")) return;
+    if (
+      !guru ||
+      (typeof isGuruStatusGB === "function"
+        ? isGuruStatusGB(guru)
+        : String(guru.status || "")
+            .trim()
+            .toUpperCase() === "GB")
+    )
+      return;
     const kelas = buildKelasName(item.tingkat, item.rombel);
     if (!byLevel[level].has(kodeGuru)) {
-      byLevel[level].set(kodeGuru, { guru, kode_guru: kodeGuru, kelas: new Set() });
+      byLevel[level].set(kodeGuru, {
+        guru,
+        kode_guru: kodeGuru,
+        kelas: new Set(),
+      });
     }
     if (kelas) byLevel[level].get(kodeGuru).kelas.add(kelas);
     if (!levelsByGuru.has(kodeGuru)) levelsByGuru.set(kodeGuru, new Set());
@@ -1280,13 +1526,22 @@ function buildAcakWaliCandidates(mengajarRows) {
   return { byLevel, levelsByGuru };
 }
 
-function renderAcakWaliGuruCard(level, candidate, levelsByGuru, excludedByLevel) {
+function renderAcakWaliGuruCard(
+  level,
+  candidate,
+  levelsByGuru,
+  excludedByLevel,
+) {
   const kode = candidate.kode_guru;
   const guru = candidate.guru;
   const levels = [...(levelsByGuru.get(kode) || [])].sort();
-  const activeLevels = levels.filter(itemLevel => !(excludedByLevel[itemLevel] || []).includes(kode));
+  const activeLevels = levels.filter(
+    (itemLevel) => !(excludedByLevel[itemLevel] || []).includes(kode),
+  );
   const crossLevel = activeLevels.length > 1;
-  const kelasText = [...candidate.kelas].sort((a, b) => compareValues(a, b, "asc")).join(", ");
+  const kelasText = [...candidate.kelas]
+    .sort((a, b) => compareValues(a, b, "asc"))
+    .join(", ");
   return `
     <div class="acak-wali-card ${crossLevel ? "acak-wali-card-multi" : ""}">
       <div>
@@ -1313,34 +1568,57 @@ function renderAcakWaliExcludedCard(level, candidate) {
 }
 
 function renderAcakWaliModalHtml() {
-  if (!acakWaliKelasDraft) return `<div class="empty-panel">Memuat calon wali kelas...</div>`;
+  if (!acakWaliKelasDraft)
+    return `<div class="empty-panel">Memuat calon wali kelas...</div>`;
   const { byLevel, levelsByGuru, excluded } = acakWaliKelasDraft;
-  const panels = ["7", "8", "9"].map(level => {
-    const excludedSet = new Set(excluded[level] || []);
-    const candidates = [...(byLevel[level]?.values() || [])].sort((a, b) =>
-      String(typeof getGuruSortName === "function" ? getGuruSortName(a.guru) : formatNamaGuru(a.guru) || "")
-        .localeCompare(String(typeof getGuruSortName === "function" ? getGuruSortName(b.guru) : formatNamaGuru(b.guru) || ""), undefined, { sensitivity: "base" }) ||
-      String(formatNamaGuru(a.guru) || "").localeCompare(String(formatNamaGuru(b.guru) || ""), undefined, { sensitivity: "base" })
-    );
-    const activeCards = candidates
-      .filter(item => !excludedSet.has(item.kode_guru))
-      .map(item => renderAcakWaliGuruCard(level, item, levelsByGuru, excluded))
-      .join("");
-    return `
+  const panels = ["7", "8", "9"]
+    .map((level) => {
+      const excludedSet = new Set(excluded[level] || []);
+      const candidates = [...(byLevel[level]?.values() || [])].sort(
+        (a, b) =>
+          String(
+            typeof getGuruSortName === "function"
+              ? getGuruSortName(a.guru)
+              : formatNamaGuru(a.guru) || "",
+          ).localeCompare(
+            String(
+              typeof getGuruSortName === "function"
+                ? getGuruSortName(b.guru)
+                : formatNamaGuru(b.guru) || "",
+            ),
+            undefined,
+            { sensitivity: "base" },
+          ) ||
+          String(formatNamaGuru(a.guru) || "").localeCompare(
+            String(formatNamaGuru(b.guru) || ""),
+            undefined,
+            { sensitivity: "base" },
+          ),
+      );
+      const activeCards = candidates
+        .filter((item) => !excludedSet.has(item.kode_guru))
+        .map((item) =>
+          renderAcakWaliGuruCard(level, item, levelsByGuru, excluded),
+        )
+        .join("");
+      return `
       <section class="acak-wali-panel">
         <h4>Calon Wali Kelas ${level}</h4>
         <div class="acak-wali-list">${activeCards || `<div class="empty-panel">Belum ada calon eligible.</div>`}</div>
       </section>
     `;
-  }).join("");
+    })
+    .join("");
 
-  const excludedCards = ["7", "8", "9"].flatMap(level => {
-    const candidates = [...(byLevel[level]?.values() || [])];
-    const excludedSet = new Set(excluded[level] || []);
-    return candidates
-      .filter(item => excludedSet.has(item.kode_guru))
-      .map(item => renderAcakWaliExcludedCard(level, item));
-  }).join("");
+  const excludedCards = ["7", "8", "9"]
+    .flatMap((level) => {
+      const candidates = [...(byLevel[level]?.values() || [])];
+      const excludedSet = new Set(excluded[level] || []);
+      return candidates
+        .filter((item) => excludedSet.has(item.kode_guru))
+        .map((item) => renderAcakWaliExcludedCard(level, item));
+    })
+    .join("");
 
   return `
     <div class="acak-wali-modal">
@@ -1350,8 +1628,8 @@ function renderAcakWaliModalHtml() {
         <div class="acak-wali-list">${excludedCards || `<div class="empty-panel">Belum ada guru yang dikeluarkan.</div>`}</div>
       </section>
       <div class="acak-wali-actions">
-        <button class="btn-secondary" onclick="saveAcakWaliCandidates()">Simpan Calon</button>
-        <button class="btn-primary" onclick="acakWaliKelas()">Acak</button>
+        <button class="btn-secondary table-action-icon-btn table-action-save" onclick="saveAcakWaliCandidates()" title="Simpan Calon" aria-label="Simpan Calon"></button>
+        <button class="btn-primary table-action-icon-btn table-action-apply" onclick="acakWaliKelas()" title="Acak Wali Kelas" aria-label="Acak Wali Kelas"></button>
         <small id="acakWaliSaveInfo"></small>
       </div>
     </div>
@@ -1376,7 +1654,10 @@ function toggleAcakWaliCandidate(level, kodeGuru, shouldExclude) {
 function saveAcakWaliCandidates(showMessage = true) {
   if (!acakWaliKelasDraft) return;
   acakWaliKelasState = { excluded: acakWaliKelasDraft.excluded };
-  localStorage.setItem("acakWaliKelasState", JSON.stringify(acakWaliKelasState));
+  localStorage.setItem(
+    "acakWaliKelasState",
+    JSON.stringify(acakWaliKelasState),
+  );
   if (showMessage) {
     const container = document.getElementById("acakWaliSaveInfo");
     if (container) container.innerText = "Calon wali kelas tersimpan.";
@@ -1385,11 +1666,19 @@ function saveAcakWaliCandidates(showMessage = true) {
 
 async function showAcakWaliKelasModal() {
   if (isKelasCoordinatorViewOnly()) {
-    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengacak wali kelas.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator tidak dapat mengacak wali kelas.",
+      "info",
+    );
     return;
   }
   try {
-    Swal.fire({ title: "Memuat calon wali kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    Swal.fire({
+      title: "Memuat calon wali kelas...",
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false,
+    });
     const mengajarRows = await getAcakWaliMengajarBayangan();
     const built = buildAcakWaliCandidates(mengajarRows);
     acakWaliKelasDraft = {
@@ -1397,15 +1686,15 @@ async function showAcakWaliKelasModal() {
       excluded: {
         7: [...(acakWaliKelasState.excluded?.["7"] || [])],
         8: [...(acakWaliKelasState.excluded?.["8"] || [])],
-        9: [...(acakWaliKelasState.excluded?.["9"] || [])]
-      }
+        9: [...(acakWaliKelasState.excluded?.["9"] || [])],
+      },
     };
     await Swal.fire({
       title: "Acak Wali Kelas",
-    html: `<div id="acakWaliModalContent">${renderAcakWaliModalHtml()}</div>`,
+      html: `<div id="acakWaliModalContent">${renderAcakWaliModalHtml()}</div>`,
       width: "1100px",
       showConfirmButton: false,
-      showCloseButton: true
+      showCloseButton: true,
     });
   } catch (error) {
     console.error(error);
@@ -1416,10 +1705,10 @@ async function showAcakWaliKelasModal() {
 function getAcakWaliEligibleCodesForClass(level, kelas, usedCodes) {
   const excludedSet = new Set(acakWaliKelasDraft?.excluded?.[level] || []);
   const candidates = [...(acakWaliKelasDraft?.byLevel?.[level]?.values() || [])]
-    .filter(item => !excludedSet.has(item.kode_guru))
-    .filter(item => !usedCodes.has(item.kode_guru))
-    .filter(item => item.kelas.has(kelas));
-  return candidates.map(item => item.kode_guru);
+    .filter((item) => !excludedSet.has(item.kode_guru))
+    .filter((item) => !usedCodes.has(item.kode_guru))
+    .filter((item) => item.kelas.has(kelas));
+  return candidates.map((item) => item.kode_guru);
 }
 
 function pickRandomItem(items) {
@@ -1430,16 +1719,20 @@ function pickRandomItem(items) {
 function buildAcakWaliResult() {
   const result = [];
   const usedCodes = new Set();
-  ["7", "8", "9"].forEach(level => {
+  ["7", "8", "9"].forEach((level) => {
     getKelasWaliByLevel(level).forEach(({ item, parts }) => {
-      const eligibleCodes = getAcakWaliEligibleCodesForClass(level, parts.kelas, usedCodes);
+      const eligibleCodes = getAcakWaliEligibleCodesForClass(
+        level,
+        parts.kelas,
+        usedCodes,
+      );
       const kodeGuru = pickRandomItem(eligibleCodes);
       if (kodeGuru) usedCodes.add(kodeGuru);
       result.push({
         kelasItem: item,
         kelas: parts.kelas,
         kode_guru: kodeGuru,
-        guru: getGuruKelasByKode(kodeGuru)
+        guru: getGuruKelasByKode(kodeGuru),
       });
     });
   });
@@ -1452,13 +1745,17 @@ function renderAcakWaliResultHtml(result) {
       <table class="mapel-table">
         <thead><tr><th>Kelas</th><th>Wali Kelas</th><th>Status</th></tr></thead>
         <tbody>
-          ${result.map(item => `
+          ${result
+            .map(
+              (item) => `
             <tr>
               <td>${escapeKelasHtml(item.kelas)}</td>
               <td>${escapeKelasHtml(item.guru ? formatNamaGuru(item.guru) : "-")}</td>
               <td>${item.guru ? "Siap disimpan" : "Tidak ada calon"}</td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -1468,11 +1765,11 @@ function renderAcakWaliResultHtml(result) {
 function saveAcakWaliUndoSnapshot(validResult) {
   acakWaliKelasUndo = {
     saved_at: new Date().toISOString(),
-    items: validResult.map(item => ({
+    items: validResult.map((item) => ({
       kelas: item.kelasItem.kelas,
       kode_guru: item.kelasItem.kode_guru || "",
-      wali_kelas: item.kelasItem.wali_kelas || ""
-    }))
+      wali_kelas: item.kelasItem.wali_kelas || "",
+    })),
   };
   localStorage.setItem("acakWaliKelasUndo", JSON.stringify(acakWaliKelasUndo));
 }
@@ -1495,10 +1792,10 @@ async function acakWaliKelas() {
     </div>`,
     allowOutsideClick: false,
     showConfirmButton: false,
-    didOpen: () => Swal.showLoading()
+    didOpen: () => Swal.showLoading(),
   });
 
-  await new Promise(resolve => setTimeout(resolve, 5000));
+  await new Promise((resolve) => setTimeout(resolve, 5000));
   const result = buildAcakWaliResult();
   const confirm = await Swal.fire({
     title: "Hasil Acak Wali Kelas",
@@ -1507,7 +1804,7 @@ async function acakWaliKelas() {
     customClass: { popup: "acak-wali-result-popup" },
     showCancelButton: true,
     confirmButtonText: "Set sebagai Wali Kelas",
-    cancelButtonText: "Batal"
+    cancelButtonText: "Batal",
   });
   if (!confirm.isConfirmed) {
     await showAcakWaliKelasModal();
@@ -1517,27 +1814,36 @@ async function acakWaliKelas() {
 }
 
 async function applyAcakWaliResult(result) {
-  const valid = result.filter(item => item.guru && item.kode_guru);
+  const valid = result.filter((item) => item.guru && item.kode_guru);
   if (valid.length === 0) {
-    Swal.fire("Belum ada hasil valid", "Tidak ada wali kelas yang bisa disimpan.", "warning");
+    Swal.fire(
+      "Belum ada hasil valid",
+      "Tidak ada wali kelas yang bisa disimpan.",
+      "warning",
+    );
     return;
   }
   try {
-    Swal.fire({ title: "Menyimpan wali kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    Swal.fire({
+      title: "Menyimpan wali kelas...",
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false,
+    });
     const documentsApi = getKelasPageDocumentsApi();
     const batch = documentsApi.batch();
     const localPayloads = [];
     saveAcakWaliUndoSnapshot(valid);
-    valid.forEach(item => {
+    valid.forEach((item) => {
       const payload = {
         ...item.kelasItem,
         kode_guru: item.kode_guru,
         wali_kelas: formatNamaGuru(item.guru),
-        updated_at: new Date()
+        updated_at: new Date(),
       };
-      const kelasRef = typeof getSemesterDocRef === "function"
-        ? getSemesterDocRef("kelas", item.kelasItem.kelas)
-        : documentsApi.collection("kelas").doc(item.kelasItem.kelas);
+      const kelasRef =
+        typeof getSemesterDocRef === "function"
+          ? getSemesterDocRef("kelas", item.kelasItem.kelas)
+          : documentsApi.collection("kelas").doc(item.kelasItem.kelas);
       batch.set(kelasRef, payload, { merge: true });
       localPayloads.push(payload);
     });
@@ -1546,7 +1852,11 @@ async function applyAcakWaliResult(result) {
     if (typeof syncWaliKelasTugasTambahan === "function") {
       await syncWaliKelasTugasTambahan();
     }
-    Swal.fire("Berhasil", `${valid.length} wali kelas disimpan dan tugas tambahan wali kelas disinkronkan.`, "success");
+    Swal.fire(
+      "Berhasil",
+      `${valid.length} wali kelas disimpan dan tugas tambahan wali kelas disinkronkan.`,
+      "success",
+    );
   } catch (error) {
     console.error(error);
     Swal.fire("Gagal menyimpan hasil acak", "", "error");
@@ -1555,7 +1865,11 @@ async function applyAcakWaliResult(result) {
 
 async function undoAcakWaliKelas() {
   if (!hasAcakWaliUndo()) {
-    Swal.fire("Tidak ada data undo", "Belum ada hasil acak yang bisa dikembalikan.", "info");
+    Swal.fire(
+      "Tidak ada data undo",
+      "Belum ada hasil acak yang bisa dikembalikan.",
+      "info",
+    );
     return;
   }
 
@@ -1565,27 +1879,32 @@ async function undoAcakWaliKelas() {
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Undo",
-    cancelButtonText: "Batal"
+    cancelButtonText: "Batal",
   });
   if (!confirm.isConfirmed) return;
 
   try {
-    Swal.fire({ title: "Mengembalikan wali kelas...", didOpen: () => Swal.showLoading(), allowOutsideClick: false });
+    Swal.fire({
+      title: "Mengembalikan wali kelas...",
+      didOpen: () => Swal.showLoading(),
+      allowOutsideClick: false,
+    });
     const documentsApi = getKelasPageDocumentsApi();
     const batch = documentsApi.batch();
     const localPayloads = [];
-    acakWaliKelasUndo.items.forEach(item => {
+    acakWaliKelasUndo.items.forEach((item) => {
       const kelas = kelasByNameCache.get(normalizeKelasCacheKey(item.kelas));
       if (!kelas) return;
       const payload = {
         ...kelas,
         kode_guru: item.kode_guru || "",
         wali_kelas: item.wali_kelas || "",
-        updated_at: new Date()
+        updated_at: new Date(),
       };
-      const kelasRef = typeof getSemesterDocRef === "function"
-        ? getSemesterDocRef("kelas", kelas.kelas)
-        : documentsApi.collection("kelas").doc(kelas.kelas);
+      const kelasRef =
+        typeof getSemesterDocRef === "function"
+          ? getSemesterDocRef("kelas", kelas.kelas)
+          : documentsApi.collection("kelas").doc(kelas.kelas);
       batch.set(kelasRef, payload, { merge: true });
       localPayloads.push(payload);
     });
@@ -1603,9 +1922,18 @@ async function undoAcakWaliKelas() {
   }
 }
 
-async function simpanWaliKelasData(namaKelasArg = "", kodeGuruArg = "", options = {}) {
+async function simpanWaliKelasData(
+  namaKelasArg = "",
+  kodeGuruArg = "",
+  options = {},
+) {
   if (isKelasCoordinatorViewOnly()) {
-    if (!options.silent) Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengubah wali kelas.", "info");
+    if (!options.silent)
+      Swal.fire(
+        "Akses dibatasi",
+        "Koordinator tidak dapat mengubah wali kelas.",
+        "info",
+      );
     return;
   }
   const kelasEl = document.getElementById("kelasWaliTarget");
@@ -1635,7 +1963,7 @@ async function simpanWaliKelasData(namaKelasArg = "", kodeGuruArg = "", options 
       ...existing,
       kode_guru: kodeGuru,
       wali_kelas: guru ? formatNamaGuru(guru) : "",
-      updated_at: new Date()
+      updated_at: new Date(),
     };
 
     await updateKelas(existing.kelas, payload);
@@ -1648,10 +1976,12 @@ async function simpanWaliKelasData(namaKelasArg = "", kodeGuruArg = "", options 
       await syncWaliKelasTugasTambahan();
     }
     renderKelasFiltered();
-    if (!options.silent) Swal.fire("Berhasil", "Wali kelas diperbarui", "success");
+    if (!options.silent)
+      Swal.fire("Berhasil", "Wali kelas diperbarui", "success");
   } catch (error) {
     console.error(error);
-    if (!options.silent) Swal.fire("Gagal", "Wali kelas belum berhasil disimpan", "error");
+    if (!options.silent)
+      Swal.fire("Gagal", "Wali kelas belum berhasil disimpan", "error");
     throw error;
   } finally {
     if (btn) {
@@ -1693,28 +2023,45 @@ function handleKelasEditKey(event, namaKelas) {
 
 async function saveEditKelas(kelasLama) {
   if (isKelasCoordinatorViewOnly()) {
-    Swal.fire("Akses dibatasi", "Koordinator tidak dapat mengedit kelas.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator tidak dapat mengedit kelas.",
+      "info",
+    );
     return;
   }
   const tingkatBaru = document.getElementById("editTingkatKelas")?.value || "7";
   const rombelBaru = document.getElementById("editRombelKelas")?.value || "";
   const kelasBaru = buildKelasName(tingkatBaru, rombelBaru);
-  const waliSelect = document.querySelector(".table-edit-row .kelas-inline-wali-select");
+  const waliSelect = document.querySelector(
+    ".table-edit-row .kelas-inline-wali-select",
+  );
   const kodeGuru = waliSelect?.value || "";
-  const validationMessage = validateKelasValues(tingkatBaru, rombelBaru, kelasLama);
+  const validationMessage = validateKelasValues(
+    tingkatBaru,
+    rombelBaru,
+    kelasLama,
+  );
 
   if (validationMessage) {
     Swal.fire("Edit kelas belum bisa disimpan", validationMessage, "warning");
     return;
   }
 
-  const waliValidationMessage = kodeGuru ? validateWaliKelasValues(kelasLama, kodeGuru) : "";
+  const waliValidationMessage = kodeGuru
+    ? validateWaliKelasValues(kelasLama, kodeGuru)
+    : "";
   if (waliValidationMessage) {
-    Swal.fire("Wali kelas belum bisa disimpan", waliValidationMessage, "warning");
+    Swal.fire(
+      "Wali kelas belum bisa disimpan",
+      waliValidationMessage,
+      "warning",
+    );
     return;
   }
 
-  const existing = kelasByNameCache.get(normalizeKelasCacheKey(kelasLama)) || {};
+  const existing =
+    kelasByNameCache.get(normalizeKelasCacheKey(kelasLama)) || {};
   const guru = kodeGuru ? getGuruKelasByKode(kodeGuru) : null;
 
   try {
@@ -1725,7 +2072,7 @@ async function saveEditKelas(kelasLama) {
       kelas: kelasBaru,
       kode_guru: kodeGuru,
       wali_kelas: guru ? formatNamaGuru(guru) : "",
-      updated_at: new Date()
+      updated_at: new Date(),
     };
 
     await updateKelas(kelasLama, payload);
@@ -1742,8 +2089,17 @@ async function saveEditKelas(kelasLama) {
     }
     renderKelasFiltered();
     if (typeof showInlineSaveNotificationForData === "function") {
-      const shown = showInlineSaveNotificationForData("data-kelas-id", kelasBaru, "Tersimpan");
-      if (!shown) showInlineSaveNotificationForData("data-kelas-id", kelasLama, "Tersimpan");
+      const shown = showInlineSaveNotificationForData(
+        "data-kelas-id",
+        kelasBaru,
+        "Tersimpan",
+      );
+      if (!shown)
+        showInlineSaveNotificationForData(
+          "data-kelas-id",
+          kelasLama,
+          "Tersimpan",
+        );
     }
   } catch (error) {
     console.error(error);
@@ -1753,7 +2109,11 @@ async function saveEditKelas(kelasLama) {
 
 async function hapusKelas(namaKelas) {
   if (isKelasCoordinatorViewOnly()) {
-    Swal.fire("Akses dibatasi", "Koordinator tidak dapat menghapus kelas.", "info");
+    Swal.fire(
+      "Akses dibatasi",
+      "Koordinator tidak dapat menghapus kelas.",
+      "info",
+    );
     return;
   }
   const confirm = await Swal.fire({
@@ -1762,7 +2122,7 @@ async function hapusKelas(namaKelas) {
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Hapus",
-    cancelButtonText: "Batal"
+    cancelButtonText: "Batal",
   });
 
   if (!confirm.isConfirmed) return;
@@ -1780,6 +2140,101 @@ async function hapusKelas(namaKelas) {
     Swal.fire("Gagal", "Data kelas belum berhasil dihapus", "error");
   }
 }
+function setKelasTab(tabId) {
+  kelasActiveTab = tabId;
+  renderKelasPage();
+}
+
+function isKelasStatistikMode() {
+  return kelasActiveTab === "statistik";
+}
+
+function renderKelasStatistikSummary() {
+  const levels = { 7: 0, 8: 0, 9: 0 };
+  const rombelCounts = { 7: 0, 8: 0, 9: 0 };
+  let totalSiswa = 0;
+  let kelasTanpaWali = 0;
+
+  semuaDataKelas.forEach((item) => {
+    const parts = getStoredKelasParts(item);
+    if (!parts.tingkat || !parts.rombel) return;
+    const level = parts.tingkat;
+    if (!levels[level]) return;
+    levels[level]++;
+    rombelCounts[level] = rombelCounts[level] || {};
+    rombelCounts[level][parts.rombel] = true;
+    if (!item.kode_guru || !item.wali_kelas) kelasTanpaWali++;
+  });
+
+  daftarSiswaKelas.forEach((siswa) => {
+    if (siswa.kelas && getSiswaKelasValue(siswa)) totalSiswa++;
+  });
+
+  return {
+    levels,
+    rombelCounts,
+    totalSiswa,
+    kelasTanpaWali,
+    totalKelas: semuaDataKelas.filter(
+      (item) => getStoredKelasParts(item).rombel,
+    ).length,
+  };
+}
+
+function renderKelasStatistikPage() {
+  const stats = renderKelasStatistikSummary();
+  const isKoordinator = isKelasCoordinatorViewOnly();
+
+  const levelCards = ["7", "8", "9"]
+    .map((level) => {
+      const rombelCount = Object.keys(stats.rombelCounts[level] || {}).length;
+      return `
+      <div class="kelas-statistik-card">
+        <div class="kelas-statistik-level">Tingkat ${level}</div>
+        <div class="kelas-statistik-count">${stats.levels[level] || 0}</div>
+        <div class="kelas-statistik-label">kelas</div>
+        <div class="kelas-statistik-detail">${rombelCount} rombel</div>
+      </div>
+    `;
+    })
+    .join("");
+
+  return `
+    <div class="kelas-statistik-container">
+      <div class="kelas-statistik-grid">
+        ${levelCards}
+      </div>
+      <div class="kelas-statistik-summary">
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.totalKelas}</span>
+          <span class="kelas-statistik-summary-label">Total Kelas</span>
+        </div>
+        <div class="kelas-statistik-summary-item">
+          <span class="kelas-statistik-summary-value">${stats.totalSiswa}</span>
+          <span class="kelas-statistik-summary-label">Total Siswa</span>
+        </div>
+        <div class="kelas-statistik-summary-item ${stats.kelasTanpaWali > 0 ? "kelas-statistik-warning" : ""}">
+          <span class="kelas-statistik-summary-value">${stats.kelasTanpaWali}</span>
+          <span class="kelas-statistik-summary-label">Kelas Tanpa Wali</span>
+        </div>
+      </div>
+      ${
+        !isKoordinator
+          ? `
+      <div class="kelas-statistik-note">
+        Gunakan tab Data Kelas untuk mengelola data kelas dan wali kelas.
+      </div>
+      `
+          : `
+      <div class="kelas-statistik-note">
+        Coordinator hanya dapat melihat data kelas pada jenjang tertentu.
+      </div>
+      `
+      }
+    </div>
+  `;
+}
+
 function getKelasPageDocumentsApi() {
   return window.SupabaseDocuments;
 }

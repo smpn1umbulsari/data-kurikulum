@@ -1028,61 +1028,71 @@ function renderAdministrasiAsesmenPage() {
     });
   }
   return `
-    <div class="card">
-      <div class="asesmen-module-header">
-        <div>
-          <span class="dashboard-eyebrow">Asesmen</span>
-          <h2>Administrasi</h2>
-          <p>Siapkan dokumen administrasi asesmen dari susunan ruang yang sudah di-set.</p>
+    <!-- UI-8: Panel 3 - Toolbar -->
+    <section class="app-panel app-panel--toolbar asesmen-toolbar">
+      <div class="toolbar-row toolbar-row--actions">
+        <div class="rekap-letter-settings asesmen-admin-settings" style="display: flex; gap: var(--gs-space-4); width: 100%; flex-wrap: wrap;">
+          <label class="siswa-field" style="flex: 1; min-width: 200px;">
+            <span>Judul</span>
+            <input value="${escapeAsesmenHtml(getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif"))}" oninput="setAdministrasiAsesmenSetting('Judul', this.value)" style="height: 38px;">
+          </label>
+          <label class="siswa-field" style="flex: 1; min-width: 150px;">
+            <span>Keterangan</span>
+            ${renderAdministrasiAsesmenKeteranganSelect()}
+          </label>
+          <label class="siswa-field" style="flex: 1; min-width: 150px;">
+            <span>Tahun Pelajaran</span>
+            <input value="${escapeAsesmenHtml(getAdministrasiAsesmenSetting("TahunPelajaran", ""))}" placeholder="2025/2026" oninput="setAdministrasiAsesmenSetting('TahunPelajaran', this.value)" style="height: 38px;">
+          </label>
         </div>
       </div>
 
-      <div class="rekap-letter-settings asesmen-admin-settings">
-        <label class="form-group">
-          <span>Judul</span>
-          <input value="${escapeAsesmenHtml(getAdministrasiAsesmenSetting("Judul", "Asesmen Sumatif"))}" oninput="setAdministrasiAsesmenSetting('Judul', this.value)">
-        </label>
-        <label class="form-group">
-          <span>Keterangan</span>
-          ${renderAdministrasiAsesmenKeteranganSelect()}
-        </label>
-        <label class="form-group">
-          <span>Tahun Pelajaran</span>
-          <input value="${escapeAsesmenHtml(getAdministrasiAsesmenSetting("TahunPelajaran", ""))}" placeholder="2025/2026" oninput="setAdministrasiAsesmenSetting('TahunPelajaran', this.value)">
-        </label>
+      ${typeof renderKepalaSekolahTtdPanelHtml === "function" && renderKepalaSekolahTtdPanelHtml() ? `
+      <div class="toolbar-row toolbar-row--filters" style="border-top: 1px dashed var(--gs-border); padding-top: var(--gs-space-3); margin-top: var(--gs-space-3); width: 100%;">
+        ${renderKepalaSekolahTtdPanelHtml()}
       </div>
+      ` : ""}
+    </section>
 
-      ${typeof renderKepalaSekolahTtdPanelHtml === "function" ? renderKepalaSekolahTtdPanelHtml() : ""}
-
-      <div class="table-container mapel-table-container">
-        <table class="mapel-table">
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content asesmen-content" style="padding: var(--gs-space-5);">
+      <div class="table-container mapel-table-container asesmen-admin-table-wrap">
+        <table class="mapel-table asesmen-admin-table">
           <thead>
             <tr>
-              <th>Administrasi</th>
-              <th>Export PDF</th>
+              <th>Administrasi Dokumen</th>
+              <th>Aksi</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>Tempel Kaca</td>
-              <td><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportTempelKacaPDF()" title="Export PDF" aria-label="Export PDF Tempel Kaca"></button></td>
+              <td class="asesmen-admin-name-cell">Daftar Peserta (Excel)</td>
+              <td class="asesmen-admin-action-cell"><button type="button" class="btn-secondary btn-table-compact btn-action-download table-action-icon-btn table-action-download" onclick="exportDaftarPesertaAsesmenExcel()" title="Download Excel" aria-label="Download Excel"></button></td>
             </tr>
             <tr>
-              <td>Label 121</td>
-              <td><button type="button" class="btn-primary btn-table-compact" onclick="promptExportLabel121PDF()">Export PDF</button></td>
+              <td class="asesmen-admin-name-cell">Tempel Kaca (PDF)</td>
+              <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportTempelKacaPDF()" title="Export PDF" aria-label="Export PDF Tempel Kaca"></button></td>
             </tr>
             <tr>
-              <td>Kartu Peserta</td>
-              <td><button type="button" class="btn-primary btn-table-compact" onclick="promptExportKartuPesertaPDF()">Export PDF</button></td>
+              <td class="asesmen-admin-name-cell">Data Map (PDF)</td>
+              <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportDataMapPDF()" title="Export PDF" aria-label="Export PDF Data Map"></button></td>
             </tr>
             <tr>
-              <td>Daftar Peserta (Excel)</td>
-              <td><button type="button" class="btn-primary btn-table-compact" onclick="exportDaftarPesertaAsesmenExcel()">Download Excel</button></td>
+              <td class="asesmen-admin-name-cell">Denah Peserta (PDF)</td>
+              <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportDenahPesertaPDF()" title="Export PDF" aria-label="Export PDF Denah Peserta"></button></td>
+            </tr>
+            <tr>
+              <td class="asesmen-admin-name-cell">Label 121 (PDF)</td>
+              <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="promptExportLabel121PDF()" title="Export PDF" aria-label="Export PDF Label 121"></button></td>
+            </tr>
+            <tr>
+              <td class="asesmen-admin-name-cell">Kartu Peserta (PDF)</td>
+              <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="promptExportKartuPesertaPDF()" title="Export PDF" aria-label="Export PDF Kartu Peserta"></button></td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   `;
 }
 
@@ -1094,13 +1104,24 @@ function renderAllAsesmenPreviews() {
 function renderKepersetaanPage() {
   const isAdministrasi = asesmenPageTab === "administrasi";
   return `
-    <div class="kepangawasan-page">
-      <div class="kepangawasan-tabbar" role="tablist" aria-label="Menu Kepersetaan">
+    <section class="app-page app-page--module asesmen-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header asesmen-header">
+        <div class="app-page-title">
+          <span class="dashboard-eyebrow">Asesmen</span>
+          <h2>Kepesertaan</h2>
+          <p>Kelola pembagian ruang ujian dan berkas administrasi kepesertaan.</p>
+        </div>
+      </header>
+
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs asesmen-tabs" role="tablist" aria-label="Menu Kepesertaan">
         ${ASESMEN_PAGE_TABS.map(
           (item) => `
           <button
             type="button"
-            class="kepangawasan-tab ${item.key === asesmenPageTab ? "active" : ""}"
+            class="module-tab ${item.key === asesmenPageTab ? "active" : ""}"
+            role="tab"
             aria-selected="${item.key === asesmenPageTab ? "true" : "false"}"
             onclick="setAsesmenPageTab('${item.key}')"
           >
@@ -1108,9 +1129,10 @@ function renderKepersetaanPage() {
           </button>
         `,
         ).join("")}
-      </div>
+      </nav>
+
       ${isAdministrasi ? renderAdministrasiAsesmenPage() : renderPembagianRuangPage()}
-    </div>
+    </section>
   `;
 }
 
@@ -1255,55 +1277,47 @@ function renderPembagianRuangPage() {
     });
   }
   return `
-    <div class="card">
-      <div class="asesmen-module-header">
-        <div>
-          <span class="dashboard-eyebrow">Asesmen</span>
-          <h2>Pembagian Ruang</h2>
-          <p>Atur ruang ujian dan susunan dua jenjang per ruang.</p>
+    <!-- UI-8: Panel 3 - Toolbar -->
+    <section class="app-panel app-panel--toolbar asesmen-toolbar">
+      <div class="toolbar-row toolbar-row--actions">
+        <div class="asesmen-room-total-control" style="display: flex; gap: var(--gs-space-3); align-items: flex-end; flex-wrap: wrap; width: 100%;">
+          <label class="siswa-field" for="draftJumlahRuangUjian" style="flex: unset; width: 140px; margin-bottom: 0;">
+            <span>Jumlah ruang</span>
+            <input id="draftJumlahRuangUjian" type="number" min="1" max="99" value="${draftJumlahRuangUjian}" oninput="setJumlahRuangUjian(this.value)" title="Jumlah ruang ujian" style="height: 38px;">
+          </label>
+          <label class="siswa-field" for="draftPembagianKelasAsesmen" style="flex: unset; width: 160px; margin-bottom: 0;">
+            <span>Mode pembagian</span>
+            <select id="draftPembagianKelasAsesmen" class="kelas-inline-select" onchange="setPembagianKelasAsesmen(this.value)" title="Pembagian kelas" style="height: 38px;">
+              <option value="setengah" ${draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
+              <option value="20siswa" ${draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
+              <option value="manual" ${draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
+            </select>
+          </label>
+          <label class="siswa-field" for="draftAsesmenKelasSumber" style="flex: unset; width: 160px; margin-bottom: 0;">
+            <span>Sumber kelas</span>
+            <select id="draftAsesmenKelasSumber" class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber kelas" style="height: 38px;">
+              <option value="bayangan" ${draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
+              <option value="asli" ${draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
+            </select>
+          </label>
+          <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()" style="height: 38px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--gs-space-4);">Set Pengaturan</button>
         </div>
-        <label class="asesmen-room-total">
-          <span>Pengaturan global</span>
-          <div class="asesmen-room-total-note">
-            <span>Jumlah ruang -> isi banyak ruang yang dipakai.</span>
-            <span>Mode pembagian -> pilih setengah, 20 siswa, atau manual.</span>
-            <span>Sumber kelas -> pilih kelas asli atau kelas bayangan.</span>
-            <span>Jika pilih Manual, popup tabel jumlah siswa per ruang akan langsung muncul.</span>
-          </div>
-          <div class="asesmen-room-total-control">
-            <label class="asesmen-room-total-field">
-              <span>Jumlah ruang</span>
-              <input type="number" min="1" max="99" value="${draftJumlahRuangUjian}" oninput="setJumlahRuangUjian(this.value)" title="Jumlah ruang ujian">
-            </label>
-            <label class="asesmen-room-total-field">
-              <span>Mode pembagian</span>
-              <select class="kelas-inline-select" onchange="setPembagianKelasAsesmen(this.value)" title="Pembagian kelas">
-                <option value="setengah" ${draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
-                <option value="20siswa" ${draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
-                <option value="manual" ${draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
-              </select>
-            </label>
-            <label class="asesmen-room-total-field">
-              <span>Sumber kelas</span>
-              <select class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber kelas">
-                <option value="bayangan" ${draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
-                <option value="asli" ${draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
-              </select>
-            </label>
-            <button type="button" class="btn-primary table-action-icon-btn table-action-apply" onclick="applyJumlahRuangUjian()" title="Set Pengaturan" aria-label="Set Pengaturan"></button>
-          </div>
-        </label>
       </div>
 
-      <div class="matrix-toolbar-note">
-        Isi dua rentang ruang per jenjang. Satu ruang fisik hanya boleh dipakai maksimal dua jenjang; susunan ruang menampilkan jenjang rendah di kiri dan jenjang tinggi di kanan.
+      <div class="toolbar-row toolbar-row--filters" style="border-top: 1px dashed var(--gs-border); padding-top: var(--gs-space-3); margin-top: var(--gs-space-3); width: 100%;">
+        <div class="matrix-toolbar-note" style="margin: 0; width: 100%;">
+          Isi dua rentang ruang per jenjang. Satu ruang fisik hanya boleh dipakai maksimal dua jenjang; susunan ruang menampilkan jenjang rendah di kiri dan jenjang tinggi di kanan.
+        </div>
       </div>
+    </section>
 
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content asesmen-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); border: none; background: transparent; overflow: visible;">
       <div class="asesmen-level-grid">
         ${[7, 8, 9].map(renderAsesmenLevelPanel).join("")}
       </div>
 
-      <section class="asesmen-arrangement">
+      <section class="asesmen-arrangement" style="margin-top: var(--gs-space-4);">
         <div class="asesmen-arrangement-head">
           <div>
             <span class="mapel-row-hint">Susunan Ruang</span>
@@ -1312,7 +1326,7 @@ function renderPembagianRuangPage() {
         </div>
         <div id="asesmenRoomArrangement"></div>
       </section>
-    </div>
+    </section>
   `;
 }
 
@@ -1913,13 +1927,16 @@ function renderAsesmenKartuPesertaPage(entries, meta = {}) {
 
 function getKartuPesertaPrintHtml(level, options = {}) {
   const levelKey = String(level);
+  const selectedList = options?.selectedNomorPesertaList || [];
   const roomFilter = String(options?.roomFilter || "").trim();
   const entries = getAsesmenKartuPesertaEntries(levelKey);
-  const filteredEntries = roomFilter
-    ? entries.filter(
-        (entry) => getAsesmenKartuPesertaRoomKey(entry) === roomFilter,
-      )
-    : entries;
+  const filteredEntries = selectedList.length > 0
+    ? entries.filter((entry) => selectedList.includes(entry.nomorPeserta))
+    : (roomFilter
+        ? entries.filter(
+            (entry) => getAsesmenKartuPesertaRoomKey(entry) === roomFilter,
+          )
+        : entries);
   const roomKeys = roomFilter
     ? [roomFilter]
     : getAsesmenKartuPesertaRoomKeys(filteredEntries);
@@ -2158,7 +2175,6 @@ function getKartuPesertaPrintHtml(level, options = {}) {
     </html>
   `;
 }
-
 async function promptExportKartuPesertaPDF() {
   const levelOptions = { 7: "Kelas 7", 8: "Kelas 8", 9: "Kelas 9" };
   const levelResult = await Swal.fire({
@@ -2167,7 +2183,7 @@ async function promptExportKartuPesertaPDF() {
     inputOptions: levelOptions,
     inputValue: "7",
     inputPlaceholder: "Pilih kelas",
-    confirmButtonText: "Export PDF",
+    confirmButtonText: "Pilih Siswa",
     cancelButtonText: "Batal",
     showCancelButton: true,
     inputValidator: (value) => (value ? "" : "Pilih kelas terlebih dahulu."),
@@ -2186,32 +2202,179 @@ async function promptExportKartuPesertaPDF() {
   }
 
   const roomKeys = getAsesmenKartuPesertaRoomKeys(entries);
-  const roomOptions = { "": "Semua Ruang" };
-  roomKeys.forEach((roomKey) => {
-    const roomLabel = getAsesmenKartuPesertaRoomLabel(roomKey);
-    roomOptions[roomKey] =
-      roomKey === "__NO_ROOM__" ? roomLabel : `Ruang ${roomLabel}`;
-  });
-  const roomResult = await Swal.fire({
-    title: "Filter Ruang",
-    input: "select",
-    inputOptions: roomOptions,
-    inputValue: "",
-    inputPlaceholder: "Semua ruang",
-    confirmButtonText: "Export PDF",
+
+  // Show multi-select student modal
+  const { value: selectedNomorPesertaList } = await Swal.fire({
+    title: `Pilih Peserta Kelas ${level}`,
+    html: `
+      <style>
+        .swal-student-table-container {
+          max-height: 280px;
+          overflow-y: auto;
+          text-align: left;
+          border: 1px solid var(--gs-border, #e5e7eb);
+          border-radius: 6px;
+          margin-top: 12px;
+        }
+        .swal-student-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .swal-student-table th {
+          font-weight: 700;
+          text-transform: uppercase;
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          color: #6b7280;
+          padding: 8px 12px;
+          border-bottom: 2px solid #e5e7eb;
+          text-align: left;
+          position: sticky;
+          top: 0;
+          background: #fff;
+          z-index: 1;
+        }
+        .swal-student-row {
+          border-bottom: 1px solid #f3f4f6;
+          transition: background-color 0.15s ease;
+        }
+        .swal-student-row:hover {
+          background-color: #f9fafb;
+        }
+        .swal-student-row td {
+          padding: 8px 12px;
+          font-size: 13px;
+          color: #374151;
+        }
+        .student-checkbox {
+          width: 16px;
+          height: 16px;
+          cursor: pointer;
+          accent-color: #0e7490;
+        }
+      </style>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px;">
+        <input id="swal-search" type="text" placeholder="Cari nama..." class="swal2-input" style="margin: 0; flex: 1; height: 38px; font-size: 13.5px; padding: 0 12px; border-radius: 6px; border: 1px solid #ddd;">
+        <select id="swal-room-filter" class="swal2-select" style="margin: 0; height: 38px; font-size: 13.5px; padding: 0 8px; border-radius: 6px; border: 1px solid #ddd; min-width: 120px;">
+          <option value="">Semua Ruang</option>
+          ${roomKeys.map(rk => `<option value="${rk}">${rk === "__NO_ROOM__" ? getAsesmenKartuPesertaRoomLabel(rk) : `Ruang ${getAsesmenKartuPesertaRoomLabel(rk)}`}</option>`).join('')}
+        </select>
+        <button id="swal-toggle-all" type="button" class="btn-secondary" style="padding: 0 12px; font-size: 12px; height: 38px; border-radius: 6px; cursor: pointer; border: 1px solid #ccc; background: #f3f4f6;">Batal Semua</button>
+      </div>
+      <div class="swal-student-table-container">
+        <table class="swal-student-table">
+          <thead>
+            <tr>
+              <th width="30"></th>
+              <th>Nama Siswa</th>
+              <th width="100">Ruang</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries.map(e => `
+              <tr class="swal-student-row" data-name="${e.nama.toLowerCase()}" data-room="${e.roomNumber || ''}">
+                <td><input type="checkbox" class="student-checkbox" value="${e.nomorPeserta}" checked></td>
+                <td><strong>${escapeAsesmenHtml(e.nama)}</strong></td>
+                <td><span class="muted-text">${e.roomNumber ? `Ruang ${e.roomNumber}` : 'Tanpa Ruang'}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `,
+    width: '560px',
+    confirmButtonText: "Export PDF (0)",
     cancelButtonText: "Batal",
     showCancelButton: true,
+    didOpen: () => {
+      const searchInput = document.getElementById('swal-search');
+      const roomSelect = document.getElementById('swal-room-filter');
+      const toggleAllBtn = document.getElementById('swal-toggle-all');
+      
+      const updateVisibilityAndCounters = () => {
+        const query = searchInput.value.toLowerCase();
+        const selectedRoom = roomSelect.value;
+        
+        let visibleCount = 0;
+        let checkedCount = 0;
+        
+        document.querySelectorAll('.swal-student-row').forEach(row => {
+          const name = row.getAttribute('data-name');
+          const room = row.getAttribute('data-room');
+          const checkbox = row.querySelector('.student-checkbox');
+          
+          const matchesSearch = name.includes(query);
+          const matchesRoom = !selectedRoom || room === selectedRoom;
+          
+          if (matchesSearch && matchesRoom) {
+            row.style.display = '';
+            visibleCount++;
+            if (checkbox.checked) checkedCount++;
+          } else {
+            row.style.display = 'none';
+          }
+        });
+        
+        const confirmBtn = Swal.getConfirmButton();
+        if (confirmBtn) {
+          const totalChecked = document.querySelectorAll('.student-checkbox:checked').length;
+          confirmBtn.textContent = `Export PDF (${totalChecked})`;
+          confirmBtn.disabled = totalChecked === 0;
+        }
+        
+        toggleAllBtn.textContent = checkedCount === visibleCount && visibleCount > 0 ? "Batal Semua" : "Pilih Semua";
+      };
+
+      searchInput.addEventListener('input', updateVisibilityAndCounters);
+      roomSelect.addEventListener('change', updateVisibilityAndCounters);
+      
+      document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.addEventListener('change', updateVisibilityAndCounters);
+      });
+
+      toggleAllBtn.addEventListener('click', () => {
+        const query = searchInput.value.toLowerCase();
+        const selectedRoom = roomSelect.value;
+        
+        let visibleRows = [];
+        let allChecked = true;
+        
+        document.querySelectorAll('.swal-student-row').forEach(row => {
+          const name = row.getAttribute('data-name');
+          const room = row.getAttribute('data-room');
+          const checkbox = row.querySelector('.student-checkbox');
+          
+          if (name.includes(query) && (!selectedRoom || room === selectedRoom)) {
+            visibleRows.push(checkbox);
+            if (!checkbox.checked) allChecked = false;
+          }
+        });
+        
+        visibleRows.forEach(cb => {
+          cb.checked = !allChecked;
+        });
+        
+        updateVisibilityAndCounters();
+      });
+
+      updateVisibilityAndCounters();
+    },
+    preConfirm: () => {
+      const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+      if (checkedBoxes.length === 0) {
+        Swal.showValidationMessage('Pilih minimal 1 peserta untuk dicetak.');
+        return false;
+      }
+      return Array.from(checkedBoxes).map(cb => cb.value);
+    }
   });
 
-  if (!roomResult.isConfirmed) return;
-  const roomFilter = String(roomResult.value || "").trim();
-  const html = getKartuPesertaPrintHtml(level, { roomFilter });
-  const roomTitle = roomFilter
-    ? ` Ruang ${getAsesmenKartuPesertaRoomLabel(roomFilter)}`
-    : "";
+  if (!selectedNomorPesertaList || !selectedNomorPesertaList.length) return;
+
+  const html = getKartuPesertaPrintHtml(level, { selectedNomorPesertaList });
   if (window.AppPrint?.openHtml) {
     window.AppPrint.openHtml(html, {
-      documentTitle: `Kartu Peserta Kelas ${level}${roomTitle}`,
+      documentTitle: `Kartu Peserta Kelas ${level}`,
       popupBlockedTitle: "Popup diblokir",
       popupBlockedMessage: "Izinkan popup browser untuk export PDF.",
       autoPrint: true,

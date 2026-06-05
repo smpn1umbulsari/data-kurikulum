@@ -72,6 +72,14 @@
         title: "Backup dan Restore",
         render: () => global.renderAdminBackupPage()
       },
+      "admin-data-health": {
+        title: "Validasi Data",
+        render: () => global.renderDataHealthPage()
+      },
+      "admin-audit-log": {
+        title: "Riwayat Perubahan Data",
+        render: () => global.renderAdminAuditLogPage()
+      },
       "admin-quota": {
         title: "Quota Supabase",
         render: () => global.renderAdminQuotaPage(),

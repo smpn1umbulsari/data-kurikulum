@@ -3,18 +3,38 @@ const DEFAULT_TUGAS_TAMBAHAN = [
   { nama: "Wakil Kepala Satuan Pendidikan", jenis: "Utama", jp: 12 },
   { nama: "Kepala Perpustakaan", jenis: "Utama", jp: 12 },
   { nama: "Kepala Laboratorium", jenis: "Utama", jp: 12 },
-  { nama: "Koordinator Pengembangan Keprofesian Berkelanjutan (PKB)", jenis: "Utama", jp: 6 },
+  {
+    nama: "Koordinator Pengembangan Keprofesian Berkelanjutan (PKB)",
+    jenis: "Utama",
+    jp: 6,
+  },
   { nama: "Koordinator Penilaian Kinerja Guru (PKG)", jenis: "Utama", jp: 6 },
-  { nama: "Pembimbing Khusus pada Satuan Pendidikan Inklusif", jenis: "Utama", jp: 6 },
+  {
+    nama: "Pembimbing Khusus pada Satuan Pendidikan Inklusif",
+    jenis: "Utama",
+    jp: 6,
+  },
   { nama: "Wali Kelas", jenis: "Ekuivalen", jp: 2 },
   { nama: "Pembina Ekstrakurikuler", jenis: "Ekuivalen", jp: 2 },
   { nama: "Pembina OSIS", jenis: "Ekuivalen", jp: 2 },
   { nama: "Guru Piket", jenis: "Ekuivalen", jp: 2 },
   { nama: "Penilai Kinerja Guru", jenis: "Ekuivalen", jp: 2 },
-  { nama: "Pengurus Organisasi/Asosiasi Profesi Tingkat Nasional", jenis: "Ekuivalen", jp: 3 },
-  { nama: "Pengurus Organisasi/Asosiasi Profesi Tingkat Provinsi", jenis: "Ekuivalen", jp: 2 },
-  { nama: "Pengurus Organisasi/Asosiasi Profesi Tingkat Kabupaten/Kota", jenis: "Ekuivalen", jp: 1 },
-  { nama: "Tutor pada Pendidikan Jarak Jauh", jenis: "Ekuivalen", jp: 3 }
+  {
+    nama: "Pengurus Organisasi/Asosiasi Profesi Tingkat Nasional",
+    jenis: "Ekuivalen",
+    jp: 3,
+  },
+  {
+    nama: "Pengurus Organisasi/Asosiasi Profesi Tingkat Provinsi",
+    jenis: "Ekuivalen",
+    jp: 2,
+  },
+  {
+    nama: "Pengurus Organisasi/Asosiasi Profesi Tingkat Kabupaten/Kota",
+    jenis: "Ekuivalen",
+    jp: 1,
+  },
+  { nama: "Tutor pada Pendidikan Jarak Jauh", jenis: "Ekuivalen", jp: 3 },
 ];
 const FIXED_KEPALA_SEKOLAH_TASK_ID = "KS";
 const FIXED_KEPALA_SEKOLAH_TASK_NAME = "Kepala Sekolah";
@@ -41,7 +61,7 @@ let tugasTambahanSyncReady = {
   assignments: false,
   mengajar: false,
   mapel: false,
-  kelas: false
+  kelas: false,
 };
 let currentEditTugasTambahan = null;
 let tugasTambahanActiveTab = "guru";
@@ -52,7 +72,7 @@ let tugasTambahanMatrixDrafts = {};
 let tugasTambahanInputDraft = {
   nama: "",
   jenis: "Utama",
-  jp: ""
+  jp: "",
 };
 
 function escapeTugasTambahanHtml(value) {
@@ -79,7 +99,11 @@ function makeTugasTambahanId(nama, jenis) {
 }
 
 function isFixedKepalaSekolahTugasTambahan(item = {}) {
-  return String(item.id || "").trim().toUpperCase() === FIXED_KEPALA_SEKOLAH_TASK_ID;
+  return (
+    String(item.id || "")
+      .trim()
+      .toUpperCase() === FIXED_KEPALA_SEKOLAH_TASK_ID
+  );
 }
 
 function sortTugasTambahan(data) {
@@ -87,16 +111,20 @@ function sortTugasTambahan(data) {
   return [...data].sort((a, b) => {
     if (isFixedKepalaSekolahTugasTambahan(a)) return -1;
     if (isFixedKepalaSekolahTugasTambahan(b)) return 1;
-    const jenisResult = (jenisOrder[a.jenis] || 99) - (jenisOrder[b.jenis] || 99);
+    const jenisResult =
+      (jenisOrder[a.jenis] || 99) - (jenisOrder[b.jenis] || 99);
     if (jenisResult !== 0) return jenisResult;
     const jpResult = Number(b.jp || 0) - Number(a.jp || 0);
     if (jpResult !== 0) return jpResult;
-    return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" });
+    return String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+      sensitivity: "base",
+    });
   });
 }
 
 function renderTugasTambahanModuleTabs() {
-  if (typeof renderGuruModuleTabs === "function") return renderGuruModuleTabs("tugas-tambahan");
+  if (typeof renderGuruModuleTabs === "function")
+    return renderGuruModuleTabs("tugas-tambahan");
   return `
     <div class="siswa-module-tabs guru-module-tabs" role="tablist" aria-label="Navigasi guru dan tugas tambahan">
       <button type="button" class="siswa-module-tab guru-module-tab" role="tab" aria-selected="false" onclick="loadPage('guru-lihat')">Data Guru</button>
@@ -107,22 +135,23 @@ function renderTugasTambahanModuleTabs() {
 
 function renderTugasTambahanPage() {
   return `
-    <div class="card guru-module-panel tugas-tambahan-module-panel">
-      <div class="kelas-bayangan-head">
-        <div>
+    <section class="app-page app-page--module guru-module-panel tugas-tambahan-module-panel">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header tugas-tambahan-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Pembagian Tugas dan Mengajar</span>
           <h2>Tugas Tambahan</h2>
           <p>Daftar tugas tambahan utama dan ekuivalen beserta jumlah JP.</p>
         </div>
-      </div>
+      </header>
 
-      ${renderTugasTambahanModuleTabs()}
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Navigasi tugas tambahan">
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('guru-lihat')">Data Guru</button>
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+      </nav>
 
-      <div class="toolbar-info">
-        <span id="jumlahDataTugasTambahan">0 tugas tambahan</span>
-      </div>
-
-      <div class="tugas-tabbar">
+      <div class="tugas-tabbar" style="margin: var(--gs-space-3) var(--gs-space-4) 0 var(--gs-space-4);">
         <button class="${tugasTambahanActiveTab === "guru" ? "active" : ""}" onclick="setTugasTambahanTab('guru')">Guru</button>
         <button class="${tugasTambahanActiveTab === "tugas" ? "active" : ""}" onclick="setTugasTambahanTab('tugas')">Tugas Tambahan</button>
       </div>
@@ -130,17 +159,28 @@ function renderTugasTambahanPage() {
       <div id="tugasTambahanTabContent">
         ${tugasTambahanActiveTab === "guru" ? renderTugasTambahanGuruTab() : renderTugasTambahanDaftarTab()}
       </div>
-    </div>
+    </section>
   `;
 }
 
 function renderTugasTambahanGuruTab() {
   return `
-    <div class="toolbar-info">
-      <span id="jumlahGuruTugasTambahanInfo">0 guru x 0 slot</span>
-      <button class="btn-primary" onclick="saveAllGuruTugasTambahan()">Simpan Semua</button>
-    </div>
-    <div id="guruTugasTambahanMatrixContainer"></div>
+    <!-- UI-8: Panel 3 - Toolbar -->
+    <section class="app-panel app-panel--toolbar tugas-tambahan-toolbar">
+      <div class="toolbar-row toolbar-row--actions">
+        <button class="btn-primary" onclick="saveAllGuruTugasTambahan()">Simpan Semua</button>
+      </div>
+      <div class="toolbar-row toolbar-row--filters">
+        <div class="toolbar-row--info-inline">
+          <span id="jumlahGuruTugasTambahanInfo" class="matrix-toolbar-note">0 guru x 0 slot</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content tugas-tambahan-content">
+      <div id="guruTugasTambahanMatrixContainer"></div>
+    </section>
   `;
 }
 
@@ -152,7 +192,7 @@ function getTugasTambahanMatrixRows() {
     { field: "ekuivalen_3_id", jenis: "Ekuivalen", label: "TTE 3" },
     { field: "sekolah_1_id", jenis: "Sekolah", label: "TTS 1" },
     { field: "sekolah_2_id", jenis: "Sekolah", label: "TTS 2" },
-    { field: "sekolah_3_id", jenis: "Sekolah", label: "TTS 3" }
+    { field: "sekolah_3_id", jenis: "Sekolah", label: "TTS 3" },
   ];
 }
 
@@ -200,7 +240,7 @@ function resetTugasTambahanInputDraft() {
   tugasTambahanInputDraft = {
     nama: "",
     jenis: "Utama",
-    jp: ""
+    jp: "",
   };
 }
 
@@ -228,7 +268,10 @@ function getGuruTugasTambahanEffectiveAssignment(guruKode) {
   const key = String(guruKode || "").trim();
   const base = getGuruTugasTambahanBaseAssignment(key);
   const draft = getGuruTugasTambahanDraft(key);
-  return normalizeGuruTugasTambahanAssignmentRules({ ...base, ...(draft || {}) }, key);
+  return normalizeGuruTugasTambahanAssignmentRules(
+    { ...base, ...(draft || {}) },
+    key,
+  );
 }
 
 function getTugasTambahanSlotPairs(prefix) {
@@ -236,14 +279,14 @@ function getTugasTambahanSlotPairs(prefix) {
     return [
       ["ekuivalen_1_id", "ekuivalen_1_nama"],
       ["ekuivalen_2_id", "ekuivalen_2_nama"],
-      ["ekuivalen_3_id", "ekuivalen_3_nama"]
+      ["ekuivalen_3_id", "ekuivalen_3_nama"],
     ];
   }
   if (prefix === "sekolah") {
     return [
       ["sekolah_1_id", "sekolah_1_nama"],
       ["sekolah_2_id", "sekolah_2_nama"],
-      ["sekolah_3_id", "sekolah_3_nama"]
+      ["sekolah_3_id", "sekolah_3_nama"],
     ];
   }
   return [];
@@ -253,9 +296,9 @@ function collectTugasTambahanSlotValues(assignment, prefix) {
   return getTugasTambahanSlotPairs(prefix)
     .map(([idField, nameField]) => ({
       id: String(assignment[idField] || "").trim(),
-      nama: String(assignment[nameField] || "").trim()
+      nama: String(assignment[nameField] || "").trim(),
     }))
-    .filter(item => item.id);
+    .filter((item) => item.id);
 }
 
 function applyTugasTambahanSlotValues(assignment, prefix, values) {
@@ -275,9 +318,14 @@ function getTugasTambahanMatrixState(assignment = {}) {
   const hasUtama = Boolean(String(assignment.utama_id || "").trim());
   const hasEkuivalen1 = Boolean(String(assignment.ekuivalen_1_id || "").trim());
   const hasEkuivalen2 = Boolean(String(assignment.ekuivalen_2_id || "").trim());
-  const hasSekolah1 = Boolean(String(assignment.sekolah_1_id || assignment.sekolah_id || "").trim());
+  const hasSekolah1 = Boolean(
+    String(assignment.sekolah_1_id || assignment.sekolah_id || "").trim(),
+  );
   const hasSekolah2 = Boolean(String(assignment.sekolah_2_id || "").trim());
-  const hasAnyEkuivalen = hasEkuivalen1 || hasEkuivalen2 || Boolean(String(assignment.ekuivalen_3_id || "").trim());
+  const hasAnyEkuivalen =
+    hasEkuivalen1 ||
+    hasEkuivalen2 ||
+    Boolean(String(assignment.ekuivalen_3_id || "").trim());
 
   return {
     utama: !hasAnyEkuivalen,
@@ -286,7 +334,7 @@ function getTugasTambahanMatrixState(assignment = {}) {
     ekuivalen_3: !hasUtama && hasEkuivalen2,
     sekolah_1: true,
     sekolah_2: hasSekolah1,
-    sekolah_3: hasSekolah2
+    sekolah_3: hasSekolah2,
   };
 }
 
@@ -298,17 +346,21 @@ function isTugasTambahanFieldOpen(matrixState, field) {
     ekuivalen_3_id: "ekuivalen_3",
     sekolah_1_id: "sekolah_1",
     sekolah_2_id: "sekolah_2",
-    sekolah_3_id: "sekolah_3"
+    sekolah_3_id: "sekolah_3",
   };
   return Boolean(matrixState[keyMap[field]]);
 }
 
 function getTugasTambahanFieldLockReason(field, assignment = {}) {
-  if (field === "utama_id") return "TTU tertutup karena guru sudah memiliki TTE.";
+  if (field === "utama_id")
+    return "TTU tertutup karena guru sudah memiliki TTE.";
   if (field.startsWith("ekuivalen_")) {
-    if (String(assignment.utama_id || "").trim()) return "TTE tertutup karena guru sudah memiliki TTU.";
-    if (field === "ekuivalen_2_id") return "TTE 2 terbuka setelah TTE 1 terisi.";
-    if (field === "ekuivalen_3_id") return "TTE 3 terbuka setelah TTE 2 terisi.";
+    if (String(assignment.utama_id || "").trim())
+      return "TTE tertutup karena guru sudah memiliki TTU.";
+    if (field === "ekuivalen_2_id")
+      return "TTE 2 terbuka setelah TTE 1 terisi.";
+    if (field === "ekuivalen_3_id")
+      return "TTE 3 terbuka setelah TTE 2 terisi.";
   }
   if (field === "sekolah_2_id") return "TTS 2 terbuka setelah TTS 1 terisi.";
   if (field === "sekolah_3_id") return "TTS 3 terbuka setelah TTS 2 terisi.";
@@ -318,20 +370,37 @@ function getTugasTambahanFieldLockReason(field, assignment = {}) {
 function normalizeGuruTugasTambahanAssignmentRules(assignment, guruKode = "") {
   const normalized = { ...assignment };
   const waliItem = getWaliKelasTugasTambahanItem();
-  const shouldHaveWali = guruKode ? getWaliKelasGuruCodes().has(String(guruKode || "").trim()) : false;
+  const shouldHaveWali = guruKode
+    ? getWaliKelasGuruCodes().has(String(guruKode || "").trim())
+    : false;
 
-  let ekuivalenValues = collectTugasTambahanSlotValues(normalized, "ekuivalen")
-    .filter(item => !waliItem || item.id !== waliItem.id);
+  let ekuivalenValues = collectTugasTambahanSlotValues(
+    normalized,
+    "ekuivalen",
+  ).filter((item) => !waliItem || item.id !== waliItem.id);
   if (shouldHaveWali && waliItem) {
-    ekuivalenValues.unshift({ id: waliItem.id, nama: waliItem.nama || "Wali Kelas" });
+    ekuivalenValues.unshift({
+      id: waliItem.id,
+      nama: waliItem.nama || "Wali Kelas",
+    });
   }
   ekuivalenValues = ekuivalenValues.slice(0, 3);
   applyTugasTambahanSlotValues(normalized, "ekuivalen", ekuivalenValues);
 
-  const sekolahValues = collectTugasTambahanSlotValues(normalized, "sekolah").slice(0, 3);
+  const sekolahValues = collectTugasTambahanSlotValues(
+    normalized,
+    "sekolah",
+  ).slice(0, 3);
   applyTugasTambahanSlotValues(normalized, "sekolah", sekolahValues);
 
-  if (String(normalized.ekuivalen_1_id || normalized.ekuivalen_2_id || normalized.ekuivalen_3_id || "").trim()) {
+  if (
+    String(
+      normalized.ekuivalen_1_id ||
+        normalized.ekuivalen_2_id ||
+        normalized.ekuivalen_3_id ||
+        "",
+    ).trim()
+  ) {
     normalized.utama_id = "";
     normalized.utama_nama = "";
   }
@@ -340,7 +409,8 @@ function normalizeGuruTugasTambahanAssignmentRules(assignment, guruKode = "") {
     applyTugasTambahanSlotValues(normalized, "ekuivalen", []);
   }
 
-  normalized.jp_tugas_tambahan = calculateGuruTugasTambahanJpFromAssignment(normalized);
+  normalized.jp_tugas_tambahan =
+    calculateGuruTugasTambahanJpFromAssignment(normalized);
   normalized.updated_at = new Date();
   return normalized;
 }
@@ -349,11 +419,14 @@ function updateGuruTugasTambahanDraft(guruKode, field, value) {
   const key = String(guruKode || "").trim();
   if (!key || !field) return;
   const baseAssignment = getGuruTugasTambahanEffectiveAssignment(key);
-  const task = semuaDataTugasTambahan.find(item => String(item.id || "").trim() === String(value || "").trim()) || null;
+  const task =
+    semuaDataTugasTambahan.find(
+      (item) => String(item.id || "").trim() === String(value || "").trim(),
+    ) || null;
   const nextAssignment = {
     ...baseAssignment,
     guru_kode: key,
-    [field]: String(value || "").trim()
+    [field]: String(value || "").trim(),
   };
 
   const nameFieldMap = {
@@ -363,7 +436,7 @@ function updateGuruTugasTambahanDraft(guruKode, field, value) {
     ekuivalen_3_id: "ekuivalen_3_nama",
     sekolah_1_id: "sekolah_1_nama",
     sekolah_2_id: "sekolah_2_nama",
-    sekolah_3_id: "sekolah_3_nama"
+    sekolah_3_id: "sekolah_3_nama",
   };
   const nameField = nameFieldMap[field];
   if (nameField) {
@@ -374,7 +447,10 @@ function updateGuruTugasTambahanDraft(guruKode, field, value) {
     nextAssignment.sekolah_nama = task?.nama || "";
   }
 
-  const normalized = normalizeGuruTugasTambahanAssignmentRules(nextAssignment, key);
+  const normalized = normalizeGuruTugasTambahanAssignmentRules(
+    nextAssignment,
+    key,
+  );
   setGuruTugasTambahanDraft(key, normalized);
 }
 
@@ -400,35 +476,47 @@ function renderGuruTugasTambahanMatrix() {
         <thead>
           <tr>
             <th>Guru</th>
-            ${rows.map(row => `<th class="tugas-matrix-head ${getTugasTambahanJenisClass(row.jenis)}">${escapeTugasTambahanHtml(row.label)}</th>`).join("")}
+            ${rows.map((row) => `<th class="tugas-matrix-head ${getTugasTambahanJenisClass(row.jenis)}">${escapeTugasTambahanHtml(row.label)}</th>`).join("")}
             <th>Aksi</th>
           </tr>
         </thead>
         <tbody>
-          ${gurus.map(guru => {
-            const kode = String(guru.kode_guru || "").trim();
-            const assignment = getGuruTugasTambahanEffectiveAssignment(kode);
-            const matrixState = getTugasTambahanMatrixState(assignment);
-            const safeKode = escapeTugasTambahanJs(kode);
-            const isWaliGuru = waliCodes.has(kode);
-            return `
+          ${gurus
+            .map((guru) => {
+              const kode = String(guru.kode_guru || "").trim();
+              const assignment = getGuruTugasTambahanEffectiveAssignment(kode);
+              const matrixState = getTugasTambahanMatrixState(assignment);
+              const safeKode = escapeTugasTambahanJs(kode);
+              const isWaliGuru = waliCodes.has(kode);
+              return `
             <tr data-guru-tugas-kode="${escapeTugasTambahanHtml(kode)}">
               <td class="mengajar-mapel-cell" title="${escapeTugasTambahanHtml(getNamaGuruTugasTambahan(guru))}">
                 <strong>${escapeTugasTambahanHtml(getGuruMatrixLabel(guru))}</strong>
               </td>
-              ${rows.map(row => {
-                const selectedValue = assignment[row.field] || (row.field === "sekolah_1_id" ? assignment.sekolah_id || "" : "");
-                const isOpen = isTugasTambahanFieldOpen(matrixState, row.field);
-                const isLockedWaliKelas = Boolean(
-                  waliItem &&
-                  isWaliGuru &&
-                  row.field === "ekuivalen_1_id" &&
-                  String(selectedValue || "").trim() === String(waliItem.id || "").trim()
-                );
-                const lockReason = isLockedWaliKelas
-                  ? "Wali Kelas mengikuti penetapan pada Data Kelas."
-                  : (isOpen ? "" : getTugasTambahanFieldLockReason(row.field, assignment));
-                return `
+              ${rows
+                .map((row) => {
+                  const selectedValue =
+                    assignment[row.field] ||
+                    (row.field === "sekolah_1_id"
+                      ? assignment.sekolah_id || ""
+                      : "");
+                  const isOpen = isTugasTambahanFieldOpen(
+                    matrixState,
+                    row.field,
+                  );
+                  const isLockedWaliKelas = Boolean(
+                    waliItem &&
+                    isWaliGuru &&
+                    row.field === "ekuivalen_1_id" &&
+                    String(selectedValue || "").trim() ===
+                      String(waliItem.id || "").trim(),
+                  );
+                  const lockReason = isLockedWaliKelas
+                    ? "Wali Kelas mengikuti penetapan pada Data Kelas."
+                    : isOpen
+                      ? ""
+                      : getTugasTambahanFieldLockReason(row.field, assignment);
+                  return `
                   <td class="mengajar-grid-cell">
                     <select
                       id="${getTugasTambahanSelectId(row.field, kode)}"
@@ -444,13 +532,15 @@ function renderGuruTugasTambahanMatrix() {
                     </select>
                   </td>
                 `;
-              }).join("")}
+                })
+                .join("")}
               <td class="mengajar-grid-cell">
-                <button class="btn-primary btn-table-compact" onclick="saveGuruTugasTambahan('${safeKode}')">Simpan</button>
+                <button type="button" class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveGuruTugasTambahan('${safeKode}')" title="Simpan" aria-label="Simpan"></button>
               </td>
             </tr>
           `;
-          }).join("")}
+            })
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -459,6 +549,17 @@ function renderGuruTugasTambahanMatrix() {
 
 function renderTugasTambahanDaftarTab() {
   return `
+    <!-- UI-8: Panel 3 - Toolbar -->
+    <section class="app-panel app-panel--toolbar tugas-tambahan-toolbar">
+      <div class="toolbar-row toolbar-row--filters">
+        <div class="toolbar-row--info-inline">
+          <span id="jumlahDataTugasTambahan" class="matrix-toolbar-note">0 tugas tambahan</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content tugas-tambahan-content">
       <div class="table-container">
         <table>
           <thead>
@@ -474,13 +575,15 @@ function renderTugasTambahanDaftarTab() {
         </table>
         <div id="emptyStateTugasTambahan" class="empty-panel" style="display:none;">Belum ada data tugas tambahan.</div>
       </div>
+    </section>
   `;
 }
 
 function loadRealtimeTugasTambahan() {
   if (unsubscribeTugasTambahan) unsubscribeTugasTambahan();
   if (unsubscribeTugasTambahanGuru) unsubscribeTugasTambahanGuru();
-  if (unsubscribeTugasTambahanAssignments) unsubscribeTugasTambahanAssignments();
+  if (unsubscribeTugasTambahanAssignments)
+    unsubscribeTugasTambahanAssignments();
   if (unsubscribeTugasTambahanMengajar) unsubscribeTugasTambahanMengajar();
   if (unsubscribeTugasTambahanMapel) unsubscribeTugasTambahanMapel();
   if (unsubscribeTugasTambahanKelas) unsubscribeTugasTambahanKelas();
@@ -490,48 +593,58 @@ function loadRealtimeTugasTambahan() {
     assignments: false,
     mengajar: false,
     mapel: false,
-    kelas: false
+    kelas: false,
   };
 
-  unsubscribeTugasTambahan = getTugasTambahanDocumentsApi().collection("tugas_tambahan").onSnapshot(snapshot => {
-    semuaDataTugasTambahan = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    tugasTambahanSyncReady.tugas = true;
-    if (semuaDataTugasTambahan.length === 0) {
-      seedDefaultTugasTambahan();
-      return;
-    }
-    ensureFixedKepalaSekolahTugasTambahan();
-    requestRenderTugasTambahanViews();
-    syncWaliKelasTugasTambahanFromState();
-  });
+  unsubscribeTugasTambahan = getTugasTambahanDocumentsApi()
+    .collection("tugas_tambahan")
+    .onSnapshot((snapshot) => {
+      semuaDataTugasTambahan = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      tugasTambahanSyncReady.tugas = true;
+      if (semuaDataTugasTambahan.length === 0) {
+        seedDefaultTugasTambahan();
+        return;
+      }
+      ensureFixedKepalaSekolahTugasTambahan();
+      requestRenderTugasTambahanViews();
+      syncWaliKelasTugasTambahanFromState();
+    });
 
-  unsubscribeTugasTambahanGuru = listenGuru(data => {
+  unsubscribeTugasTambahanGuru = listenGuru((data) => {
     semuaDataGuruTugasTambahan = data;
     tugasTambahanSyncReady.guru = true;
     requestRenderTugasTambahanViews();
     syncWaliKelasTugasTambahanFromState();
   });
 
-  unsubscribeTugasTambahanAssignments = getTugasTambahanDocumentsApi().collection("guru_tugas_tambahan").onSnapshot(snapshot => {
-    semuaDataGuruTugasTambahanAssignments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    tugasTambahanSyncReady.assignments = true;
-    requestRenderTugasTambahanViews();
-    syncWaliKelasTugasTambahanFromState();
-  });
+  unsubscribeTugasTambahanAssignments = getTugasTambahanDocumentsApi()
+    .collection("guru_tugas_tambahan")
+    .onSnapshot((snapshot) => {
+      semuaDataGuruTugasTambahanAssignments = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      tugasTambahanSyncReady.assignments = true;
+      requestRenderTugasTambahanViews();
+      syncWaliKelasTugasTambahanFromState();
+    });
 
-  unsubscribeTugasTambahanMengajar = listenMengajar(data => {
+  unsubscribeTugasTambahanMengajar = listenMengajar((data) => {
     semuaDataMengajarTugasTambahan = data;
     tugasTambahanSyncReady.mengajar = true;
     syncWaliKelasTugasTambahanFromState();
   });
 
-  unsubscribeTugasTambahanMapel = listenMapel(data => {
+  unsubscribeTugasTambahanMapel = listenMapel((data) => {
     semuaDataMapelTugasTambahan = data;
     tugasTambahanSyncReady.mapel = true;
     syncWaliKelasTugasTambahanFromState();
   });
 
-  unsubscribeTugasTambahanKelas = listenKelas(data => {
+  unsubscribeTugasTambahanKelas = listenKelas((data) => {
     semuaDataKelasTugasTambahan = data;
     tugasTambahanSyncReady.kelas = true;
     syncWaliKelasTugasTambahanFromState();
@@ -548,11 +661,18 @@ function setTugasTambahanTab(tab) {
   setTugasTambahanMatrixInteractionState(false);
   const content = document.getElementById("tugasTambahanTabContent");
   if (content) {
-    content.innerHTML = tugasTambahanActiveTab === "guru" ? renderTugasTambahanGuruTab() : renderTugasTambahanDaftarTab();
+    content.innerHTML =
+      tugasTambahanActiveTab === "guru"
+        ? renderTugasTambahanGuruTab()
+        : renderTugasTambahanDaftarTab();
   }
   requestRenderTugasTambahanViews();
-  document.querySelectorAll(".tugas-tabbar button").forEach(button => {
-    button.classList.toggle("active", button.textContent.trim() === (tugasTambahanActiveTab === "guru" ? "Guru" : "Tugas Tambahan"));
+  document.querySelectorAll(".tugas-tabbar button").forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.textContent.trim() ===
+        (tugasTambahanActiveTab === "guru" ? "Guru" : "Tugas Tambahan"),
+    );
   });
 }
 
@@ -562,27 +682,43 @@ async function seedDefaultTugasTambahan() {
   try {
     const documentsApi = getTugasTambahanDocumentsApi();
     const batch = documentsApi.batch();
-    batch.set(documentsApi.collection("tugas_tambahan").doc(FIXED_KEPALA_SEKOLAH_TASK_ID), {
-      nama: FIXED_KEPALA_SEKOLAH_TASK_NAME,
-      jenis: "Utama",
-      jp: FIXED_KEPALA_SEKOLAH_TASK_JP,
-      urutan: 0,
-      created_at: new Date(),
-      updated_at: new Date()
-    }, { merge: true });
-    DEFAULT_TUGAS_TAMBAHAN.forEach((item, index) => {
-      const ref = documentsApi.collection("tugas_tambahan").doc(makeTugasTambahanId(item.nama, item.jenis));
-      batch.set(ref, {
-        ...item,
-        urutan: index + 1,
+    batch.set(
+      documentsApi
+        .collection("tugas_tambahan")
+        .doc(FIXED_KEPALA_SEKOLAH_TASK_ID),
+      {
+        nama: FIXED_KEPALA_SEKOLAH_TASK_NAME,
+        jenis: "Utama",
+        jp: FIXED_KEPALA_SEKOLAH_TASK_JP,
+        urutan: 0,
         created_at: new Date(),
-        updated_at: new Date()
-      }, { merge: true });
+        updated_at: new Date(),
+      },
+      { merge: true },
+    );
+    DEFAULT_TUGAS_TAMBAHAN.forEach((item, index) => {
+      const ref = documentsApi
+        .collection("tugas_tambahan")
+        .doc(makeTugasTambahanId(item.nama, item.jenis));
+      batch.set(
+        ref,
+        {
+          ...item,
+          urutan: index + 1,
+          created_at: new Date(),
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
     });
     await batch.commit();
   } catch (error) {
     console.error(error);
-    Swal.fire("Gagal", "Data awal tugas tambahan belum berhasil dibuat.", "error");
+    Swal.fire(
+      "Gagal",
+      "Data awal tugas tambahan belum berhasil dibuat.",
+      "error",
+    );
   } finally {
     isSeedingTugasTambahan = false;
   }
@@ -590,19 +726,29 @@ async function seedDefaultTugasTambahan() {
 
 async function ensureFixedKepalaSekolahTugasTambahan() {
   if (isEnsuringFixedKepalaSekolahTask) return;
-  const existing = semuaDataTugasTambahan.find(item => isFixedKepalaSekolahTugasTambahan(item));
+  const existing = semuaDataTugasTambahan.find((item) =>
+    isFixedKepalaSekolahTugasTambahan(item),
+  );
   if (existing && String(existing.jenis || "").trim() === "Utama") return;
 
   isEnsuringFixedKepalaSekolahTask = true;
   try {
-    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(FIXED_KEPALA_SEKOLAH_TASK_ID).set({
-      nama: String(existing?.nama || "").trim() || FIXED_KEPALA_SEKOLAH_TASK_NAME,
-      jenis: "Utama",
-      jp: Number(existing?.jp ?? FIXED_KEPALA_SEKOLAH_TASK_JP),
-      urutan: 0,
-      created_at: existing?.created_at || new Date(),
-      updated_at: new Date()
-    }, { merge: true });
+    await getTugasTambahanDocumentsApi()
+      .collection("tugas_tambahan")
+      .doc(FIXED_KEPALA_SEKOLAH_TASK_ID)
+      .set(
+        {
+          nama:
+            String(existing?.nama || "").trim() ||
+            FIXED_KEPALA_SEKOLAH_TASK_NAME,
+          jenis: "Utama",
+          jp: Number(existing?.jp ?? FIXED_KEPALA_SEKOLAH_TASK_JP),
+          urutan: 0,
+          created_at: existing?.created_at || new Date(),
+          updated_at: new Date(),
+        },
+        { merge: true },
+      );
   } catch (error) {
     console.error("Gagal memastikan baris KS", error);
   } finally {
@@ -616,27 +762,36 @@ function renderTugasTambahanTable() {
   const info = document.getElementById("jumlahDataTugasTambahan");
 
   const rows = sortTugasTambahan(semuaDataTugasTambahan);
-  if (info) info.innerText = `${rows.length} tugas tambahan | ${semuaDataGuruTugasTambahan.length} guru`;
+  if (info)
+    info.innerText = `${rows.length} tugas tambahan | ${semuaDataGuruTugasTambahan.length} guru`;
   if (!tbody) return;
 
   tbody.innerHTML = [
     ...rows.map(renderTugasTambahanRow),
-    renderTugasTambahanInputRow()
+    renderTugasTambahanInputRow(),
   ].join("");
 
   if (empty) empty.style.display = rows.length ? "none" : "block";
 }
 
 function getTugasTambahanByJenis(jenis) {
-  return sortTugasTambahan(semuaDataTugasTambahan).filter(item => item.jenis === jenis);
+  return sortTugasTambahan(semuaDataTugasTambahan).filter(
+    (item) => item.jenis === jenis,
+  );
 }
 
 function getGuruTugasTambahanAssignment(guruKode) {
-  return semuaDataGuruTugasTambahanAssignments.find(item => String(item.guru_kode || "") === String(guruKode || "")) || {};
+  return (
+    semuaDataGuruTugasTambahanAssignments.find(
+      (item) => String(item.guru_kode || "") === String(guruKode || ""),
+    ) || {}
+  );
 }
 
 function getNamaGuruTugasTambahan(guru) {
-  return typeof formatNamaGuru === "function" ? formatNamaGuru(guru) : guru.nama || guru.kode_guru || "";
+  return typeof formatNamaGuru === "function"
+    ? formatNamaGuru(guru)
+    : guru.nama || guru.kode_guru || "";
 }
 
 function getGuruMatrixLabel(guru) {
@@ -648,15 +803,21 @@ function getGuruMatrixLabel(guru) {
 
 function getSortedGuruTugasTambahan() {
   return [...semuaDataGuruTugasTambahan].sort((a, b) =>
-    String(a.kode_guru || "").localeCompare(String(b.kode_guru || ""), undefined, { numeric: true, sensitivity: "base" })
+    String(a.kode_guru || "").localeCompare(
+      String(b.kode_guru || ""),
+      undefined,
+      { numeric: true, sensitivity: "base" },
+    ),
   );
 }
 
 function renderTugasTambahanOptions(jenis, selectedValue = "") {
   const options = [`<option value="">Tidak ada</option>`];
-  getTugasTambahanByJenis(jenis).forEach(item => {
+  getTugasTambahanByJenis(jenis).forEach((item) => {
     const selected = item.id === selectedValue ? "selected" : "";
-    options.push(`<option value="${escapeTugasTambahanHtml(item.id)}" ${selected}>${escapeTugasTambahanHtml(item.nama)} (${Number(item.jp || 0)} JP)</option>`);
+    options.push(
+      `<option value="${escapeTugasTambahanHtml(item.id)}" ${selected}>${escapeTugasTambahanHtml(item.nama)} (${Number(item.jp || 0)} JP)</option>`,
+    );
   });
   return options.join("");
 }
@@ -684,19 +845,35 @@ function renderGuruTugasTambahanTable() {
   if (!tbody) return;
 
   const rows = [...semuaDataGuruTugasTambahan].sort((a, b) => {
-    const namaA = typeof getGuruSortName === "function" ? getGuruSortName(a) : getNamaGuruTugasTambahan(a);
-    const namaB = typeof getGuruSortName === "function" ? getGuruSortName(b) : getNamaGuruTugasTambahan(b);
-    return namaA.localeCompare(namaB, undefined, { sensitivity: "base" }) ||
-      getNamaGuruTugasTambahan(a).localeCompare(getNamaGuruTugasTambahan(b), undefined, { sensitivity: "base" });
+    const namaA =
+      typeof getGuruSortName === "function"
+        ? getGuruSortName(a)
+        : getNamaGuruTugasTambahan(a);
+    const namaB =
+      typeof getGuruSortName === "function"
+        ? getGuruSortName(b)
+        : getNamaGuruTugasTambahan(b);
+    return (
+      namaA.localeCompare(namaB, undefined, { sensitivity: "base" }) ||
+      getNamaGuruTugasTambahan(a).localeCompare(
+        getNamaGuruTugasTambahan(b),
+        undefined,
+        { sensitivity: "base" },
+      )
+    );
   });
 
-  tbody.innerHTML = rows.map(guru => {
-    const kode = String(guru.kode_guru || "").trim();
-    const safeKode = escapeTugasTambahanJs(kode);
-    const assignment = getGuruTugasTambahanAssignment(kode);
-    const namaGuru = typeof formatNamaGuru === "function" ? formatNamaGuru(guru) : guru.nama || kode;
+  tbody.innerHTML = rows
+    .map((guru) => {
+      const kode = String(guru.kode_guru || "").trim();
+      const safeKode = escapeTugasTambahanJs(kode);
+      const assignment = getGuruTugasTambahanAssignment(kode);
+      const namaGuru =
+        typeof formatNamaGuru === "function"
+          ? formatNamaGuru(guru)
+          : guru.nama || kode;
 
-    return `
+      return `
       <tr>
         <td>${escapeTugasTambahanHtml(namaGuru || "-")}</td>
         <td><select id="ttUtama-${escapeTugasTambahanHtml(kode)}" class="kelas-inline-select">${renderTugasTambahanOptions("Utama", assignment.utama_id || "")}</select></td>
@@ -706,10 +883,11 @@ function renderGuruTugasTambahanTable() {
         <td><select id="ttSekolah1-${escapeTugasTambahanHtml(kode)}" class="kelas-inline-select">${renderTugasTambahanOptions("Sekolah", assignment.sekolah_1_id || assignment.sekolah_id || "")}</select></td>
         <td><select id="ttSekolah2-${escapeTugasTambahanHtml(kode)}" class="kelas-inline-select">${renderTugasTambahanOptions("Sekolah", assignment.sekolah_2_id || "")}</select></td>
         <td><select id="ttSekolah3-${escapeTugasTambahanHtml(kode)}" class="kelas-inline-select">${renderTugasTambahanOptions("Sekolah", assignment.sekolah_3_id || "")}</select></td>
-        <td><button class="btn-primary" onclick="saveGuruTugasTambahan('${safeKode}')">Simpan</button></td>
+        <td><button type="button" class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onclick="saveGuruTugasTambahan('${safeKode}')" title="Simpan" aria-label="Simpan"></button></td>
       </tr>
     `;
-  }).join("");
+    })
+    .join("");
 
   if (empty) empty.style.display = rows.length ? "none" : "block";
 }
@@ -722,16 +900,30 @@ function getSelectedTugasTambahan(guruKode, field) {
     ekuivalen_3_id: "ttEkuivalen3",
     sekolah_1_id: "ttSekolah1",
     sekolah_2_id: "ttSekolah2",
-    sekolah_3_id: "ttSekolah3"
+    sekolah_3_id: "ttSekolah3",
   }[field];
-  const selectedId = document.getElementById(getTugasTambahanSelectId(field, guruKode))?.value || document.getElementById(`${idPrefix}-${guruKode}`)?.value || "";
-  const item = semuaDataTugasTambahan.find(entry => entry.id === selectedId) || null;
+  const selectedId =
+    document.getElementById(getTugasTambahanSelectId(field, guruKode))?.value ||
+    document.getElementById(`${idPrefix}-${guruKode}`)?.value ||
+    "";
+  const item =
+    semuaDataTugasTambahan.find((entry) => entry.id === selectedId) || null;
   return { selectedId, item };
 }
 
 function calculateGuruTugasTambahanJpFromAssignment(assignment) {
-  return ["utama_id", "ekuivalen_1_id", "ekuivalen_2_id", "ekuivalen_3_id", "sekolah_1_id", "sekolah_2_id", "sekolah_3_id"].reduce((sum, key) => {
-    const item = semuaDataTugasTambahan.find(entry => entry.id === assignment[key]);
+  return [
+    "utama_id",
+    "ekuivalen_1_id",
+    "ekuivalen_2_id",
+    "ekuivalen_3_id",
+    "sekolah_1_id",
+    "sekolah_2_id",
+    "sekolah_3_id",
+  ].reduce((sum, key) => {
+    const item = semuaDataTugasTambahan.find(
+      (entry) => entry.id === assignment[key],
+    );
     return sum + Number(item?.jp || 0);
   }, 0);
 }
@@ -739,7 +931,15 @@ function calculateGuruTugasTambahanJpFromAssignment(assignment) {
 function calculateMengajarJpForGuru(guruKode) {
   return semuaDataMengajarTugasTambahan.reduce((sum, item) => {
     if (String(item.guru_kode || "") !== String(guruKode || "")) return sum;
-    const mapel = semuaDataMapelTugasTambahan.find(entry => String(entry.kode_mapel || "").trim().toUpperCase() === String(item.mapel_kode || "").trim().toUpperCase());
+    const mapel = semuaDataMapelTugasTambahan.find(
+      (entry) =>
+        String(entry.kode_mapel || "")
+          .trim()
+          .toUpperCase() ===
+        String(item.mapel_kode || "")
+          .trim()
+          .toUpperCase(),
+    );
     return sum + Number(mapel?.jp || 0);
   }, 0);
 }
@@ -751,28 +951,31 @@ function buildGuruJpTugasTambahanPayload(guruKode, assignment) {
     jp: mengajarJp + tugasJp,
     jp_mengajar: mengajarJp,
     jp_tugas_tambahan: tugasJp,
-    updated_at: new Date()
+    updated_at: new Date(),
   };
 }
 
 function updateLocalGuruJpCache(guruKode, payload) {
-  semuaDataGuruTugasTambahan = semuaDataGuruTugasTambahan.map(item =>
+  semuaDataGuruTugasTambahan = semuaDataGuruTugasTambahan.map((item) =>
     String(item.kode_guru || "").trim() === String(guruKode || "").trim()
       ? { ...item, ...payload }
-      : item
+      : item,
   );
   if (typeof semuaDataGuru !== "undefined" && Array.isArray(semuaDataGuru)) {
-    semuaDataGuru = semuaDataGuru.map(item =>
+    semuaDataGuru = semuaDataGuru.map((item) =>
       String(item.kode_guru || "").trim() === String(guruKode || "").trim()
         ? { ...item, ...payload }
-        : item
+        : item,
     );
   }
 }
 
 async function syncGuruJpWithTugasTambahan(guruKode, assignment) {
   const payload = buildGuruJpTugasTambahanPayload(guruKode, assignment);
-  await getTugasTambahanDocumentsApi().collection("guru").doc(guruKode).set(payload, { merge: true });
+  await getTugasTambahanDocumentsApi()
+    .collection("guru")
+    .doc(guruKode)
+    .set(payload, { merge: true });
   updateLocalGuruJpCache(guruKode, payload);
   return payload;
 }
@@ -780,12 +983,18 @@ async function syncGuruJpWithTugasTambahan(guruKode, assignment) {
 function buildGuruTugasTambahanAssignment(guruKode, guru) {
   const draft = getGuruTugasTambahanDraft(guruKode);
   if (draft) {
-    return normalizeGuruTugasTambahanAssignmentRules({
-      ...getGuruTugasTambahanBaseAssignment(guruKode),
-      ...draft,
-      guru_kode: guruKode,
-      guru_nama: typeof formatNamaGuru === "function" ? formatNamaGuru(guru) : guru.nama || ""
-    }, guruKode);
+    return normalizeGuruTugasTambahanAssignmentRules(
+      {
+        ...getGuruTugasTambahanBaseAssignment(guruKode),
+        ...draft,
+        guru_kode: guruKode,
+        guru_nama:
+          typeof formatNamaGuru === "function"
+            ? formatNamaGuru(guru)
+            : guru.nama || "",
+      },
+      guruKode,
+    );
   }
   const utama = getSelectedTugasTambahan(guruKode, "utama_id");
   const ekuivalen1 = getSelectedTugasTambahan(guruKode, "ekuivalen_1_id");
@@ -796,7 +1005,10 @@ function buildGuruTugasTambahanAssignment(guruKode, guru) {
   const sekolah3 = getSelectedTugasTambahan(guruKode, "sekolah_3_id");
   const assignment = {
     guru_kode: guruKode,
-    guru_nama: typeof formatNamaGuru === "function" ? formatNamaGuru(guru) : guru.nama || "",
+    guru_nama:
+      typeof formatNamaGuru === "function"
+        ? formatNamaGuru(guru)
+        : guru.nama || "",
     utama_id: utama.selectedId,
     ekuivalen_1_id: ekuivalen1.selectedId,
     ekuivalen_2_id: ekuivalen2.selectedId,
@@ -814,20 +1026,34 @@ function buildGuruTugasTambahanAssignment(guruKode, guru) {
     sekolah_3_nama: sekolah3.item?.nama || "",
     sekolah_nama: sekolah1.item?.nama || "",
     jp_tugas_tambahan: 0,
-    updated_at: new Date()
+    updated_at: new Date(),
   };
   return normalizeGuruTugasTambahanAssignmentRules(assignment, guruKode);
 }
 
 function hasGuruTugasTambahanAssignmentChanged(existing = {}, next = {}) {
   const fields = [
-    "utama_id", "ekuivalen_1_id", "ekuivalen_2_id", "ekuivalen_3_id",
-    "sekolah_1_id", "sekolah_2_id", "sekolah_3_id", "sekolah_id",
-    "utama_nama", "ekuivalen_1_nama", "ekuivalen_2_nama", "ekuivalen_3_nama",
-    "sekolah_1_nama", "sekolah_2_nama", "sekolah_3_nama", "sekolah_nama",
-    "jp_tugas_tambahan"
+    "utama_id",
+    "ekuivalen_1_id",
+    "ekuivalen_2_id",
+    "ekuivalen_3_id",
+    "sekolah_1_id",
+    "sekolah_2_id",
+    "sekolah_3_id",
+    "sekolah_id",
+    "utama_nama",
+    "ekuivalen_1_nama",
+    "ekuivalen_2_nama",
+    "ekuivalen_3_nama",
+    "sekolah_1_nama",
+    "sekolah_2_nama",
+    "sekolah_3_nama",
+    "sekolah_nama",
+    "jp_tugas_tambahan",
   ];
-  return fields.some(field => String(existing[field] ?? "") !== String(next[field] ?? ""));
+  return fields.some(
+    (field) => String(existing[field] ?? "") !== String(next[field] ?? ""),
+  );
 }
 
 function assignmentUsesTugasTambahan(assignment = {}, taskId = "") {
@@ -841,8 +1067,8 @@ function assignmentUsesTugasTambahan(assignment = {}, taskId = "") {
     assignment.sekolah_1_id,
     assignment.sekolah_2_id,
     assignment.sekolah_3_id,
-    assignment.sekolah_id
-  ].some(value => String(value || "").trim() === id);
+    assignment.sekolah_id,
+  ].some((value) => String(value || "").trim() === id);
 }
 
 function syncAssignmentTaskNames(assignment, taskId, taskName) {
@@ -854,61 +1080,88 @@ function syncAssignmentTaskNames(assignment, taskId, taskName) {
     ["sekolah_1_id", "sekolah_1_nama"],
     ["sekolah_2_id", "sekolah_2_nama"],
     ["sekolah_3_id", "sekolah_3_nama"],
-    ["sekolah_id", "sekolah_nama"]
+    ["sekolah_id", "sekolah_nama"],
   ];
   pairs.forEach(([idField, nameField]) => {
-    if (String(assignment[idField] || "").trim() === String(taskId || "").trim()) {
+    if (
+      String(assignment[idField] || "").trim() === String(taskId || "").trim()
+    ) {
       assignment[nameField] = taskName;
     }
   });
 }
 
 async function propagateTugasTambahanChanges(taskId, taskName) {
-  const affectedAssignments = semuaDataGuruTugasTambahanAssignments.filter(item => assignmentUsesTugasTambahan(item, taskId));
+  const affectedAssignments = semuaDataGuruTugasTambahanAssignments.filter(
+    (item) => assignmentUsesTugasTambahan(item, taskId),
+  );
   if (affectedAssignments.length === 0) return 0;
 
   const documentsApi = getTugasTambahanDocumentsApi();
   const batch = documentsApi.batch();
   const localAssignments = [];
-  affectedAssignments.forEach(item => {
+  affectedAssignments.forEach((item) => {
     const nextAssignment = { ...item };
     syncAssignmentTaskNames(nextAssignment, taskId, taskName);
-    nextAssignment.jp_tugas_tambahan = calculateGuruTugasTambahanJpFromAssignment(nextAssignment);
+    nextAssignment.jp_tugas_tambahan =
+      calculateGuruTugasTambahanJpFromAssignment(nextAssignment);
     nextAssignment.updated_at = new Date();
-    const guruKode = String(nextAssignment.guru_kode || nextAssignment.id || "").trim();
+    const guruKode = String(
+      nextAssignment.guru_kode || nextAssignment.id || "",
+    ).trim();
     if (!guruKode) return;
     localAssignments.push({ guruKode, assignment: nextAssignment });
-    batch.set(documentsApi.collection("guru_tugas_tambahan").doc(guruKode), nextAssignment, { merge: true });
-    batch.set(documentsApi.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, nextAssignment), { merge: true });
+    batch.set(
+      documentsApi.collection("guru_tugas_tambahan").doc(guruKode),
+      nextAssignment,
+      { merge: true },
+    );
+    batch.set(
+      documentsApi.collection("guru").doc(guruKode),
+      buildGuruJpTugasTambahanPayload(guruKode, nextAssignment),
+      { merge: true },
+    );
   });
 
   if (localAssignments.length === 0) return 0;
   await batch.commit();
 
-  semuaDataGuruTugasTambahanAssignments = semuaDataGuruTugasTambahanAssignments.map(item => {
-    const found = localAssignments.find(entry => entry.guruKode === String(item.guru_kode || item.id || "").trim());
-    return found ? found.assignment : item;
-  });
-  localAssignments.forEach(entry => {
+  semuaDataGuruTugasTambahanAssignments =
+    semuaDataGuruTugasTambahanAssignments.map((item) => {
+      const found = localAssignments.find(
+        (entry) =>
+          entry.guruKode === String(item.guru_kode || item.id || "").trim(),
+      );
+      return found ? found.assignment : item;
+    });
+  localAssignments.forEach((entry) => {
     clearGuruTugasTambahanDraft(entry.guruKode);
-    updateLocalGuruJpCache(entry.guruKode, buildGuruJpTugasTambahanPayload(entry.guruKode, entry.assignment));
+    updateLocalGuruJpCache(
+      entry.guruKode,
+      buildGuruJpTugasTambahanPayload(entry.guruKode, entry.assignment),
+    );
   });
   requestRenderTugasTambahanViews();
   return localAssignments.length;
 }
 
 function getWaliKelasTugasTambahanItem() {
-  return semuaDataTugasTambahan.find(item =>
-    String(item.jenis || "") === "Ekuivalen" &&
-    String(item.nama || "").trim().toLowerCase() === "wali kelas"
-  ) || null;
+  return (
+    semuaDataTugasTambahan.find(
+      (item) =>
+        String(item.jenis || "") === "Ekuivalen" &&
+        String(item.nama || "")
+          .trim()
+          .toLowerCase() === "wali kelas",
+    ) || null
+  );
 }
 
 function getWaliKelasGuruCodes() {
   return new Set(
     semuaDataKelasTugasTambahan
-      .map(item => String(item.kode_guru || "").trim())
-      .filter(Boolean)
+      .map((item) => String(item.kode_guru || "").trim())
+      .filter(Boolean),
   );
 }
 
@@ -933,7 +1186,7 @@ function normalizeGuruTugasTambahanAssignment(guru, existing = {}) {
     sekolah_2_nama: existing.sekolah_2_nama || "",
     sekolah_3_nama: existing.sekolah_3_nama || "",
     sekolah_nama: existing.sekolah_1_nama || existing.sekolah_nama || "",
-    updated_at: new Date()
+    updated_at: new Date(),
   };
 }
 
@@ -947,15 +1200,20 @@ function applyWaliKelasToAssignment(assignment, waliItem, shouldHaveWali) {
     ekuivalen_2_nama: assignment.ekuivalen_2_nama || "",
     ekuivalen_3_id: assignment.ekuivalen_3_id || "",
     ekuivalen_3_nama: assignment.ekuivalen_3_nama || "",
-    jp_tugas_tambahan: assignment.jp_tugas_tambahan || 0
+    jp_tugas_tambahan: assignment.jp_tugas_tambahan || 0,
   });
 
   const guruKode = String(assignment.guru_kode || "").trim();
-  const nextAssignment = normalizeGuruTugasTambahanAssignmentRules({
-    ...assignment,
-    ekuivalen_1_id: shouldHaveWali ? waliItem.id : assignment.ekuivalen_1_id,
-    ekuivalen_1_nama: shouldHaveWali ? (waliItem.nama || "Wali Kelas") : assignment.ekuivalen_1_nama
-  }, guruKode);
+  const nextAssignment = normalizeGuruTugasTambahanAssignmentRules(
+    {
+      ...assignment,
+      ekuivalen_1_id: shouldHaveWali ? waliItem.id : assignment.ekuivalen_1_id,
+      ekuivalen_1_nama: shouldHaveWali
+        ? waliItem.nama || "Wali Kelas"
+        : assignment.ekuivalen_1_nama,
+    },
+    guruKode,
+  );
 
   Object.assign(assignment, nextAssignment);
 
@@ -968,7 +1226,7 @@ function applyWaliKelasToAssignment(assignment, waliItem, shouldHaveWali) {
     ekuivalen_2_nama: assignment.ekuivalen_2_nama || "",
     ekuivalen_3_id: assignment.ekuivalen_3_id || "",
     ekuivalen_3_nama: assignment.ekuivalen_3_nama || "",
-    jp_tugas_tambahan: assignment.jp_tugas_tambahan || 0
+    jp_tugas_tambahan: assignment.jp_tugas_tambahan || 0,
   });
   return before !== after;
 }
@@ -977,7 +1235,12 @@ async function syncWaliKelasTugasTambahanFromState() {
   if (isSyncingWaliKelasTugasTambahan) return;
   if (!Object.values(tugasTambahanSyncReady).every(Boolean)) return;
   const waliItem = getWaliKelasTugasTambahanItem();
-  if (!waliItem || semuaDataGuruTugasTambahan.length === 0 || semuaDataKelasTugasTambahan.length === 0) return;
+  if (
+    !waliItem ||
+    semuaDataGuruTugasTambahan.length === 0 ||
+    semuaDataKelasTugasTambahan.length === 0
+  )
+    return;
 
   isSyncingWaliKelasTugasTambahan = true;
   try {
@@ -986,7 +1249,7 @@ async function syncWaliKelasTugasTambahanFromState() {
     const batch = documentsApi.batch();
     const guruUpdates = [];
 
-    semuaDataGuruTugasTambahan.forEach(guru => {
+    semuaDataGuruTugasTambahan.forEach((guru) => {
       const guruKode = String(guru.kode_guru || "").trim();
       if (!guruKode) return;
 
@@ -996,18 +1259,35 @@ async function syncWaliKelasTugasTambahanFromState() {
       if (!hasExisting && !shouldHaveWali) return;
 
       const assignment = normalizeGuruTugasTambahanAssignment(guru, existing);
-      const changed = applyWaliKelasToAssignment(assignment, waliItem, shouldHaveWali);
+      const changed = applyWaliKelasToAssignment(
+        assignment,
+        waliItem,
+        shouldHaveWali,
+      );
       if (!changed) return;
 
-      batch.set(documentsApi.collection("guru_tugas_tambahan").doc(guruKode), assignment, { merge: true });
-      batch.set(documentsApi.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, assignment), { merge: true });
+      batch.set(
+        documentsApi.collection("guru_tugas_tambahan").doc(guruKode),
+        assignment,
+        { merge: true },
+      );
+      batch.set(
+        documentsApi.collection("guru").doc(guruKode),
+        buildGuruJpTugasTambahanPayload(guruKode, assignment),
+        { merge: true },
+      );
       guruUpdates.push({ guruKode, assignment });
     });
 
     if (guruUpdates.length === 0) return;
 
     await batch.commit();
-    guruUpdates.forEach(update => updateLocalGuruJpCache(update.guruKode, buildGuruJpTugasTambahanPayload(update.guruKode, update.assignment)));
+    guruUpdates.forEach((update) =>
+      updateLocalGuruJpCache(
+        update.guruKode,
+        buildGuruJpTugasTambahanPayload(update.guruKode, update.assignment),
+      ),
+    );
   } catch (error) {
     console.error("Gagal sinkron wali kelas ke tugas tambahan", error);
   } finally {
@@ -1017,28 +1297,55 @@ async function syncWaliKelasTugasTambahanFromState() {
 
 async function syncWaliKelasTugasTambahan() {
   try {
-    const [tugasSnapshot, guruSnapshot, assignmentSnapshot, kelasSnapshot, mengajarSnapshot, mapelSnapshot] = await Promise.all([
+    const [
+      tugasSnapshot,
+      guruSnapshot,
+      assignmentSnapshot,
+      kelasSnapshot,
+      mengajarSnapshot,
+      mapelSnapshot,
+    ] = await Promise.all([
       getTugasTambahanDocumentsApi().collection("tugas_tambahan").get(),
       getTugasTambahanDocumentsApi().collection("guru").get(),
       getTugasTambahanDocumentsApi().collection("guru_tugas_tambahan").get(),
-      (typeof getSemesterCollectionQuery === "function" ? getSemesterCollectionQuery("kelas") : getTugasTambahanDocumentsApi().collection("kelas")).get(),
+      (typeof getSemesterCollectionQuery === "function"
+        ? getSemesterCollectionQuery("kelas")
+        : getTugasTambahanDocumentsApi().collection("kelas")
+      ).get(),
       getTugasTambahanDocumentsApi().collection("mengajar").get(),
-      getTugasTambahanDocumentsApi().collection("mapel").get()
+      getTugasTambahanDocumentsApi().collection("mapel").get(),
     ]);
 
-    semuaDataTugasTambahan = tugasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    semuaDataGuruTugasTambahan = guruSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    semuaDataGuruTugasTambahanAssignments = assignmentSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    semuaDataKelasTugasTambahan = kelasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    semuaDataMengajarTugasTambahan = mengajarSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    semuaDataMapelTugasTambahan = mapelSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    semuaDataTugasTambahan = tugasSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    semuaDataGuruTugasTambahan = guruSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    semuaDataGuruTugasTambahanAssignments = assignmentSnapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }),
+    );
+    semuaDataKelasTugasTambahan = kelasSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    semuaDataMengajarTugasTambahan = mengajarSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+    semuaDataMapelTugasTambahan = mapelSnapshot.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
     tugasTambahanSyncReady = {
       tugas: true,
       guru: true,
       assignments: true,
       mengajar: true,
       mapel: true,
-      kelas: true
+      kelas: true,
     };
 
     await syncWaliKelasTugasTambahanFromState();
@@ -1049,7 +1356,9 @@ async function syncWaliKelasTugasTambahan() {
 
 async function saveGuruTugasTambahan(guruKode) {
   setTugasTambahanMatrixInteractionState(false);
-  const guru = semuaDataGuruTugasTambahan.find(item => String(item.kode_guru || "") === String(guruKode || ""));
+  const guru = semuaDataGuruTugasTambahan.find(
+    (item) => String(item.kode_guru || "") === String(guruKode || ""),
+  );
   if (!guru) {
     Swal.fire("Guru tidak ditemukan", "", "warning");
     return;
@@ -1058,7 +1367,11 @@ async function saveGuruTugasTambahan(guruKode) {
   const existing = getGuruTugasTambahanAssignment(guruKode);
   if (hasGuruTugasTambahanAssignmentChanged(existing, assignment) === false) {
     if (typeof showInlineSaveNotificationForData === "function") {
-      showInlineSaveNotificationForData("data-guru-tugas-kode", guruKode, "Tidak ada perubahan");
+      showInlineSaveNotificationForData(
+        "data-guru-tugas-kode",
+        guruKode,
+        "Tidak ada perubahan",
+      );
     }
     return;
   }
@@ -1066,18 +1379,32 @@ async function saveGuruTugasTambahan(guruKode) {
   try {
     const guruPayload = buildGuruJpTugasTambahanPayload(guruKode, assignment);
     await Promise.all([
-      getTugasTambahanDocumentsApi().collection("guru_tugas_tambahan").doc(guruKode).set(assignment, { merge: true }),
-      getTugasTambahanDocumentsApi().collection("guru").doc(guruKode).set(guruPayload, { merge: true })
+      getTugasTambahanDocumentsApi()
+        .collection("guru_tugas_tambahan")
+        .doc(guruKode)
+        .set(assignment, { merge: true }),
+      getTugasTambahanDocumentsApi()
+        .collection("guru")
+        .doc(guruKode)
+        .set(guruPayload, { merge: true }),
     ]);
     updateLocalGuruJpCache(guruKode, guruPayload);
     clearGuruTugasTambahanDraft(guruKode);
     semuaDataGuruTugasTambahanAssignments = [
-      ...semuaDataGuruTugasTambahanAssignments.filter(item => String(item.guru_kode || item.id || "").trim() !== String(guruKode || "").trim()),
-      { id: guruKode, ...assignment }
+      ...semuaDataGuruTugasTambahanAssignments.filter(
+        (item) =>
+          String(item.guru_kode || item.id || "").trim() !==
+          String(guruKode || "").trim(),
+      ),
+      { id: guruKode, ...assignment },
     ];
     requestRenderTugasTambahanViews();
     if (typeof showInlineSaveNotificationForData === "function") {
-      showInlineSaveNotificationForData("data-guru-tugas-kode", guruKode, "Tersimpan");
+      showInlineSaveNotificationForData(
+        "data-guru-tugas-kode",
+        guruKode,
+        "Tersimpan",
+      );
     }
   } catch (error) {
     console.error(error);
@@ -1087,36 +1414,56 @@ async function saveGuruTugasTambahan(guruKode) {
 
 async function saveAllGuruTugasTambahan() {
   setTugasTambahanMatrixInteractionState(false);
-  const gurus = getSortedGuruTugasTambahan().filter(guru => String(guru.kode_guru || "").trim());
+  const gurus = getSortedGuruTugasTambahan().filter((guru) =>
+    String(guru.kode_guru || "").trim(),
+  );
   if (gurus.length === 0) {
     Swal.fire("Belum ada guru", "", "info");
     return;
   }
 
   try {
-    Swal.fire({ title: "Menyimpan matriks tugas tambahan...", didOpen: () => Swal.showLoading() });
+    Swal.fire({
+      title: "Menyimpan matriks tugas tambahan...",
+      didOpen: () => Swal.showLoading(),
+    });
     const documentsApi = getTugasTambahanDocumentsApi();
     const batch = documentsApi.batch();
     const guruUpdates = [];
 
-    gurus.forEach(guru => {
+    gurus.forEach((guru) => {
       const guruKode = String(guru.kode_guru || "").trim();
       const assignment = buildGuruTugasTambahanAssignment(guruKode, guru);
 
-      batch.set(documentsApi.collection("guru_tugas_tambahan").doc(guruKode), assignment, { merge: true });
-      batch.set(documentsApi.collection("guru").doc(guruKode), buildGuruJpTugasTambahanPayload(guruKode, assignment), { merge: true });
+      batch.set(
+        documentsApi.collection("guru_tugas_tambahan").doc(guruKode),
+        assignment,
+        { merge: true },
+      );
+      batch.set(
+        documentsApi.collection("guru").doc(guruKode),
+        buildGuruJpTugasTambahanPayload(guruKode, assignment),
+        { merge: true },
+      );
       guruUpdates.push({ guruKode, assignment });
     });
 
     await batch.commit();
-    guruUpdates.forEach(update => {
+    guruUpdates.forEach((update) => {
       clearGuruTugasTambahanDraft(update.guruKode);
-      updateLocalGuruJpCache(update.guruKode, buildGuruJpTugasTambahanPayload(update.guruKode, update.assignment));
+      updateLocalGuruJpCache(
+        update.guruKode,
+        buildGuruJpTugasTambahanPayload(update.guruKode, update.assignment),
+      );
     });
     Swal.fire("Berhasil", `${guruUpdates.length} guru diperbarui.`, "success");
   } catch (error) {
     console.error(error);
-    Swal.fire("Gagal", "Matriks tugas tambahan belum berhasil disimpan.", "error");
+    Swal.fire(
+      "Gagal",
+      "Matriks tugas tambahan belum berhasil disimpan.",
+      "error",
+    );
   }
 }
 
@@ -1147,8 +1494,8 @@ function renderTugasTambahanRow(item) {
         </td>
         <td>
           <div class="table-actions">
-            <button type="button" class="btn-primary btn-table-compact tugas-btn-compact" onmousedown="handleTugasTambahanUiButtonDown()" onclick="saveEditTugasTambahan('${safeId}')">Simpan</button>
-            <button type="button" class="btn-secondary btn-table-compact tugas-btn-compact" onmousedown="handleTugasTambahanUiButtonDown()" onclick="cancelEditTugasTambahan()">Batal</button>
+            <button type="button" class="btn-primary btn-table-compact btn-action-save table-action-icon-btn table-action-save" onmousedown="handleTugasTambahanUiButtonDown()" onclick="saveEditTugasTambahan('${safeId}')" title="Simpan" aria-label="Simpan"></button>
+            <button type="button" class="btn-secondary btn-table-compact btn-action-cancel table-action-icon-btn table-action-cancel" onmousedown="handleTugasTambahanUiButtonDown()" onclick="cancelEditTugasTambahan()" title="Batal" aria-label="Batal"></button>
           </div>
         </td>
       </tr>
@@ -1163,8 +1510,8 @@ function renderTugasTambahanRow(item) {
       <td>${escapeTugasTambahanHtml(item.jp ?? "-")} JP</td>
       <td>
         <div class="table-actions">
-          <button type="button" class="btn-secondary btn-table-compact tugas-btn-compact" onmousedown="handleTugasTambahanUiButtonDown()" onclick="editTugasTambahan('${safeId}')">Edit</button>
-          ${isFixedKs ? "" : `<button type="button" class="btn-secondary btn-danger-lite btn-table-compact tugas-btn-compact" onmousedown="handleTugasTambahanUiButtonDown()" onclick="hapusTugasTambahan('${safeId}')">Hapus</button>`}
+          <button type="button" class="btn-secondary btn-table-compact btn-action-edit table-action-icon-btn table-action-edit" onmousedown="handleTugasTambahanUiButtonDown()" onclick="editTugasTambahan('${safeId}')" title="Edit" aria-label="Edit"></button>
+          ${isFixedKs ? "" : `<button type="button" class="btn-secondary btn-table-compact btn-action-delete table-action-icon-btn table-action-delete" onmousedown="handleTugasTambahanUiButtonDown()" onclick="hapusTugasTambahan('${safeId}')" title="Hapus" aria-label="Hapus"></button>`}
         </div>
       </td>
     </tr>
@@ -1193,7 +1540,7 @@ function renderTugasTambahanInputRow() {
         <div id="err-jpTugasTambahan" class="error-text"></div>
       </td>
       <td>
-        <button id="btnSimpanTugasTambahan" type="button" class="btn-primary btn-inline-mapel tugas-btn-compact" onmousedown="handleTugasTambahanUiButtonDown()" onclick="simpanTugasTambahan()">Tambah</button>
+        <button id="btnSimpanTugasTambahan" type="button" class="btn-primary btn-inline-mapel tugas-btn-compact btn-action-save table-action-icon-btn" onmousedown="handleTugasTambahanUiButtonDown()" onclick="simpanTugasTambahan()" title="Tambah" aria-label="Tambah Mapel"></button>
       </td>
     </tr>
   `;
@@ -1246,7 +1593,7 @@ async function simpanTugasTambahan() {
   const jp = Number(jpEl.value.trim());
   const id = makeTugasTambahanId(nama, jenis);
 
-  const duplicate = semuaDataTugasTambahan.some(item => item.id === id);
+  const duplicate = semuaDataTugasTambahan.some((item) => item.id === id);
   if (duplicate) {
     setTugasTambahanError("namaTugasTambahan", "Tugas tambahan sudah ada");
     return;
@@ -1259,14 +1606,17 @@ async function simpanTugasTambahan() {
       btn.innerText = "Menyimpan...";
     }
 
-    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(id).set({
-      nama,
-      jenis,
-      jp,
-      urutan: semuaDataTugasTambahan.length + 1,
-      created_at: new Date(),
-      updated_at: new Date()
-    });
+    await getTugasTambahanDocumentsApi()
+      .collection("tugas_tambahan")
+      .doc(id)
+      .set({
+        nama,
+        jenis,
+        jp,
+        urutan: semuaDataTugasTambahan.length + 1,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
 
     namaEl.value = "";
     jpEl.value = "";
@@ -1318,7 +1668,8 @@ function handleTugasTambahanEditKey(event, id) {
 }
 
 function validateTugasTambahanEditForm() {
-  const nama = document.getElementById("editNamaTugasTambahan")?.value.trim() || "";
+  const nama =
+    document.getElementById("editNamaTugasTambahan")?.value.trim() || "";
   const jp = document.getElementById("editJpTugasTambahan")?.value.trim() || "";
   let valid = true;
 
@@ -1346,21 +1697,27 @@ async function saveEditTugasTambahan(id) {
   setTugasTambahanMatrixInteractionState(false);
   if (!validateTugasTambahanEditForm()) return;
 
-  const existing = semuaDataTugasTambahan.find(item => item.id === id);
+  const existing = semuaDataTugasTambahan.find((item) => item.id === id);
   if (!existing) {
     Swal.fire("Data tidak ditemukan", "", "warning");
     return;
   }
 
-  const nama = document.getElementById("editNamaTugasTambahan")?.value.trim() || "";
+  const nama =
+    document.getElementById("editNamaTugasTambahan")?.value.trim() || "";
   const jenis = isFixedKepalaSekolahTugasTambahan(existing)
     ? "Utama"
-    : (document.getElementById("editJenisTugasTambahan")?.value || "Utama");
-  const jp = Number(document.getElementById("editJpTugasTambahan")?.value.trim() || 0);
-  const duplicate = semuaDataTugasTambahan.some(item =>
-    item.id !== id &&
-    String(item.nama || "").trim().toLowerCase() === nama.toLowerCase() &&
-    String(item.jenis || "") === jenis
+    : document.getElementById("editJenisTugasTambahan")?.value || "Utama";
+  const jp = Number(
+    document.getElementById("editJpTugasTambahan")?.value.trim() || 0,
+  );
+  const duplicate = semuaDataTugasTambahan.some(
+    (item) =>
+      item.id !== id &&
+      String(item.nama || "")
+        .trim()
+        .toLowerCase() === nama.toLowerCase() &&
+      String(item.jenis || "") === jenis,
   );
 
   if (duplicate) {
@@ -1374,18 +1731,25 @@ async function saveEditTugasTambahan(id) {
       nama,
       jenis,
       jp,
-      updated_at: new Date()
+      updated_at: new Date(),
     };
-    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(id).set(tugasPayload, { merge: true });
-    semuaDataTugasTambahan = semuaDataTugasTambahan.map(item =>
-      item.id === id ? { ...item, ...tugasPayload } : item
+    await getTugasTambahanDocumentsApi()
+      .collection("tugas_tambahan")
+      .doc(id)
+      .set(tugasPayload, { merge: true });
+    semuaDataTugasTambahan = semuaDataTugasTambahan.map((item) =>
+      item.id === id ? { ...item, ...tugasPayload } : item,
     );
     await propagateTugasTambahanChanges(id, nama);
 
     currentEditTugasTambahan = null;
     renderTugasTambahanTable();
     if (typeof showInlineSaveNotificationForData === "function") {
-      showInlineSaveNotificationForData("data-tugas-tambahan-id", id, "Tersimpan");
+      showInlineSaveNotificationForData(
+        "data-tugas-tambahan-id",
+        id,
+        "Tersimpan",
+      );
     }
   } catch (error) {
     console.error(error);
@@ -1395,9 +1759,13 @@ async function saveEditTugasTambahan(id) {
 
 async function hapusTugasTambahan(id) {
   setTugasTambahanMatrixInteractionState(false);
-  const item = semuaDataTugasTambahan.find(entry => entry.id === id);
+  const item = semuaDataTugasTambahan.find((entry) => entry.id === id);
   if (isFixedKepalaSekolahTugasTambahan(item)) {
-    Swal.fire("Tidak bisa dihapus", "Baris KS adalah tugas tambahan tetap.", "info");
+    Swal.fire(
+      "Tidak bisa dihapus",
+      "Baris KS adalah tugas tambahan tetap.",
+      "info",
+    );
     return;
   }
   const confirm = await Swal.fire({
@@ -1406,13 +1774,16 @@ async function hapusTugasTambahan(id) {
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Hapus",
-    cancelButtonText: "Batal"
+    cancelButtonText: "Batal",
   });
 
   if (!confirm.isConfirmed) return;
 
   try {
-    await getTugasTambahanDocumentsApi().collection("tugas_tambahan").doc(id).delete();
+    await getTugasTambahanDocumentsApi()
+      .collection("tugas_tambahan")
+      .doc(id)
+      .delete();
     if (currentEditTugasTambahan === id) currentEditTugasTambahan = null;
     Swal.fire("Berhasil", "Tugas tambahan dihapus.", "success");
   } catch (error) {

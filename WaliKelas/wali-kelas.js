@@ -294,11 +294,11 @@ function renderWaliKehadiranPage() {
   if (window.WaliKelasView?.renderPageShell)
     return window.WaliKelasView.renderPageShell();
   return `
-    <div class="card">
+    <section class="app-page app-page--module wali-page">
       <div id="waliKelasPageShell">
         <div class="empty-panel">Memuat data wali kelas...</div>
       </div>
-    </div>
+    </section>
   `;
 }
 
@@ -306,11 +306,11 @@ function renderWaliKelengkapanPage() {
   if (window.WaliKelasView?.renderPageShell)
     return window.WaliKelasView.renderPageShell();
   return `
-    <div class="card">
+    <section class="app-page app-page--module wali-page">
       <div id="waliKelasPageShell">
         <div class="empty-panel">Memuat data wali kelas...</div>
       </div>
-    </div>
+    </section>
   `;
 }
 
@@ -579,13 +579,18 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
         "Rekap Kehadiran Siswa",
         "Rekap jumlah S, I, dan A berdasarkan anggota kelas.",
         `
+        <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
         <button type="button" class="btn-secondary" onclick="downloadWaliKehadiranTemplate()">Download Template</button>
         <button type="button" class="btn-secondary" onclick="triggerWaliKehadiranImport()">Import Rekap</button>
-        <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
         <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
       `,
       )}
-      <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content wali-content">
+        <div style="padding: var(--gs-space-4);">
+          <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
+        </div>
+      </section>
       ${renderWaliSavingOverlay()}
     `;
     return true;
@@ -593,7 +598,12 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
 
   shell.innerHTML = `
     ${renderWaliKelasHeader("Cek Kelengkapan Nilai Siswa", "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.", "")}
-    <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
+    <!-- UI-8: Panel 4 - Content -->
+    <section class="app-panel app-panel--content wali-content">
+      <div style="padding: var(--gs-space-4);">
+        <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
+      </div>
+    </section>
   `;
   return true;
 }

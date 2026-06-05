@@ -177,53 +177,58 @@ function renderTable() {
       ? getCurrentCoordinatorLevelsSync()
       : [];
   return `
-    <section class="app-page app-page--data siswa-module-panel">
-      <!-- HEADER BARU: Identitas + Tab digabung -->
-      <header class="siswa-new-header">
-        <div class="siswa-new-header-left">
-          <span class="dashboard-eyebrow siswa-accent-text">Akademik</span>
+    <section class="app-page app-page--module siswa-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header siswa-header">
+        <div class="app-page-title">
+          <span class="dashboard-eyebrow">Akademik</span>
           <h2>Data Siswa</h2>
-        </div>
-        <div class="siswa-new-header-right">
-          ${renderSiswaModuleTabs("lihat")}
+          <p>Kelola data siswa aktif dan siswa lulus.</p>
         </div>
       </header>
 
-      <!-- TOMBOL CEPAT BARU: Semua tombol di satu baris -->
-      <div class="siswa-action-bar">
-        <button class="btn-primary siswa-action-add" onclick="loadPage('input')">
-          <span class="siswa-action-icon siswa-icon-plus" aria-hidden="true"></span>
-          Tambah Siswa
-        </button>
-        ${
-          isKoordinator
-            ? ""
-            : `
-          <button class="btn-secondary siswa-action-btn" onclick="downloadSiswaTemplate()">
-            <span class="siswa-action-icon siswa-icon-download" aria-hidden="true"></span>
-            Template
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs siswa-tabs" role="tablist" aria-label="Navigasi data siswa">
+        ${renderSiswaModuleTabs("lihat")}
+      </nav>
+
+      <!-- UI-8: Panel 3 - Toolbar (SATU panel dengan 3 toolbar-row) -->
+      <section class="app-panel app-panel--toolbar siswa-toolbar">
+        <!-- toolbar-row--actions -->
+        <div class="toolbar-row toolbar-row--actions">
+          <button class="btn-primary" onclick="loadPage('input')">
+            <span class="siswa-action-icon siswa-icon-plus" aria-hidden="true"></span>
+            Tambah Siswa
           </button>
-          <label class="btn-secondary siswa-action-btn siswa-upload-action">
-            <span class="siswa-action-icon siswa-icon-upload" aria-hidden="true"></span>
-            Import
-            <input type="file" accept=".xlsx, .xls" onchange="importExcel(event)">
-          </label>
-        `
-        }
-        <button class="btn-secondary siswa-action-btn" onclick="resetFilter()">
-          <span class="siswa-action-icon siswa-icon-reset" aria-hidden="true"></span>
-          Reset
-        </button>
-        <button class="btn-secondary siswa-action-btn" onclick="refreshSiswaTable()">
-          <span class="siswa-action-icon siswa-icon-refresh" aria-hidden="true"></span>
-          Refresh
-        </button>
-      </div>
+          ${
+            isKoordinator
+              ? ""
+              : `
+            <button class="btn-secondary" onclick="downloadSiswaTemplate()">
+              <span class="siswa-action-icon siswa-icon-download" aria-hidden="true"></span>
+              Template
+            </button>
+            <label class="btn-secondary siswa-upload-action">
+              <span class="siswa-action-icon siswa-icon-upload" aria-hidden="true"></span>
+              Import
+              <input type="file" accept=".xlsx, .xls" onchange="importExcel(event)">
+            </label>
+          `
+          }
+          <button class="btn-secondary" onclick="resetFilter()">
+            <span class="siswa-action-icon siswa-icon-reset" aria-hidden="true"></span>
+            Reset
+          </button>
+          <button class="btn-secondary" onclick="refreshSiswaTable()">
+            <span class="siswa-action-icon siswa-icon-refresh" aria-hidden="true"></span>
+            Refresh
+          </button>
+        </div>
 
-      ${isKoordinator ? `<div class="matrix-toolbar-note siswa-access-note">Akses koordinator dibatasi ke jenjang ${escapeSiswaHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
+        ${isKoordinator ? `<div class="matrix-toolbar-note siswa-access-note">Akses koordinator dibatasi ke jenjang ${escapeSiswaHtml(levels.length ? levels.join(", ") : "-")}.</div>` : ""}
 
-      <section class="control-panel siswa-toolbar-panel">
-        <div class="siswa-filter-grid">
+        <!-- toolbar-row--filters -->
+        <div class="toolbar-row toolbar-row--filters">
           <label class="siswa-field siswa-field-search" for="search">
             <span>Pencarian</span>
             <input id="search" placeholder="Cari nama, NIPD, atau NISN..." oninput="handleSearch(); updateFilterUI()">
@@ -258,47 +263,49 @@ function renderTable() {
               <option>Konghucu</option>
             </select>
           </label>
+
+          <div class="toolbar-row--info-inline">
+            <span id="jumlahData">0 siswa</span>
+            <label class="page-size-control" for="rowsPerPage">
+              <span>Rows per page</span>
+              <select id="rowsPerPage" onchange="setRowsPerPage(this.value)">
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="all">Semua</option>
+              </select>
+            </label>
+          </div>
         </div>
       </section>
 
-      <div class="status-strip siswa-table-meta">
-        <span id="jumlahData">0 siswa</span>
-        <label class="page-size-control" for="rowsPerPage">
-          <span>Rows per page</span>
-          <select id="rowsPerPage" onchange="setRowsPerPage(this.value)">
-            <option value="10" selected>10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-            <option value="all">Semua</option>
-          </select>
-        </label>
-      </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content siswa-content">
+        <div class="table-container siswa-table-container">
+          <table class="data-table siswa-compact-table">
+            <thead>
+              <tr>
+                <th class="sortable-header siswa-col-nipd ${siswaSortField === "nipd" ? "active" : ""}" onclick="setSiswaSort('nipd')">NIPD${siswaSortField === "nipd" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+                <th class="sortable-header siswa-col-nisn ${siswaSortField === "nisn" ? "active" : ""}" onclick="setSiswaSort('nisn')">NISN${siswaSortField === "nisn" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+                <th class="sortable-header siswa-col-nama ${siswaSortField === "nama" ? "active" : ""}" onclick="setSiswaSort('nama')">Nama${siswaSortField === "nama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+                <th class="sortable-header siswa-col-jk ${siswaSortField === "jk" ? "active" : ""}" onclick="setSiswaSort('jk')">JK${siswaSortField === "jk" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+                <th class="sortable-header siswa-col-agama ${siswaSortField === "agama" ? "active" : ""}" onclick="setSiswaSort('agama')">Agama${siswaSortField === "agama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+                <th class="sortable-header siswa-col-kelas ${siswaSortField === "kelas" ? "active" : ""}" onclick="setSiswaSort('kelas')">Kelas${siswaSortField === "kelas" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
+                <th class="siswa-col-aksi">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+          </table>
 
-      <div class="table-container siswa-table-container">
-        <table class="data-table siswa-compact-table">
-          <thead>
-            <tr>
-              <th class="sortable-header siswa-col-nipd ${siswaSortField === "nipd" ? "active" : ""}" onclick="setSiswaSort('nipd')">NIPD${siswaSortField === "nipd" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
-              <th class="sortable-header siswa-col-nisn ${siswaSortField === "nisn" ? "active" : ""}" onclick="setSiswaSort('nisn')">NISN${siswaSortField === "nisn" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
-              <th class="sortable-header siswa-col-nama ${siswaSortField === "nama" ? "active" : ""}" onclick="setSiswaSort('nama')">Nama${siswaSortField === "nama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
-              <th class="sortable-header siswa-col-jk ${siswaSortField === "jk" ? "active" : ""}" onclick="setSiswaSort('jk')">JK${siswaSortField === "jk" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
-              <th class="sortable-header siswa-col-agama ${siswaSortField === "agama" ? "active" : ""}" onclick="setSiswaSort('agama')">Agama${siswaSortField === "agama" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
-              <th class="sortable-header siswa-col-kelas ${siswaSortField === "kelas" ? "active" : ""}" onclick="setSiswaSort('kelas')">Kelas${siswaSortField === "kelas" ? (siswaSortDirection === "asc" ? " ▲" : " ▼") : ""}</th>
-              <th class="siswa-col-aksi">Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tbody"></tbody>
-        </table>
-
-        <div id="emptyState" class="empty-state siswa-empty-state" style="display:none;">
-          Tidak ada data
+          <div id="emptyState" class="empty-state siswa-empty-state" style="display:none;">
+            Tidak ada data
+          </div>
         </div>
-      </div>
 
-      <div id="tablePagination" class="pagination-wrap"></div>
-
+        <div id="tablePagination" class="pagination-wrap"></div>
+      </section>
     </section>
 
     <div id="previewModal" class="preview-modal" style="display:none;" onclick="handlePreviewBackdrop(event)">

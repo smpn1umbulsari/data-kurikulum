@@ -9,9 +9,12 @@
   }
 
   function getCurrentUser() {
-    if (global.DashboardShell?.getCurrentAppUser) return global.DashboardShell.getCurrentAppUser() || {};
+    if (global.DashboardShell?.getCurrentAppUser)
+      return global.DashboardShell.getCurrentAppUser() || {};
     try {
-      return JSON.parse(global.localStorage.getItem("currentUser") || "{}") || {};
+      return (
+        JSON.parse(global.localStorage.getItem("currentUser") || "{}") || {}
+      );
     } catch {
       return {};
     }
@@ -22,10 +25,14 @@
       const serialized = JSON.stringify(detail || {});
       if (serialized.length <= MAX_DETAIL_LENGTH) return detail || {};
       return {
-        ringkasan: String(detail?.ringkasan || detail?.summary || "Detail terlalu panjang"),
-        snapshot_ids: Array.isArray(detail?.snapshot_ids) ? detail.snapshot_ids : undefined,
+        ringkasan: String(
+          detail?.ringkasan || detail?.summary || "Detail terlalu panjang",
+        ),
+        snapshot_ids: Array.isArray(detail?.snapshot_ids)
+          ? detail.snapshot_ids
+          : undefined,
         truncated: true,
-        preview: serialized.slice(0, MAX_DETAIL_LENGTH)
+        preview: serialized.slice(0, MAX_DETAIL_LENGTH),
       };
     } catch {
       return { ringkasan: String(detail || "") };
@@ -49,7 +56,7 @@
       username: String(user?.username || user?.id || "").trim(),
       nama: String(user?.nama || user?.name || "").trim(),
       role: String(user?.role || "").trim(),
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
     };
     try {
       await documentsApi.collection(COLLECTION).doc(makeDocId()).set(payload);
@@ -70,7 +77,8 @@
   }
 
   function formatDate(value) {
-    if (global.AppUtils?.formatDateTimeId) return global.AppUtils.formatDateTimeId(value);
+    if (global.AppUtils?.formatDateTimeId)
+      return global.AppUtils.formatDateTimeId(value);
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "-" : date.toLocaleString("id-ID");
   }
@@ -80,8 +88,10 @@
     if (!documentsApi?.collection) return [];
     const snapshot = await documentsApi.collection(COLLECTION).get();
     return snapshot.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
-      .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))
+      .map((doc) => ({ id: doc.id, ...doc.data() }))
+      .sort((a, b) =>
+        String(b.created_at || "").localeCompare(String(a.created_at || "")),
+      )
       .slice(0, limit);
   }
 
@@ -94,7 +104,10 @@
     const documentsApi = getDocumentsApi();
     const rows = [];
     for (const id of snapshotIds) {
-      const doc = await documentsApi.collection("nilai_snapshots").doc(id).get();
+      const doc = await documentsApi
+        .collection("nilai_snapshots")
+        .doc(id)
+        .get();
       if (doc?.exists) rows.push({ id, ...doc.data() });
     }
     return rows;
@@ -103,9 +116,15 @@
   async function rollbackNilaiSnapshots(snapshotIds = []) {
     if (!snapshotIds.length) return;
     const snapshots = await loadNilaiSnapshots(snapshotIds);
-    const rows = snapshots.flatMap(snapshot => Array.isArray(snapshot.rows) ? snapshot.rows : []);
+    const rows = snapshots.flatMap((snapshot) =>
+      Array.isArray(snapshot.rows) ? snapshot.rows : [],
+    );
     if (!rows.length) {
-      Swal.fire("Snapshot kosong", "Tidak ada data nilai yang bisa dikembalikan.", "info");
+      Swal.fire(
+        "Snapshot kosong",
+        "Tidak ada data nilai yang bisa dikembalikan.",
+        "info",
+      );
       return;
     }
     const confirm = await Swal.fire({
@@ -117,7 +136,7 @@
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Rollback",
-      cancelButtonText: "Batal"
+      cancelButtonText: "Batal",
     });
     if (!confirm.isConfirmed) return;
 
@@ -125,7 +144,7 @@
     let deleted = 0;
     for (let index = 0; index < rows.length; index += 400) {
       const batch = getDocumentsApi().batch();
-      rows.slice(index, index + 400).forEach(row => {
+      rows.slice(index, index + 400).forEach((row) => {
         if (!row?.doc_id) return;
         const ref = getDocumentsApi().collection("nilai").doc(row.doc_id);
         if (row.before) {
@@ -138,32 +157,51 @@
       });
       await batch.commit();
     }
-    await record("nilai_rollback", {
-      ringkasan: `Rollback nilai selesai: ${restored} dikembalikan, ${deleted} dihapus.`,
-      snapshot_ids: snapshotIds,
-      restored,
-      deleted
-    }, { module: "Nilai", title: "Rollback Nilai" });
-    Swal.fire("Rollback selesai", `${restored} nilai dikembalikan dan ${deleted} nilai baru dihapus.`, "success");
+    await record(
+      "nilai_rollback",
+      {
+        ringkasan: `Rollback nilai selesai: ${restored} dikembalikan, ${deleted} dihapus.`,
+        snapshot_ids: snapshotIds,
+        restored,
+        deleted,
+      },
+      { module: "Nilai", title: "Rollback Nilai" },
+    );
+    Swal.fire(
+      "Rollback selesai",
+      `${restored} nilai dikembalikan dan ${deleted} nilai baru dihapus.`,
+      "success",
+    );
     refreshAdminAuditLog();
   }
 
   function renderAdminAuditLogPage() {
     setTimeout(() => refreshAdminAuditLog(), 0);
     return `
-      <section class="backup-page audit-page">
-        <div class="nilai-page-head">
-          <div>
+      <section class="app-page app-page--module audit-page">
+        <!-- UI-8: Panel 1 - Header -->
+        <header class="app-panel app-panel--header audit-header">
+          <div class="app-page-title">
             <span class="dashboard-eyebrow">Admin</span>
             <h2>Riwayat Perubahan Data</h2>
             <p>Melacak aksi penting seperti simpan nilai, backup, restore, pembagian ruang, dan kartu pengawas.</p>
           </div>
-          <button class="btn-secondary" onclick="refreshAdminAuditLog()">Refresh</button>
-        </div>
-        <article class="backup-panel backup-wide">
-          <div id="auditLogStatus" class="backup-status">Memuat riwayat...</div>
-          <div id="auditLogTable" class="table-container mapel-table-container"></div>
-        </article>
+        </header>
+
+        <!-- UI-8: Panel 3 - Toolbar -->
+        <section class="app-panel app-panel--toolbar audit-toolbar">
+          <div class="toolbar-row toolbar-row--actions">
+            <button class="btn-secondary" onclick="refreshAdminAuditLog()">Refresh</button>
+          </div>
+        </section>
+
+        <!-- UI-8: Panel 4 - Content -->
+        <section class="app-panel app-panel--content audit-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+          <article class="backup-panel backup-wide">
+            <div id="auditLogStatus" class="backup-status">Memuat riwayat...</div>
+            <div id="auditLogTable" class="table-container mapel-table-container"></div>
+          </article>
+        </section>
       </section>
     `;
   }
@@ -192,9 +230,10 @@
             </tr>
           </thead>
           <tbody>
-            ${rows.map(row => {
-              const snapshotIds = getSnapshotIds(row);
-              return `
+            ${rows
+              .map((row) => {
+                const snapshotIds = getSnapshotIds(row);
+                return `
               <tr>
                 <td>${escapeHtml(formatDate(row.created_at))}</td>
                 <td>${escapeHtml(row.module || "-")}</td>
@@ -202,14 +241,17 @@
                 <td>${escapeHtml(row.nama || row.username || "-")}<br><small>${escapeHtml(row.role || "")}</small></td>
                 <td>
                   ${escapeHtml(row.detail?.ringkasan || row.detail?.summary || JSON.stringify(row.detail || {}))}
-                  ${snapshotIds.length ? `<div class="audit-actions"><button class="btn-secondary btn-mini" onclick='AuditLog.rollbackNilaiSnapshots(${JSON.stringify(snapshotIds)})'>Rollback Nilai</button></div>` : ""}
+                  ${snapshotIds.length ? `<div class="audit-actions"><button class="btn-icon-only btn-secondary btn-mini" onclick='AuditLog.rollbackNilaiSnapshots(${JSON.stringify(snapshotIds)})' title="Rollback Nilai" aria-label="Rollback Nilai"></button></div>` : ""}
                 </td>
               </tr>
-            `; }).join("")}
+            `;
+              })
+              .join("")}
           </tbody>
         </table>
       `;
-      if (status) status.innerText = `${rows.length} riwayat terakhir ditampilkan.`;
+      if (status)
+        status.innerText = `${rows.length} riwayat terakhir ditampilkan.`;
     } catch (error) {
       console.error(error);
       if (status) status.innerText = "Gagal membaca riwayat.";
@@ -217,7 +259,13 @@
     }
   }
 
-  global.AuditLog = { record, loadRows, renderAdminAuditLogPage, refreshAdminAuditLog, rollbackNilaiSnapshots };
+  global.AuditLog = {
+    record,
+    loadRows,
+    renderAdminAuditLogPage,
+    refreshAdminAuditLog,
+    rollbackNilaiSnapshots,
+  };
   global.recordAuditLog = record;
   global.renderAdminAuditLogPage = renderAdminAuditLogPage;
   global.refreshAdminAuditLog = refreshAdminAuditLog;

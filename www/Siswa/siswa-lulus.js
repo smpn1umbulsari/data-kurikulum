@@ -5,7 +5,9 @@ let siswaLulusTahun = "";
 let lastSiswaLulusPageHtml = "";
 
 function normalizeSiswaLulusTahun(value) {
-  return String(value || "").trim().replace(/\s+/g, "");
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, "");
 }
 
 function getSiswaLulusActiveTahun() {
@@ -33,7 +35,9 @@ function isSiswaLulusTahunAllowed(tahun) {
 }
 
 function getVisibleSiswaLulusData() {
-  return semuaDataSiswaLulus.filter(item => isSiswaLulusTahunAllowed(item.tahun_pelajaran_lulus));
+  return semuaDataSiswaLulus.filter((item) =>
+    isSiswaLulusTahunAllowed(item.tahun_pelajaran_lulus),
+  );
 }
 
 function escapeSiswaLulusHtml(value) {
@@ -46,7 +50,8 @@ function escapeSiswaLulusHtml(value) {
 }
 
 function renderSiswaLulusTabs() {
-  if (typeof renderSiswaModuleTabs === "function") return renderSiswaModuleTabs("siswa-lulus");
+  if (typeof renderSiswaModuleTabs === "function")
+    return renderSiswaModuleTabs("siswa-lulus");
   return `
     <div class="siswa-module-tabs" role="tablist" aria-label="Navigasi data siswa">
       <button type="button" class="siswa-module-tab" role="tab" aria-selected="false" onclick="loadPage('lihat')">Siswa Aktif</button>
@@ -57,23 +62,37 @@ function renderSiswaLulusTabs() {
 
 function renderSiswaLulusPage() {
   const activeTahun = getSiswaLulusActiveTahun();
-  const tahunOptions = [...new Set(getVisibleSiswaLulusData().map(item => item.tahun_pelajaran_lulus).filter(Boolean))]
-    .sort((a, b) => String(b).localeCompare(String(a), undefined, { numeric: true }));
-  if (siswaLulusTahun && !tahunOptions.includes(siswaLulusTahun)) siswaLulusTahun = "";
+  const tahunOptions = [
+    ...new Set(
+      getVisibleSiswaLulusData()
+        .map((item) => item.tahun_pelajaran_lulus)
+        .filter(Boolean),
+    ),
+  ].sort((a, b) =>
+    String(b).localeCompare(String(a), undefined, { numeric: true }),
+  );
+  if (siswaLulusTahun && !tahunOptions.includes(siswaLulusTahun))
+    siswaLulusTahun = "";
   return `
-    <div class="card siswa-module-panel siswa-lulus-panel">
-      <div class="siswa-module-header">
-        <div>
+    <section class="app-page app-page--module siswa-lulus-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header siswa-header">
+        <div class="app-page-title">
           <span class="dashboard-eyebrow">Akademik</span>
-          <h2>Siswa Lulus</h2>
-          <p>Menampilkan data kelulusan sebelum tahun pelajaran yang sedang dibuka${activeTahun ? ` (${escapeSiswaLulusHtml(activeTahun)})` : ""}.</p>
+          <h2>Data Siswa</h2>
+          <p>Kelola data siswa aktif dan siswa lulus${activeTahun ? ` (${escapeSiswaLulusHtml(activeTahun)})` : ""}.</p>
         </div>
-      </div>
+      </header>
 
-      ${renderSiswaLulusTabs()}
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs siswa-tabs" role="tablist" aria-label="Navigasi data siswa">
+        ${renderSiswaLulusTabs()}
+      </nav>
 
-      <div class="siswa-toolbar-panel siswa-lulus-toolbar">
-        <div class="siswa-filter-grid siswa-lulus-filter-grid">
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar siswa-lulus-toolbar">
+        <!-- toolbar-row--filters -->
+        <div class="toolbar-row toolbar-row--filters">
           <label class="siswa-field siswa-field-search" for="siswaLulusSearch">
             <span>Pencarian</span>
             <input id="siswaLulusSearch" placeholder="Cari nama, NIPD, atau NISN..." value="${escapeSiswaLulusHtml(siswaLulusSearch)}" oninput="setSiswaLulusSearch(this.value)">
@@ -83,56 +102,89 @@ function renderSiswaLulusPage() {
             <span>Tahun Lulus</span>
             <select id="siswaLulusTahun" onchange="setSiswaLulusTahun(this.value)">
               <option value="">Semua Tahun Sebelumnya</option>
-              ${tahunOptions.map(tahun => `<option value="${escapeSiswaLulusHtml(tahun)}" ${tahun === siswaLulusTahun ? "selected" : ""}>${escapeSiswaLulusHtml(tahun)}</option>`).join("")}
+              ${tahunOptions.map((tahun) => `<option value="${escapeSiswaLulusHtml(tahun)}" ${tahun === siswaLulusTahun ? "selected" : ""}>${escapeSiswaLulusHtml(tahun)}</option>`).join("")}
             </select>
           </label>
-        </div>
-      </div>
 
-      <div class="table-container siswa-table-container">
-        <table class="siswa-compact-table siswa-lulus-table">
-          <thead>
-            <tr>
-              <th>No</th>
-              <th>NIPD</th>
-              <th>NISN</th>
-              <th>Nama</th>
-              <th>JK</th>
-              <th>Kelas Lulus</th>
-              <th>Tahun Pelajaran</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${renderSiswaLulusRows()}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          <div class="toolbar-row--info-inline">
+            <span id="jumlahDataSiswaLulus">${getFilteredSiswaLulus().length} siswa lulus</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content siswa-lulus-content">
+        <div class="table-container siswa-table-container">
+          <table class="data-table siswa-compact-table siswa-lulus-table">
+            <thead>
+              <tr>
+                <th>No</th>
+                <th>NIPD</th>
+                <th>NISN</th>
+                <th>Nama</th>
+                <th>JK</th>
+                <th>Kelas Lulus</th>
+                <th>Tahun Pelajaran</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${renderSiswaLulusRows()}
+            </tbody>
+          </table>
+          <div id="emptyStateSiswaLulus" class="empty-state siswa-empty-state siswa-lulus-empty-state" style="display:none;">Belum ada data kelulusan dari tahun pelajaran sebelumnya.</div>
+        </div>
+      </section>
+    </section>
   `;
 }
 
 function getFilteredSiswaLulus() {
-  const keyword = String(siswaLulusSearch || "").trim().toLowerCase();
+  const keyword = String(siswaLulusSearch || "")
+    .trim()
+    .toLowerCase();
   return getVisibleSiswaLulusData()
-    .filter(item => {
-      const matchSearch = !keyword ||
-        String(item.nama || "").toLowerCase().includes(keyword) ||
-        String(item.nipd || "").toLowerCase().includes(keyword) ||
-        String(item.nisn || "").toLowerCase().includes(keyword);
-      const matchTahun = !siswaLulusTahun || String(item.tahun_pelajaran_lulus || "") === siswaLulusTahun;
+    .filter((item) => {
+      const matchSearch =
+        !keyword ||
+        String(item.nama || "")
+          .toLowerCase()
+          .includes(keyword) ||
+        String(item.nipd || "")
+          .toLowerCase()
+          .includes(keyword) ||
+        String(item.nisn || "")
+          .toLowerCase()
+          .includes(keyword);
+      const matchTahun =
+        !siswaLulusTahun ||
+        String(item.tahun_pelajaran_lulus || "") === siswaLulusTahun;
       return matchSearch && matchTahun;
     })
-    .sort((a, b) =>
-      String(b.tahun_pelajaran_lulus || "").localeCompare(String(a.tahun_pelajaran_lulus || ""), undefined, { numeric: true }) ||
-      String(a.kelas_lulus || "").localeCompare(String(b.kelas_lulus || ""), undefined, { numeric: true, sensitivity: "base" }) ||
-      String(a.nama || "").localeCompare(String(b.nama || ""), undefined, { sensitivity: "base" })
+    .sort(
+      (a, b) =>
+        String(b.tahun_pelajaran_lulus || "").localeCompare(
+          String(a.tahun_pelajaran_lulus || ""),
+          undefined,
+          { numeric: true },
+        ) ||
+        String(a.kelas_lulus || "").localeCompare(
+          String(b.kelas_lulus || ""),
+          undefined,
+          { numeric: true, sensitivity: "base" },
+        ) ||
+        String(a.nama || "").localeCompare(String(b.nama || ""), undefined, {
+          sensitivity: "base",
+        }),
     );
 }
 
 function renderSiswaLulusRows() {
   const rows = getFilteredSiswaLulus();
-  if (rows.length === 0) return `<tr><td colspan="7">Belum ada data kelulusan dari tahun pelajaran sebelumnya.</td></tr>`;
-  return rows.map((item, index) => `
+  if (rows.length === 0)
+    return `<tr><td colspan="7">Belum ada data kelulusan dari tahun pelajaran sebelumnya.</td></tr>`;
+  return rows
+    .map(
+      (item, index) => `
     <tr>
       <td>${index + 1}</td>
       <td>${escapeSiswaLulusHtml(item.nipd || "-")}</td>
@@ -142,7 +194,9 @@ function renderSiswaLulusRows() {
       <td>${escapeSiswaLulusHtml(item.kelas_lulus || item.kelas || "-")}</td>
       <td>${escapeSiswaLulusHtml(item.tahun_pelajaran_lulus || "-")}</td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 }
 
 function renderSiswaLulusState() {
@@ -153,6 +207,14 @@ function renderSiswaLulusState() {
     content.innerHTML = nextHtml;
     lastSiswaLulusPageHtml = nextHtml;
   }
+  renderSiswaLulusTable();
+}
+
+function renderSiswaLulusTable() {
+  const emptyState = document.querySelector(".siswa-lulus-empty-state");
+  if (!emptyState) return;
+  const rows = getFilteredSiswaLulus();
+  emptyState.style.display = rows.length ? "none" : "block";
 }
 
 function setSiswaLulusSearch(value) {
@@ -167,10 +229,15 @@ function setSiswaLulusTahun(value) {
 
 function loadRealtimeSiswaLulus() {
   clearSiswaLulusListeners();
-  unsubscribeSiswaLulus = getSiswaLulusDocumentsApi().collection("siswa_lulus").onSnapshot(snapshot => {
-    semuaDataSiswaLulus = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderSiswaLulusState();
-  });
+  unsubscribeSiswaLulus = getSiswaLulusDocumentsApi()
+    .collection("siswa_lulus")
+    .onSnapshot((snapshot) => {
+      semuaDataSiswaLulus = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      renderSiswaLulusState();
+    });
 }
 
 function clearSiswaLulusListeners() {

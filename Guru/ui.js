@@ -126,85 +126,97 @@ function renderGuruModuleTabs(activeRoute = "guru-lihat") {
 
 function renderGuruTable() {
   return `
-    <section class="app-page app-page--data guru-module-panel">
-      <header class="app-page-header guru-module-header">
+    <section class="app-page app-page--module guru-page">
+      <!-- UI-8: Panel 1 - Header -->
+      <header class="app-panel app-panel--header guru-header">
         <div class="app-page-title">
           <span class="dashboard-eyebrow">Administrasi</span>
           <h2>Data Guru</h2>
-        </div>
-        <div class="app-page-actions">
-          <button class="btn-primary guru-primary-action" onclick="loadPage('guru-input')">
-            <span class="guru-action-icon guru-icon-plus" aria-hidden="true"></span>
-            Tambah Guru
-          </button>
+          <p>Kelola data guru dan tugas mengajarnya.</p>
         </div>
       </header>
 
-      ${renderGuruModuleTabs("guru-lihat")}
-      <div class="action-bar guru-toolbar-actions">
-        <button class="btn-secondary guru-action-btn" onclick="downloadGuruTemplate()">
-          <span class="guru-action-icon guru-icon-download" aria-hidden="true"></span>
-          Template
-        </button>
-        <label class="btn-secondary guru-action-btn guru-upload-action">
-          <span class="guru-action-icon guru-icon-upload" aria-hidden="true"></span>
-          Import
-          <input type="file" accept=".xlsx, .xls" onchange="importGuruExcel(event)">
-        </label>
-        <button class="btn-secondary guru-action-btn" onclick="resetGuruFilter()">
-          <span class="guru-action-icon guru-icon-reset" aria-hidden="true"></span>
-          Reset
-        </button>
-        <button class="btn-secondary guru-action-btn" onclick="refreshGuruTable()">
-          <span class="guru-action-icon guru-icon-refresh" aria-hidden="true"></span>
-          Refresh
-        </button>
-      </div>
+      <!-- UI-8: Panel 2 - Tab -->
+      <nav class="app-panel app-panel--tabs module-tabs guru-tabs" role="tablist" aria-label="Navigasi guru dan tugas tambahan">
+        ${renderGuruModuleTabs("guru-lihat")}
+      </nav>
 
-      <section class="control-panel guru-toolbar-panel">
-        <label class="guru-field guru-field-search" for="searchGuru">
-          <span>Pencarian</span>
-          <input id="searchGuru" placeholder="Cari guru, kode, NIP, status, atau mapel..." oninput="handleGuruSearch()">
-        </label>
+      <!-- UI-8: Panel 3 - Toolbar (SATU panel dengan 3 toolbar-row) -->
+      <section class="app-panel app-panel--toolbar guru-toolbar">
+        <!-- toolbar-row--actions -->
+        <div class="toolbar-row toolbar-row--actions">
+          <button class="btn-primary" onclick="loadPage('guru-input')">
+            <span class="guru-action-icon guru-icon-plus" aria-hidden="true"></span>
+            Tambah Guru
+          </button>
+          <button class="btn-secondary" onclick="downloadGuruTemplate()">
+            <span class="guru-action-icon guru-icon-download" aria-hidden="true"></span>
+            Template
+          </button>
+          <label class="btn-secondary guru-upload-action">
+            <span class="guru-action-icon guru-icon-upload" aria-hidden="true"></span>
+            Import
+            <input type="file" accept=".xlsx, .xls" onchange="importGuruExcel(event)">
+          </label>
+          <button class="btn-secondary" onclick="resetGuruFilter()">
+            <span class="guru-action-icon guru-icon-reset" aria-hidden="true"></span>
+            Reset
+          </button>
+          <button class="btn-secondary" onclick="refreshGuruTable()">
+            <span class="guru-action-icon guru-icon-refresh" aria-hidden="true"></span>
+            Refresh
+          </button>
+        </div>
+
+        <!-- toolbar-row--filters -->
+        <div class="toolbar-row toolbar-row--filters">
+          <label class="guru-field guru-field-search" for="searchGuru">
+            <span>Pencarian</span>
+            <input id="searchGuru" placeholder="Cari guru, kode, NIP, status, atau mapel..." oninput="handleGuruSearch()">
+          </label>
+
+          <div class="toolbar-row--info-inline">
+            <span id="jumlahDataGuru">0 guru</span>
+            <label class="page-size-control" for="rowsPerPageGuru">
+              <span>Rows per page</span>
+              <select id="rowsPerPageGuru" onchange="setGuruRowsPerPage(this.value)">
+                <option value="10" selected>10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+                <option value="all">Semua</option>
+              </select>
+            </label>
+          </div>
+        </div>
       </section>
 
-      <div class="status-strip guru-table-meta">
-        <span id="jumlahDataGuru">0 guru</span>
-        <label class="page-size-control" for="rowsPerPageGuru">
-          <span>Rows per page</span>
-          <select id="rowsPerPageGuru" onchange="setGuruRowsPerPage(this.value)">
-            <option value="10" selected>10</option>
-            <option value="20">20</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-            <option value="all">Semua</option>
-          </select>
-        </label>
-      </div>
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content guru-content">
+        <div class="table-container guru-table-container">
+          <table class="data-table guru-compact-table">
+            <thead>
+              <tr>
+                ${renderSortableHeader("Kode", "kode_guru", guruSortField, guruSortDirection, "setGuruSort")}
+                ${renderSortableHeader("Nama dengan Gelar", "nama_lengkap", guruSortField, guruSortDirection, "setGuruSort")}
+                ${renderSortableHeader("NIP", "nip", guruSortField, guruSortDirection, "setGuruSort")}
+                ${renderSortableHeader("Status", "status", guruSortField, guruSortDirection, "setGuruSort")}
+                ${renderSortableHeader("Mata Pelajaran", "mata_pelajaran", guruSortField, guruSortDirection, "setGuruSort")}
+                ${renderSortableHeader("JP", "jp", guruSortField, guruSortDirection, "setGuruSort")}
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="tbodyGuru"></tbody>
+          </table>
 
-      <div class="table-container guru-table-container">
-        <table class="data-table guru-compact-table">
-          <thead>
-            <tr>
-              ${renderSortableHeader("Kode", "kode_guru", guruSortField, guruSortDirection, "setGuruSort")}
-              ${renderSortableHeader("Nama dengan Gelar", "nama_lengkap", guruSortField, guruSortDirection, "setGuruSort")}
-              ${renderSortableHeader("NIP", "nip", guruSortField, guruSortDirection, "setGuruSort")}
-              ${renderSortableHeader("Status", "status", guruSortField, guruSortDirection, "setGuruSort")}
-              ${renderSortableHeader("Mata Pelajaran", "mata_pelajaran", guruSortField, guruSortDirection, "setGuruSort")}
-              ${renderSortableHeader("JP", "jp", guruSortField, guruSortDirection, "setGuruSort")}
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody id="tbodyGuru"></tbody>
-        </table>
-
-        <div id="emptyStateGuru" class="empty-state guru-empty-state" style="display:none;">
-          Tidak ada data guru
+          <div id="emptyStateGuru" class="empty-state guru-empty-state" style="display:none;">
+            Tidak ada data guru
+          </div>
         </div>
-      </div>
 
-      <div id="tablePaginationGuru" class="pagination-wrap"></div>
+        <div id="tablePaginationGuru" class="pagination-wrap"></div>
+      </section>
     </section>
   `;
 }

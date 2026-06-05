@@ -1,4 +1,4 @@
-﻿# Report Audit UI
+# Report Audit UI
 
 Audit ini memecah pekerjaan menjadi langkah kecil yang bisa dikerjakan bertahap oleh Claude/Cline. Fokus utamanya adalah merapikan sistem yang sudah ada agar konsisten, lebih ringan, dan lebih mudah dipelihara.
 
@@ -997,13 +997,35 @@ Validasi bisa dilakukan dengan:
 
 - Tahap 6: Buka modul di browser dan cek visual
 
+### Log Pembaruan Terkini (4 Juni 2026)
+- **Inline Filter-Info Row:** Selesai menggabungkan Row 2 (Filters) dan Row 3 (Info) menjadi satu baris terpadu menggunakan `.toolbar-row--info-inline` pada modul:
+  - `Siswa/ui.js`
+  - `Guru/ui.js`
+  - `Kelas/ui.js`
+  - `Mapel/ui.js`
+- **CSS Responsive Refinement:** Menambahkan penyesuaian media query di `css/design-system.css` agar `.toolbar-row--info-inline` melipat dengan rapi ke lebar penuh (100%) dan memiliki pemisah horizontal halus pada perangkat seluler.
+- **Siswa Lulus Modernization:** Mengonversi tata letak halaman Siswa Lulus ([Siswa/siswa-lulus.js](file:///d:/KURIKULUM/Data%20Kurikulum/Siswa/siswa-lulus.js)) ke arsitektur 4-Panel UI-8 dan menggabungkan filter dengan info jumlah data lulus ke dalam satu baris inline terpadu agar seragam secara presisi dengan halaman Siswa Aktif.
+- **Kepesertaan Asesmen Modernization:** Mengubah struktur tata letak halaman Kepesertaan ([Asesmen/pembagian-ruang-v2.js](file:///d:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) & [Asesmen/pembagian-ruang-view.js](file:///d:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-view.js)) agar mengadopsi 4-Panel UI-8. Header diposisikan di Panel Header, Tab diposisikan di Panel Tab, kontrol input dimasukkan ke Panel Toolbar, dan tabel/grid ditempatkan di Panel Content.
+- **Kepengawasan Asesmen Modernization:** Mengubah shell luar modul Kepengawasan ([Asesmen/kepangawasan.js](file:///d:/KURIKULUM/Data%20Kurikulum/Asesmen/kepangawasan.js)) agar mengadopsi layout seperti Data Siswa. Header, Tab, Toolbar, dan Content sudah dipisahkan sebagai 4 panel. Toolbar baru memakai action row dan filter/info inline satu baris, sedangkan isi utama tab Jadwal Ujian, Jadwal Mengawasi, Pembagian Ruang, dan Kartu Pengawas tetap dipertahankan agar fungsi kepesertaan/kepengawasan tidak terganggu.
+- **Kepengawasan Tab Refinement:** Merapikan desain tab Kepengawasan agar mengikuti acuan tab Data Siswa. Pembungkus tab sekarang memakai segmented container dengan tinggi stabil, tab memiliki min-width/min-height konsisten, active state tidak lagi memakai gradient/shadow besar, dan mobile menggunakan scroll horizontal agar ukuran tab tidak berubah-ubah.
+
 **File yang diubah:**
 
-- `css/design-system.css` - CSS foundation untuk 4 panel
-- `Siswa/ui.js` - Konversi ke 4 panel
-- `Guru/ui.js` - Konversi ke 4 panel
-- `Kelas/ui.js` - Konversi ke 4 panel
-- `Mapel/ui.js` - Konversi ke 4 panel
+- `css/design-system.css` - CSS foundation untuk 4 panel & inline responsive
+- `Siswa/ui.js` - Menggabungkan baris filter dan info
+- `Siswa/siswa-lulus.js` - Migrasi ke 4-panel UI-8 & inline filter-info
+- `Guru/ui.js` - Menggabungkan baris filter dan info
+- `Kelas/ui.js` - Menggabungkan baris filter dan info
+- `Mapel/ui.js` - Menggabungkan baris filter dan info
+- `Asesmen/pembagian-ruang-v2.js` - Migrasi modul Kepesertaan ke 4-panel UI-8
+- `Asesmen/pembagian-ruang-view.js` - Migrasi sub-render Kepesertaan ke 4-panel UI-8
+- `Asesmen/kepangawasan.js` - Migrasi shell luar modul Kepengawasan ke 4-panel UI-8 dengan filter/info inline
+- `style.css` - CSS pendukung shell Kepengawasan
+- `style.css` - Refinement tab Kepengawasan agar stabil seperti tab Data Siswa
+- `www/Asesmen/kepangawasan.js` - Sinkronisasi runtime Kepengawasan
+- `www/style.css` - Sinkronisasi CSS pendukung shell Kepengawasan
+- `www/style.css` - Sinkronisasi refinement tab Kepengawasan
+- `www/css/design-system.css` - Tambah minimal runtime support UI-8 untuk folder www
 - `report.md` - Update progress
 
 ---

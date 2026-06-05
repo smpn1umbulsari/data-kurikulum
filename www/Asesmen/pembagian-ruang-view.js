@@ -5,83 +5,86 @@
     const value = context.getSetting("Keterangan", "Akhir Tahun");
     const options = context.keteranganOptions;
     const hasStoredValue = options.includes(value);
-    const extraOption = value && !hasStoredValue
-      ? `<option value="${context.escape(value)}" selected>${context.escape(value)}</option>`
-      : "";
+    const extraOption =
+      value && !hasStoredValue
+        ? `<option value="${context.escape(value)}" selected>${context.escape(value)}</option>`
+        : "";
 
     return `
       <select class="kelas-inline-select" onchange="setAdministrasiAsesmenSetting('Keterangan', this.value)">
         ${extraOption}
-        ${options.map(option => `<option value="${context.escape(option)}" ${option === value ? "selected" : ""}>${context.escape(option)}</option>`).join("")}
+        ${options.map((option) => `<option value="${context.escape(option)}" ${option === value ? "selected" : ""}>${context.escape(option)}</option>`).join("")}
       </select>
     `;
   }
 
   function renderAdministrasiPage(context) {
     return `
-      <div class="card">
-        <div class="asesmen-page-head">
-          <div>
-            <span class="dashboard-eyebrow">Asesmen</span>
-            <h2>Administrasi</h2>
-            <p>Siapkan dokumen administrasi asesmen dari susunan ruang yang sudah di-set.</p>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar asesmen-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <div class="rekap-letter-settings asesmen-admin-settings" style="display: flex; gap: var(--gs-space-4); width: 100%; flex-wrap: wrap;">
+            <label class="siswa-field" style="flex: 1; min-width: 200px;">
+              <span>Judul</span>
+              <input value="${context.escape(context.getSetting("Judul", "Asesmen Sumatif"))}" oninput="setAdministrasiAsesmenSetting('Judul', this.value)" style="height: 38px;">
+            </label>
+            <label class="siswa-field" style="flex: 1; min-width: 150px;">
+              <span>Keterangan</span>
+              ${renderAdministrasiKeteranganSelect(context)}
+            </label>
+            <label class="siswa-field" style="flex: 1; min-width: 150px;">
+              <span>Tahun Pelajaran</span>
+              <input value="${context.escape(context.getSetting("TahunPelajaran", ""))}" placeholder="2025/2026" oninput="setAdministrasiAsesmenSetting('TahunPelajaran', this.value)" style="height: 38px;">
+            </label>
           </div>
         </div>
 
-        <div class="rekap-letter-settings asesmen-admin-settings">
-          <label class="form-group">
-            <span>Judul</span>
-            <input value="${context.escape(context.getSetting("Judul", "Asesmen Sumatif"))}" oninput="setAdministrasiAsesmenSetting('Judul', this.value)">
-          </label>
-          <label class="form-group">
-            <span>Keterangan</span>
-            ${renderAdministrasiKeteranganSelect(context)}
-          </label>
-          <label class="form-group">
-            <span>Tahun Pelajaran</span>
-            <input value="${context.escape(context.getSetting("TahunPelajaran", ""))}" placeholder="2025/2026" oninput="setAdministrasiAsesmenSetting('TahunPelajaran', this.value)">
-          </label>
+        ${context.ttdPanelHtml ? `
+        <div class="toolbar-row toolbar-row--filters" style="border-top: 1px dashed var(--gs-border); padding-top: var(--gs-space-3); margin-top: var(--gs-space-3); width: 100%;">
+          ${context.ttdPanelHtml}
         </div>
+        ` : ""}
+      </section>
 
-        ${context.ttdPanelHtml}
-
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content asesmen-content" style="padding: var(--gs-space-5);">
         <div class="table-container mapel-table-container asesmen-admin-table-wrap">
           <table class="mapel-table asesmen-admin-table">
             <thead>
               <tr>
-                <th>Administrasi</th>
+                <th>Administrasi Dokumen</th>
                 <th>Aksi</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td class="asesmen-admin-name-cell">Daftar Peserta</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-secondary btn-table-compact" onclick="exportDaftarPesertaAsesmenExcel()">Download Excel</button></td>
+                <td class="asesmen-admin-name-cell">Daftar Peserta (Excel)</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-secondary btn-table-compact btn-action-download table-action-icon-btn table-action-download" onclick="exportDaftarPesertaAsesmenExcel()" title="Download Excel" aria-label="Download Excel"></button></td>
               </tr>
               <tr>
-                <td class="asesmen-admin-name-cell">Tempel Kaca</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportTempelKacaPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-name-cell">Tempel Kaca (PDF)</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportTempelKacaPDF()" title="Export PDF" aria-label="Export PDF Tempel Kaca"></button></td>
               </tr>
               <tr>
-                <td class="asesmen-admin-name-cell">Data Map</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportDataMapPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-name-cell">Data Map (PDF)</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportDataMapPDF()" title="Export PDF" aria-label="Export PDF Data Map"></button></td>
               </tr>
               <tr>
-                <td class="asesmen-admin-name-cell">Denah Peserta</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="exportDenahPesertaPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-name-cell">Denah Peserta (PDF)</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="exportDenahPesertaPDF()" title="Export PDF" aria-label="Export PDF Denah Peserta"></button></td>
               </tr>
               <tr>
-                <td class="asesmen-admin-name-cell">Label 121</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="promptExportLabel121PDF()">Export PDF</button></td>
+                <td class="asesmen-admin-name-cell">Label 121 (PDF)</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="promptExportLabel121PDF()" title="Export PDF" aria-label="Export PDF Label 121"></button></td>
               </tr>
               <tr>
-                <td class="asesmen-admin-name-cell">Kartu Peserta</td>
-                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact" onclick="promptExportKartuPesertaPDF()">Export PDF</button></td>
+                <td class="asesmen-admin-name-cell">Kartu Peserta (PDF)</td>
+                <td class="asesmen-admin-action-cell"><button type="button" class="btn-primary btn-table-compact btn-action-export table-action-icon-btn table-action-export" onclick="promptExportKartuPesertaPDF()" title="Export PDF" aria-label="Export PDF Kartu Peserta"></button></td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </section>
     `;
   }
 
@@ -92,7 +95,7 @@
 
     const filledCounts = settings.manualCounts
       .slice(0, context.jumlahRuangUjian)
-      .map(value => Math.min(Math.max(Number(value) || 0, 0), 20));
+      .map((value) => Math.min(Math.max(Number(value) || 0, 0), 20));
 
     return `
       <div class="asesmen-manual-summary">
@@ -112,7 +115,9 @@
     const isEnabled = context.draftSettings[level].enabled !== false;
     return `
       <div class="asesmen-range-grid">
-        ${ranges.map((range, index) => `
+        ${ranges
+          .map(
+            (range, index) => `
           <div class="asesmen-range-group">
             <span>Rentang ${index + 1}</span>
             <input
@@ -132,7 +137,9 @@
               oninput="setAsesmenRoomRange('${level}', ${index}, 'end', this.value)"
             >
           </div>
-        `).join("")}
+        `,
+          )
+          .join("")}
       </div>
     `;
   }
@@ -180,55 +187,47 @@
 
   function renderPembagianPage(context) {
     return `
-      <div class="card">
-        <div class="asesmen-page-head">
-          <div>
-            <span class="dashboard-eyebrow">Asesmen</span>
-            <h2>Pembagian Ruang</h2>
-            <p>Atur ruang ujian dan susunan dua jenjang per ruang.</p>
+      <!-- UI-8: Panel 3 - Toolbar -->
+      <section class="app-panel app-panel--toolbar asesmen-toolbar">
+        <div class="toolbar-row toolbar-row--actions">
+          <div class="asesmen-room-total-control" style="display: flex; gap: var(--gs-space-3); align-items: flex-end; flex-wrap: wrap; width: 100%;">
+            <label class="siswa-field" for="draftJumlahRuangUjian" style="flex: unset; width: 140px; margin-bottom: 0;">
+              <span>Jumlah ruang</span>
+              <input id="draftJumlahRuangUjian" type="number" min="1" max="99" value="${context.draftJumlahRuangUjian}" oninput="setJumlahRuangUjian(this.value)" title="Jumlah ruang ujian" style="height: 38px;">
+            </label>
+            <label class="siswa-field" for="draftPembagianKelasAsesmen" style="flex: unset; width: 160px; margin-bottom: 0;">
+              <span>Mode pembagian</span>
+              <select id="draftPembagianKelasAsesmen" class="kelas-inline-select" onchange="setPembagianKelasAsesmen(this.value)" title="Pembagian kelas" style="height: 38px;">
+                <option value="setengah" ${context.draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
+                <option value="20siswa" ${context.draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
+                <option value="manual" ${context.draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
+              </select>
+            </label>
+            <label class="siswa-field" for="draftAsesmenKelasSumber" style="flex: unset; width: 160px; margin-bottom: 0;">
+              <span>Sumber kelas</span>
+              <select id="draftAsesmenKelasSumber" class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber kelas" style="height: 38px;">
+                <option value="bayangan" ${context.draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
+                <option value="asli" ${context.draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
+              </select>
+            </label>
+            <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()" style="height: 38px; min-height: 38px; display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--gs-space-4);">Set Pengaturan</button>
           </div>
-          <label class="asesmen-room-total">
-            <span>Pengaturan global</span>
-            <div class="asesmen-room-total-note">
-              <span>Jumlah ruang -> isi banyak ruang yang dipakai.</span>
-              <span>Mode pembagian -> pilih setengah, 20 siswa, atau manual.</span>
-              <span>Sumber kelas -> pilih kelas asli atau kelas bayangan.</span>
-              <span>Jika pilih Manual, popup tabel jumlah siswa per ruang akan langsung muncul.</span>
-            </div>
-            <div class="asesmen-room-total-control">
-              <label class="asesmen-room-total-field">
-                <span>Jumlah ruang</span>
-                <input type="number" min="1" max="99" value="${context.draftJumlahRuangUjian}" oninput="setJumlahRuangUjian(this.value)" title="Jumlah ruang ujian">
-              </label>
-              <label class="asesmen-room-total-field">
-                <span>Mode pembagian</span>
-                <select class="kelas-inline-select" onchange="setPembagianKelasAsesmen(this.value)" title="Pembagian kelas">
-                  <option value="setengah" ${context.draftPembagianKelasAsesmen === "setengah" ? "selected" : ""}>Setengah</option>
-                  <option value="20siswa" ${context.draftPembagianKelasAsesmen === "20siswa" ? "selected" : ""}>20 siswa</option>
-                  <option value="manual" ${context.draftPembagianKelasAsesmen === "manual" ? "selected" : ""}>Manual</option>
-                </select>
-              </label>
-              <label class="asesmen-room-total-field">
-                <span>Sumber kelas</span>
-                <select class="kelas-inline-select" onchange="setAsesmenKelasSumber(this.value)" title="Sumber kelas">
-                  <option value="bayangan" ${context.draftAsesmenKelasSumber === "bayangan" ? "selected" : ""}>Kelas Bayangan</option>
-                  <option value="asli" ${context.draftAsesmenKelasSumber === "asli" ? "selected" : ""}>Kelas Asli</option>
-                </select>
-              </label>
-              <button type="button" class="btn-primary" onclick="applyJumlahRuangUjian()">Set</button>
-            </div>
-          </label>
         </div>
 
-        <div class="matrix-toolbar-note">
-          Isi dua rentang ruang per jenjang. Satu ruang fisik hanya boleh dipakai maksimal dua jenjang; susunan ruang menampilkan jenjang rendah di kiri dan jenjang tinggi di kanan.
+        <div class="toolbar-row toolbar-row--filters" style="border-top: 1px dashed var(--gs-border); padding-top: var(--gs-space-3); margin-top: var(--gs-space-3); width: 100%;">
+          <div class="matrix-toolbar-note" style="margin: 0; width: 100%;">
+            Isi dua rentang ruang per jenjang. Satu ruang fisik hanya boleh dipakai maksimal dua jenjang; susunan ruang menampilkan jenjang rendah di kiri dan jenjang tinggi di kanan.
+          </div>
         </div>
+      </section>
 
+      <!-- UI-8: Panel 4 - Content -->
+      <section class="app-panel app-panel--content asesmen-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); border: none; background: transparent; overflow: visible;">
         <div class="asesmen-level-grid">
-          ${[7, 8, 9].map(level => renderLevelPanel(context, level)).join("")}
+          ${[7, 8, 9].map((level) => renderLevelPanel(context, level)).join("")}
         </div>
 
-        <section class="asesmen-arrangement">
+        <section class="asesmen-arrangement" style="margin-top: var(--gs-space-4);">
           <div class="asesmen-arrangement-head">
             <div>
               <span class="mapel-row-hint">Susunan Ruang</span>
@@ -237,7 +236,7 @@
           </div>
           <div id="asesmenRoomArrangement"></div>
         </section>
-      </div>
+      </section>
     `;
   }
 
@@ -247,6 +246,6 @@
     renderManualInputs,
     renderRoomRangeInputs,
     renderLevelPanel,
-    renderPembagianPage
+    renderPembagianPage,
   };
 })(window);
