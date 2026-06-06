@@ -320,26 +320,12 @@ function sortKelasBayanganItems(data) {
 }
 
 function renderKelasBayanganDataKelasPage() {
-  return `
-    <section class="app-page app-page--module kelas-bayangan-module-panel">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header kelas-bayangan-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Kelas Real</span>
-          <h2>Data Kelas Real</h2>
-          <p>Daftar ini mengambil kelas asli sebagai acuan. Gunakan anggota dan set kelas real untuk memindahkan siswa ke kelas real lain.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+  const tabsHtml = `
         <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
         <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-siswa')">Siswa</button>
-        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>
-      </nav>
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar kelas-bayangan-toolbar">
+  const toolbarHtml = `
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-secondary" onclick="refreshKelasBayangan()">Refresh</button>
         </div>
@@ -348,11 +334,9 @@ function renderKelasBayanganDataKelasPage() {
             <span id="jumlahDataKelasBayangan" class="matrix-toolbar-note">0 kelas</span>
             <span id="kelasBayanganSourceInfo" class="kelas-bayangan-active-info" style="margin-left: 12px;">Belum ada kelas sumber aktif</span>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content kelas-bayangan-content">
+  const contentHtml = `
         <div class="table-container">
           <table class="data-table kelas-data-table">
             <thead>
@@ -366,33 +350,31 @@ function renderKelasBayanganDataKelasPage() {
             <tbody id="kelasBayanganKelasBody"></tbody>
           </table>
           <div id="kelasBayanganKelasEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data kelas.</div>
-        </div>
-      </section>
-    </section>
-  `;
+        </div>`;
+
+  return AppUtils.renderModuleLayout({
+    pageClass: "kelas-bayangan-module-panel",
+    headerClass: "kelas-bayangan-header",
+    tabsClass: "",
+    toolbarClass: "kelas-bayangan-toolbar",
+    contentClass: "kelas-bayangan-content",
+    eyebrow: "Kelas Real",
+    title: "Data Kelas Real",
+    subtitle: "Daftar ini mengambil kelas asli sebagai acuan. Gunakan anggota dan set kelas real untuk memindahkan siswa ke kelas real lain.",
+    tabs: tabsHtml,
+    tabsLabel: "Mode kelas bayangan",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function renderKelasBayanganSiswaPage() {
-  return `
-    <section class="app-page app-page--module kelas-bayangan-module-panel">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header kelas-bayangan-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Kelas Real</span>
-          <h2>Data Siswa Kelas Real</h2>
-          <p>Kelas asli A-H menjadi acuan otomatis. Siswa dari kelas I dibagi manual ke kelas real A-H.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+  const tabsHtml = `
         <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
         <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-siswa')">Siswa</button>
-        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>
-      </nav>
+        <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar kelas-bayangan-toolbar">
+  const toolbarHtml = `
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" onclick="syncKelasBayanganUtama()">Sinkronkan A-H</button>
         </div>
@@ -419,11 +401,9 @@ function renderKelasBayanganSiswaPage() {
           <div class="toolbar-row--info-inline">
             <span id="kelasBayanganSummary" class="matrix-toolbar-note"></span>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content kelas-bayangan-content">
+  const contentHtml = `
         <div class="matrix-toolbar-note" style="border: none; margin: var(--gs-space-2) var(--gs-space-4);">
           Gunakan menu ini sebagai acuan Pembagian Ruang. Siswa kelas I yang belum dipilih belum ikut masuk susunan ruang ujian.
         </div>
@@ -442,33 +422,31 @@ function renderKelasBayanganSiswaPage() {
             <tbody id="kelasBayanganBody"></tbody>
           </table>
           <div id="kelasBayanganEmpty" class="empty-state kelas-bayangan-empty-state" style="display:none;">Tidak ada data siswa.</div>
-        </div>
-      </section>
-    </section>
-  `;
+        </div>`;
+
+  return AppUtils.renderModuleLayout({
+    pageClass: "kelas-bayangan-module-panel",
+    headerClass: "kelas-bayangan-header",
+    tabsClass: "",
+    toolbarClass: "kelas-bayangan-toolbar",
+    contentClass: "kelas-bayangan-content",
+    eyebrow: "Kelas Real",
+    title: "Data Siswa Kelas Real",
+    subtitle: "Kelas asli A-H menjadi acuan otomatis. Siswa dari kelas I dibagi manual ke kelas real A-H.",
+    tabs: tabsHtml,
+    tabsLabel: "Mode kelas bayangan",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function renderKelasBayanganMengajarPage() {
-  return `
-    <section class="app-page app-page--module kelas-bayangan-module-panel">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header kelas-bayangan-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Kelas Real</span>
-          <h2>Pembagian Mengajar Kelas Real</h2>
-          <p>Distribusi pembagian mengajar guru berdasarkan kelas real.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Mode kelas bayangan">
+  const tabsHtml = `
         <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-kelas')">Data Kelas</button>
         <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('kelas-bayangan-siswa')">Siswa</button>
-        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>
-      </nav>
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('kelas-bayangan-mengajar')">Mengajar</button>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar kelas-bayangan-toolbar">
+  const toolbarHtml = `
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" onclick="saveAllMengajarBayangan()">Simpan Semua</button>
           <button class="btn-secondary" onclick="refreshMengajarBayanganPage()">Refresh</button>
@@ -490,18 +468,28 @@ function renderKelasBayanganMengajarPage() {
             <span id="jumlahMengajarBayanganInfo" class="matrix-toolbar-note">0 mapel x 0 kelas</span>
             <span id="pendingMengajarBayanganInfo" class="matrix-toolbar-note" style="margin-left: 12px;">0 perubahan belum disimpan</span>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content kelas-bayangan-content">
+  const contentHtml = `
         <div class="matrix-toolbar-note" style="border: none; margin: var(--gs-space-2) var(--gs-space-4);">
           Nilai awal mengikuti Pembagian Mengajar kelas asli. PABP yang tidak sesuai agama siswa di kelas real akan disamarkan.
         </div>
-        <div id="mengajarBayanganMatrixContainer"></div>
-      </section>
-    </section>
-  `;
+        <div id="mengajarBayanganMatrixContainer"></div>`;
+
+  return AppUtils.renderModuleLayout({
+    pageClass: "kelas-bayangan-module-panel",
+    headerClass: "kelas-bayangan-header",
+    tabsClass: "",
+    toolbarClass: "kelas-bayangan-toolbar",
+    contentClass: "kelas-bayangan-content",
+    eyebrow: "Kelas Real",
+    title: "Pembagian Mengajar Kelas Real",
+    subtitle: "Distribusi pembagian mengajar guru berdasarkan kelas real.",
+    tabs: tabsHtml,
+    tabsLabel: "Mode kelas bayangan",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function renderKelasBayanganPage() {

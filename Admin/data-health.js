@@ -406,26 +406,13 @@
 
   function renderDataHealthPage() {
     setTimeout(() => refreshDataHealthAudit(), 0);
-    return `
-      <section class="app-page app-page--module data-health-page">
-        <!-- UI-8: Panel 1 - Header -->
-        <header class="app-panel app-panel--header data-health-header">
-          <div class="app-page-title">
-            <span class="dashboard-eyebrow">Audit Data</span>
-            <h2>Validasi Data</h2>
-            <p>Mendeteksi data bermasalah sebelum input nilai, rekap, export rapor, backup, atau restore.</p>
-          </div>
-        </header>
 
-        <!-- UI-8: Panel 3 - Toolbar -->
-        <section class="app-panel app-panel--toolbar data-health-toolbar">
-          <div class="toolbar-row toolbar-row--actions">
-            <button class="btn-primary" onclick="refreshDataHealthAudit()">Jalankan Validasi</button>
-          </div>
-        </section>
+    const toolbarHtml = `
+      <div class="toolbar-row toolbar-row--actions">
+        <button class="btn-primary" onclick="refreshDataHealthAudit()">Jalankan Validasi</button>
+      </div>`;
 
-        <!-- UI-8: Panel 4 - Content -->
-        <section class="app-panel app-panel--content data-health-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+    const contentHtml = `
           <div id="dataHealthSummary" class="backup-grid"></div>
           <article class="backup-panel backup-wide data-health-fix-panel">
             <h3>Panel Perbaikan Otomatis</h3>
@@ -440,10 +427,20 @@
           <article class="backup-panel backup-wide">
             <div id="dataHealthStatus" class="backup-status">Menunggu validasi...</div>
             <div id="dataHealthTable" class="table-container mapel-table-container"></div>
-          </article>
-        </section>
-      </section>
-    `;
+          </article>`;
+
+    return AppUtils.renderModuleLayout({
+      pageClass: "data-health-page",
+      headerClass: "data-health-header",
+      toolbarClass: "data-health-toolbar",
+      contentClass: "data-health-content",
+      contentStyle: "padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;",
+      eyebrow: "Audit Data",
+      title: "Validasi Data",
+      subtitle: "Mendeteksi data bermasalah sebelum input nilai, rekap, export rapor, backup, atau restore.",
+      toolbar: toolbarHtml,
+      content: contentHtml,
+    });
   }
 
   async function refreshDataHealthAudit() {

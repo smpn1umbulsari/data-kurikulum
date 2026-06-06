@@ -256,19 +256,7 @@ function renderAdminSemesterPage() {
     tahun: semesterAdminState.tahun || active.tahun,
   });
 
-  return `
-    <section class="app-page app-page--module semester-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header semester-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Admin</span>
-          <h2>Semester dan Tahun Pelajaran</h2>
-          <p>Atur semester aktif yang dipilih pengguna saat login dan proses perpindahan semester.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs semester-tabs" role="tablist" aria-label="Mode semester">
+  const tabsHtml = `
         <button type="button" class="module-tab ${isKelolaMode ? "active" : ""}"
                 role="tab" aria-selected="${isKelolaMode}"
                 onclick="setSemesterTab('kelola')">
@@ -278,12 +266,9 @@ function renderAdminSemesterPage() {
                 role="tab" aria-selected="${isPengaturanMode}"
                 onclick="setSemesterTab('pengaturan')">
           Pengaturan
-        </button>
-      </nav>
+        </button>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content semester-content">
-        <div style="padding: var(--gs-space-5);">
+  const contentHtml = `
           ${
             isPengaturanMode
               ? `
@@ -388,11 +373,18 @@ function renderAdminSemesterPage() {
           </div>
           `
               : ""
-          }
-        </div>
-      </section>
-    </section>
-  `;
+          }`;
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "semester",
+    eyebrow: "Admin",
+    title: "Semester dan Tahun Pelajaran",
+    subtitle: "Atur semester aktif yang dipilih pengguna saat login dan proses perpindahan semester.",
+    tabs: tabsHtml,
+    tabsLabel: "Mode semester",
+    content: contentHtml,
+    contentStyle: "padding: var(--gs-space-5);",
+  });
 }
 
 function escapeSemesterHtml(value) {

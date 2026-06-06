@@ -176,24 +176,8 @@ function renderTable() {
     typeof getCurrentCoordinatorLevelsSync === "function"
       ? getCurrentCoordinatorLevelsSync()
       : [];
-  return `
-    <section class="app-page app-page--module siswa-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header siswa-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Akademik</span>
-          <h2>Data Siswa</h2>
-          <p>Kelola data siswa aktif dan siswa lulus.</p>
-        </div>
-      </header>
 
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs siswa-tabs" role="tablist" aria-label="Navigasi data siswa">
-        ${renderSiswaModuleTabs("lihat")}
-      </nav>
-
-      <!-- UI-8: Panel 3 - Toolbar (SATU panel dengan 3 toolbar-row) -->
-      <section class="app-panel app-panel--toolbar siswa-toolbar">
+  const toolbarHtml = `
         <!-- toolbar-row--actions -->
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" onclick="loadPage('input')">
@@ -278,11 +262,9 @@ function renderTable() {
               </select>
             </label>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content siswa-content">
+  const contentHtml = `
         <div class="table-container siswa-table-container">
           <table class="data-table siswa-compact-table">
             <thead>
@@ -304,16 +286,26 @@ function renderTable() {
           </div>
         </div>
 
-        <div id="tablePagination" class="pagination-wrap"></div>
-      </section>
-    </section>
+        <div id="tablePagination" class="pagination-wrap"></div>`;
 
+  const modalHtml = `
     <div id="previewModal" class="preview-modal" style="display:none;" onclick="handlePreviewBackdrop(event)">
       <div class="preview-modal-content">
         <div id="previewContainer"></div>
       </div>
-    </div>
-  `;
+    </div>`;
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "siswa",
+    eyebrow: "Akademik",
+    title: "Data Siswa",
+    subtitle: "Kelola data siswa aktif dan siswa lulus.",
+    tabs: renderSiswaModuleTabs("lihat"),
+    tabsLabel: "Navigasi data siswa",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+    modal: modalHtml,
+  });
 }
 
 // ================= ROW =================

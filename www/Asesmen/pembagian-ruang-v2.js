@@ -1103,37 +1103,39 @@ function renderAllAsesmenPreviews() {
 
 function renderKepersetaanPage() {
   const isAdministrasi = asesmenPageTab === "administrasi";
-  return `
-    <section class="app-page app-page--module asesmen-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header asesmen-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Asesmen</span>
-          <h2>Kepesertaan</h2>
-          <p>Kelola pembagian ruang ujian dan berkas administrasi kepesertaan.</p>
-        </div>
-      </header>
+  const subPageHtml = isAdministrasi ? renderAdministrasiAsesmenPage() : renderPembagianRuangPage();
 
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs asesmen-tabs" role="tablist" aria-label="Menu Kepesertaan">
-        ${ASESMEN_PAGE_TABS.map(
-          (item) => `
-          <button
-            type="button"
-            class="module-tab ${item.key === asesmenPageTab ? "active" : ""}"
-            role="tab"
-            aria-selected="${item.key === asesmenPageTab ? "true" : "false"}"
-            onclick="setAsesmenPageTab('${item.key}')"
-          >
-            ${item.label}
-          </button>
-        `,
-        ).join("")}
-      </nav>
+  const temp = document.createElement("div");
+  temp.innerHTML = subPageHtml;
+  const tb = temp.querySelector(".app-panel--toolbar");
+  const cnt = temp.querySelector(".app-panel--content");
 
-      ${isAdministrasi ? renderAdministrasiAsesmenPage() : renderPembagianRuangPage()}
-    </section>
-  `;
+  const tabsHtml = ASESMEN_PAGE_TABS.map(
+    (item) => `
+    <button
+      type="button"
+      class="module-tab ${item.key === asesmenPageTab ? "active" : ""}"
+      role="tab"
+      aria-selected="${item.key === asesmenPageTab ? "true" : "false"}"
+      onclick="setAsesmenPageTab('${item.key}')"
+    >
+      ${item.label}
+    </button>
+  `
+  ).join("");
+
+  return window.AppUtils.renderModuleLayout({
+    moduleName: "asesmen",
+    eyebrow: "Asesmen",
+    title: "Kepesertaan",
+    subtitle: "Kelola pembagian ruang ujian dan berkas administrasi kepesertaan.",
+    tabs: tabsHtml,
+    tabsLabel: "Menu Kepesertaan",
+    toolbar: tb ? tb.innerHTML : "",
+    toolbarStyle: tb ? tb.getAttribute("style") : "",
+    content: cnt ? cnt.innerHTML : "",
+    contentStyle: cnt ? cnt.getAttribute("style") : ""
+  });
 }
 
 function renderAsesmenManualInputs(level) {

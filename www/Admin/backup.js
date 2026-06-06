@@ -52,19 +52,7 @@ function renderAdminBackupPage() {
     }
   }, 0);
 
-  return `
-    <section class="app-page app-page--module backup-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header backup-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Migrasi Data</span>
-          <h2>Backup dan Restore</h2>
-          <p>Unduh cadangan data sebelum memindahkan aplikasi atau memperbaiki data semester.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content backup-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+  const contentHtml = `
         <div class="backup-grid">
           <article class="backup-panel">
             <h3>Backup</h3>
@@ -137,10 +125,18 @@ function renderAdminBackupPage() {
             <button class="btn-danger" onclick="resetAllApplicationData()">Reset Semua Data</button>
           </div>
           <div id="backupCleanStatus" class="backup-status">Menunggu aksi admin.</div>
-        </section>
-      </section>
-    </section>
-  `;
+        </section>`;
+
+  return AppUtils.renderModuleLayout({
+    pageClass: "backup-page",
+    headerClass: "backup-header",
+    contentClass: "backup-content",
+    contentStyle: "padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;",
+    eyebrow: "Migrasi Data",
+    title: "Backup dan Restore",
+    subtitle: "Unduh cadangan data sebelum memindahkan aplikasi atau memperbaiki data semester.",
+    content: contentHtml,
+  });
 }
 
 function escapeBackupHtml(value) {

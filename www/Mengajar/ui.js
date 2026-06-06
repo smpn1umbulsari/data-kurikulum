@@ -1,18 +1,6 @@
 // ================= UI MENGAJAR (UI-6 Phase 5: Matrix Shell) =================
 function renderMengajarPage() {
-  return `
-    <section class="app-page app-page--module mengajar-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header mengajar-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Mengajar</span>
-          <h2>Pembagian Mengajar Guru</h2>
-          <p>Kelola data tugas mengajar guru mata pelajaran untuk setiap kelas.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar mengajar-toolbar">
+  const toolbarHtml = `
         <!-- toolbar-row--actions -->
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" onclick="saveAllMengajar()">
@@ -61,19 +49,23 @@ function renderMengajarPage() {
             <span id="jumlahMengajarInfo">0 mapel x 0 kelas</span>
             <span id="pendingMengajarInfo" style="margin-left: 12px;">0 perubahan belum disimpan</span>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content mengajar-content">
+  const contentHtml = `
         <div style="padding: var(--gs-space-4);">
           <small id="mengajarSearchInfo" class="matrix-search-info" style="display: block; margin-bottom: var(--gs-space-2); color: var(--gs-text-muted);">Pilih nama guru untuk menyorot posisinya di matriks.</small>
           <div class="matrix-toolbar-note" style="margin-bottom: var(--gs-space-4); font-size: var(--gs-font-size-xs); color: var(--gs-text-muted);">
             Dropdown tabel menampilkan kode guru agar matriks lebih ramping. PABP yang tidak sesuai agama siswa di kelas akan disamarkan.
           </div>
           <div id="mengajarMatrixContainer"></div>
-        </div>
-      </section>
-    </section>
-  `;
+        </div>`;
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "mengajar",
+    eyebrow: "Mengajar",
+    title: "Pembagian Mengajar Guru",
+    subtitle: "Kelola data tugas mengajar guru mata pelajaran untuk setiap kelas.",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }

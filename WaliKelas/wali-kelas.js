@@ -573,38 +573,47 @@ function ensureWaliKelasPageShell(page = currentWaliKelasPage) {
     page === "kehadiran" ? "waliKehadiranTable" : "waliKelengkapanTable";
   if (document.getElementById(targetId)) return true;
 
-  if (page === "kehadiran") {
-    shell.innerHTML = `
-      ${renderWaliKelasHeader(
-        "Rekap Kehadiran Siswa",
-        "Rekap jumlah S, I, dan A berdasarkan anggota kelas.",
-        `
-        <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
-        <button type="button" class="btn-secondary" onclick="downloadWaliKehadiranTemplate()">Download Template</button>
-        <button type="button" class="btn-secondary" onclick="triggerWaliKehadiranImport()">Import Rekap</button>
-        <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
-      `,
-      )}
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content wali-content">
-        <div style="padding: var(--gs-space-4);">
-          <div id="waliKehadiranTable" class="table-container mapel-table-container wali-kehadiran-table-wrap"></div>
-        </div>
-      </section>
-      ${renderWaliSavingOverlay()}
-    `;
-    return true;
-  }
+  const title = page === "kehadiran" ? "Rekap Kehadiran Siswa" : "Cek Kelengkapan Nilai Siswa";
+  const description = page === "kehadiran" ? "Rekap jumlah S, I, dan A berdasarkan anggota kelas." : "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.";
+  
+  const extraActions = page === "kehadiran" ? `
+    <button type="button" class="btn-primary" onclick="saveWaliKehadiranRekap()">Simpan</button>
+    <button type="button" class="btn-secondary" onclick="downloadWaliKehadiranTemplate()">Download Template</button>
+    <button type="button" class="btn-secondary" onclick="triggerWaliKehadiranImport()">Import Rekap</button>
+    <input id="waliKehadiranImportInput" type="file" accept=".xlsx,.xls" onchange="importWaliKehadiranExcel(event)" hidden>
+  ` : "";
 
-  shell.innerHTML = `
-    ${renderWaliKelasHeader("Cek Kelengkapan Nilai Siswa", "Pantau jumlah siswa yang sudah diberi nilai oleh guru mapel.", "")}
-    <!-- UI-8: Panel 4 - Content -->
-    <section class="app-panel app-panel--content wali-content">
-      <div style="padding: var(--gs-space-4);">
-        <div id="waliKelengkapanTable" class="table-container mapel-table-container"></div>
-      </div>
-    </section>
-  `;
+  const toolbarHtml = `
+    <div class="toolbar-row toolbar-row--actions">
+      ${extraActions}
+    </div>
+    <div class="toolbar-row toolbar-row--filters">
+      <label class="siswa-field" for="waliKelasSelect">
+        <span>Pilih Kelas</span>
+        <select id="waliKelasSelect" onchange="renderWaliKelasActivePage()">${renderWaliKelasSelect()}</select>
+      </label>
+    </div>`;
+
+  const contentHtml = `
+    <div style="padding: var(--gs-space-4);">
+      <div id="${targetId}" class="table-container mapel-table-container ${page === "kehadiran" ? "wali-kehadiran-table-wrap" : ""}"></div>
+    </div>`;
+
+  const modalHtml = page === "kehadiran" ? renderWaliSavingOverlay() : "";
+
+  shell.innerHTML = AppUtils.renderModuleLayout({
+    pageClass: "wali-page",
+    headerClass: "wali-header",
+    toolbarClass: "wali-toolbar",
+    contentClass: "wali-content",
+    eyebrow: "Wali Kelas",
+    title: title,
+    subtitle: description,
+    toolbar: toolbarHtml,
+    content: contentHtml,
+    modal: modalHtml,
+  });
+
   return true;
 }
 

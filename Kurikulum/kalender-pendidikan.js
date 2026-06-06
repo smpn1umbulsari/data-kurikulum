@@ -2125,202 +2125,195 @@
     const isInputTab = kalenderPageTab === "input";
     const isKaldikTab = kalenderPageTab === "kaldik";
     const isRpeTab = kalenderPageTab === "rpe";
-    return `
-      <section class="app-page app-page--module kalender-page">
-        <!-- UI-8: Panel 1 - Header -->
-        <header class="app-panel app-panel--header kalender-header">
-          <div class="app-page-title" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%;">
+
+    return global.AppUtils.renderModuleLayout({
+      moduleName: "kalender",
+      eyebrow: "Kurikulum",
+      title: "Kalender Pendidikan",
+      subtitle: "Kelola tanggal tetap, hari penting pendidikan, dan agenda sekolah. Hanya item yang aktif yang akan masuk ke kalender pendidikan.",
+      headerExtra: `
+        <div class="kalender-toolbar-actions" style="margin-left: auto;">
+          <div class="kalender-summary-box">
+            <span>Tahun Pelajaran Aktif</span>
+            <strong>${escapeKalenderHtml(kalenderState.tahunPelajaran)}</strong>
+            <small>${activeCount} item aktif</small>
+          </div>
+        </div>
+      `,
+      tabs: `
+        <button type="button" class="kalender-tab ${isInputTab ? "active" : ""}" onclick="setKalenderPageTab('input')">Input Tanggal</button>
+        <button type="button" class="kalender-tab ${isKaldikTab ? "active" : ""}" onclick="setKalenderPageTab('kaldik')">KALDIK</button>
+        <button type="button" class="kalender-tab ${isRpeTab ? "active" : ""}" onclick="setKalenderPageTab('rpe')">RPE</button>
+      `,
+      tabsLabel: "Navigasi Kalender",
+      toolbar: `
+        <div class="matrix-toolbar-note kalender-pendidikan-note" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none;">
+          Daftar bawaan di bawah memuat tanggal yang tidak berubah setiap tahun, seperti 1 Januari, 1 Mei, 1 Juni, 17 Agustus, 25 Desember, serta hari penting pendidikan seperti 2 Mei dan 25 November. Agenda sekolah tetap bisa Anda atur sendiri.
+        </div>
+      `,
+      contentStyle: "padding: var(--gs-space-5); overflow-y: auto; display: flex; flex-direction: column; gap: var(--gs-space-5);",
+      content: `
+        ${
+          isInputTab
+            ? `
+        <section class="kalender-pendidikan-section">
+          <div class="kalender-pendidikan-section-head">
             <div>
-              <span class="dashboard-eyebrow">Kurikulum</span>
-              <h2>Kalender Pendidikan</h2>
-              <p class="kalender-module-description" style="margin: 0;">Kelola tanggal tetap, hari penting pendidikan, dan agenda sekolah. Hanya item yang aktif yang akan masuk ke kalender pendidikan.</p>
-            </div>
-            <div class="kalender-toolbar-actions" style="margin-left: auto;">
-              <div class="kalender-summary-box">
-                <span>Tahun Pelajaran Aktif</span>
-                <strong>${escapeKalenderHtml(kalenderState.tahunPelajaran)}</strong>
-                <small>${activeCount} item aktif</small>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <!-- UI-8: Panel 2 - Tab -->
-        <nav class="app-panel app-panel--tabs module-tabs kalender-tabs" role="tablist" aria-label="Navigasi Kalender">
-          <button type="button" class="kalender-tab ${isInputTab ? "active" : ""}" onclick="setKalenderPageTab('input')">Input Tanggal</button>
-          <button type="button" class="kalender-tab ${isKaldikTab ? "active" : ""}" onclick="setKalenderPageTab('kaldik')">KALDIK</button>
-          <button type="button" class="kalender-tab ${isRpeTab ? "active" : ""}" onclick="setKalenderPageTab('rpe')">RPE</button>
-        </nav>
-
-        <!-- UI-8: Panel 3 - Toolbar -->
-        <section class="app-panel app-panel--toolbar kalender-toolbar">
-          <div class="matrix-toolbar-note kalender-pendidikan-note" style="margin: 0; padding: 0; background: transparent; border: none; box-shadow: none;">
-            Daftar bawaan di bawah memuat tanggal yang tidak berubah setiap tahun, seperti 1 Januari, 1 Mei, 1 Juni, 17 Agustus, 25 Desember, serta hari penting pendidikan seperti 2 Mei dan 25 November. Agenda sekolah tetap bisa Anda atur sendiri.
-          </div>
-        </section>
-
-        <!-- UI-8: Panel 4 - Content -->
-        <section class="app-panel app-panel--content kalender-content" style="padding: var(--gs-space-5); overflow-y: auto; display: flex; flex-direction: column; gap: var(--gs-space-5);">
-          ${
-            isInputTab
-              ? `
-          <section class="kalender-pendidikan-section">
-            <div class="kalender-pendidikan-section-head">
-              <div>
-                <span class="dashboard-card-label">Pengaturan Semester</span>
-                <h3>Pengaturan Awal</h3>
-                <p class="kalender-panel-copy">Atur awal semester dan pola hari kerja sekolah sebelum mengisi detail kalender.</p>
-              </div>
-              <div class="kalender-pendidikan-actions">
-                <button class="btn-primary" onclick="saveKalenderPendidikan()">Simpan Kalender</button>
-              </div>
-            </div>
-            <div class="kalender-settings-grid">
-              <label class="form-group">
-                <span>Tahun Pelajaran</span>
-                <input type="text" value="${escapeKalenderHtml(kalenderState.tahunPelajaran)}" placeholder="2025/2026" onchange="setKalenderPendidikanYear(this.value)">
-              </label>
-              <label class="form-group">
-                <span>Awal Semester Ganjil</span>
-                <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.ganjil || "")}" onchange="setKalenderSemesterStart('ganjil', this.value)">
-              </label>
-              <label class="form-group">
-                <span>Awal Semester Genap</span>
-                <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.genap || "")}" onchange="setKalenderSemesterStart('genap', this.value)">
-              </label>
-              <label class="form-group">
-                <span>Jumlah Hari Kerja</span>
-                <select onchange="setKalenderWorkDays(this.value)">
-                  <option value="5" ${kalenderState.workDays === "5" ? "selected" : ""}>5 Hari</option>
-                  <option value="6" ${kalenderState.workDays === "6" ? "selected" : ""}>6 Hari</option>
-                </select>
-              </label>
-            </div>
-          </section>
-
-          <section class="kalender-pendidikan-section">
-            <div class="kalender-pendidikan-section-head">
-              <div>
-                <span class="dashboard-card-label">Libur Nasional</span>
-                <h3>Libur Nasional</h3>
-              </div>
-            </div>
-            <div class="table-container mapel-table-container">
-              <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
-                <thead>
-                  <tr>
-                    <th>Aktif</th>
-                    <th>Tanggal</th>
-                    <th>Nama</th>
-                    <th>Kategori</th>
-                    <th>Jenis</th>
-                  </tr>
-                </thead>
-                <tbody>${renderFixedEventRows()}</tbody>
-              </table>
-            </div>
-          </section>
-
-          ${renderSchoolEventPanel({
-            panel: "libur-sekolah",
-            label: "Libur Sekolah",
-            title: "Libur Sekolah",
-          })}
-
-          ${renderSchoolEventPanel({
-            panel: "kegiatan-sekolah",
-            label: "Kegiatan Sekolah",
-            title: "Kegiatan Sekolah",
-          })}
-
-          ${renderSchoolEventPanel({
-            panel: "minggu-efektif-fakultatif",
-            label: "Minggu Efektif",
-            title: "Minggu Efektif Fakultatif",
-          })}
-
-          <section class="kalender-pendidikan-section">
-            <div class="kalender-pendidikan-section-head">
-              <div>
-                <span class="dashboard-card-label">Hari Penting</span>
-                <h3>Hari-Hari Penting Nasional</h3>
-                <p class="kalender-panel-copy">Khusus peringatan yang berhubungan dengan pendidikan, karakter, dan lingkungan.</p>
-              </div>
-            </div>
-            <div class="table-container mapel-table-container">
-              <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
-                <thead>
-                  <tr>
-                    <th>Aktif</th>
-                    <th>Tanggal</th>
-                    <th>Nama</th>
-                    <th>Kategori</th>
-                  </tr>
-                </thead>
-                <tbody>${renderImportantFixedEventRows()}${renderImportantSchoolEventRows()}</tbody>
-              </table>
+              <span class="dashboard-card-label">Pengaturan Semester</span>
+              <h3>Pengaturan Awal</h3>
+              <p class="kalender-panel-copy">Atur awal semester and pola hari kerja sekolah sebelum mengisi detail kalender.</p>
             </div>
             <div class="kalender-pendidikan-actions">
-              <button class="btn-secondary" onclick="addKalenderSchoolEvent('hari-penting')">Tambah Hari Penting</button>
+              <button class="btn-primary" onclick="saveKalenderPendidikan()">Simpan Kalender</button>
             </div>
-          </section>
-          <section class="kalender-pendidikan-section">
-            <div class="kalender-pendidikan-section-head">
-              <div>
-                <span class="dashboard-card-label">Ringkasan</span>
-                <h3>Daftar Agenda Aktif</h3>
-              </div>
-            </div>
-            <div class="table-container mapel-table-container">
-              <table class="mapel-table kalender-pendidikan-table">
-                <thead>
-                  <tr>
-                    <th>Tanggal</th>
-                    <th>Nama</th>
-                    <th>Kategori</th>
-                    <th>Jenis</th>
-                  </tr>
-                </thead>
-                <tbody>${renderActiveEntries()}</tbody>
-              </table>
-            </div>
-          </section>
-          `
-              : ""
-          }
-
-          ${
-            !isInputTab
-              ? `
-          <section id="kalenderPreviewSection" class="kalender-pendidikan-section">
-            <div class="kalender-pendidikan-section-head">
-              <div>
-                <span class="dashboard-card-label">${isKaldikTab ? "Lembar Resmi" : "Rekap Pekan Efektif"}</span>
-                <h3>${isKaldikTab ? "Preview KALDIK Sekolah" : "Preview RPE per Semester"}</h3>
-              </div>
-              <div class="kalender-pendidikan-actions">
-                <button
-                  class="kalender-toggle-btn ${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "is-active" : ""}"
-                  onclick="toggleKalenderSignatureMode('${isKaldikTab ? "kaldik" : "rpe"}')"
-                  aria-label="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "Nonaktifkan TTD" : "Aktifkan TTD"}"
-                  title="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "TTD aktif" : "TTD nonaktif"}"
-                >
-                  <span aria-hidden="true">${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "●" : "○"}</span>
-                </button>
-                <button class="btn-secondary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('a4')" : "exportKalenderRpePdf('a4')"}">PDF A4</button>
-                <button class="btn-primary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('f4')" : "exportKalenderRpePdf('f4')"}">PDF F4</button>
-              </div>
-            </div>
-            ${isKaldikTab ? renderKalenderOfficialSheet() : renderKalenderRpeView()}
-          </section>
-          `
-              : ""
-          }
+          </div>
+          <div class="kalender-settings-grid">
+            <label class="form-group">
+              <span>Tahun Pelajaran</span>
+              <input type="text" value="${escapeKalenderHtml(kalenderState.tahunPelajaran)}" placeholder="2025/2026" onchange="setKalenderPendidikanYear(this.value)">
+            </label>
+            <label class="form-group">
+              <span>Awal Semester Ganjil</span>
+              <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.ganjil || "")}" onchange="setKalenderSemesterStart('ganjil', this.value)">
+            </label>
+            <label class="form-group">
+              <span>Awal Semester Genap</span>
+              <input type="date" value="${escapeKalenderHtml(kalenderState?.semesterStarts?.genap || "")}" onchange="setKalenderSemesterStart('genap', this.value)">
+            </label>
+            <label class="form-group">
+              <span>Jumlah Hari Kerja</span>
+              <select onchange="setKalenderWorkDays(this.value)">
+                <option value="5" ${kalenderState.workDays === "5" ? "selected" : ""}>5 Hari</option>
+                <option value="6" ${kalenderState.workDays === "6" ? "selected" : ""}>6 Hari</option>
+              </select>
+            </label>
+          </div>
         </section>
-      </section>
-      ${renderKalenderRangeModal()}
-      ${renderKalenderSavingOverlay()}
-    `;
+
+        <section class="kalender-pendidikan-section">
+          <div class="kalender-pendidikan-section-head">
+            <div>
+              <span class="dashboard-card-label">Libur Nasional</span>
+              <h3>Libur Nasional</h3>
+            </div>
+          </div>
+          <div class="table-container mapel-table-container">
+            <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
+              <thead>
+                <tr>
+                  <th>Aktif</th>
+                  <th>Tanggal</th>
+                  <th>Nama</th>
+                  <th>Kategori</th>
+                  <th>Jenis</th>
+                </tr>
+              </thead>
+              <tbody>${renderFixedEventRows()}</tbody>
+            </table>
+          </div>
+        </section>
+
+        ${renderSchoolEventPanel({
+          panel: "libur-sekolah",
+          label: "Libur Sekolah",
+          title: "Libur Sekolah",
+        })}
+
+        ${renderSchoolEventPanel({
+          panel: "kegiatan-sekolah",
+          label: "Kegiatan Sekolah",
+          title: "Kegiatan Sekolah",
+        })}
+
+        ${renderSchoolEventPanel({
+          panel: "minggu-efektif-fakultatif",
+          label: "Minggu Efektif",
+          title: "Minggu Efektif Fakultatif",
+        })}
+
+        <section class="kalender-pendidikan-section">
+          <div class="kalender-pendidikan-section-head">
+            <div>
+              <span class="dashboard-card-label">Hari Penting</span>
+              <h3>Hari-Hari Penting Nasional</h3>
+              <p class="kalender-panel-copy">Khusus peringatan yang berhubungan dengan pendidikan, karakter, dan lingkungan.</p>
+            </div>
+          </div>
+          <div class="table-container mapel-table-container">
+            <table class="mapel-table kalender-pendidikan-table kalender-fixed-table">
+              <thead>
+                <tr>
+                  <th>Aktif</th>
+                  <th>Tanggal</th>
+                  <th>Nama</th>
+                  <th>Kategori</th>
+                </tr>
+              </thead>
+              <tbody>${renderImportantFixedEventRows()}${renderImportantSchoolEventRows()}</tbody>
+            </table>
+          </div>
+          <div class="kalender-pendidikan-actions">
+            <button class="btn-secondary" onclick="addKalenderSchoolEvent('hari-penting')">Tambah Hari Penting</button>
+          </div>
+        </section>
+        <section class="kalender-pendidikan-section">
+          <div class="kalender-pendidikan-section-head">
+            <div>
+              <span class="dashboard-card-label">Ringkasan</span>
+              <h3>Daftar Agenda Aktif</h3>
+            </div>
+          </div>
+          <div class="table-container mapel-table-container">
+            <table class="mapel-table kalender-pendidikan-table">
+              <thead>
+                <tr>
+                  <th>Tanggal</th>
+                  <th>Nama</th>
+                  <th>Kategori</th>
+                  <th>Jenis</th>
+                </tr>
+              </thead>
+              <tbody>${renderActiveEntries()}</tbody>
+            </table>
+          </div>
+        </section>
+        `
+            : ""
+        }
+
+        ${
+          !isInputTab
+            ? `
+        <section id="kalenderPreviewSection" class="kalender-pendidikan-section">
+          <div class="kalender-pendidikan-section-head">
+            <div>
+              <span class="dashboard-card-label">${isKaldikTab ? "Lembar Resmi" : "Rekap Pekan Efektif"}</span>
+              <h3>${isKaldikTab ? "Preview KALDIK Sekolah" : "Preview RPE per Semester"}</h3>
+            </div>
+            <div class="kalender-pendidikan-actions">
+              <button
+                class="kalender-toggle-btn ${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "is-active" : ""}"
+                onclick="toggleKalenderSignatureMode('${isKaldikTab ? "kaldik" : "rpe"}')"
+                aria-label="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "Nonaktifkan TTD" : "Aktifkan TTD"}"
+                title="${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "TTD aktif" : "TTD nonaktif"}"
+              >
+                <span aria-hidden="true">${isKalenderSignatureEnabled(isKaldikTab ? "kaldik" : "rpe") ? "●" : "○"}</span>
+              </button>
+              <button class="btn-secondary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('a4')" : "exportKalenderRpePdf('a4')"}">PDF A4</button>
+              <button class="btn-primary" onclick="${isKaldikTab ? "exportKalenderKaldikPdf('f4')" : "exportKalenderRpePdf('f4')"}">PDF F4</button>
+            </div>
+          </div>
+          ${isKaldikTab ? renderKalenderOfficialSheet() : renderKalenderRpeView()}
+        </section>
+        `
+            : ""
+        }
+      `,
+      modal: `
+        ${renderKalenderRangeModal()}
+        ${renderKalenderSavingOverlay()}
+      `
+    });
   }
 
   function renderKalenderPendidikanState() {

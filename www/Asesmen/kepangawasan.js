@@ -2458,38 +2458,39 @@
   }
 
   function renderKepangawasanPage() {
-    return `
-      <div class="app-page app-page--module kepangawasan-page">
-        <!-- UI-8: Panel 1 - Header -->
-        <header class="app-panel app-panel--header kepangawasan-module-header">
-          <div class="app-page-title">
-            <span class="dashboard-eyebrow">Asesmen</span>
-            <h2>Kepengawasan</h2>
-            <p>Kelola jadwal ujian, ketersediaan pengawas, pembagian ruang, dan kartu pengawas.</p>
-          </div>
-        </header>
+    const subPageHtml = renderKepangawasanTabContent();
 
-        <!-- UI-8: Panel 2 - Tabs -->
-        <nav class="app-panel app-panel--tabs module-tabs kepangawasan-tabbar" role="tablist" aria-label="Menu Kepengawasan">
-          ${TAB_OPTIONS.map(
-            (item) => `
-            <button
-              type="button"
-              class="module-tab kepangawasan-tab ${item.key === kepangawasanState.activeTab ? "active is-active" : ""}"
-              role="tab"
-              aria-selected="${item.key === kepangawasanState.activeTab ? "true" : "false"}"
-              onclick="setKepangawasanTab('${escapeHtml(item.key)}')"
-            >
-              ${escapeHtml(item.label)}
-            </button>
-          `,
-          ).join("")}
-        </nav>
+    const temp = global.document.createElement("div");
+    temp.innerHTML = subPageHtml;
+    const tb = temp.querySelector(".app-panel--toolbar");
+    const cnt = temp.querySelector(".app-panel--content");
 
-        <!-- Tab contents will supply Panel 3 (Toolbar) and Panel 4 (Content) -->
-        ${renderKepangawasanTabContent()}
-      </div>
-    `;
+    const tabsHtml = TAB_OPTIONS.map(
+      (item) => `
+      <button
+        type="button"
+        class="module-tab kepangawasan-tab ${item.key === kepangawasanState.activeTab ? "active is-active" : ""}"
+        role="tab"
+        aria-selected="${item.key === kepangawasanState.activeTab ? "true" : "false"}"
+        onclick="setKepangawasanTab('${escapeHtml(item.key)}')"
+      >
+        ${escapeHtml(item.label)}
+      </button>
+    `,
+    ).join("");
+
+    return global.AppUtils.renderModuleLayout({
+      moduleName: "kepangawasan",
+      eyebrow: "Asesmen",
+      title: "Kepengawasan",
+      subtitle: "Kelola jadwal ujian, ketersediaan pengawas, pembagian ruang, dan kartu pengawas.",
+      tabs: tabsHtml,
+      tabsLabel: "Menu Kepengawasan",
+      toolbar: tb ? tb.innerHTML : "",
+      toolbarStyle: tb ? tb.getAttribute("style") : "",
+      content: cnt ? cnt.innerHTML : "",
+      contentStyle: cnt ? cnt.getAttribute("style") : ""
+    });
   }
 
   function renderKepangawasanState() {

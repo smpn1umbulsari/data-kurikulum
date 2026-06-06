@@ -134,23 +134,11 @@ function renderTugasTambahanModuleTabs() {
 }
 
 function renderTugasTambahanPage() {
-  return `
-    <section class="app-page app-page--module guru-module-panel tugas-tambahan-module-panel">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header tugas-tambahan-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Pembagian Tugas dan Mengajar</span>
-          <h2>Tugas Tambahan</h2>
-          <p>Daftar tugas tambahan utama dan ekuivalen beserta jumlah JP.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs" role="tablist" aria-label="Navigasi tugas tambahan">
+  const tabsHtml = `
         <button type="button" class="module-tab" role="tab" aria-selected="false" onclick="loadPage('guru-lihat')">Data Guru</button>
-        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
-      </nav>
+        <button type="button" class="module-tab active" role="tab" aria-selected="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>`;
 
+  const afterTabsHtml = `
       <div class="tugas-tabbar" style="margin: var(--gs-space-3) var(--gs-space-4) 0 var(--gs-space-4);">
         <button class="${tugasTambahanActiveTab === "guru" ? "active" : ""}" onclick="setTugasTambahanTab('guru')">Guru</button>
         <button class="${tugasTambahanActiveTab === "tugas" ? "active" : ""}" onclick="setTugasTambahanTab('tugas')">Tugas Tambahan</button>
@@ -158,9 +146,19 @@ function renderTugasTambahanPage() {
 
       <div id="tugasTambahanTabContent">
         ${tugasTambahanActiveTab === "guru" ? renderTugasTambahanGuruTab() : renderTugasTambahanDaftarTab()}
-      </div>
-    </section>
-  `;
+      </div>`;
+
+  return AppUtils.renderModuleLayout({
+    pageClass: "guru-module-panel tugas-tambahan-module-panel",
+    headerClass: "tugas-tambahan-header",
+    tabsClass: "",
+    eyebrow: "Pembagian Tugas dan Mengajar",
+    title: "Tugas Tambahan",
+    subtitle: "Daftar tugas tambahan utama dan ekuivalen beserta jumlah JP.",
+    tabs: tabsHtml,
+    tabsLabel: "Navigasi tugas tambahan",
+    afterTabs: afterTabsHtml,
+  });
 }
 
 function renderTugasTambahanGuruTab() {

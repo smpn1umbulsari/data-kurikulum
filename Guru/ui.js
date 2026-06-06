@@ -125,24 +125,7 @@ function renderGuruModuleTabs(activeRoute = "guru-lihat") {
 }
 
 function renderGuruTable() {
-  return `
-    <section class="app-page app-page--module guru-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header guru-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Administrasi</span>
-          <h2>Data Guru</h2>
-          <p>Kelola data guru dan tugas mengajarnya.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs guru-tabs" role="tablist" aria-label="Navigasi guru dan tugas tambahan">
-        ${renderGuruModuleTabs("guru-lihat")}
-      </nav>
-
-      <!-- UI-8: Panel 3 - Toolbar (SATU panel dengan 3 toolbar-row) -->
-      <section class="app-panel app-panel--toolbar guru-toolbar">
+  const toolbarHtml = `
         <!-- toolbar-row--actions -->
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" onclick="loadPage('guru-input')">
@@ -189,11 +172,9 @@ function renderGuruTable() {
               </select>
             </label>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content guru-content">
+  const contentHtml = `
         <div class="table-container guru-table-container">
           <table class="data-table guru-compact-table">
             <thead>
@@ -215,8 +196,16 @@ function renderGuruTable() {
           </div>
         </div>
 
-        <div id="tablePaginationGuru" class="pagination-wrap"></div>
-      </section>
-    </section>
-  `;
+        <div id="tablePaginationGuru" class="pagination-wrap"></div>`;
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "guru",
+    eyebrow: "Administrasi",
+    title: "Data Guru",
+    subtitle: "Kelola data guru dan tugas mengajarnya.",
+    tabs: renderGuruModuleTabs("guru-lihat"),
+    tabsLabel: "Navigasi guru dan tugas tambahan",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }

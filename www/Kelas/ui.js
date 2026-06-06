@@ -14,19 +14,7 @@ function renderKelasPage() {
       ? getCurrentCoordinatorLevelsSync()
       : [];
 
-  return `
-    <section class="app-page app-page--module kelas-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header kelas-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Administrasi</span>
-          <h2>Data Kelas</h2>
-          <p>Kelola data kelas dan wali kelas.</p>
-        </div>
-      </header>
-
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs kelas-tabs" role="tablist" aria-label="Mode kelas">
+  const tabsHtml = `
         <button type="button" class="module-tab ${isDataMode ? "active" : ""}"
                 role="tab" aria-selected="${isDataMode}"
                 onclick="setKelasTab('data')">
@@ -36,14 +24,13 @@ function renderKelasPage() {
                 role="tab" aria-selected="${isStatistikMode}"
                 onclick="setKelasTab('statistik')">
           Statistik
-        </button>
-      </nav>
+        </button>`;
 
-      ${
-        isDataMode
-          ? `
-      <!-- UI-8: Panel 3 - Toolbar (SATU panel dengan 3 toolbar-row) -->
-      <section class="app-panel app-panel--toolbar kelas-toolbar">
+  let toolbarHtml = "";
+  let contentHtml = "";
+
+  if (isDataMode) {
+    toolbarHtml = `
         <!-- toolbar-row--actions -->
         <div class="toolbar-row toolbar-row--actions">
           ${
@@ -89,11 +76,9 @@ function renderKelasPage() {
               </select>
             </label>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content kelas-content">
+    contentHtml = `
         <div class="kelas-form-split">
           ${isKoordinator ? "" : `<div id="kelasCreateForm"></div>`}
         </div>
@@ -117,30 +102,27 @@ function renderKelasPage() {
           </div>
         </div>
 
-        <div id="tablePaginationKelas" class="pagination-wrap"></div>
-      </section>
-      `
-          : ""
-      }
-
-      ${
-        isStatistikMode
-          ? `
-      <!-- UI-8: Panel 3 & 4 - Statistik Mode -->
-      <section class="app-panel app-panel--toolbar kelas-toolbar">
+        <div id="tablePaginationKelas" class="pagination-wrap"></div>`;
+  } else if (isStatistikMode) {
+    toolbarHtml = `
         <div class="toolbar-row toolbar-row--info">
           <span>Mode Statistik</span>
-        </div>
-      </section>
-      
-      <section class="app-panel app-panel--content kelas-content">
+        </div>`;
+
+    contentHtml = `
         <div id="kelasStatistikContainer">
           ${renderKelasStatistikPage()}
-        </div>
-      </section>
-      `
-          : ""
-      }
-    </section>
-  `;
+        </div>`;
+  }
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "kelas",
+    eyebrow: "Administrasi",
+    title: "Data Kelas",
+    subtitle: "Kelola data kelas dan wali kelas.",
+    tabs: tabsHtml,
+    tabsLabel: "Mode kelas",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }

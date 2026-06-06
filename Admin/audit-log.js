@@ -177,33 +177,30 @@
 
   function renderAdminAuditLogPage() {
     setTimeout(() => refreshAdminAuditLog(), 0);
-    return `
-      <section class="app-page app-page--module audit-page">
-        <!-- UI-8: Panel 1 - Header -->
-        <header class="app-panel app-panel--header audit-header">
-          <div class="app-page-title">
-            <span class="dashboard-eyebrow">Admin</span>
-            <h2>Riwayat Perubahan Data</h2>
-            <p>Melacak aksi penting seperti simpan nilai, backup, restore, pembagian ruang, dan kartu pengawas.</p>
-          </div>
-        </header>
 
-        <!-- UI-8: Panel 3 - Toolbar -->
-        <section class="app-panel app-panel--toolbar audit-toolbar">
-          <div class="toolbar-row toolbar-row--actions">
-            <button class="btn-secondary" onclick="refreshAdminAuditLog()">Refresh</button>
-          </div>
-        </section>
+    const toolbarHtml = `
+      <div class="toolbar-row toolbar-row--actions">
+        <button class="btn-secondary" onclick="refreshAdminAuditLog()">Refresh</button>
+      </div>`;
 
-        <!-- UI-8: Panel 4 - Content -->
-        <section class="app-panel app-panel--content audit-content" style="padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;">
+    const contentHtml = `
           <article class="backup-panel backup-wide">
             <div id="auditLogStatus" class="backup-status">Memuat riwayat...</div>
             <div id="auditLogTable" class="table-container mapel-table-container"></div>
-          </article>
-        </section>
-      </section>
-    `;
+          </article>`;
+
+    return AppUtils.renderModuleLayout({
+      pageClass: "audit-page",
+      headerClass: "audit-header",
+      toolbarClass: "audit-toolbar",
+      contentClass: "audit-content",
+      contentStyle: "padding: var(--gs-space-5); display: flex; flex-direction: column; gap: var(--gs-space-5); overflow-y: auto;",
+      eyebrow: "Admin",
+      title: "Riwayat Perubahan Data",
+      subtitle: "Melacak aksi penting seperti simpan nilai, backup, restore, pembagian ruang, dan kartu pengawas.",
+      toolbar: toolbarHtml,
+      content: contentHtml,
+    });
   }
 
   async function refreshAdminAuditLog() {

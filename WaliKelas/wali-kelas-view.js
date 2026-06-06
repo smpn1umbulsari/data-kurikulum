@@ -3,11 +3,9 @@
 
   function renderPageShell() {
     return `
-      <section class="app-page app-page--module wali-page">
-        <div id="waliKelasPageShell">
-          <div class="empty-panel">Memuat data wali kelas...</div>
-        </div>
-      </section>
+      <div id="waliKelasPageShell">
+        <div class="empty-panel">Memuat data wali kelas...</div>
+      </div>
     `;
   }
 

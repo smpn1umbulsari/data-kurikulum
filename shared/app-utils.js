@@ -97,5 +97,87 @@
     }).format(date);
   };
 
+  /**
+   * Render the standard 4-panel module layout (Header → Tabs → Toolbar → Content).
+   *
+   * @param {Object} o
+   * @param {string} [o.moduleName]    – base name for auto-generated CSS classes
+   * @param {string} [o.pageClass]     – override page-section class (default: `${moduleName}-page`)
+   * @param {string} [o.headerClass]   – override header class (default: `${moduleName}-header`)
+   * @param {string} [o.tabsClass]     – override tabs nav class (default: `${moduleName}-tabs`)
+   * @param {string} [o.toolbarClass]  – override toolbar class (default: `${moduleName}-toolbar`)
+   * @param {string} [o.contentClass]  – override content class (default: `${moduleName}-content`)
+   * @param {string} [o.eyebrow]       – category label above the title
+   * @param {string} [o.title]         – h2 title
+   * @param {string} [o.subtitle]      – description paragraph
+   * @param {string} [o.headerExtra]   – extra HTML inside the header (after app-page-title)
+   * @param {string} [o.tabs]          – inner HTML for the tab nav panel
+   * @param {string} [o.tabsLabel]     – aria-label for the tab nav
+   * @param {string} [o.afterTabs]     – extra HTML between tabs and toolbar
+   * @param {string} [o.toolbar]       – inner HTML for the toolbar panel
+   * @param {string} [o.toolbarStyle]  – inline style for the toolbar section
+   * @param {string} [o.content]       – inner HTML for the content panel
+   * @param {string} [o.contentStyle]  – inline style for the content section
+   * @param {string} [o.afterContent]  – extra HTML inside the page section, after the content panel
+   * @param {string} [o.modal]         – HTML rendered outside the page section (modals, overlays)
+   * @returns {string} complete HTML string
+   */
+  AppUtils.renderModuleLayout = function renderModuleLayout(o) {
+    o = o || {};
+    var mn = o.moduleName || "";
+    var pc = o.pageClass != null ? o.pageClass : (mn ? mn + "-page" : "");
+    var hc = o.headerClass != null ? o.headerClass : (mn ? mn + "-header" : "");
+    var tc = o.tabsClass != null ? o.tabsClass : (mn ? mn + "-tabs" : "");
+    var tkc = o.toolbarClass != null ? o.toolbarClass : (mn ? mn + "-toolbar" : "");
+    var cc = o.contentClass != null ? o.contentClass : (mn ? mn + "-content" : "");
+
+    var html = '<section class="app-page app-page--module' + (pc ? ' ' + pc : '') + '">';
+
+    // Panel 1 – Header
+    html += '<header class="app-panel app-panel--header' + (hc ? ' ' + hc : '') + '">';
+    html += '<div class="app-page-title">';
+    if (o.eyebrow) html += '<span class="dashboard-eyebrow">' + o.eyebrow + '</span>';
+    if (o.title) html += '<h2>' + o.title + '</h2>';
+    if (o.subtitle) html += '<p>' + o.subtitle + '</p>';
+    html += '</div>';
+    if (o.headerExtra) html += o.headerExtra;
+    html += '</header>';
+
+    // Panel 2 – Tabs
+    if (o.tabs) {
+      html += '<nav class="app-panel app-panel--tabs module-tabs' + (tc ? ' ' + tc : '') + '" role="tablist" aria-label="' + (o.tabsLabel || ('Navigasi ' + mn)) + '">';
+      html += o.tabs;
+      html += '</nav>';
+    }
+
+    if (o.afterTabs) html += o.afterTabs;
+
+    // Panel 3 – Toolbar
+    if (o.toolbar) {
+      html += '<section class="app-panel app-panel--toolbar' + (tkc ? ' ' + tkc : '') + '"';
+      if (o.toolbarStyle) html += ' style="' + o.toolbarStyle + '"';
+      html += '>';
+      html += o.toolbar;
+      html += '</section>';
+    }
+
+    // Panel 4 – Content
+    if (o.content) {
+      html += '<section class="app-panel app-panel--content' + (cc ? ' ' + cc : '') + '"';
+      if (o.contentStyle) html += ' style="' + o.contentStyle + '"';
+      html += '>';
+      html += o.content;
+      html += '</section>';
+    }
+
+    if (o.afterContent) html += o.afterContent;
+
+    html += '</section>';
+
+    if (o.modal) html += o.modal;
+
+    return html;
+  };
+
   global.AppUtils = AppUtils;
 })(window);

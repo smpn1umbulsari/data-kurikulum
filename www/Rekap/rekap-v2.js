@@ -166,68 +166,60 @@ function renderRekapSignatureBlock(settings = getRekapSettings()) {
 
 function renderRekapTugasMengajarPage() {
   const settings = getRekapSettings();
-  return `
-    <section class="app-page app-page--module rekap-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header rekap-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Rekap</span>
-          <h2>Rekap Tugas dan Mengajar</h2>
-          <p>Format lampiran surat resmi untuk tugas mengajar dan tugas tambahan.</p>
-        </div>
-      </header>
+  const toolbarHtml = `
+    ${renderRekapSettingsPanel(settings)}
+    <div class="toolbar-row toolbar-row--actions" style="justify-content: space-between; width: 100%; border-top: 1px solid var(--gs-border); padding-top: var(--gs-space-3); margin-top: 0;">
+      <span id="rekapTugasMengajarInfo" style="font-size: var(--gs-font-size-sm); color: var(--gs-text-muted); font-weight: 600;">Memuat data rekap...</span>
+      <div class="table-actions">
+        <button class="btn-secondary" onclick="exportRekapTugasMengajarPdf()">Export PDF</button>
+        <button class="btn-secondary" onclick="exportRekapTugasMengajarExcel()">Export Excel</button>
+      </div>
+    </div>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar rekap-toolbar" style="display: flex; flex-direction: column; gap: var(--gs-space-4);">
-        ${renderRekapSettingsPanel(settings)}
-        <div class="toolbar-row toolbar-row--actions" style="justify-content: space-between; width: 100%; border-top: 1px solid var(--gs-border); padding-top: var(--gs-space-3); margin-top: 0;">
-          <span id="rekapTugasMengajarInfo" style="font-size: var(--gs-font-size-sm); color: var(--gs-text-muted); font-weight: 600;">Memuat data rekap...</span>
-          <div class="table-actions">
-            <button class="btn-secondary" onclick="exportRekapTugasMengajarPdf()">Export PDF</button>
-            <button class="btn-secondary" onclick="exportRekapTugasMengajarExcel()">Export Excel</button>
-          </div>
-        </div>
-      </section>
+  const contentHtml = `<div id="rekapTugasMengajarContainer"></div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content rekap-content" style="padding: var(--gs-space-5); overflow-y: auto;">
-        <div id="rekapTugasMengajarContainer"></div>
-      </section>
-    </section>
-  `;
+  return AppUtils.renderModuleLayout({
+    pageClass: "rekap-page",
+    headerClass: "rekap-header",
+    toolbarClass: "rekap-toolbar",
+    contentClass: "rekap-content",
+    toolbarStyle: "display: flex; flex-direction: column; gap: var(--gs-space-4);",
+    contentStyle: "padding: var(--gs-space-5); overflow-y: auto;",
+    eyebrow: "Rekap",
+    title: "Rekap Tugas dan Mengajar",
+    subtitle: "Format lampiran surat resmi untuk tugas mengajar dan tugas tambahan.",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function renderRekapTugasMengajarBayanganPage() {
   const settings = getRekapSettings();
-  return `
-    <section class="app-page app-page--module rekap-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header rekap-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Kelas Real</span>
-          <h2>Rekap Tugas Mengajar Kelas Real</h2>
-          <p>Format lampiran surat resmi berdasarkan pembagian mengajar kelas real.</p>
-        </div>
-      </header>
+  const toolbarHtml = `
+    ${renderRekapSettingsPanel(settings)}
+    <div class="toolbar-row toolbar-row--actions" style="justify-content: space-between; width: 100%; border-top: 1px solid var(--gs-border); padding-top: var(--gs-space-3); margin-top: 0;">
+      <span id="rekapTugasMengajarBayanganInfo" style="font-size: var(--gs-font-size-sm); color: var(--gs-text-muted); font-weight: 600;">Memuat data rekap kelas real...</span>
+      <div class="table-actions">
+        <button class="btn-secondary" onclick="exportRekapTugasMengajarBayanganPdf()">Export PDF</button>
+        <button class="btn-secondary" onclick="exportRekapTugasMengajarBayanganExcel()">Export Excel</button>
+      </div>
+    </div>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar rekap-toolbar" style="display: flex; flex-direction: column; gap: var(--gs-space-4);">
-        ${renderRekapSettingsPanel(settings)}
-        <div class="toolbar-row toolbar-row--actions" style="justify-content: space-between; width: 100%; border-top: 1px solid var(--gs-border); padding-top: var(--gs-space-3); margin-top: 0;">
-          <span id="rekapTugasMengajarBayanganInfo" style="font-size: var(--gs-font-size-sm); color: var(--gs-text-muted); font-weight: 600;">Memuat data rekap kelas real...</span>
-          <div class="table-actions">
-            <button class="btn-secondary" onclick="exportRekapTugasMengajarBayanganPdf()">Export PDF</button>
-            <button class="btn-secondary" onclick="exportRekapTugasMengajarBayanganExcel()">Export Excel</button>
-          </div>
-        </div>
-      </section>
+  const contentHtml = `<div id="rekapTugasMengajarBayanganContainer"></div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content rekap-content" style="padding: var(--gs-space-5); overflow-y: auto;">
-        <div id="rekapTugasMengajarBayanganContainer"></div>
-      </section>
-    </section>
-  `;
+  return AppUtils.renderModuleLayout({
+    pageClass: "rekap-page",
+    headerClass: "rekap-header",
+    toolbarClass: "rekap-toolbar",
+    contentClass: "rekap-content",
+    toolbarStyle: "display: flex; flex-direction: column; gap: var(--gs-space-4);",
+    contentStyle: "padding: var(--gs-space-5); overflow-y: auto;",
+    eyebrow: "Kelas Real",
+    title: "Rekap Tugas Mengajar Kelas Real",
+    subtitle: "Format lampiran surat resmi berdasarkan pembagian mengajar kelas real.",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function saveRekapSettings() {

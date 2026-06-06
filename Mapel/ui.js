@@ -6,19 +6,8 @@ function setMapelTab(tabId) {
 
 function renderMapelPage() {
   const isBayangan = mapelActiveTab === "bayangan";
-  return `
-    <section class="app-page app-page--module mapel-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header mapel-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Akademik</span>
-          <h2>Data Mata Pelajaran</h2>
-          <p>Kelola data mapel asli dan mapel bayangan.</p>
-        </div>
-      </header>
 
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs mapel-tabs" role="tablist" aria-label="Mode mapel">
+  const tabsHtml = `
         <button type="button" class="module-tab ${!isBayangan ? "active" : ""}" 
                 role="tab" aria-selected="${!isBayangan}" 
                 onclick="setMapelTab('asli')">
@@ -28,11 +17,9 @@ function renderMapelPage() {
                 role="tab" aria-selected="${isBayangan}" 
                 onclick="setMapelTab('bayangan')">
           Mapel Bayangan
-        </button>
-      </nav>
+        </button>`;
 
-      <!-- UI-8: Panel 3 - Toolbar (SATU panel dengan 3 toolbar-row) -->
-      <section class="app-panel app-panel--toolbar mapel-toolbar">
+  const toolbarHtml = `
         <!-- toolbar-row--actions -->
         <div class="toolbar-row toolbar-row--actions">
           <button class="btn-primary" onclick="loadPage('mapel-input')">
@@ -91,11 +78,9 @@ function renderMapelPage() {
               </select>
             </label>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content mapel-content">
+  const contentHtml = `
         <div class="table-container mapel-table-container">
           <table class="data-table mapel-table mapel-master-table">
             <colgroup>
@@ -124,8 +109,16 @@ function renderMapelPage() {
           </div>
         </div>
 
-        <div id="tablePaginationMapel" class="pagination-wrap"></div>
-      </section>
-    </section>
-  `;
+        <div id="tablePaginationMapel" class="pagination-wrap"></div>`;
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "mapel",
+    eyebrow: "Akademik",
+    title: "Data Mata Pelajaran",
+    subtitle: "Kelola data mapel asli dan mapel bayangan.",
+    tabs: tabsHtml,
+    tabsLabel: "Mode mapel",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }

@@ -73,24 +73,8 @@ function renderSiswaLulusPage() {
   );
   if (siswaLulusTahun && !tahunOptions.includes(siswaLulusTahun))
     siswaLulusTahun = "";
-  return `
-    <section class="app-page app-page--module siswa-lulus-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header siswa-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Akademik</span>
-          <h2>Data Siswa</h2>
-          <p>Kelola data siswa aktif dan siswa lulus${activeTahun ? ` (${escapeSiswaLulusHtml(activeTahun)})` : ""}.</p>
-        </div>
-      </header>
 
-      <!-- UI-8: Panel 2 - Tab -->
-      <nav class="app-panel app-panel--tabs module-tabs siswa-tabs" role="tablist" aria-label="Navigasi data siswa">
-        ${renderSiswaLulusTabs()}
-      </nav>
-
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar siswa-lulus-toolbar">
+  const toolbarHtml = `
         <!-- toolbar-row--filters -->
         <div class="toolbar-row toolbar-row--filters">
           <label class="siswa-field siswa-field-search" for="siswaLulusSearch">
@@ -109,11 +93,9 @@ function renderSiswaLulusPage() {
           <div class="toolbar-row--info-inline">
             <span id="jumlahDataSiswaLulus">${getFilteredSiswaLulus().length} siswa lulus</span>
           </div>
-        </div>
-      </section>
+        </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content siswa-lulus-content">
+  const contentHtml = `
         <div class="table-container siswa-table-container">
           <table class="data-table siswa-compact-table siswa-lulus-table">
             <thead>
@@ -132,10 +114,20 @@ function renderSiswaLulusPage() {
             </tbody>
           </table>
           <div id="emptyStateSiswaLulus" class="empty-state siswa-empty-state siswa-lulus-empty-state" style="display:none;">Belum ada data kelulusan dari tahun pelajaran sebelumnya.</div>
-        </div>
-      </section>
-    </section>
-  `;
+        </div>`;
+
+  return AppUtils.renderModuleLayout({
+    moduleName: "siswa-lulus",
+    headerClass: "siswa-header",
+    tabsClass: "siswa-tabs",
+    eyebrow: "Akademik",
+    title: "Data Siswa",
+    subtitle: `Kelola data siswa aktif dan siswa lulus${activeTahun ? ` (${escapeSiswaLulusHtml(activeTahun)})` : ""}.`,
+    tabs: renderSiswaLulusTabs(),
+    tabsLabel: "Navigasi data siswa",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function getFilteredSiswaLulus() {

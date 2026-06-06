@@ -43,7 +43,6 @@
     padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px !important;
     border-bottom: 1px solid var(--gs-border) !important;
     background: var(--gs-surface) !important;
-    backdrop-filter: blur(12px);
   }
 
   .topbar-left {
@@ -506,6 +505,7 @@
     transform: translateY(calc(100% + 120px)) !important;
     transition: transform 0.28s ease !important;
     box-shadow: var(--gs-shadow-md) !important;
+    will-change: transform;
   }
 
   body:not(.sidebar-collapsed) .sidebar {
@@ -517,7 +517,6 @@
     inset: 0 !important;
     z-index: 70 !important;
     background: rgba(15, 23, 42, 0.42) !important;
-    backdrop-filter: blur(4px);
   }
 
   body.sidebar-collapsed .sidebar-overlay {
@@ -596,7 +595,6 @@
     border-radius: var(--gs-radius-md);
     background: var(--gs-surface);
     box-shadow: var(--gs-shadow);
-    backdrop-filter: blur(12px);
   }
 
   .mobile-app-nav button {

@@ -80,11 +80,6 @@
         title: "Riwayat Perubahan Data",
         render: () => global.renderAdminAuditLogPage()
       },
-      "admin-quota": {
-        title: "Quota Supabase",
-        render: () => global.renderAdminQuotaPage(),
-        afterEnter: () => global.loadRealtimeAdminQuota()
-      },
       "nilai-input-guru": {
         title: "Input Nilai",
         beforeEnter: () => {

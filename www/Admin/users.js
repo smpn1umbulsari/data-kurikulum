@@ -1212,31 +1212,27 @@ function renderAdminUserPage() {
 }
 
 function renderAdminHierarchyPage() {
-  return `
-    <section class="app-page app-page--module admin-hierarchy-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header admin-hierarchy-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Admin</span>
-          <h2>Pengguna Hierarki</h2>
-          <p>Kelola pengguna berdasarkan role admin, guru, urusan, dan siswa.</p>
-        </div>
-      </header>
+  const toolbarHtml = `
+    <div class="toolbar-row toolbar-row--actions">
+      <span class="matrix-toolbar-note">Form tambah manual dipindahkan ke menu <strong>User</strong> agar menu hirarki fokus pada koordinator dan ringkasan role.</span>
+    </div>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar admin-hierarchy-toolbar">
-        <div class="toolbar-row toolbar-row--actions">
-          <span class="matrix-toolbar-note">Form tambah manual dipindahkan ke menu <strong>User</strong> agar menu hirarki fokus pada koordinator dan ringkasan role.</span>
-        </div>
-      </section>
+  const contentHtml = `
+    ${renderAdminPresenceSummaryHtml()}
+    <div id="adminHierarchySections" class="dashboard-grid" style="margin-top: var(--gs-space-4);"></div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content admin-hierarchy-content" style="padding: var(--gs-space-4);">
-        ${renderAdminPresenceSummaryHtml()}
-        <div id="adminHierarchySections" class="dashboard-grid" style="margin-top: var(--gs-space-4);"></div>
-      </section>
-    </section>
-  `;
+  return AppUtils.renderModuleLayout({
+    pageClass: "admin-hierarchy-page",
+    headerClass: "admin-hierarchy-header",
+    toolbarClass: "admin-hierarchy-toolbar",
+    contentClass: "admin-hierarchy-content",
+    contentStyle: "padding: var(--gs-space-4);",
+    eyebrow: "Admin",
+    title: "Pengguna Hierarki",
+    subtitle: "Kelola pengguna berdasarkan role admin, guru, urusan, dan siswa.",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function loadRealtimeAdminUsers(includeSiswa = false) {

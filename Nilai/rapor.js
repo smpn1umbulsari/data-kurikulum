@@ -1056,55 +1056,50 @@ function setRaporUseKepalaTtd(value) {
 
 function renderAdminRaporPage() {
   const settings = raporAdminSettings;
-  return `
-    <section class="app-page app-page--module admin-rapor-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header rapor-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Data Sekolah</span>
-          <h2>Data Kepala Sekolah</h2>
-          <p>Atur tanggal cetak rapor, nama kepala sekolah, NIP, dan tanda tangan yang dipakai pada dokumen sekolah.</p>
+  const contentHtml = `
+    <div style="padding: var(--gs-space-5);">
+      <div class="admin-rapor-form">
+        <label class="form-group">
+          <span>Tanggal cetak rapor</span>
+          <input id="adminRaporTanggal" type="date" value="${escapeRaporHtml(settings.tanggal || "")}">
+        </label>
+        <label class="form-group">
+          <span>Nama Kepala Sekolah</span>
+          <input id="adminRaporKepalaNama" value="${escapeRaporHtml(settings.kepala_nama || "")}" placeholder="Nama kepala sekolah">
+        </label>
+        <label class="form-group">
+          <span>NIP Kepala Sekolah</span>
+          <input id="adminRaporKepalaNip" value="${escapeRaporHtml(settings.kepala_nip || "")}" placeholder="NIP kepala sekolah">
+        </label>
+        <label class="form-group form-group-full">
+          <span>TTD Kepala Sekolah</span>
+          <input id="adminRaporKepalaTtd" type="file" accept="image/*" onchange="previewAdminRaporSignature(event)">
+          <small class="mapel-row-hint">Gunakan gambar tanda tangan berukuran kecil agar aman disimpan.</small>
+        </label>
+      </div>
+
+      <div class="admin-rapor-signature-box">
+        <span>Preview TTD</span>
+        <div id="adminRaporTtdPreview">
+          ${settings.kepala_ttd ? `<img src="${escapeRaporHtml(settings.kepala_ttd)}" alt="TTD Kepala Sekolah">` : `<small>Belum ada gambar tanda tangan.</small>`}
         </div>
-      </header>
+      </div>
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content rapor-content">
-        <div style="padding: var(--gs-space-5);">
-          <div class="admin-rapor-form">
-            <label class="form-group">
-              <span>Tanggal cetak rapor</span>
-              <input id="adminRaporTanggal" type="date" value="${escapeRaporHtml(settings.tanggal || "")}">
-            </label>
-            <label class="form-group">
-              <span>Nama Kepala Sekolah</span>
-              <input id="adminRaporKepalaNama" value="${escapeRaporHtml(settings.kepala_nama || "")}" placeholder="Nama kepala sekolah">
-            </label>
-            <label class="form-group">
-              <span>NIP Kepala Sekolah</span>
-              <input id="adminRaporKepalaNip" value="${escapeRaporHtml(settings.kepala_nip || "")}" placeholder="NIP kepala sekolah">
-            </label>
-            <label class="form-group form-group-full">
-              <span>TTD Kepala Sekolah</span>
-              <input id="adminRaporKepalaTtd" type="file" accept="image/*" onchange="previewAdminRaporSignature(event)">
-              <small class="mapel-row-hint">Gunakan gambar tanda tangan berukuran kecil agar aman disimpan.</small>
-            </label>
-          </div>
+      <div class="table-actions" style="margin-top: var(--gs-space-4);">
+        <button class="btn-primary btn-action-save table-action-icon-btn table-action-save" onclick="saveAdminRaporSettings()" title="Simpan Pengaturan" aria-label="Simpan Pengaturan Rapor"></button>
+        <button class="btn-danger-lite btn-action-delete table-action-icon-btn table-action-delete" onclick="clearAdminRaporSignature()" title="Hapus TTD" aria-label="Hapus TTD Kepala Sekolah"></button>
+      </div>
+    </div>`;
 
-          <div class="admin-rapor-signature-box">
-            <span>Preview TTD</span>
-            <div id="adminRaporTtdPreview">
-              ${settings.kepala_ttd ? `<img src="${escapeRaporHtml(settings.kepala_ttd)}" alt="TTD Kepala Sekolah">` : `<small>Belum ada gambar tanda tangan.</small>`}
-            </div>
-          </div>
-
-          <div class="table-actions" style="margin-top: var(--gs-space-4);">
-            <button class="btn-primary btn-action-save table-action-icon-btn table-action-save" onclick="saveAdminRaporSettings()" title="Simpan Pengaturan" aria-label="Simpan Pengaturan Rapor"></button>
-            <button class="btn-danger-lite btn-action-delete table-action-icon-btn table-action-delete" onclick="clearAdminRaporSignature()" title="Hapus TTD" aria-label="Hapus TTD Kepala Sekolah"></button>
-          </div>
-        </div>
-      </section>
-    </section>
-  `;
+  return AppUtils.renderModuleLayout({
+    pageClass: "admin-rapor-page",
+    headerClass: "rapor-header",
+    contentClass: "rapor-content",
+    eyebrow: "Data Sekolah",
+    title: "Data Kepala Sekolah",
+    subtitle: "Atur tanggal cetak rapor, nama kepala sekolah, NIP, dan tanda tangan yang dipakai pada dokumen sekolah.",
+    content: contentHtml,
+  });
 }
 
 function loadRealtimeAdminRapor() {
@@ -1228,61 +1223,56 @@ async function clearAdminRaporSignature() {
 
 function renderCetakRaporPage() {
   const settings = getRaporSettings();
-  return `
-    <section class="app-page app-page--module cetak-rapor-page">
-      <!-- UI-8: Panel 1 - Header -->
-      <header class="app-panel app-panel--header rapor-header">
-        <div class="app-page-title">
-          <span class="dashboard-eyebrow">Wali Kelas</span>
-          <h2>Cetak Rapor</h2>
-          <p>Cetak rapor PTS berdasarkan kelas, siswa, nilai, dan rekap kehadiran.</p>
-        </div>
-      </header>
+  const toolbarHtml = `
+    <div class="toolbar-row toolbar-row--actions">
+      <button type="button" class="btn-primary" onclick="printSelectedRapor()">Cetak</button>
+      <button type="button" class="btn-secondary" onclick="printAllRaporInClass()">Cetak Semua</button>
+      <button type="button" class="btn-secondary btn-action-apply table-action-icon-btn table-action-apply" onclick="setRaporPaperSize()" title="Set Ukuran Kertas" aria-label="Set Ukuran Kertas Rapor"></button>
+    </div>
+    <div class="toolbar-row toolbar-row--filters">
+      <label class="siswa-field" for="raporKelasSelect">
+        <span>Pilih Kelas</span>
+        <select id="raporKelasSelect" onchange="renderRaporStudentOptions()"></select>
+      </label>
+      <label class="siswa-field" for="raporSiswaSelect">
+        <span>Pilih Siswa</span>
+        <select id="raporSiswaSelect"></select>
+      </label>
+      <label class="siswa-field" for="raporPaperSize">
+        <span>Ukuran Kertas</span>
+        <select id="raporPaperSize">
+          <option value="A4" ${settings.paper === "A4" ? "selected" : ""}>A4</option>
+          <option value="F4" ${settings.paper === "F4" ? "selected" : ""}>F4 / FLSA</option>
+        </select>
+      </label>
+      <label class="siswa-field" for="raporUseKepalaTtd">
+        <span>Gunakan TTD KS</span>
+        <select id="raporUseKepalaTtd" onchange="setRaporUseKepalaTtd(this.value)">
+          <option value="false" ${settings.useKepalaTtd ? "" : "selected"}>Tidak</option>
+          <option value="true" ${settings.useKepalaTtd ? "selected" : ""}>Ya</option>
+        </select>
+      </label>
+      <div class="toolbar-row--info-inline">
+        <span id="raporInfo">Memuat data rapor...</span>
+      </div>
+    </div>`;
 
-      <!-- UI-8: Panel 3 - Toolbar -->
-      <section class="app-panel app-panel--toolbar rapor-toolbar">
-        <div class="toolbar-row toolbar-row--actions">
-          <button type="button" class="btn-primary" onclick="printSelectedRapor()">Cetak</button>
-          <button type="button" class="btn-secondary" onclick="printAllRaporInClass()">Cetak Semua</button>
-          <button type="button" class="btn-secondary btn-action-apply table-action-icon-btn table-action-apply" onclick="setRaporPaperSize()" title="Set Ukuran Kertas" aria-label="Set Ukuran Kertas Rapor"></button>
-        </div>
-        <div class="toolbar-row toolbar-row--filters">
-          <label class="siswa-field" for="raporKelasSelect">
-            <span>Pilih Kelas</span>
-            <select id="raporKelasSelect" onchange="renderRaporStudentOptions()"></select>
-          </label>
-          <label class="siswa-field" for="raporSiswaSelect">
-            <span>Pilih Siswa</span>
-            <select id="raporSiswaSelect"></select>
-          </label>
-          <label class="siswa-field" for="raporPaperSize">
-            <span>Ukuran Kertas</span>
-            <select id="raporPaperSize">
-              <option value="A4" ${settings.paper === "A4" ? "selected" : ""}>A4</option>
-              <option value="F4" ${settings.paper === "F4" ? "selected" : ""}>F4 / FLSA</option>
-            </select>
-          </label>
-          <label class="siswa-field" for="raporUseKepalaTtd">
-            <span>Gunakan TTD KS</span>
-            <select id="raporUseKepalaTtd" onchange="setRaporUseKepalaTtd(this.value)">
-              <option value="false" ${settings.useKepalaTtd ? "" : "selected"}>Tidak</option>
-              <option value="true" ${settings.useKepalaTtd ? "selected" : ""}>Ya</option>
-            </select>
-          </label>
-          <div class="toolbar-row--info-inline">
-            <span id="raporInfo">Memuat data rapor...</span>
-          </div>
-        </div>
-      </section>
+  const contentHtml = `
+    <div style="padding: var(--gs-space-4);">
+      <div id="raporCatatanPanel" class="rapor-catatan-panel"></div>
+    </div>`;
 
-      <!-- UI-8: Panel 4 - Content -->
-      <section class="app-panel app-panel--content rapor-content">
-        <div style="padding: var(--gs-space-4);">
-          <div id="raporCatatanPanel" class="rapor-catatan-panel"></div>
-        </div>
-      </section>
-    </section>
-  `;
+  return AppUtils.renderModuleLayout({
+    pageClass: "cetak-rapor-page",
+    headerClass: "rapor-header",
+    toolbarClass: "rapor-toolbar",
+    contentClass: "rapor-content",
+    eyebrow: "Wali Kelas",
+    title: "Cetak Rapor",
+    subtitle: "Cetak rapor PTS berdasarkan kelas, siswa, nilai, dan rekap kehadiran.",
+    toolbar: toolbarHtml,
+    content: contentHtml,
+  });
 }
 
 function loadRealtimeCetakRapor() {
