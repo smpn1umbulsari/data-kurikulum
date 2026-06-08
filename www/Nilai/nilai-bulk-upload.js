@@ -144,7 +144,101 @@
     });
   }
 
+  function renderBulkNilaiTingkatOptions() {
+    const select = document.getElementById("bulkNilaiTingkatSelect");
+    if (!select) return;
+
+    const user = global.getCurrentNilaiUser ? global.getCurrentNilaiUser() : {};
+    const role = user.role || "admin";
+    const canCoordinatorAccess = typeof global.canUseCoordinatorAccess === "function" && global.canUseCoordinatorAccess();
+    const coordinatorLevels = typeof global.getCurrentCoordinatorLevelsSync === "function"
+      ? global.getCurrentCoordinatorLevelsSync()
+      : [];
+
+    let selectedTingkat = localStorage.getItem("bulkNilaiSelectedTingkat") || "";
+
+    let tingkatOptionsHtml = "";
+    let targetLevels = [];
+    if (role === "koordinator" || (role === "guru" && canCoordinatorAccess)) {
+      if (!selectedTingkat || !coordinatorLevels.includes(selectedTingkat)) {
+        selectedTingkat = coordinatorLevels[0] || "";
+      }
+      targetLevels = coordinatorLevels;
+      tingkatOptionsHtml = coordinatorLevels.map(lvl => 
+        `<option value="${lvl}">Tingkat ${lvl}</option>`
+      ).join("");
+    } else {
+      if (!selectedTingkat) selectedTingkat = "7";
+      targetLevels = ["7", "8", "9"];
+      tingkatOptionsHtml = ["7", "8", "9"].map(lvl => 
+        `<option value="${lvl}">Tingkat ${lvl}</option>`
+      ).join("");
+    }
+
+    const currentOptionValues = Array.from(select.options).map(o => o.value).join(",");
+    const targetOptionValues = targetLevels.map(String).join(",");
+
+    if (currentOptionValues !== targetOptionValues) {
+      select.innerHTML = tingkatOptionsHtml;
+    }
+
+    if (select.value !== selectedTingkat) {
+      select.value = selectedTingkat;
+    }
+
+    if (localStorage.getItem("bulkNilaiSelectedTingkat") !== selectedTingkat) {
+      localStorage.setItem("bulkNilaiSelectedTingkat", selectedTingkat);
+    }
+  }
+
+  function renderBulkNilaiMapelOptions() {
+    const select = document.getElementById("bulkNilaiMapelSelect");
+    if (!select) return;
+    
+    let selectedMapel = localStorage.getItem("bulkNilaiSelectedMapel") || "";
+    
+    if (!global.semuaDataNilaiMapel || global.semuaDataNilaiMapel.length === 0) {
+      if (select.innerHTML !== '<option value="">Memuat Mapel...</option>') {
+        select.innerHTML = `<option value="">Memuat Mapel...</option>`;
+      }
+      return;
+    }
+
+    const sortedMapel = [...global.semuaDataNilaiMapel].sort((a, b) => 
+      String(a.nama_mapel || "").localeCompare(String(b.nama_mapel || ""), undefined, { sensitivity: "base" })
+    );
+
+    if (selectedMapel && sortedMapel.some(m => String(m.kode_mapel || m.id) === selectedMapel)) {
+      // Keep it
+    } else {
+      selectedMapel = sortedMapel[0] ? String(sortedMapel[0].kode_mapel || sortedMapel[0].id) : "";
+    }
+    
+    const mapelOptionsHtml = sortedMapel.map(m => {
+      const code = String(m.kode_mapel || m.id);
+      return `<option value="${code}">${global.escapeNilaiHtml(m.nama_mapel || code)} (${code})</option>`;
+    }).join("");
+
+    const currentOptionValues = Array.from(select.options).map(o => o.value).join(",");
+    const targetOptionValues = sortedMapel.map(m => String(m.kode_mapel || m.id)).join(",");
+
+    if (currentOptionValues !== targetOptionValues) {
+      select.innerHTML = mapelOptionsHtml;
+    }
+
+    if (select.value !== selectedMapel) {
+      select.value = selectedMapel;
+    }
+
+    if (localStorage.getItem("bulkNilaiSelectedMapel") !== selectedMapel) {
+      localStorage.setItem("bulkNilaiSelectedMapel", selectedMapel);
+    }
+  }
+
   function renderBulkUploadNilaiPageState() {
+    renderBulkNilaiTingkatOptions();
+    renderBulkNilaiMapelOptions();
+
     const container = document.getElementById("bulkNilaiContainer");
     if (!container) return;
 

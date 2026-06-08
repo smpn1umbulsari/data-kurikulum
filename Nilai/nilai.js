@@ -3384,3 +3384,58 @@ window.resolveNilaiInputModeForCurrentRole =
 window.storeNilaiUiMode = storeNilaiUiMode;
 window.saveNilaiAssignmentOfflineDraft = saveNilaiAssignmentOfflineDraft;
 window.syncNilaiAssignmentOfflineDraft = syncNilaiAssignmentOfflineDraft;
+
+Object.defineProperty(window, "semuaDataNilaiSiswa", {
+  get: () => semuaDataNilaiSiswa,
+  set: (val) => { semuaDataNilaiSiswa = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "semuaDataNilaiMapel", {
+  get: () => semuaDataNilaiMapel,
+  set: (val) => { semuaDataNilaiMapel = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "semuaDataNilaiMengajar", {
+  get: () => semuaDataNilaiMengajar,
+  set: (val) => { semuaDataNilaiMengajar = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "semuaDataNilaiKelas", {
+  get: () => semuaDataNilaiKelas,
+  set: (val) => { semuaDataNilaiKelas = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "semuaDataNilai", {
+  get: () => semuaDataNilai,
+  set: (val) => { semuaDataNilai = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "nilaiPreviewData", {
+  get: () => nilaiPreviewData,
+  set: (val) => { nilaiPreviewData = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "nilaiPreviewPage", {
+  get: () => nilaiPreviewPage,
+  set: (val) => { nilaiPreviewPage = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "nilaiPreviewRowsPerPage", {
+  get: () => nilaiPreviewRowsPerPage,
+  set: (val) => { nilaiPreviewRowsPerPage = val; },
+  configurable: true,
+  enumerable: true
+});
+Object.defineProperty(window, "isNilaiUploading", {
+  get: () => isNilaiUploading,
+  set: (val) => { isNilaiUploading = val; },
+  configurable: true,
+  enumerable: true
+});
