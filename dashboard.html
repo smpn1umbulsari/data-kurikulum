@@ -194,6 +194,7 @@
                 Generate Prompt AI
               </button>
               <button onclick="loadPage('nilai-input')">Input Nilai</button>
+              <button onclick="loadPage('nilai-upload-bulk')">Upload Nilai Bulk</button>
               <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
             </div>
           </div>
@@ -288,6 +289,7 @@
                 Generate Prompt AI
               </button>
               <button onclick="loadPage('nilai-input')">Input Nilai</button>
+              <button onclick="loadPage('nilai-upload-bulk')">Upload Nilai Bulk</button>
               <button onclick="loadPage('rekap-nilai')">Rekap Nilai</button>
             </div>
           </div>
@@ -524,6 +526,7 @@
     <script src="Asesmen/kepangawasan.js?v=20260421b"></script>
     <script src="Asesmen/soal-ai.js?v=20260413m"></script>
     <script src="Nilai/nilai.js?v=20260425a"></script>
+    <script src="Nilai/nilai-bulk-upload.js?v=20260608a"></script>
     <script src="Nilai/rapor.js?v=20260414f"></script>
     <script src="WaliKelas/wali-kelas-service.js?v=20260421a"></script>
     <script src="WaliKelas/wali-kelas-view.js?v=20260410a"></script>
@@ -901,6 +904,7 @@
               "wali-kelengkapan",
               "ai-soal",
               "generate-perangkat-pembelajaran",
+              "nilai-upload-bulk",
             ].includes(page);
           }
           const waliPages = [
@@ -936,6 +940,7 @@
             "wali-kelengkapan",
             "ai-soal",
             "generate-perangkat-pembelajaran",
+            "nilai-upload-bulk",
           ].includes(page);
         if (role === "urusan")
           return (

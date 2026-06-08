@@ -161,6 +161,32 @@
         render: () => global.renderCetakRaporPage(),
         afterEnter: () => global.loadRealtimeCetakRapor()
       },
+      "nilai-upload-bulk": {
+        title: "Upload Nilai per Mapel per Jenjang",
+        beforeEnter: () => {
+          if (typeof global.setNilaiAccessMode === "function") {
+            const role = typeof global.DashboardShell?.getCurrentAppRole === "function"
+              ? global.DashboardShell.getCurrentAppRole()
+              : "admin";
+            const canCoordinatorAccess = typeof global.DashboardShell?.canUseCoordinatorAccess === "function"
+              ? global.DashboardShell.canUseCoordinatorAccess()
+              : false;
+            global.setNilaiAccessMode(
+              role === "koordinator" || (role === "guru" && canCoordinatorAccess)
+                ? "koordinator"
+                : "admin"
+            );
+          }
+          if (typeof global.setNilaiInputMode === "function") {
+            const nextMode = typeof global.resolveNilaiInputModeForCurrentRole === "function"
+              ? global.resolveNilaiInputModeForCurrentRole()
+              : "pts";
+            global.setNilaiInputMode(nextMode === "semester" ? "semester" : "pts");
+          }
+        },
+        render: () => global.renderBulkUploadNilaiPage(),
+        afterEnter: () => global.loadRealtimeBulkUploadNilai()
+      },
       "wali-kehadiran": {
         title: "Kehadiran Siswa",
         render: () => global.renderWaliKehadiranPage(),
