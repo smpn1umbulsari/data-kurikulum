@@ -809,10 +809,12 @@
       <div id="nilaiPreviewPagination" class="pagination-wrap"></div>
 
       <div class="preview-mode">
-        <b>Mode Import:</b><br>
-        <label><input type="radio" name="nilaiImportMode" value="update" checked> Update (ubah jika berbeda)</label><br>
-        <label><input type="radio" name="nilaiImportMode" value="skip"> Skip (lewati nilai lama)</label><br>
-        <label><input type="radio" name="nilaiImportMode" value="overwrite"> Overwrite (paksa semua)</label>
+        <label for="nilaiImportModeSelect"><b>Mode Import:</b></label>
+        <select id="nilaiImportModeSelect" class="nilai-import-select">
+          <option value="update" selected>Update (ubah jika berbeda)</option>
+          <option value="skip">Skip (lewati nilai lama)</option>
+          <option value="overwrite">Overwrite (paksa semua)</option>
+        </select>
       </div>
 
       <div class="preview-actions">

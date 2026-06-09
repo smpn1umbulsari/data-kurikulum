@@ -1,4 +1,4 @@
-﻿/* =====================================================
+/* =====================================================
    GLOBAL
 ===================================================== */
 * {
@@ -807,15 +807,55 @@ body.dark .toolbar select {
   border-radius: 12px;
 }
 
-.preview-mode {
-  font-size: 14px;
-  line-height: 1.9;
-}
+
 
 .preview-actions {
   display: flex;
   gap: 10px;
 }
+
+.preview-mode {
+  font-size: 14px;
+  line-height: 1.9;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 14px;
+  margin-bottom: 14px;
+}
+
+.nilai-import-select {
+  width: 100%;
+  max-width: 360px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--gs-color-border, #cbd5e1);
+  background-color: var(--gs-color-bg-light, #ffffff);
+  color: var(--gs-color-text-main, #0f172a);
+  font-size: 14px;
+  font-weight: 500;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.nilai-import-select:focus {
+  border-color: var(--gs-color-primary, #3b82f6);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+body.dark .nilai-import-select {
+  background-color: #020617;
+  border-color: #334155;
+  color: #f8fafc;
+}
+
+body.dark .nilai-import-select option {
+  background: #020617;
+  color: #f8fafc;
+}
+
 
 .preview-note {
   color: #64748b;

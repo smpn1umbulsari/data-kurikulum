@@ -1363,6 +1363,10 @@ function renderRekapNilaiState() {
     return;
   }
 
+  const modeRules = getNilaiModeRules();
+  const isSemester = modeRules.isSemester;
+  const colSpan = isSemester ? 7 : 4;
+
   container.innerHTML = `
     <table class="mapel-table nilai-table nilai-rekap-table">
       <thead>
@@ -1378,14 +1382,22 @@ function renderRekapNilaiState() {
               const title = mapel?.nama_mapel
                 ? `${code} - ${mapel.nama_mapel}`
                 : code;
-              return `<th colspan="4" class="nilai-rekap-mapel-group nilai-rekap-mapel-boundary" title="${escapeNilaiHtml(title)}">${escapeNilaiHtml(code)}</th>`;
+              return `<th colspan="${colSpan}" class="nilai-rekap-mapel-group nilai-rekap-mapel-boundary" title="${escapeNilaiHtml(title)}">${escapeNilaiHtml(code)}</th>`;
             })
             .join("")}
         </tr>
         <tr>
           ${assignments
             .map(
-              () => `
+              () => isSemester ? `
+            <th class="nilai-uh-head nilai-rekap-subcol nilai-rekap-mapel-start">UH 1</th>
+            <th class="nilai-uh-head nilai-rekap-subcol">UH 2</th>
+            <th class="nilai-uh-head nilai-rekap-subcol">UH 3</th>
+            <th class="nilai-uh-head nilai-rekap-subcol">UH 4</th>
+            <th class="nilai-uh-head nilai-rekap-subcol">UH 5</th>
+            <th class="nilai-pts-head nilai-rekap-subcol">PTS</th>
+            <th class="nilai-semester-head nilai-rekap-subcol nilai-rekap-mapel-end">Semester</th>
+          ` : `
             <th class="nilai-uh-head nilai-rekap-subcol nilai-rekap-mapel-start">UH 1</th>
             <th class="nilai-uh-head nilai-rekap-subcol">UH 2</th>
             <th class="nilai-uh-head nilai-rekap-subcol nilai-rekap-before-pts">UH 3</th>
@@ -1415,13 +1427,29 @@ function renderRekapNilaiState() {
                 );
                 const nilaiUh2 = getNilaiFieldValue(nilaiDoc, "uh_2", "");
                 const nilaiUh3 = getNilaiFieldValue(nilaiDoc, "uh_3", "");
-                const nilaiPts = getNilaiFieldValue(nilaiDoc, "pts", "");
-                return `
-                <td class="nilai-rekap-subcol nilai-rekap-mapel-start">${escapeNilaiHtml(nilaiUh1 === "" ? "-" : nilaiUh1)}</td>
-                <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh2 === "" ? "-" : nilaiUh2)}</td>
-                <td class="nilai-rekap-subcol nilai-rekap-before-pts">${escapeNilaiHtml(nilaiUh3 === "" ? "-" : nilaiUh3)}</td>
-                <td class="nilai-rekap-subcol nilai-rekap-mapel-end">${escapeNilaiHtml(nilaiPts === "" ? "-" : nilaiPts)}</td>
-              `;
+                if (isSemester) {
+                  const nilaiUh4 = getNilaiFieldValue(nilaiDoc, "uh_4", "");
+                  const nilaiUh5 = getNilaiFieldValue(nilaiDoc, "uh_5", "");
+                  const nilaiPts = getNilaiFieldValue(nilaiDoc, "pts", "");
+                  const nilaiSemester = getNilaiFieldValue(nilaiDoc, "semester", "");
+                  return `
+                  <td class="nilai-rekap-subcol nilai-rekap-mapel-start">${escapeNilaiHtml(nilaiUh1 === "" ? "-" : nilaiUh1)}</td>
+                  <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh2 === "" ? "-" : nilaiUh2)}</td>
+                  <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh3 === "" ? "-" : nilaiUh3)}</td>
+                  <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh4 === "" ? "-" : nilaiUh4)}</td>
+                  <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh5 === "" ? "-" : nilaiUh5)}</td>
+                  <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiPts === "" ? "-" : nilaiPts)}</td>
+                  <td class="nilai-rekap-subcol nilai-rekap-mapel-end">${escapeNilaiHtml(nilaiSemester === "" ? "-" : nilaiSemester)}</td>
+                `;
+                } else {
+                  const nilaiPts = getNilaiFieldValue(nilaiDoc, "pts", "");
+                  return `
+                  <td class="nilai-rekap-subcol nilai-rekap-mapel-start">${escapeNilaiHtml(nilaiUh1 === "" ? "-" : nilaiUh1)}</td>
+                  <td class="nilai-rekap-subcol">${escapeNilaiHtml(nilaiUh2 === "" ? "-" : nilaiUh2)}</td>
+                  <td class="nilai-rekap-subcol nilai-rekap-before-pts">${escapeNilaiHtml(nilaiUh3 === "" ? "-" : nilaiUh3)}</td>
+                  <td class="nilai-rekap-subcol nilai-rekap-mapel-end">${escapeNilaiHtml(nilaiPts === "" ? "-" : nilaiPts)}</td>
+                `;
+                }
               })
               .join("")}
           </tr>
@@ -1509,6 +1537,10 @@ function getCurrentRekapNilaiDataset() {
 }
 
 function buildRekapNilaiSheetRows(assignments = [], students = []) {
+  const modeRules = getNilaiModeRules();
+  const isSemester = modeRules.isSemester;
+  const colSpan = isSemester ? 7 : 4;
+
   const topHeader = ["No", "Nama", "NIPD", "L/P"];
   const subHeader = ["", "", "", ""];
   const merges = [
@@ -1522,13 +1554,18 @@ function buildRekapNilaiSheetRows(assignments = [], students = []) {
   assignments.forEach((item) => {
     const mapel = getNilaiMapel(item.mapel_kode);
     const code = String(item.mapel_kode || "").toUpperCase();
-    topHeader.push(code, "", "", "");
-    subHeader.push("UH 1", "UH 2", "UH 3", "PTS");
+    if (isSemester) {
+      topHeader.push(code, "", "", "", "", "", "");
+      subHeader.push("UH 1", "UH 2", "UH 3", "UH 4", "UH 5", "PTS", "Semester");
+    } else {
+      topHeader.push(code, "", "", "");
+      subHeader.push("UH 1", "UH 2", "UH 3", "PTS");
+    }
     merges.push({
       s: { r: 0, c: currentCol },
-      e: { r: 0, c: currentCol + 3 },
+      e: { r: 0, c: currentCol + colSpan - 1 },
     });
-    currentCol += 4;
+    currentCol += colSpan;
   });
 
   const bodyRows = students.map((siswa, index) => {
@@ -1541,12 +1578,24 @@ function buildRekapNilaiSheetRows(assignments = [], students = []) {
     assignments.forEach((item) => {
       const nilaiDoc = getNilaiForStudent(item, siswa.nipd);
       const fallbackNilai = nilaiDoc?.nilai ?? "";
-      row.push(
-        getNilaiFieldValue(nilaiDoc, "uh_1", fallbackNilai),
-        getNilaiFieldValue(nilaiDoc, "uh_2", ""),
-        getNilaiFieldValue(nilaiDoc, "uh_3", ""),
-        getNilaiFieldValue(nilaiDoc, "pts", ""),
-      );
+      if (isSemester) {
+        row.push(
+          getNilaiFieldValue(nilaiDoc, "uh_1", fallbackNilai),
+          getNilaiFieldValue(nilaiDoc, "uh_2", ""),
+          getNilaiFieldValue(nilaiDoc, "uh_3", ""),
+          getNilaiFieldValue(nilaiDoc, "uh_4", ""),
+          getNilaiFieldValue(nilaiDoc, "uh_5", ""),
+          getNilaiFieldValue(nilaiDoc, "pts", ""),
+          getNilaiFieldValue(nilaiDoc, "semester", ""),
+        );
+      } else {
+        row.push(
+          getNilaiFieldValue(nilaiDoc, "uh_1", fallbackNilai),
+          getNilaiFieldValue(nilaiDoc, "uh_2", ""),
+          getNilaiFieldValue(nilaiDoc, "uh_3", ""),
+          getNilaiFieldValue(nilaiDoc, "pts", ""),
+        );
+      }
     });
     return row;
   });
@@ -1612,9 +1661,13 @@ function applyRekapNilaiSheetStyles(
     }
   }
 
+  const modeRules = getNilaiModeRules();
+  const isSemester = modeRules.isSemester;
+  const colSpan = isSemester ? 7 : 4;
+
   assignments.forEach((_, index) => {
-    const startCol = 4 + index * 4;
-    const endCol = startCol + 3;
+    const startCol = 4 + index * colSpan;
+    const endCol = startCol + colSpan - 1;
 
     for (let col = startCol; col <= endCol; col += 1) {
       const topAddress = XLSX.utils.encode_cell({ r: 0, c: col });
@@ -1652,18 +1705,19 @@ function applyRekapNilaiSheetStyles(
     }
   });
 
-  worksheet["!cols"] = [
+  const colWidths = [
     { wch: 4.5 },
     { wch: 22 },
     { wch: 11 },
     { wch: 5 },
-    ...assignments.flatMap(() => [
-      { wch: 6.5 },
-      { wch: 6.5 },
-      { wch: 6.5 },
-      { wch: 6.5 },
-    ]),
   ];
+  assignments.forEach(() => {
+    for (let i = 0; i < colSpan; i++) {
+      colWidths.push({ wch: 6.5 });
+    }
+  });
+
+  worksheet["!cols"] = colWidths;
   worksheet["!rows"] = [{ hpt: 22 }, { hpt: 20 }];
 }
 
@@ -2996,10 +3050,12 @@ function renderNilaiPreview() {
     <div id="nilaiPreviewPagination" class="pagination-wrap"></div>
 
     <div class="preview-mode">
-      <b>Mode Import:</b><br>
-      <label><input type="radio" name="nilaiImportMode" value="update" checked> Update (ubah jika berbeda)</label><br>
-      <label><input type="radio" name="nilaiImportMode" value="skip"> Skip (lewati nilai lama)</label><br>
-      <label><input type="radio" name="nilaiImportMode" value="overwrite"> Overwrite (paksa semua)</label>
+      <label for="nilaiImportModeSelect"><b>Mode Import:</b></label>
+      <select id="nilaiImportModeSelect" class="nilai-import-select">
+        <option value="update" selected>Update (ubah jika berbeda)</option>
+        <option value="skip">Skip (lewati nilai lama)</option>
+        <option value="overwrite">Overwrite (paksa semua)</option>
+      </select>
     </div>
 
     <div class="preview-actions">
@@ -3052,7 +3108,7 @@ function renderNilaiOfflineDraftInfo(assignment) {
 
 function getNilaiImportMode() {
   return (
-    document.querySelector('input[name="nilaiImportMode"]:checked')?.value ||
+    document.getElementById("nilaiImportModeSelect")?.value ||
     "update"
   );
 }
