@@ -482,7 +482,9 @@
   }
 
   .nilai-table .nilai-student-name {
-    white-space: normal !important;
+    white-space: nowrap !important;
+    overflow: hidden;
+    text-overflow: clip;
   }
 
   .nilai-input-cell {

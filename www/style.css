@@ -4302,7 +4302,7 @@ body.dark .rekap-task-list span {
 
 .nilai-table th:nth-child(2),
 .nilai-table td:nth-child(2) {
-  width: 220px;
+  width: 100px;
 }
 
 .nilai-input-table .nilai-col-no {
@@ -4310,7 +4310,7 @@ body.dark .rekap-task-list span {
 }
 
 .nilai-input-table .nilai-col-student {
-  width: 180px;
+  width: 100px;
 }
 
 .nilai-input-table .nilai-col-field {
@@ -4380,7 +4380,9 @@ body.dark .rekap-task-list span {
 
 .nilai-table .nilai-student-name {
   text-align: left;
-  white-space: normal;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
   line-height: 1.35;
   font-weight: 600;
   padding-left: 12px;
