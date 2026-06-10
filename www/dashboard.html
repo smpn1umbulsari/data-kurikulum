@@ -157,7 +157,7 @@
               <div class="submenu-section-label">Administrasi Awal</div>
               <button onclick="loadPage('kelas')">Data Kelas</button>
               <button onclick="loadPage('mapel')">Data Mapel</button>
-              <button onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
+              <button data-admin-only-menu="true" onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
 
               <div class="submenu-section-divider"></div>
               <div class="submenu-section-label">Pembagian Mengajar</div>
@@ -215,7 +215,6 @@
               >
                 Input Nilai
               </button>
-              <button onclick="loadPage('tugas-tambahan')">Tugas Tambahan</button>
               <button data-native-only hidden onclick="prepareGuruOfflineData()">
                 Siapkan Data Offline
               </button>
@@ -892,7 +891,6 @@
               "guru-lihat",
               "kelas",
               "kelas-bayangan-siswa",
-              "tugas-tambahan",
               "nilai-input",
               "nilai-input-semester",
               "nilai-input-guru",
@@ -916,7 +914,6 @@
           if (waliPages.includes(page))
             return Boolean(window.GuruSpenturiWaliAccess?.hasAccess);
           return [
-            "tugas-tambahan",
             "guru-lihat",
             "nilai-input-guru",
             "nilai-input-semester-guru",
@@ -951,6 +948,7 @@
               "lihat",
               "nilai-input",
               "nilai-rapor",
+              "tugas-tambahan",
             ].includes(page) ||
             ["ai-soal", "generate-perangkat-pembelajaran"].includes(page)
           );
@@ -993,6 +991,14 @@
           .querySelectorAll("[data-ai-prompt-menu='true']")
           .forEach((button) => {
             const canAccess = canAccessAiPromptMenu();
+            button.hidden = !canAccess;
+            if (canAccess) button.style.removeProperty("display");
+            else button.style.setProperty("display", "none", "important");
+          });
+        document
+          .querySelectorAll("[data-admin-only-menu='true']")
+          .forEach((button) => {
+            const canAccess = ["admin", "superadmin"].includes(role);
             button.hidden = !canAccess;
             if (canAccess) button.style.removeProperty("display");
             else button.style.setProperty("display", "none", "important");

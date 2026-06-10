@@ -569,7 +569,6 @@ function makeNilaiDocId(assignment, nipd) {
     assignment.tingkat,
     String(assignment.rombel || "").toUpperCase(),
     String(assignment.mapel_kode || "").toUpperCase(),
-    String(assignment.guru_kode || "").toUpperCase(),
     String(nipd || ""),
   ].join("_");
   const termId =
@@ -618,12 +617,6 @@ function isNilaiDocMatchingAssignment(item = {}, assignment = {}) {
   const mapelKode = String(assignment.mapel_kode || "")
     .trim()
     .toUpperCase();
-  const guruKode = String(assignment.guru_kode || "")
-    .trim()
-    .toUpperCase();
-  const itemGuruKode = String(item.guru_kode || "")
-    .trim()
-    .toUpperCase();
   const itemKelas = getNilaiKelasParts(item.kelas || "").kelas;
   const assignmentKelas = getNilaiKelasParts(`${tingkat}${rombel}`).kelas;
   const sameClass = itemKelas
@@ -637,8 +630,7 @@ function isNilaiDocMatchingAssignment(item = {}, assignment = {}) {
     sameClass &&
     String(item.mapel_kode || "")
       .trim()
-      .toUpperCase() === mapelKode &&
-    (!guruKode ? true : itemGuruKode === guruKode)
+      .toUpperCase() === mapelKode
   );
 }
 
@@ -771,7 +763,6 @@ function makeNilaiAssignmentHydrationKey(assignment) {
     assignment.tingkat || "",
     String(assignment.rombel || "").toUpperCase(),
     String(assignment.mapel_kode || "").toUpperCase(),
-    String(assignment.guru_kode || "").toUpperCase(),
   ].join("|");
 }
 
@@ -2026,11 +2017,6 @@ async function hydrateNilaiCacheForAssignment(assignment, options = {}) {
       "data->>mapel_kode",
       "eq",
       String(assignment.mapel_kode || "").toUpperCase(),
-    )
-    .filter(
-      "data->>guru_kode",
-      "eq",
-      String(assignment.guru_kode || "").toUpperCase(),
     );
 
   if (error) throw error;

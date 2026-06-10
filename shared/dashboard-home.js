@@ -470,7 +470,7 @@
         <div class="dashboard-hero-copy">
           <span class="dashboard-eyebrow">Ringkasan Guru</span>
           <h2 id="guruHomeName">Memuat data guru...</h2>
-          <p id="guruHomeUpdatedAt">Memuat tugas mengajar, tugas tambahan, dan kelas wali.</p>
+          <p id="guruHomeUpdatedAt">Memuat tugas mengajar dan kelas wali.</p>
           <div class="dashboard-hero-actions">
             <button class="btn-secondary" onclick="loadPage('nilai-input-guru')">Input Nilai</button>
             <button class="btn-secondary home-offline-cta" data-native-only hidden onclick="prepareGuruOfflineData()">Siapkan Offline</button>
@@ -480,7 +480,6 @@
         </div>
         <div class="dashboard-hero-panel">
           <div class="dashboard-stat"><span>Tugas Mengajar</span><strong id="guruHomeMengajarCount">...</strong></div>
-          <div class="dashboard-stat"><span>Tugas Tambahan</span><strong id="guruHomeTugasCount">...</strong></div>
           <div class="dashboard-stat"><span>Kelas Wali</span><strong id="guruHomeWaliKelas">...</strong></div>
         </div>
       </section>
@@ -504,7 +503,6 @@
           </div>
           <div id="guruHomeMengajarTable" class="table-container home-teaching-table-wrap"><div class="empty-panel">Memuat tugas mengajar...</div></div>
         </article>
-        <article class="dashboard-card-lite"><span class="dashboard-card-label">Tugas Tambahan</span><h3 id="guruHomeTugasCardCount">0 tugas</h3><div id="guruHomeTugasList" class="dashboard-mini-list"><span>Memuat tugas tambahan...</span></div></article>
         <article class="dashboard-card-lite"><span class="dashboard-card-label">Informasi Wali Kelas</span><h3 id="guruHomeWaliSummary">Bukan wali kelas</h3><div id="guruHomeWaliInfo" class="dashboard-mini-list"><span>Data wali kelas akan tampil jika tersedia.</span></div></article>
       </section>
     `;
@@ -1300,11 +1298,6 @@
     const assignmentKey = getHomeAssignmentKey(assignment);
     const itemKey = getHomeAssignmentKey(item);
     if (assignmentKey === itemKey) return true;
-    const assignmentGuru = String(assignment.guru_kode || "").trim();
-    const itemGuru = String(item.guru_kode || "").trim();
-    if (assignmentGuru || itemGuru) {
-      return false;
-    }
     const itemClass = getKelasParts(
       item.kelas || `${item.tingkat || ""}${item.rombel || ""}`,
     ).kelas;
