@@ -538,6 +538,10 @@
       invalidateCollectionCache(collectionName);
       return { ...collectionCachePolicies.get(cacheKey) };
     },
+    async refreshCollection(collectionName) {
+      return (await fetchAllCollectionRows(collectionName, { useCache: false }))
+        .map(row => ({ id: row.id, ...(row.data || {}) }));
+    },
     collection(name) {
       return new CollectionRef(name);
     },

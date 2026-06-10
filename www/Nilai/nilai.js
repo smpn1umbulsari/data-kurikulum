@@ -2226,10 +2226,43 @@ function getNilaiTemplateRows(assignment) {
   });
 }
 
+function getNilaiTemplateFormulaColumns(headers = []) {
+  const findCol = (header) =>
+    headers.findIndex((item) => String(item || "").toUpperCase() === header) +
+    1;
+  return {
+    uhStart: findCol("UH1"),
+    uhEnd: findCol("UH5"),
+    pts: findCol("PTS"),
+    semester: findCol("SEMESTER"),
+    rapor: findCol("NILAI_RAPOR"),
+  };
+}
+
+function getNilaiRaporExcelFormula(rowNumber, columns = {}) {
+  if (
+    !columns.uhStart ||
+    !columns.uhEnd ||
+    !columns.pts ||
+    !columns.semester ||
+    !columns.rapor
+  )
+    return "";
+  const encode = (col) =>
+    XLSX.utils.encode_cell({ r: rowNumber - 1, c: col - 1 });
+  const uhRange = `${encode(columns.uhStart)}:${encode(columns.uhEnd)}`;
+  const ptsCell = encode(columns.pts);
+  const semesterCell = encode(columns.semester);
+  return `IF(AND(COUNT(${uhRange})>0,ISNUMBER(${ptsCell}),ISNUMBER(${semesterCell})),ROUND(((AVERAGE(${uhRange})*3+${ptsCell}+${semesterCell})/5),2),"")`;
+}
+
 function applyNilaiTemplateStyles(worksheet, rowCount) {
   const range = XLSX.utils.decode_range(worksheet["!ref"]);
   const fieldHeaders = getNilaiInputFieldConfigs().map(
     getNilaiFieldExportHeader,
+  );
+  const formulaColumns = getNilaiTemplateFormulaColumns(
+    ["NO", "NIPD", "NAMA"].concat(fieldHeaders),
   );
   const headerStyle = {
     font: { bold: true, color: { rgb: "0F172A" } },
@@ -2299,7 +2332,14 @@ function applyNilaiTemplateStyles(worksheet, rowCount) {
         cell.s = lockedStyle;
       else if (fieldHeader === "PTS") cell.s = ptsStyle;
       else if (fieldHeader === "SEMESTER") cell.s = semesterStyle;
-      else if (fieldHeader === "NILAI_RAPOR") cell.s = raporStyle;
+      else if (fieldHeader === "NILAI_RAPOR") {
+        if (getNilaiModeRules().isSemester) {
+          cell.t = "n";
+          cell.f = getNilaiRaporExcelFormula(row + 1, formulaColumns);
+          delete cell.v;
+        }
+        cell.s = raporStyle;
+      }
       else cell.s = lockedStyle;
     }
   }
@@ -2529,6 +2569,8 @@ async function downloadNilaiRapor(selectedOption, assignmentOverride = null) {
 async function downloadNilaiTemplateExcelJs(rows, assignment) {
   await ensureSpreadsheetLibraries({ needsExcelJs: true });
   const workbook = new ExcelJS.Workbook();
+  workbook.calcProperties = workbook.calcProperties || {};
+  workbook.calcProperties.fullCalcOnLoad = true;
   const worksheet = workbook.addWorksheet("Template Nilai");
   const baseColumns = [
     { header: "NO", key: "NO", width: 6 },
@@ -2545,6 +2587,9 @@ async function downloadNilaiTemplateExcelJs(rows, assignment) {
     })),
   ];
   rows.forEach((row) => worksheet.addRow(row));
+  const formulaColumns = getNilaiTemplateFormulaColumns(
+    worksheet.columns.map((column) => column.header),
+  );
 
   const border = {
     top: { style: "thin", color: { argb: "FFCBD5E1" } },
@@ -2555,7 +2600,7 @@ async function downloadNilaiTemplateExcelJs(rows, assignment) {
 
   worksheet.eachRow((row, rowNumber) => {
     row.height = rowNumber === 1 ? 22 : 20;
-    row.eachCell((cell, colNumber) => {
+    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
       cell.border = border;
       cell.alignment = {
         vertical: "middle",
@@ -2568,6 +2613,19 @@ async function downloadNilaiTemplateExcelJs(rows, assignment) {
       const isPtsColumn = fieldHeader === "PTS";
       const isSemesterColumn = fieldHeader === "SEMESTER";
       const isRaporColumn = fieldHeader === "NILAI_RAPOR";
+      if (modeRules.isSemester && isRaporColumn && rowNumber > 1) {
+        const currentValue =
+          cell.value === "" || cell.value === null || cell.value === undefined
+            ? NaN
+            : Number(cell.value);
+        const formula = getNilaiRaporExcelFormula(rowNumber, formulaColumns);
+        if (formula) {
+          cell.value = {
+            formula,
+            result: Number.isFinite(currentValue) ? currentValue : undefined,
+          };
+        }
+      }
       const isLockedColumn =
         colNumber < 4 ||
         isRaporColumn ||

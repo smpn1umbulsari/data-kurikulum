@@ -950,9 +950,9 @@
     position: sticky !important;
     left: 46px;
     z-index: 6;
-    width: 190px !important;
-    min-width: 190px !important;
-    max-width: 190px !important;
+    width: 100px !important;
+    min-width: 100px !important;
+    max-width: 100px !important;
     background: var(--gs-surface-solid) !important;
     text-align: left !important;
     white-space: normal !important;

@@ -83,6 +83,82 @@
     return listNilaiDrafts(user).length;
   }
 
+  function getActiveTermId() {
+    if (typeof global.getActiveTermId === "function") return global.getActiveTermId();
+    try {
+      return JSON.parse(global.localStorage.getItem("appSemester") || "{}")?.id || "legacy";
+    } catch {
+      return "legacy";
+    }
+  }
+
+  function getOfflineCollectionPaths() {
+    const termId = getActiveTermId();
+    const semesterPrefix = termId && termId !== "legacy" ? `semester_data/${termId}/` : "";
+    return [
+      `${semesterPrefix}siswa`,
+      `${semesterPrefix}kelas`,
+      "guru",
+      "mapel",
+      "mapel_bayangan",
+      "mengajar",
+      "mengajar_bayangan",
+      "tugas_tambahan",
+      "guru_tugas_tambahan",
+      "nilai",
+      "settings",
+      "informasi_urusan"
+    ];
+  }
+
+  async function prepareData(options = {}) {
+    if (!isOnline()) throw new Error("Perangkat sedang offline");
+    const documentsApi = global.SupabaseDocuments;
+    if (!documentsApi?.refreshCollection) throw new Error("Cache offline belum siap");
+
+    const collections = options.collections || getOfflineCollectionPaths();
+    const result = [];
+    for (const collectionPath of collections) {
+      const rows = await documentsApi.refreshCollection(collectionPath);
+      result.push({ collectionPath, rows: rows.length });
+    }
+    renderStatus();
+    return result;
+  }
+
+  async function prepareGuruOfflineData() {
+    try {
+      if (global.Swal?.fire) {
+        global.Swal.fire({
+          title: "Menyiapkan data offline...",
+          html: "Mengambil data siswa, kelas, pembagian mengajar, dan nilai terbaru.",
+          allowOutsideClick: false,
+          didOpen: () => global.Swal.showLoading(),
+        });
+      }
+      const result = await prepareData();
+      const nilaiRows = result.find((item) => item.collectionPath === "nilai")?.rows || 0;
+      if (global.Swal?.fire) {
+        global.Swal.fire(
+          "Data offline siap",
+          `${nilaiRows} baris nilai sudah diperbarui di cache offline perangkat ini.`,
+          "success",
+        );
+      }
+      return result;
+    } catch (error) {
+      console.error("prepareGuruOfflineData failed", error);
+      if (global.Swal?.fire) {
+        global.Swal.fire(
+          "Gagal menyiapkan offline",
+          error?.message || "Data offline belum berhasil diperbarui.",
+          "error",
+        );
+      }
+      throw error;
+    }
+  }
+
   function renderStatus() {
     const pill = global.document?.getElementById("guruOfflineStatusPill");
     if (!pill) return;
@@ -114,9 +190,12 @@
     clearNilaiDraft,
     listNilaiDrafts,
     countNilaiDrafts,
+    prepareData,
     renderStatus,
     init
   };
+
+  global.prepareGuruOfflineData = prepareGuruOfflineData;
 
   init();
 })(window);
