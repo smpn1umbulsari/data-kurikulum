@@ -111,6 +111,19 @@
             ${mapelOptionsHtml}
           </select>
         </label>
+
+        ${
+          showModeSelector
+            ? `
+        <label class="siswa-field" for="bulkNilaiModeSelect">
+          <span>Mode Input</span>
+          <select id="bulkNilaiModeSelect" onchange="handleBulkNilaiModeChange(this.value)">
+            <option value="pts" ${modeRules.mode === "semester" ? "" : "selected"}>PTS</option>
+            <option value="semester" ${modeRules.mode === "semester" ? "selected" : ""}>Semester</option>
+          </select>
+        </label>`
+            : ""
+        }
       </div>`;
 
     const contentHtml = `
@@ -368,6 +381,22 @@
 
   function handleBulkNilaiMapelChange(value) {
     localStorage.setItem("bulkNilaiSelectedMapel", value);
+    renderBulkUploadNilaiPageState();
+  }
+
+  function handleBulkNilaiModeChange(value) {
+    const nextMode = String(value || "").trim().toLowerCase() === "semester" ? "semester" : "pts";
+    if (typeof global.storeNilaiUiMode === "function") {
+      global.storeNilaiUiMode(nextMode);
+    }
+    if (typeof global.setNilaiInputMode === "function") {
+      global.setNilaiInputMode(nextMode);
+    }
+    global.nilaiPreviewData = [];
+    global.nilaiPreviewPage = 1;
+    if (typeof global.renderNilaiInputModeUi === "function") {
+      global.renderNilaiInputModeUi();
+    }
     renderBulkUploadNilaiPageState();
   }
 
@@ -973,6 +1002,7 @@
     renderBulkUploadNilaiPageState,
     handleBulkNilaiTingkatChange,
     handleBulkNilaiMapelChange,
+    handleBulkNilaiModeChange,
     downloadBulkTemplateTrigger,
     triggerBulkNilaiImport,
     downloadBulkNilaiTemplate,
@@ -988,6 +1018,7 @@
   global.loadRealtimeBulkUploadNilai = loadRealtimeBulkUploadNilai;
   global.handleBulkNilaiTingkatChange = handleBulkNilaiTingkatChange;
   global.handleBulkNilaiMapelChange = handleBulkNilaiMapelChange;
+  global.handleBulkNilaiModeChange = handleBulkNilaiModeChange;
   global.downloadBulkTemplateTrigger = downloadBulkTemplateTrigger;
   global.triggerBulkNilaiImport = triggerBulkNilaiImport;
   global.importBulkNilaiExcel = importBulkNilaiExcel;

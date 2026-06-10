@@ -3477,6 +3477,8 @@ async function saveNilaiAssignment() {
 
 window.renderNilaiTableState = renderNilaiTableState;
 window.renderNilaiPageState = renderNilaiPageState;
+window.renderNilaiInputModeUi = renderNilaiInputModeUi;
+window.setNilaiInputMode = setNilaiInputMode;
 window.promptDownloadNilaiRapor = promptDownloadNilaiRapor;
 window.handleNilaiModeSelectorChange = handleNilaiModeSelectorChange;
 window.resolveNilaiInputModeForCurrentRole =
