@@ -478,6 +478,22 @@ Catatan:
 - Perubahan ini hanya penyesuaian layout cetak `Data Map`.
 - Fokus perubahan ada di [Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/Asesmen/pembagian-ruang-v2.js) dan [www/Asesmen/pembagian-ruang-v2.js](/D:/KURIKULUM/Data%20Kurikulum/www/Asesmen/pembagian-ruang-v2.js).
 
+## Versi 1.21a.5
+
+Status: draft
+
+Tanggal: 2026-06-13
+
+Perubahan:
+- Memperbaiki fitur download nilai rapor untuk kelas asli aktif.
+- Menghapus opsi kelas bayangan yang duplikat jika sama dengan kelas asli.
+- Menambahkan default select value (inputValue) pada pop-up download nilai rapor agar memilih kelas aktif saat ini.
+- Menyinkronkan perubahan ke asset web Capacitor.
+
+Catatan:
+- Tidak ada menu baru.
+- Fokus perubahan di [Nilai/nilai.js](/D:/KURIKULUM/Data%20Kurikulum/Nilai/nilai.js) dan [www/Nilai/nilai.js](/D:/KURIKULUM/Data%20Kurikulum/www/Nilai/nilai.js).
+
 ## Versi 1.21a.4
 
 Status: draft
