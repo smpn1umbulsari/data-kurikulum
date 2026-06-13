@@ -763,6 +763,7 @@ function makeNilaiAssignmentHydrationKey(assignment) {
     assignment.tingkat || "",
     String(assignment.rombel || "").toUpperCase(),
     String(assignment.mapel_kode || "").toUpperCase(),
+    String(assignment.guru_kode || "").toUpperCase(),
   ].join("|");
 }
 
@@ -2367,7 +2368,7 @@ function getNilaiRaporDownloadClassOptions(assignment) {
         classKey: originalClass,
       });
     }
-    if (shadowClass) {
+    if (shadowClass && shadowClass !== originalClass) {
       options.set(`bayangan|${shadowClass}`, {
         value: `bayangan|${shadowClass}`,
         label: `Kelas bayangan: ${shadowClass}`,
@@ -2385,14 +2386,44 @@ function getNilaiRaporDownloadClassOptions(assignment) {
 }
 
 function getNilaiRaporRowsForExport(assignment, option) {
-  const students = getNilaiStudentsForAssignment(assignment).filter((siswa) => {
-    const originalClass = getNilaiKelasParts(siswa.kelas).kelas;
-    const shadowClass = siswa.kelasNilaiParts?.kelas || "";
-    if (option.source === "asli") return originalClass === option.classKey;
-    return shadowClass === option.classKey;
+  const mapel = getNilaiMapel(assignment.mapel_kode);
+  
+  let students;
+  if (option.source === "asli") {
+    students = semuaDataNilaiSiswa
+      .map((siswa) => ({
+        ...siswa,
+        kelasNilaiParts: getNilaiKelasBayanganParts(siswa),
+      }))
+      .filter((siswa) => {
+        const originalClass = getNilaiKelasParts(siswa.kelas).kelas;
+        return originalClass === option.classKey && isNilaiSiswaEligibleForMapel(siswa, mapel);
+      });
+  } else {
+    students = getNilaiStudentsForAssignment(assignment).filter((siswa) => {
+      const shadowClass = siswa.kelasNilaiParts?.kelas || "";
+      return shadowClass === option.classKey;
+    });
+  }
+
+  students.sort((a, b) => {
+    if (window.AppUtils?.compareStudentPlacement)
+      return window.AppUtils.compareStudentPlacement(a, b);
+    return String(a.nama || "").localeCompare(
+      String(b.nama || ""),
+      undefined,
+      { sensitivity: "base" },
+    );
   });
+
   return students.map((siswa, index) => {
-    const nilaiDoc = getNilaiForStudent(assignment, siswa.nipd);
+    const studentAssignment = {
+      tingkat: siswa.kelasNilaiParts.tingkat,
+      rombel: siswa.kelasNilaiParts.rombel,
+      mapel_kode: assignment.mapel_kode,
+      guru_kode: assignment.guru_kode,
+    };
+    const nilaiDoc = getNilaiForStudent(studentAssignment, siswa.nipd);
     const values = getNilaiUiValues(nilaiDoc);
     return {
       NO: index + 1,
@@ -2513,11 +2544,20 @@ async function promptDownloadNilaiRapor() {
   const inputOptions = Object.fromEntries(
     options.map((option) => [option.value, option.label]),
   );
+  const activeClassKey = getNilaiClassKey(assignment);
+  const defaultOption = options.find(
+    (opt) => opt.classKey === activeClassKey && opt.source === "asli"
+  ) || options.find(
+    (opt) => opt.classKey === activeClassKey
+  ) || options[0];
+  const defaultValue = defaultOption ? defaultOption.value : "";
+
   const result = await Swal.fire({
     title: "Download Nilai Rapor",
     text: "Pilih kelas yang ingin diunduh.",
     input: "select",
     inputOptions,
+    inputValue: defaultValue,
     inputPlaceholder: "Pilih kelas",
     showCancelButton: true,
     confirmButtonText: "Download",
