@@ -2407,8 +2407,6 @@ function getNilaiRaporRowsForExport(assignment, option) {
   }
 
   students.sort((a, b) => {
-    if (window.AppUtils?.compareStudentPlacement)
-      return window.AppUtils.compareStudentPlacement(a, b);
     return String(a.nama || "").localeCompare(
       String(b.nama || ""),
       undefined,
